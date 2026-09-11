@@ -69,6 +69,15 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze
       - run: flutter test
+      # The screen tour against the fake. It passes or fails only on whether
+      # every screen can still be reached; the pictures ride along with each
+      # run for anyone reviewing the change.
+      - run: flutter test --update-goldens tool/screens/screens_test.dart
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: build/screens/
+          retention-days: 14
 
   android:
     name: Android build
