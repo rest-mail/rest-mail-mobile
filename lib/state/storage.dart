@@ -33,7 +33,7 @@ class SecureKeyValueStore implements KeyValueStore {
   Future<void> delete(String key) => _storage.delete(key: key);
 }
 
-/// For tests.
+/// For tests, and for sample mode, which keeps nothing between launches.
 class MemoryKeyValueStore implements KeyValueStore {
   final values = <String, String>{};
 

@@ -18,6 +18,12 @@ dependencies:
   restmail_api:
     path: packages/restmail_api
 
+  # An in-memory rest-mail, for tests and for running the app with no server
+  # (see lib/sample_mode.dart). A normal dependency because main.dart can pick
+  # it; profile and release builds compile it out.
+  restmail_fake:
+    path: packages/restmail_fake
+
   # dart-lang, BSD-3. Handed a dart:io client so TLS trust is ours to set.
   http: ^1.6.0
 
