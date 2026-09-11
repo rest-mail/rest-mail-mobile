@@ -26,8 +26,13 @@ class AddAccountScreen extends StatefulWidget {
 }
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
+  // Sample mode fills in the sample account, so trying the app is one tap.
+  final _email = TextEditingController(
+    text: sampleMode ? FakeAccounts.email : null,
+  );
+  final _password = TextEditingController(
+    text: sampleMode ? FakeAccounts.password : null,
+  );
   final _code = TextEditingController();
   final _codeFocus = FocusNode();
 
@@ -48,6 +53,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     super.initState();
     _server = widget.server;
     _email.addListener(_emailChanged);
+    // A filled-in address still needs its server found.
+    if (sampleMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _emailChanged());
+    }
   }
 
   @override

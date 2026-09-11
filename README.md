@@ -50,6 +50,10 @@ with no server anywhere. Sign in as `dana@restmail.test` with the password
 starts with no mail. `SCENARIO=twoFactor` asks for the code `123456`. Only
 debug builds can do this.
 
+`chore sim:sample` builds the same thing and starts it in the iOS simulator,
+booting one first if none is running, with no terminal left attached. The
+sign-in screen comes up filled in, so it is one tap to the mailbox.
+
 `chore screens` walks the app through its screens in light and dark
 against the same fake, and saves a picture of each in `build/screens/`.
 

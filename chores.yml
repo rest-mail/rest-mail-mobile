@@ -25,6 +25,19 @@ tasks:
       - flutter test --update-goldens tool/screens/screens_test.dart
       - echo "Pictures in build/screens"
 
+  sim:sample:
+    desc: "Build the app on the fake server and start it in the iOS simulator, no terminal left attached. SCENARIO=sample|empty|twoFactor"
+    vars:
+      SCENARIO: '{{.SCENARIO | default "sample"}}'
+    cmds:
+      # Boot the first available iPhone unless a simulator is already up.
+      - xcrun simctl list devices booted | grep -q Booted || xcrun simctl boot "$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')"
+      - open -a Simulator
+      - flutter build ios --simulator --debug --dart-define=RESTMAIL_FAKE={{.SCENARIO}}
+      - xcrun simctl terminate booted com.antimatterstudios.restmail 2>/dev/null || true
+      - xcrun simctl install booted build/ios/iphonesimulator/Runner.app
+      - xcrun simctl launch booted com.antimatterstudios.restmail
+
   run:sample:
     desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
     vars:
