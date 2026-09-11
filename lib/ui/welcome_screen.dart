@@ -78,13 +78,23 @@ class WelcomeScreen extends StatelessWidget {
                       ],
                       const Padding(
                         padding: EdgeInsets.only(bottom: 18),
+                        // Each stat takes half the width and wraps inside it,
+                        // so large text sizes cannot push the row off screen.
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _Stat(value: 'Live', label: 'pushed, never polled'),
+                            Expanded(
+                              child: _Stat(
+                                value: 'Live',
+                                label: 'pushed, never polled',
+                              ),
+                            ),
                             SizedBox(width: 22),
-                            _Stat(
-                              value: 'TLS',
-                              label: 'or it will not connect',
+                            Expanded(
+                              child: _Stat(
+                                value: 'TLS',
+                                label: 'or it will not connect',
+                              ),
                             ),
                           ],
                         ),

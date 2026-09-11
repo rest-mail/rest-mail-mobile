@@ -230,9 +230,11 @@ class _LinkRow extends StatelessWidget {
               child: Icon(Icons.add_rounded, size: 16, color: c.accent),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Link another mailbox',
-              style: rmText(14.5, color: c.accent, weight: FontWeight.w600),
+            Flexible(
+              child: Text(
+                'Link another mailbox',
+                style: rmText(14.5, color: c.accent, weight: FontWeight.w600),
+              ),
             ),
           ],
         ),

@@ -512,12 +512,14 @@ class MailDrawer extends StatelessWidget {
                       children: [
                         SyncDot(m.live),
                         const SizedBox(width: 8),
-                        Text(
-                          liveLabel(m.live),
-                          style: rmText(
-                            11.5,
-                            color: c.ink3,
-                            weight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            liveLabel(m.live),
+                            style: rmText(
+                              11.5,
+                              color: c.ink3,
+                              weight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
