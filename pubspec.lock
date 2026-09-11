@@ -447,6 +447,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  restmail_fake:
+    dependency: "direct main"
+    description:
+      path: "packages/restmail_fake"
+      relative: true
+    source: path
+    version: "0.1.0"
   share_plus:
     dependency: "direct main"
     description:

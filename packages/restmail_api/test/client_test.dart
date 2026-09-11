@@ -248,6 +248,45 @@ void main() {
 
       expect(client.tokens, isNotNull);
     });
+
+    test(
+      'a 401 that survives a fresh token is the request’s own refusal',
+      () async {
+        // Linking a mailbox with the wrong password answers 401 as well; that
+        // must not be taken for the end of the session.
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          httpClient: MockClient((request) async {
+            if (_isRefresh(request)) return _signedIn('2');
+            return _json({
+              'error': {
+                'code': 'unauthorized',
+                'message': 'Invalid email or password',
+              },
+            }, status: 401);
+          }),
+        );
+
+        await expectLater(
+          client.linkAccount(address: 'other@example.test', password: 'wrong'),
+          throwsA(
+            isA<ApiException>()
+                .having(
+                  (e) => e is SessionExpiredException,
+                  'ends the session',
+                  isFalse,
+                )
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Invalid email or password',
+                ),
+          ),
+        );
+        expect(client.tokens?.accessToken, 'access-2');
+      },
+    );
   });
 
   group('requests', () {

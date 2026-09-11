@@ -439,6 +439,10 @@ class RestmailClient {
 
   /// Sends a request as the signed-in user, renewing the session once if the
   /// server says the access token is no longer good.
+  ///
+  /// Only a refused renewal ends the session. A 401 that comes back even with
+  /// a fresh token is the request's own refusal — linking a mailbox with the
+  /// wrong password answers 401 — and is reported like any other error.
   Future<http.Response> _authed(
     String method,
     List<String> path, {
@@ -467,10 +471,6 @@ class RestmailClient {
           ? latest
           : await refresh();
       response = await attempt(renewed);
-      if (response.statusCode == 401) {
-        _setTokens(null);
-        throw const SessionExpiredException();
-      }
     }
     _throwIfError(response);
     return response;

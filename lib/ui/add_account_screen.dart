@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
+import 'package:restmail_fake/restmail_fake.dart' show FakeAccounts;
 
+import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'server_screen.dart';
@@ -195,6 +197,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       "Type your address. We'll find your rest-mail server — nothing to configure.",
                       style: rmText(15, color: c.ink2, height: 1.45),
                     ),
+                    if (sampleMode) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        'Sample mail: ${FakeAccounts.email}, password '
+                        '${FakeAccounts.password}'
+                        '${sampleScenario == 'twoFactor' ? ', code ${FakeAccounts.totpCode}' : ''}.',
+                        style: rmText(
+                          13,
+                          color: c.accent,
+                          weight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     const SectionLabel('Email address'),
                     const SizedBox(height: 8),

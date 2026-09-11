@@ -57,7 +57,9 @@ String initialsOf(String name) {
 }
 
 const _avatarTints = [
-  Color(0xFF1F2328),
+  // Slate rather than the design's near-black, which all but vanished on the
+  // dark background.
+  Color(0xFF57606A),
   Color(0xFF5B57D8),
   Color(0xFF0F9E6E),
   Color(0xFF4C4FD8),
