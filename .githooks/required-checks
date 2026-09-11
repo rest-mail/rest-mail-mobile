@@ -1,0 +1,11 @@
+# What must pass before main takes a merge. github-guard reads this from the
+# default branch on the server and applies it to branch protection.
+#
+#   CI   ci.yml — the one always-run gate. It fails when any job it needs
+#        failed: the API client, the fake server, the app's tests (all of them
+#        against the fake, no real server), and the Android and iOS builds.
+#
+# Requiring the gate rather than each job means a job can be renamed, split or
+# made conditional without leaving a required check that never reports, which
+# would block every pull request with nothing to point at.
+CI

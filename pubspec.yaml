@@ -1,0 +1,71 @@
+name: restmail
+description: rest-mail client for iOS and Android.
+publish_to: 'none'
+
+# The build number after the + is for local builds only; a release sets its
+# own. Nothing has shipped, so this stays below 1.0.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The REST client, kept in this repo as a plain Dart package so it has no
+  # Flutter in it and can be tested on its own.
+  restmail_api:
+    path: packages/restmail_api
+
+  # dart-lang, BSD-3. Handed a dart:io client so TLS trust is ours to set.
+  http: ^1.6.0
+
+  # Renders message HTML as Flutter widgets: no web engine, so no JavaScript
+  # or CSS surface at all, and the body scrolls with the rest of the page.
+  # MIT, pure Dart. It only ever sees HTML that lib/util/html_sanitizer.dart
+  # has already cut down to the webmail's allowlist.
+  flutter_widget_from_html_core: ^0.17.4
+
+  # dart-lang, BSD-3. Parses message HTML for the sanitizer.
+  html: ^0.15.7
+
+  # The Keychain on iOS and the Keystore on Android, holding the session.
+  # BSD-3. PINNED BELOW 11: 11.x's Android module sets compileSdk 37, while
+  # this app builds with Flutter's default AGP, whose ceiling is 36.
+  flutter_secure_storage: ">=10.3.1 <11.0.0"
+
+  # Links in messages, and mailto: links. BSD-3.
+  url_launcher: ^6.3.2
+
+  # Opening an attachment hands it to the system share sheet. BSD-3.
+  share_plus: ^13.3.0
+  path_provider: ^2.1.6
+
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Public Sans, the design's typeface, bundled rather than fetched so the app
+  # makes no request to a font CDN. SIL Open Font License; see
+  # assets/fonts/OFL.txt.
+  fonts:
+    - family: PublicSans
+      fonts:
+        - asset: assets/fonts/PublicSans-Regular.ttf
+        - asset: assets/fonts/PublicSans-Italic.ttf
+          style: italic
+        - asset: assets/fonts/PublicSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PublicSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PublicSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PublicSans-ExtraBold.ttf
+          weight: 800
