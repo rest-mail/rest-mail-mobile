@@ -37,6 +37,24 @@ jobs:
       - run: dart analyze --fatal-infos
       - run: dart test
 
+  fake-server:
+    name: Fake server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/restmail_fake
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
   app:
     name: App
     runs-on: ubuntu-latest
@@ -48,7 +66,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze
       - run: flutter test
 
@@ -85,7 +103,7 @@ jobs:
   # above did, so adding or renaming a job never strands a required check.
   ci:
     name: CI
-    needs: [api-client, app, android, ios]
+    needs: [api-client, fake-server, app, android, ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -93,6 +111,7 @@ jobs:
         env:
           RESULTS: |
             api-client=${{ needs.api-client.result }}
+            fake-server=${{ needs.fake-server.result }}
             app=${{ needs.app.result }}
             android=${{ needs.android.result }}
             ios=${{ needs.ios.result }}
