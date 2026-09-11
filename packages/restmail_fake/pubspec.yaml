@@ -1,0 +1,17 @@
+name: restmail_fake
+description: An in-memory rest-mail server, for tests and for running the app with no server.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  http: ^1.6.0
+  # For the cookie names, so the fake and the client cannot disagree on them.
+  restmail_api:
+    path: ../restmail_api
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.1
