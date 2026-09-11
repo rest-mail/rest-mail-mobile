@@ -25,6 +25,8 @@ webmail uses, not IMAP.
 |---|---|
 | `lib/` | The app |
 | `packages/restmail_api/` | The REST client as a plain Dart package: sign-in and token refresh, mail, the event stream, server discovery. It has no Flutter code, so its tests run with `dart test`. |
+| `packages/restmail_fake/` | An in-memory rest-mail that speaks the same API, for tests and for running the app with no server |
+| `tool/screens/` | Draws every screen against the fake, for looking at |
 | `assets/fonts/` | Public Sans (SIL Open Font License) |
 
 ## Development
@@ -34,12 +36,22 @@ You need Flutter 3.47.1 (stable), Xcode 26 for iOS, and the Android SDK
 plugin resolves through Swift Package Manager.
 
 ```sh
-flutter pub get
-flutter analyze
-flutter test
-(cd packages/restmail_api && dart pub get && dart analyze && dart test)
+chore get      # dependencies for the app and both packages
+chore check    # format, analyze and test everything, as CI does
 flutter run
 ```
+
+### Sample mail, no server
+
+`chore run:sample` runs the app against the in-memory rest-mail in
+`packages/restmail_fake`. Every screen works, on a simulator or a phone,
+with no server anywhere. Sign in as `dana@restmail.test` with the password
+`restmail`; the sign-in screen shows these as well. `SCENARIO=empty`
+starts with no mail. `SCENARIO=twoFactor` asks for the code `123456`. Only
+debug builds can do this.
+
+`chore screens` walks the app through its screens in light and dark
+against the same fake, and saves a picture of each in `build/screens/`.
 
 ### Against a local testbed
 
