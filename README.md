@@ -72,6 +72,16 @@ flutter run --dart-define-from-file=.dev/testbed.json
 Profile and release builds ignore this define. The simulator or emulator also
 has to resolve the testbed's host names.
 
+### Against a stack behind ddt
+
+When rest-mail runs locally behind [ddt](https://github.com/antimatter-studios/docker-dev-tools),
+its proxy serves `https://restmail.localhost` with a certificate from ddt's own
+CA. `chore sim:local` does the above with that CA (`ddt ca path`) and starts the
+debug build in the iOS simulator; add the account with the server
+`https://restmail.localhost`. Nothing is added to the Mac's or the simulator's
+trust store: only this debug build trusts the CA, and it still checks every
+certificate against it.
+
 ## Identity
 
 The app ID is `com.antimatterstudios.restmail` on both platforms. It ships
