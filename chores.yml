@@ -1,0 +1,33 @@
+version: "3"
+
+# The everyday commands for this repo, run with `chore <name>`.
+
+tasks:
+  get:
+    desc: Fetch dependencies for the app and its two packages
+    cmds:
+      - flutter pub get
+      - cd packages/restmail_api && dart pub get
+      - cd packages/restmail_fake && dart pub get
+
+  check:
+    desc: Format check, analyze and test everything, as CI does
+    cmds:
+      - dart format --output=none --set-exit-if-changed lib test tool packages
+      - flutter analyze
+      - flutter test
+      - cd packages/restmail_api && dart analyze --fatal-infos && dart test
+      - cd packages/restmail_fake && dart analyze --fatal-infos && dart test
+
+  screens:
+    desc: Draw every screen, light and dark, against the fake server into build/screens
+    cmds:
+      - flutter test --update-goldens tool/screens/screens_test.dart
+      - echo "Pictures in build/screens"
+
+  run:sample:
+    desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
+    vars:
+      SCENARIO: '{{.SCENARIO | default "sample"}}'
+    cmds:
+      - flutter run --dart-define=RESTMAIL_FAKE={{.SCENARIO}}
