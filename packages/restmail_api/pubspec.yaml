@@ -1,0 +1,16 @@
+name: restmail_api
+description: Client for the rest-mail REST API — sign-in, mail and live mailbox events.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  # dart-lang, BSD-3. On iOS and Android its default client is dart:io's
+  # HttpClient, so TLS trust is whatever SecurityContext the app hands it.
+  http: ^1.6.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.1
