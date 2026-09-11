@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The version the code is written and checked against. Bump it on purpose,
+  # not by drifting onto whatever "stable" means this week.
+  FLUTTER_VERSION: "3.47.1"
+
+jobs:
+  api-client:
+    name: API client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/restmail_api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  app:
+    name: App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Android build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter build apk --debug
+
+  ios:
+    name: iOS build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      # A simulator build needs no signing identity, so it runs on any fork.
+      - run: flutter build ios --simulator --debug
+
+  # The one check branch protection requires: it passes only when every job
+  # above did, so adding or renaming a job never strands a required check.
+  ci:
+    name: CI
+    needs: [api-client, app, android, ios]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verdict
+        env:
+          RESULTS: |
+            api-client=${{ needs.api-client.result }}
+            app=${{ needs.app.result }}
+            android=${{ needs.android.result }}
+            ios=${{ needs.ios.result }}
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS='=' read -r job result; do
+            [ -n "$job" ] || continue
+            printf '  %-10s %s\n' "$job" "$result"
+            case "$result" in
+              success | skipped) ;;
+              *) fail=1 ;;
+            esac
+          done <<< "$RESULTS"
+          if [ "$fail" = 1 ]; then
+            echo "::error::a job did not succeed" >&2
+            exit 1
+          fi
+          echo "  all jobs that ran passed"
