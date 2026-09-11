@@ -38,6 +38,21 @@ tasks:
       - xcrun simctl install booted build/ios/iphonesimulator/Runner.app
       - xcrun simctl launch booted com.antimatterstudios.restmail
 
+  sim:local:
+    desc: "Build a debug app that trusts ddt's local CA and start it in the iOS simulator, for a rest-mail stack running behind ddt (server: https://restmail.localhost)"
+    cmds:
+      # The debug build pins ddt's CA (RESTMAIL_DEV_CA) instead of the Mac or the
+      # simulator trusting it, so the app still verifies every certificate it is shown.
+      - mkdir -p .dev
+      - |
+        python3 -c 'import json,sys; print(json.dumps({"RESTMAIL_DEV_CA": open(sys.argv[1]).read()}))' "$(ddt ca path)" > .dev/ddt.json
+      - xcrun simctl list devices booted | grep -q Booted || xcrun simctl boot "$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')"
+      - open -a Simulator
+      - flutter build ios --simulator --debug --dart-define-from-file=.dev/ddt.json
+      - xcrun simctl terminate booted com.antimatterstudios.restmail 2>/dev/null || true
+      - xcrun simctl install booted build/ios/iphonesimulator/Runner.app
+      - xcrun simctl launch booted com.antimatterstudios.restmail
+
   run:sample:
     desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
     vars:
