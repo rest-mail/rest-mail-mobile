@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Apple requires a privacy manifest for the app, and separately one from each
+  SDK it embeds. This file covers THIS app's own binary only: the Flutter engine
+  and every plugin used here (flutter_secure_storage, url_launcher, share_plus,
+  path_provider) ship their own manifests, and Xcode collects them into the
+  privacy report at archive time.
+
+  NSPrivacyAccessedAPITypes is empty on purpose: the app's own code calls none of
+  the APIs on Apple's required-reason list. It keeps the session in the Keychain
+  (flutter_secure_storage), not in UserDefaults, and reads no file timestamps,
+  disk space or boot time of its own. If that changes, the reason code belongs
+  here, and a wrong or missing entry is rejected at upload.
+
+  NSPrivacyCollectedDataTypes is empty because nothing is collected BY US: the
+  app talks only to the mail server the person signs in to, which is theirs or
+  their operator's, and there is no analytics, advertising or crash SDK in it
+  (see pubspec.yaml). What that server stores is that server's business, and is
+  covered by its own privacy policy — but the App Store privacy questionnaire is
+  answered by the publisher, not by this file, so check it agrees with this.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>
