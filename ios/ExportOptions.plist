@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  How an archive becomes something App Store Connect will take:
+
+      flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+
+  Signing is left to Xcode (signingStyle automatic): it picks the distribution
+  certificate and provisioning profile for this team from the machine doing the
+  build. That machine needs to be signed in to the Apple Developer account, so
+  this file alone is not enough to release — it only says what kind of export is
+  wanted, and holds no secrets.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+
+	<key>teamID</key>
+	<string>43UMKXZ8P4</string>
+
+	<key>signingStyle</key>
+	<string>automatic</string>
+
+	<key>destination</key>
+	<string>export</string>
+
+	<!-- Let Apple manage the app's encryption declaration from the Info.plist
+	     key rather than asking again per upload. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+
+	<!-- Symbols go with the build so crash reports from TestFlight and the store
+	     come back symbolicated. -->
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>
