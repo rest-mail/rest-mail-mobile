@@ -19,6 +19,134 @@ webmail uses, not IMAP.
   until you tap Load.
 - HTTPS only. The app has no setting that turns off certificate checks.
 
+## Walkthrough
+
+These screens come from `chore screens`, which drives the app against the
+in-memory rest-mail in `packages/restmail_fake`. The account is
+`dana@restmail.test` with its sample mail.
+
+### Welcome
+
+<img src="media/01-welcome.png" width="260" alt="Welcome screen">
+
+The first launch has two ways in. **Add an account** starts from an email
+address. **Enter a server address** is for a server that can't be found from
+the domain. On the **Server** screen you type the address and tap **Test**,
+which checks that rest-mail answers over HTTPS. **Use this server** only works
+once the test passes. A plain `http://` address is refused.
+
+### Adding an account
+
+<img src="media/02-sign-in.png" width="260" alt="Add account screen">
+
+About half a second after you stop typing the domain, the app looks for a
+rest-mail server at the domain and at `mail.<domain>`, and the card under the
+address shows the result. If nothing is found, **Configure manually** opens the
+Server screen. The password is sent once, to sign in. After that the app keeps
+only the session, in the system keychain.
+
+If the account has two-factor authentication, a **Two-factor code** field
+appears. **Use a recovery code instead** switches it to take a recovery code.
+
+### Inbox
+
+<img src="media/03-inbox.png" width="260" alt="Inbox">
+
+The line under the folder name shows the connection: **Live** while the
+server's event stream is up, **Connecting…** or **Offline · retrying**
+otherwise. New mail arrives without a refresh.
+
+- A blue dot marks unread mail, and an **Attachment** tag marks mail with
+  files.
+- Pull down or tap refresh to reload. Older mail loads as you scroll.
+- Swipe left to move a message to Trash, with **Undo**. In Trash, swiping
+  asks first, because the message is then deleted for good.
+- Tap **+** to write a new message. Tapping a draft opens it for editing.
+
+### Folders and accounts
+
+<img src="media/04-folders.png" width="260" alt="Folder drawer">
+
+The menu button opens the drawer. Each folder shows its unread count, and
+Drafts shows how many drafts there are. Folders the server has beyond the
+standard ones, like **Receipts** here, are listed too. If you have linked other
+mailboxes, their avatars sit next to the account at the top; tap one to switch
+to it. **Settings** is at the bottom.
+
+### Reading a message
+
+<img src="media/06-message.png" width="260" alt="A message with an attachment">
+
+Opening a message marks it read. Tap the recipient line to see full addresses
+and the date.
+
+- The top bar has **Archive** and **Delete**. The **⋮** menu has **Mark as
+  unread**, **Flag** and **Move to Spam** (**Not spam** when the message is in
+  Spam). Moves can be undone.
+- Tap an attachment to download it and open the share sheet. When there are
+  several, a card opens a grid of them.
+- **Reply** is always there. **Reply all** appears when other people are on
+  the message, and the arrow is **Forward**.
+
+### Replying
+
+<img src="media/07-reply.png" width="260" alt="Reply compose sheet">
+
+Compose opens as a sheet over the message. Reply adds `Re:` and quotes the
+original. Forward adds `Fwd:` and the forwarded message. **Cc** reveals the Cc
+and Bcc fields, and **From** appears when you have more than one mailbox. The
+chevron makes the sheet full height. If you close it with changes, the app
+asks whether to keep a draft; tapping outside the sheet doesn't close it.
+
+New messages always get your signature. Replies and forwards get it only if
+**Append on replies** is on, as it is here.
+
+### HTML mail
+
+<img src="media/08-html-message.png" width="260" alt="An HTML newsletter with a blocked image">
+
+HTML mail is drawn as native widgets, not in a web view. Scripts, styles and
+forms are removed. Remote images are blocked, and a bar counts them until you
+tap **Load**. Links open only if they are `http`, `https` or `mailto`; a
+`mailto` link opens compose.
+
+### Search
+
+<img src="media/09-search.png" width="260" alt="Search results">
+
+Results update as you type and show how long the server took. Before you type,
+the screen suggests `has:attachment`, `in:sent` and `from:`, then lists recent
+searches. Recent searches are kept only until the app closes.
+
+| Term | Matches |
+|---|---|
+| `from:<text>` | the sender |
+| `in:<folder>` | one folder; standard folder names ignore case |
+| `has:attachment` | mail with files |
+| anything else | free text |
+
+### Settings
+
+<img src="media/05-settings.png" width="260" alt="Settings">
+
+- **Accounts** lists the signed-in account and any linked mailboxes. Tap one
+  to see its display name, server and storage, and to **Sign out**, or
+  **Remove from this session** for a linked mailbox. Signing out removes the
+  session from the phone; the mail stays on the server.
+- **Link another mailbox** adds another mailbox on the same server to this
+  session.
+- **Signature** edits the signature, with a preview and the **Append on
+  replies** switch.
+- **Appearance** is **System**, **Light** or **Dark**.
+
+Settings are stored only on the device.
+
+### Dark
+
+Every screen also has a dark version:
+
+<img src="media/03-inbox-dark.png" width="200" alt="Inbox, dark"> <img src="media/06-message-dark.png" width="200" alt="Message, dark"> <img src="media/08-html-message-dark.png" width="200" alt="HTML message, dark">
+
 ## Layout
 
 | Path | What |
@@ -56,6 +184,8 @@ sign-in screen comes up filled in, so it is one tap to the mailbox.
 
 `chore screens` walks the app through its screens in light and dark
 against the same fake, and saves a picture of each in `build/screens/`.
+The pictures in `media/` are copies of these, used in the walkthrough above.
+Copy them over again when a screen changes.
 
 ### Against a local testbed
 
