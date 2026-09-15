@@ -71,7 +71,14 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pumpWidget(
     RepaintBoundary(
       key: _frame,
-      child: RestmailApp(state: state),
+      // A 1px black edge, painted over the app rather than around it so
+      // the screen keeps its size, keeps the mostly-white pictures from
+      // disappearing into a white page.
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(border: Border.all()),
+        child: RestmailApp(state: state),
+      ),
     ),
   );
   await _shot(tester, '01-welcome$suffix');
