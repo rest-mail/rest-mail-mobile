@@ -251,6 +251,19 @@ debug build in the iOS simulator; add the account with the server
 trust store: only this debug build trusts the CA, and it still checks every
 certificate against it.
 
+### A TestFlight build
+
+On a Mac signed in to the Apple Developer account:
+
+```sh
+chore ipa
+```
+
+The build number is the count of commits on `HEAD`, so every build from a
+newer `main` can be uploaded and each one names the commit it came from. It
+refuses to build with uncommitted changes. The version (`0.1.0`) comes from
+`pubspec.yaml`; change it there for a new release.
+
 ## Identity
 
 The app ID is `com.antimatterstudios.restmail` on both platforms. It ships

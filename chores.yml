@@ -53,6 +53,20 @@ tasks:
       - xcrun simctl install booted build/ios/iphonesimulator/Runner.app
       - xcrun simctl launch booted com.antimatterstudios.restmail
 
+  ipa:
+    desc: "Build the App Store Connect upload into build/ios/ipa, numbered by the commits on HEAD"
+    vars:
+      # Only ever goes up on main, where every merge is one squashed commit, and
+      # stays under Android's versionCode ceiling should the bundle use it too.
+      BUILD_NUMBER:
+        sh: git rev-list --count HEAD
+    preconditions:
+      - sh: git diff --quiet HEAD
+        msg: "Commit first: the build number names a commit, and this tree has changes on top of it"
+    cmds:
+      - flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-number={{.BUILD_NUMBER}}
+      - echo "Build {{.BUILD_NUMBER}} in build/ios/ipa. Upload it with Transporter, or xcrun altool."
+
   run:sample:
     desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
     vars:
