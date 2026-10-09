@@ -98,6 +98,7 @@ class RestmailClient {
       body: {
         'email': email,
         'password': password,
+        'client': 'native',
         if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
         if (recoveryCode != null && recoveryCode.isNotEmpty)
           'recovery_code': recoveryCode,
@@ -123,7 +124,7 @@ class RestmailClient {
       await _send(
         'POST',
         _uri(['auth', 'logout']),
-        headers: {'Cookie': '$refreshCookieName=${tokens.refreshToken}'},
+        body: {'refresh_token': tokens.refreshToken},
       );
     } on ApiException {
       // The refresh token will expire on its own.
@@ -143,18 +144,14 @@ class RestmailClient {
     final response = await _send(
       'POST',
       _uri(['auth', 'refresh']),
-      headers: {'Cookie': '$refreshCookieName=${current.refreshToken}'},
+      body: {'refresh_token': current.refreshToken},
     );
     if (response.statusCode == 401 || response.statusCode == 403) {
       _setTokens(null);
       throw const SessionExpiredException();
     }
     _throwIfError(response);
-    final tokens = _tokensFrom(
-      response,
-      _data(response),
-      previousRefreshToken: current.refreshToken,
-    );
+    final tokens = _tokensFrom(response, _data(response));
     // Signed out while the refresh was in flight: stay signed out.
     if (_tokens == null) throw const SessionExpiredException();
     _setTokens(tokens);
@@ -578,17 +575,16 @@ class RestmailClient {
     'The server sent a response this app does not understand',
   );
 
-  SessionTokens _tokensFrom(
-    http.Response response,
-    Map<String, dynamic> data, {
-    String? previousRefreshToken,
-  }) {
-    final cookies = parseSetCookies(
-      response.headersSplitValues['set-cookie'] ?? const [],
-    );
-    final access = cookies[accessCookieName];
-    final refresh = cookies[refreshCookieName] ?? previousRefreshToken;
-    if (access == null || refresh == null) {
+  /// Reads the pair a native sign-in or refresh returns in its body. A server
+  /// from before native clients were supported answers with cookies only, and
+  /// lands here as `missing_tokens`.
+  SessionTokens _tokensFrom(http.Response response, Map<String, dynamic> data) {
+    final access = data['access_token'];
+    final refresh = data['refresh_token'];
+    if (access is! String ||
+        access.isEmpty ||
+        refresh is! String ||
+        refresh.isEmpty) {
       throw ApiException(
         response.statusCode,
         'missing_tokens',

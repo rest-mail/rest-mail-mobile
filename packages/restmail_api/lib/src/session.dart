@@ -1,18 +1,10 @@
-/// The cookie rest-mail delivers the access token in.
-const accessCookieName = 'restmail_access';
-
-/// The cookie rest-mail delivers the refresh token in. The server reads it
-/// only on `/api/v1/auth/refresh` and `/api/v1/auth/logout`.
-const refreshCookieName = 'restmail_refresh';
-
 /// The two tokens behind one signed-in session.
 ///
-/// rest-mail gives tokens to browsers as httpOnly cookies and never in a JSON
-/// body. A native client can read Set-Cookie, so it lifts both values out of
-/// the login and refresh responses. The access token goes back as an
-/// `Authorization: Bearer` header, which also exempts the request from the
-/// CSRF check; the refresh token goes back as a cookie on the two auth routes
-/// that read it.
+/// rest-mail gives tokens to browsers as httpOnly cookies, but this client
+/// signs in as `"client": "native"`, so both come back in the JSON body. The
+/// access token goes out as an `Authorization: Bearer` header, which also
+/// exempts the request from the CSRF check; the refresh token goes back in the
+/// body of the two auth routes that take it. No cookie is read or sent.
 class SessionTokens {
   const SessionTokens({
     required this.accessToken,
@@ -39,23 +31,6 @@ class SessionTokens {
     'refresh_token': refreshToken,
     'access_expires_at': accessExpiresAt.toUtc().toIso8601String(),
   };
-}
-
-/// Reads `name=value` out of each Set-Cookie line, ignoring the attributes.
-/// A cookie being cleared (sent with an empty value) is left out.
-Map<String, String> parseSetCookies(Iterable<String> setCookieLines) {
-  final cookies = <String, String>{};
-  for (final line in setCookieLines) {
-    final pair = line.split(';').first;
-    final equals = pair.indexOf('=');
-    if (equals <= 0) continue;
-    var value = pair.substring(equals + 1).trim();
-    if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-      value = value.substring(1, value.length - 1);
-    }
-    if (value.isNotEmpty) cookies[pair.substring(0, equals).trim()] = value;
-  }
-  return cookies;
 }
 
 /// Path endings people paste along with their server that are not part of it.

@@ -3,8 +3,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:restmail_api/restmail_api.dart'
-    show accessCookieName, refreshCookieName;
 
 import 'model.dart';
 import 'sample_mail.dart';
@@ -50,6 +48,10 @@ class FakeRestmail {
   /// Requests to any other host fail as if it could not be reached.
   final String host;
   final Duration accessTokenLifetime;
+
+  /// What a sign-in reports as the refresh token's lifetime, the real
+  /// server's. The fake never expires one.
+  static const _refreshTokenLifetime = Duration(days: 7);
 
   /// A pause before every answer, for a slow network.
   final Duration latency;
@@ -161,9 +163,9 @@ class FakeRestmail {
       case ('POST', ['api', 'v1', 'auth', 'login']):
         return _login(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
-        return _refresh(request);
+        return _refresh(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'logout']):
-        _refreshTokens.remove(_cookie(request, refreshCookieName));
+        _refreshTokens.remove(_object(bytes)['refresh_token']);
         return _noContent();
     }
 
@@ -256,42 +258,41 @@ class FakeRestmail {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
     }
-    return _issue(_Session(box.id));
+    return _issue(_Session(box.id), native: body['client'] == 'native');
   }
 
-  /// The server retires a refresh token when it is used; so does this.
-  http.StreamedResponse _refresh(http.BaseRequest request) {
-    final session = _refreshTokens.remove(_cookie(request, refreshCookieName));
+  /// The server retires a refresh token when it is used; so does this. A
+  /// refresh token sent in the body is a native client's, and so is the
+  /// answer.
+  http.StreamedResponse _refresh(Map<String, dynamic> body) {
+    final session = _refreshTokens.remove(body['refresh_token']);
     if (session == null) _fail(401, 'unauthorized', 'Invalid refresh token');
-    return _issue(session);
+    return _issue(session, native: true);
   }
 
-  http.StreamedResponse _issue(_Session session) {
+  /// Hands out a new pair. Only a native client gets it in the body; a login
+  /// that does not say `"client": "native"` is a browser's, which the real
+  /// server answers with cookies, so here it gets no tokens at all.
+  http.StreamedResponse _issue(_Session session, {required bool native}) {
     final access = _token('access'), refresh = _token('refresh');
     _accessTokens[access] = _Grant(session, _clock().add(accessTokenLifetime));
     _refreshTokens[refresh] = session;
     final user = _mailboxes[session.primary]!;
-    return _json(
-      {
-        'data': {
-          'expires_in': accessTokenLifetime.inSeconds,
-          'user': {
-            'id': user.id,
-            'email': user.address,
-            'display_name': user.displayName,
-          },
+    return _json({
+      'data': {
+        'expires_in': accessTokenLifetime.inSeconds,
+        'user': {
+          'id': user.id,
+          'email': user.address,
+          'display_name': user.displayName,
+        },
+        if (native) ...{
+          'access_token': access,
+          'refresh_token': refresh,
+          'refresh_expires_in': _refreshTokenLifetime.inSeconds,
         },
       },
-      headers: {
-        // Folded into one value, as dart:io hands several Set-Cookie lines
-        // to package:http.
-        'set-cookie': [
-          '$accessCookieName=$access; Path=/; HttpOnly; Secure; SameSite=Strict',
-          '$refreshCookieName=$refresh; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Strict',
-          'restmail_csrf=${_token('csrf')}; Path=/; Secure; SameSite=Strict',
-        ].join(', '),
-      },
-    );
+    });
   }
 
   _Session _authenticate(http.BaseRequest request) {
@@ -785,14 +786,6 @@ Map<String, dynamic> _object(List<int> bytes) {
   final decoded = jsonDecode(utf8.decode(bytes));
   if (decoded is Map<String, dynamic>) return decoded;
   _fail(400, 'bad_request', 'Invalid request body');
-}
-
-String? _cookie(http.BaseRequest request, String name) {
-  for (final part in (request.headers['cookie'] ?? '').split(';')) {
-    final pair = part.trim();
-    if (pair.startsWith('$name=')) return pair.substring(name.length + 1);
-  }
-  return null;
 }
 
 int? _cursorId(String? cursor) {

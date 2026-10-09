@@ -43,22 +43,6 @@ void main() {
     });
   });
 
-  group('parseSetCookies', () {
-    test('reads each cookie and ignores its attributes', () {
-      expect(
-        parseSetCookies([
-          'restmail_access=a.b.c; Path=/; Expires=Thu, 10 Sep 2026 22:15:00 GMT; HttpOnly',
-          'restmail_refresh="r.s.t"; Path=/api/v1/auth; HttpOnly',
-        ]),
-        {'restmail_access': 'a.b.c', 'restmail_refresh': 'r.s.t'},
-      );
-    });
-
-    test('leaves out a cookie being cleared', () {
-      expect(parseSetCookies(['restmail_access=; Max-Age=0']), isEmpty);
-    });
-  });
-
   test('SessionTokens survive a round trip through JSON', () {
     final tokens = SessionTokens(
       accessToken: 'a',
