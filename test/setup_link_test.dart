@@ -16,6 +16,10 @@ void main() {
   );
   final withoutServer = Uri.parse('restmail://setup?token=$code');
 
+  final webLink = Uri.parse(
+    'https://rest-mail.com/setup#server=https%3A%2F%2F${FakeAccounts.host}&token=$code',
+  );
+
   group('AppState.openLink', () {
     AppState newState() => AppState(
       store: MemoryKeyValueStore(),
@@ -34,11 +38,19 @@ void main() {
       expect(state.pendingSetup, isNull);
     });
 
+    test('a web link is a setup link too', () {
+      final state = newState();
+      state.openLink(webLink);
+      expect(state.pendingSetup?.code, code);
+      expect(state.pendingSetup?.server?.host, FakeAccounts.host);
+    });
+
     test('anything else is ignored', () {
       final state = newState();
       for (final link in [
         'restmail://reset?token=$code',
         'https://example.com/setup?token=$code',
+        'https://rest-mail.com/#token=$code',
         'restmail://setup?token=nope',
       ]) {
         state.openLink(Uri.parse(link));
