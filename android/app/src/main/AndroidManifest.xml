@@ -32,6 +32,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- restmail://setup?token=… links open the app on its setup
+                 (app_links hands them to Dart; Flutter's own deep linking is
+                 off so it does not route them as well). -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="restmail" android:host="setup"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
