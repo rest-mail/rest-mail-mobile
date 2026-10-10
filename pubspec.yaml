@@ -49,6 +49,9 @@ dependencies:
   path_provider: ^2.1.6
 
   intl: ^0.20.2
+  # Scans the setup QR code a new server prints to its log. BSD-3. Apple's
+  # Vision framework on iOS, so no ML Kit there; ML Kit on Android.
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

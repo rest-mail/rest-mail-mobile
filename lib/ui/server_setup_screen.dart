@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
+import '../util/setup_code.dart';
+import 'scan_setup_code_screen.dart';
 import 'widgets/common.dart';
 
 /// Where the first-start setup has got to.
@@ -49,6 +51,12 @@ class ServerSetupScreen extends StatefulWidget {
   const ServerSetupScreen({super.key, required this.server});
 
   final Uri server;
+
+  /// Opens the camera for the setup QR code. Tests replace it: there is no
+  /// camera there.
+  @visibleForTesting
+  static Future<SetupCodeScan?> Function(BuildContext) scanSetupCode =
+      ScanSetupCodeScreen.open;
 
   @override
   State<ServerSetupScreen> createState() => _ServerSetupScreenState();
@@ -148,6 +156,23 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   }
 
   // ── Steps ──────────────────────────────────────────────────────────────
+
+  Future<void> _scan() async {
+    final scan = await ServerSetupScreen.scanSetupCode(context);
+    if (scan == null || !mounted) return;
+    final server = scan.server;
+    if (server != null && server.host != widget.server.host) {
+      setState(
+        () => _error =
+            'That code is for ${server.host}, not ${widget.server.host}.',
+      );
+      return;
+    }
+    setState(() {
+      _setupCode.text = scan.code;
+      _error = null;
+    });
+  }
 
   Future<void> _claim() => _run(() async {
     final password = _newPassword.text;
@@ -311,13 +336,19 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   _StepView _claimStep(RmColors c) => (
     'Set up ${widget.server.host}',
-    'A new server prints a setup code when it starts, until someone claims '
-        'it: look in its log. Enter it here to become its first admin.',
+    'A new server prints a setup code and its QR code when it starts, until '
+        'someone claims it: look in its log. Scan it, or type it, to become '
+        'its first admin.',
     [
       if (sampleMode) ...[
         const SizedBox(height: 14),
         _SampleHint('Sample server: setup code ${FakeAccounts.setupCode}.'),
       ],
+      const SizedBox(height: 18),
+      RmOutlineButton(
+        label: 'Scan the QR code',
+        onPressed: _busy ? null : () => unawaited(_scan()),
+      ),
       const SizedBox(height: 22),
       const SectionLabel('Setup code'),
       const SizedBox(height: 8),

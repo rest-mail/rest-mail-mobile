@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/server_setup_screen.dart';
 import 'package:restmail/ui/widgets/common.dart';
+import 'package:restmail/util/setup_code.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 /// A server just installed is claimed with the setup code it printed, or, given
@@ -239,7 +241,8 @@ void main() {
     await enterClaim(tester, code: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF');
 
     expect(find.textContaining("That setup code didn't work"), findsOneWidget);
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    // Still on the claim step, to try again.
+    expect(find.text('Have an admin password instead?'), findsOneWidget);
     expect(fake.adminUsername, isNull);
 
     await tester.pumpWidget(const SizedBox());
@@ -260,5 +263,65 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     fake.close();
     state.mailbox?.dispose();
+  });
+
+  group('scanning the QR code', () {
+    final scanner = ServerSetupScreen.scanSetupCode;
+    tearDown(() => ServerSetupScreen.scanSetupCode = scanner);
+
+    testWidgets('fills in the code, and the claim goes on from there', (
+      tester,
+    ) async {
+      ServerSetupScreen.scanSetupCode = (_) async =>
+          const SetupCodeScan(FakeAccounts.setupCode);
+      final (fake, state) = await openFreshServer(
+        tester,
+        scenario: FakeScenario.unclaimed,
+      );
+      await tapButton(tester, 'Scan the QR code');
+      expect(find.text(FakeAccounts.setupCode), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).at(1), 'owner');
+      await tester.enterText(
+        find.byType(TextField).at(2),
+        'a passphrase only I know',
+      );
+      await tester.enterText(
+        find.byType(TextField).at(3),
+        'a passphrase only I know',
+      );
+      await tester.pump();
+      await tapButton(tester, 'Claim this server');
+      expect(fake.adminUsername, 'owner');
+      expect(find.text('Step 2 of 4'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      fake.close();
+      state.mailbox?.dispose();
+    });
+
+    testWidgets('a code for another server says so', (tester) async {
+      ServerSetupScreen.scanSetupCode = (_) async => SetupCodeScan(
+        FakeAccounts.setupCode,
+        server: Uri.parse('https://mail.elsewhere.test'),
+      );
+      final (fake, state) = await openFreshServer(
+        tester,
+        scenario: FakeScenario.unclaimed,
+      );
+      await tapButton(tester, 'Scan the QR code');
+
+      expect(
+        find.text(
+          'That code is for mail.elsewhere.test, not ${FakeAccounts.host}.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(FakeAccounts.setupCode), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      fake.close();
+      state.mailbox?.dispose();
+    });
   });
 }
