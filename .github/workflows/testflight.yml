@@ -1,8 +1,12 @@
 name: TestFlight
 
-# Every merge into main becomes a TestFlight build, so a change reaches the
-# phone without anyone opening Xcode. Builds go to internal testers the moment
-# App Store Connect finishes processing them: internal testing skips review.
+# Builds go to internal testers the moment App Store Connect finishes
+# processing them: internal testing skips review.
+#
+# The push trigger below does not currently fire. auto-merge.yml arms the merge
+# with GITHUB_TOKEN, and GitHub starts no workflow run for an event that token
+# caused, so a merge into main reaches nothing here. Until that is settled, the
+# way to build is `gh workflow run TestFlight --ref main`. See issue #17.
 #
 # Six secrets stand in for the Mac that would otherwise be signed in to the
 # developer account. They live in the `release` environment, which only main
@@ -42,8 +46,9 @@ permissions:
 env:
   # Kept in step with ci.yml, which checks the code against this same version.
   FLUTTER_VERSION: "3.47.1"
+  # The team is set on the Runner target already; only the export needs the
+  # bundle id named here.
   BUNDLE_ID: com.antimatterstudios.restmail
-  TEAM_ID: 43UMKXZ8P4
 
 jobs:
   upload:
@@ -151,11 +156,18 @@ jobs:
       - name: Compile the app, leaving the signing to the archive
         run: flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
 
+      - name: Point the app's own target at the profile
+        # Settings passed to xcodebuild on the command line reach every target in
+        # the build, and Flutter's plugins are Swift Package Manager targets now.
+        # A SwiftPM target refuses a profile it was never built to carry, so the
+        # archive died before compiling anything. This writes the signing
+        # settings into the Runner target alone and the archive below passes none.
+        run: python3 tool/ci/scope_manual_signing.py "$PROFILE_NAME"
+
       - name: Archive it with the distribution identity
-        # Not `flutter build ipa`: the Runner target is set to sign automatically,
-        # which wants an Apple ID this runner has not got. Settings given on the
-        # command line beat the ones in the project, so the archive signs with the
-        # certificate and profile installed above instead.
+        # Not `flutter build ipa`: it passes -allowProvisioningUpdates and has no
+        # way to pass an App Store Connect key, so on a runner with no Apple ID
+        # signed in it has no credentials to update provisioning with.
         run: |
           set -euo pipefail
           xcodebuild archive \
@@ -163,11 +175,7 @@ jobs:
             -scheme Runner \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive"
 
       - name: Export the ipa App Store Connect will take
         # ios/ExportOptions.plist says what kind of export is wanted, and signs
