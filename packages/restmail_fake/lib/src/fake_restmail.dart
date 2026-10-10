@@ -22,6 +22,11 @@ enum FakeScenario {
   /// admin, who must set a new password and enroll an authenticator before
   /// the admin API answers anything else.
   freshInstall,
+
+  /// A server just installed with no admin at all: it printed a setup code
+  /// ([FakeAccounts.setupCode]), and whoever redeems it becomes the first
+  /// admin, still owing an authenticator.
+  unclaimed,
 }
 
 const _standardFolders = [
@@ -73,6 +78,9 @@ class FakeRestmail {
   final _streams = <int, List<StreamController<List<int>>>>{};
   final _domains = <String>{};
   _FakeAdmin? _admin;
+
+  /// The unspent setup code of an [FakeScenario.unclaimed] server.
+  String? _setupCode;
   final _adminAccessTokens = <String, _AdminGrant>{};
   final _adminRefreshTokens = <String, _FakeAdmin>{};
   var _nextId = 1;
@@ -136,6 +144,9 @@ class FakeRestmail {
   /// The admin's password as it stands, for a test to check a change.
   String? get adminPassword => _admin?.password;
 
+  /// The admin's username, once there is one.
+  String? get adminUsername => _admin?.username;
+
   /// Whether a mailbox exists, for a test to check onboarding created it.
   bool hasMailbox(String address) => _mailboxAt(address) != null;
 
@@ -177,6 +188,8 @@ class FakeRestmail {
         return _json({
           'data': {'status': 'healthy', 'db': 'connected'},
         });
+      case ('POST', ['api', 'v1', 'auth', 'claim']):
+        return _claim(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'login']):
         final body = _object(bytes);
         return body.containsKey('username') ? _adminLogin(body) : _login(body);
@@ -669,6 +682,10 @@ class FakeRestmail {
   // ── State ─────────────────────────────────────────────────────────────
 
   void _load() {
+    if (scenario == FakeScenario.unclaimed) {
+      _setupCode = FakeAccounts.setupCode;
+      return;
+    }
     if (scenario == FakeScenario.freshInstall) {
       _admin = _FakeAdmin(
         FakeAccounts.adminUsername,
@@ -784,6 +801,47 @@ class FakeRestmail {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
     }
+    return _issueAdmin(admin);
+  }
+
+  /// The real server's /auth/claim: the code as typed (case, dashes and spaces
+  /// aside), a username, and a password of 12 or more; the code is spent only
+  /// when the claim succeeds.
+  http.StreamedResponse _claim(Map<String, dynamic> body) {
+    if (_admin != null) {
+      _fail(409, 'already_claimed', 'The server already has an admin');
+    }
+    String normal(String code) => code
+        .toUpperCase()
+        .replaceAll(RegExp(r'[\s-]'), '')
+        .replaceAll('O', '0')
+        .replaceAll(RegExp('[IL]'), '1');
+    final code = _setupCode;
+    if (code == null ||
+        normal(body['token'] as String? ?? '') != normal(code)) {
+      _fail(401, 'invalid_token', 'The setup code is not valid');
+    }
+    final username = (body['username'] as String? ?? '').trim();
+    final password = body['password'] as String? ?? '';
+    if (username.isEmpty) {
+      _fail(
+        422,
+        'validation_error',
+        'Validation failed',
+        fields: {'username': 'required'},
+      );
+    }
+    if (password.length < 12) {
+      _fail(
+        422,
+        'validation_error',
+        'Validation failed',
+        fields: {'password': 'must be at least 12 characters'},
+      );
+    }
+    _setupCode = null;
+    final admin = _FakeAdmin(username, password)..mustChangePassword = false;
+    _admin = admin;
     return _issueAdmin(admin);
   }
 

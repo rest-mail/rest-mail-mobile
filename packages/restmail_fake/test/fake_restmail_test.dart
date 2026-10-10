@@ -278,6 +278,76 @@ void main() {
     );
   });
 
+  group('claiming a server with its setup code', () {
+    const chosen = 'a passphrase only I know';
+
+    test('makes the first admin, who owes only an authenticator', () async {
+      final fake = FakeRestmail(scenario: FakeScenario.unclaimed);
+      final client = _client(fake);
+
+      final admin = await client.claimServer(
+        code: ' ${FakeAccounts.setupCode.toLowerCase()} ',
+        username: 'owner',
+        password: chosen,
+      );
+
+      expect(admin.setupRequired, [SetupStep.twoFactor]);
+      expect(fake.adminUsername, 'owner');
+      expect(client.tokens, isNotNull);
+    });
+
+    test('the code works once', () async {
+      final client = _client(FakeRestmail(scenario: FakeScenario.unclaimed));
+      await client.claimServer(
+        code: FakeAccounts.setupCode,
+        username: 'owner',
+        password: chosen,
+      );
+
+      await expectLater(
+        client.claimServer(
+          code: FakeAccounts.setupCode,
+          username: 'thief',
+          password: chosen,
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'already_claimed'),
+        ),
+      );
+    });
+
+    test('a wrong code, or a short password, claims nothing', () async {
+      final fake = FakeRestmail(scenario: FakeScenario.unclaimed);
+      final client = _client(fake);
+
+      await expectLater(
+        client.claimServer(
+          code: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF',
+          username: 'owner',
+          password: chosen,
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'invalid_token'),
+        ),
+      );
+      await expectLater(
+        client.claimServer(
+          code: FakeAccounts.setupCode,
+          username: 'owner',
+          password: 'too short',
+        ),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.fields['password'],
+            'password',
+            isNotNull,
+          ),
+        ),
+      );
+      expect(fake.adminUsername, isNull);
+    });
+  });
+
   group('first start of a fresh install', () {
     const chosen = 'a passphrase only I know';
 

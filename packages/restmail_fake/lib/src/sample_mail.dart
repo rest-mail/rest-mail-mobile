@@ -23,6 +23,9 @@ abstract final class FakeAccounts {
   static const adminUsername = 'admin';
   static const bootstrapPassword = 'bootstrap-password-0123456789';
 
+  /// The setup code an [FakeScenario.unclaimed] server printed at startup.
+  static const setupCode = '7KQ2-M9XD-4TPA-HV3N-8RWC-ZB6E';
+
   /// What 2FA enrollment hands out: a base32 secret and its provisioning URI.
   static const totpSecret = 'JBSWY3DPEHPK3PXP';
   static const totpUri =
