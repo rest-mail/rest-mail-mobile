@@ -35,6 +35,69 @@ class LoginResult {
   final SessionTokens tokens;
 }
 
+/// The steps an admin account still owes before the admin API will answer it.
+/// A fresh install's bootstrap admin starts with both.
+enum SetupStep {
+  /// Replace a password someone else chose: [RestmailClient.changePassword].
+  password,
+
+  /// Enroll an authenticator: [RestmailClient.enrollTwoFactor], then
+  /// [RestmailClient.confirmTwoFactor].
+  twoFactor;
+
+  static SetupStep? _parse(Object? value) => switch (value) {
+    'password' => SetupStep.password,
+    'two_factor' => SetupStep.twoFactor,
+    _ => null,
+  };
+}
+
+/// An admin signed in. While [setupRequired] is not empty the session can do
+/// nothing but those steps.
+class AdminSignIn {
+  const AdminSignIn({required this.user, required this.setupRequired});
+
+  factory AdminSignIn.fromJson(Map<String, dynamic> json) => AdminSignIn(
+    user: User.fromJson(json['user'] as Map<String, dynamic>),
+    setupRequired: [
+      for (final raw in json['setup_required'] as List? ?? const [])
+        ?SetupStep._parse(raw),
+    ],
+  );
+
+  final User user;
+  final List<SetupStep> setupRequired;
+
+  bool get isSetUp => setupRequired.isEmpty;
+}
+
+/// A started authenticator enrollment, to show once and then confirm.
+class TotpEnrollment {
+  const TotpEnrollment({
+    required this.secret,
+    required this.otpauthUri,
+    required this.recoveryCodes,
+  });
+
+  factory TotpEnrollment.fromJson(Map<String, dynamic> json) => TotpEnrollment(
+    secret: json['secret'] as String,
+    otpauthUri: Uri.parse(json['otpauth_url'] as String),
+    recoveryCodes: [
+      for (final code in json['recovery_codes'] as List? ?? const [])
+        if (code is String) code,
+    ],
+  );
+
+  /// For typing into an authenticator by hand.
+  final String secret;
+
+  /// `otpauth://…`: opening it hands the account to an authenticator app.
+  final Uri otpauthUri;
+
+  /// Shown once. The only way back in if the authenticator is lost.
+  final List<String> recoveryCodes;
+}
+
 /// A mailbox the signed-in user can read: the one they signed in with, plus
 /// any linked to it.
 class Account {

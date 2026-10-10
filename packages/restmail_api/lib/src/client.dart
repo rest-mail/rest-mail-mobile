@@ -158,6 +158,88 @@ class RestmailClient {
     return tokens;
   }
 
+  // ── Admin: first start ───────────────────────────────────────────────
+
+  /// Signs in as an admin. On a fresh install the account is in setup, and
+  /// [AdminSignIn.setupRequired] says what it must do before the admin API
+  /// answers it; until then those steps are all this session can do.
+  ///
+  /// Throws [TotpRequiredException] once an authenticator is enrolled; call
+  /// again with [totpCode].
+  Future<AdminSignIn> signInAdmin({
+    required String username,
+    required String password,
+    String? totpCode,
+  }) async {
+    final response = await _send(
+      'POST',
+      _uri(['auth', 'login']),
+      body: {
+        'username': username,
+        'password': password,
+        'client': 'native',
+        if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+      },
+    );
+    _throwIfError(response);
+    final data = _data(response);
+    _setTokens(_tokensFrom(response, data));
+    return AdminSignIn.fromJson(data);
+  }
+
+  /// Starts enrolling an authenticator. Show the result once, then
+  /// [confirmTwoFactor] with a code the authenticator produces.
+  Future<TotpEnrollment> enrollTwoFactor() async => TotpEnrollment.fromJson(
+    _data(await _authed('POST', ['auth', '2fa', 'enroll'])),
+  );
+
+  /// Finishes enrolling: from now on signing in also takes a code.
+  Future<void> confirmTwoFactor(String code) async {
+    await _authed('POST', ['auth', '2fa', 'confirm'], body: {'code': code});
+  }
+
+  /// Replaces the signed-in admin's password. The server ends every session of
+  /// the account, this one included, so this client is signed out after it:
+  /// sign in again with [next].
+  Future<void> changePassword({
+    required String current,
+    required String next,
+  }) async {
+    await _authed(
+      'POST',
+      ['auth', 'password'],
+      body: {'current_password': current, 'new_password': next},
+    );
+    _setTokens(null);
+  }
+
+  /// Creates a domain whose mail rest-mail serves itself. Throws
+  /// [ApiException] with code `already_exists` when it is there already.
+  Future<void> createDomain(String name) async {
+    await _authed(
+      'POST',
+      ['admin', 'domains'],
+      body: {'name': name, 'server_type': 'restmail'},
+    );
+  }
+
+  /// Creates a mailbox on a domain the server already has.
+  Future<void> createMailbox({
+    required String address,
+    required String password,
+    String? displayName,
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'mailboxes'],
+      body: {
+        'address': address,
+        'password': password,
+        'display_name': ?displayName,
+      },
+    );
+  }
+
   // ── Accounts and folders ─────────────────────────────────────────────
 
   Future<List<Account>> accounts() async =>

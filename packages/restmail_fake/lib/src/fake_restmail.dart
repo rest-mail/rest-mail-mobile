@@ -17,6 +17,11 @@ enum FakeScenario {
 
   /// The sample, with Dana's sign-in behind two-factor authentication.
   twoFactor,
+
+  /// A server just installed: no domain, no mailbox, and only its bootstrap
+  /// admin, who must set a new password and enroll an authenticator before
+  /// the admin API answers anything else.
+  freshInstall,
 }
 
 const _standardFolders = [
@@ -66,6 +71,10 @@ class FakeRestmail {
   final _accessTokens = <String, _Grant>{};
   final _refreshTokens = <String, _Session>{};
   final _streams = <int, List<StreamController<List<int>>>>{};
+  final _domains = <String>{};
+  _FakeAdmin? _admin;
+  final _adminAccessTokens = <String, _AdminGrant>{};
+  final _adminRefreshTokens = <String, _FakeAdmin>{};
   var _nextId = 1;
   var _nextEventId = 0;
   var _nextToken = 0;
@@ -120,7 +129,15 @@ class FakeRestmail {
   void revokeSessions() {
     _accessTokens.clear();
     _refreshTokens.clear();
+    _adminAccessTokens.clear();
+    _adminRefreshTokens.clear();
   }
+
+  /// The admin's password as it stands, for a test to check a change.
+  String? get adminPassword => _admin?.password;
+
+  /// Whether a mailbox exists, for a test to check onboarding created it.
+  bool hasMailbox(String address) => _mailboxAt(address) != null;
 
   /// Ends every open event stream.
   void close() {
@@ -161,12 +178,17 @@ class FakeRestmail {
           'data': {'status': 'healthy', 'db': 'connected'},
         });
       case ('POST', ['api', 'v1', 'auth', 'login']):
-        return _login(_object(bytes));
+        final body = _object(bytes);
+        return body.containsKey('username') ? _adminLogin(body) : _login(body);
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'logout']):
         _refreshTokens.remove(_object(bytes)['refresh_token']);
         return _noContent();
+    }
+
+    if (_adminRoute(request, method, path, bytes) case final response?) {
+      return response;
     }
 
     final session = _authenticate(request);
@@ -265,6 +287,9 @@ class FakeRestmail {
   /// refresh token sent in the body is a native client's, and so is the
   /// answer.
   http.StreamedResponse _refresh(Map<String, dynamic> body) {
+    if (_adminRefreshTokens.remove(body['refresh_token']) case final admin?) {
+      return _issueAdmin(admin);
+    }
     final session = _refreshTokens.remove(body['refresh_token']);
     if (session == null) _fail(401, 'unauthorized', 'Invalid refresh token');
     return _issue(session, native: true);
@@ -644,6 +669,13 @@ class FakeRestmail {
   // ── State ─────────────────────────────────────────────────────────────
 
   void _load() {
+    if (scenario == FakeScenario.freshInstall) {
+      _admin = _FakeAdmin(
+        FakeAccounts.adminUsername,
+        FakeAccounts.bootstrapPassword,
+      );
+      return;
+    }
     final now = _clock();
     final twoFactor = scenario == FakeScenario.twoFactor;
     final dana = _addMailbox(
@@ -665,12 +697,14 @@ class FakeRestmail {
     String address,
     String name, {
     bool twoFactor = false,
+    String password = FakeAccounts.password,
   }) {
+    _domains.add(address.split('@').last);
     final box = FakeMailbox(
       id: _mailboxes.length + 1,
       address: address,
       displayName: name,
-      password: FakeAccounts.password,
+      password: password,
       totpCode: twoFactor ? FakeAccounts.totpCode : null,
       recoveryCode: twoFactor ? FakeAccounts.recoveryCode : null,
     );
@@ -727,6 +761,213 @@ class FakeRestmail {
 
   String _token(String kind) =>
       '$kind-${++_nextToken}-${_clock().microsecondsSinceEpoch}';
+
+  // ── Admin ─────────────────────────────────────────────────────────────
+  //
+  // The real server's first-start rules: an admin in setup gets a session with
+  // no capabilities that reaches only the calls finishing the setup, and every
+  // admin route answers 403 setup_required until it is done.
+
+  http.StreamedResponse _adminLogin(Map<String, dynamic> body) {
+    final admin = _admin;
+    if (admin == null ||
+        body['username'] != admin.username ||
+        body['password'] != admin.password) {
+      _fail(401, 'unauthorized', 'Invalid username or password');
+    }
+    if (admin.totpEnrolled) {
+      final code = body['totp_code'] as String? ?? '';
+      if (code.isEmpty) {
+        _fail(401, 'totp_required', 'Two-factor authentication code required');
+      }
+      if (code != FakeAccounts.totpCode) {
+        _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
+      }
+    }
+    return _issueAdmin(admin);
+  }
+
+  http.StreamedResponse _issueAdmin(_FakeAdmin admin) {
+    final access = _token('access'), refresh = _token('refresh');
+    final setup = admin.setupRequired;
+    _adminAccessTokens[access] = _AdminGrant(
+      admin,
+      setup: setup.isNotEmpty,
+      expiresAt: _clock().add(accessTokenLifetime),
+    );
+    _adminRefreshTokens[refresh] = admin;
+    return _json({
+      'data': {
+        'expires_in': accessTokenLifetime.inSeconds,
+        'user': {
+          'id': 1,
+          'email': admin.username,
+          'display_name': admin.username,
+        },
+        if (setup.isEmpty) 'capabilities': ['*'] else 'setup_required': setup,
+        'access_token': access,
+        'refresh_token': refresh,
+        'refresh_expires_in': _refreshTokenLifetime.inSeconds,
+      },
+    });
+  }
+
+  /// Answers the admin's own calls, or null for a route that is not one.
+  http.StreamedResponse? _adminRoute(
+    http.BaseRequest request,
+    String method,
+    List<String> path,
+    List<int> bytes,
+  ) {
+    if (method != 'POST') return null;
+    final route = switch (path) {
+      ['api', 'v1', 'auth', '2fa', 'enroll'] => 'enroll',
+      ['api', 'v1', 'auth', '2fa', 'confirm'] => 'confirm',
+      ['api', 'v1', 'auth', 'password'] => 'password',
+      ['api', 'v1', 'admin', 'domains'] => 'domains',
+      ['api', 'v1', 'admin', 'mailboxes'] => 'mailboxes',
+      _ => null,
+    };
+    if (route == null) return null;
+
+    final header = request.headers['authorization'] ?? '';
+    final grant = header.startsWith('Bearer ')
+        ? _adminAccessTokens[header.substring('Bearer '.length)]
+        : null;
+    if (grant == null || !_clock().isBefore(grant.expiresAt)) {
+      // Not an admin token: the mailbox routes below decide.
+      return null;
+    }
+    final admin = grant.admin;
+    final body = _object(bytes);
+
+    // The admin API proper refuses a session whose account is in setup.
+    if ((route == 'domains' || route == 'mailboxes') && grant.setup) {
+      _fail(403, 'setup_required', 'Finish setting up this account first');
+    }
+
+    switch (route) {
+      case 'enroll':
+        if (admin.totpEnrolled) {
+          _fail(
+            409,
+            'conflict',
+            'Two-factor authentication is already enabled',
+          );
+        }
+        admin.totpPending = true;
+        return _json({
+          'data': {
+            'secret': FakeAccounts.totpSecret,
+            'otpauth_url': FakeAccounts.totpUri,
+            'recovery_codes': [FakeAccounts.recoveryCode],
+          },
+        });
+      case 'confirm':
+        if (!admin.totpPending) {
+          _fail(400, 'bad_request', 'No pending 2FA enrollment');
+        }
+        if (body['code'] != FakeAccounts.totpCode) {
+          _fail(401, 'unauthorized', 'Invalid 2FA code');
+        }
+        admin
+          ..totpPending = false
+          ..totpEnrolled = true;
+        return _noContent();
+      case 'password':
+        final current = body['current_password'] as String? ?? '';
+        final next = body['new_password'] as String? ?? '';
+        if (current.isEmpty || next.isEmpty) {
+          _fail(
+            422,
+            'validation_error',
+            'Validation failed',
+            fields: {
+              'current_password': 'required',
+              'new_password': 'required',
+            },
+          );
+        }
+        if (current != admin.password) {
+          _fail(401, 'unauthorized', 'Current password is incorrect');
+        }
+        if (next.length < 12) {
+          _fail(
+            422,
+            'validation_error',
+            'Validation failed',
+            fields: {'new_password': 'must be at least 12 characters'},
+          );
+        }
+        if (next == current) {
+          _fail(
+            422,
+            'validation_error',
+            'Validation failed',
+            fields: {'new_password': 'must differ from the current password'},
+          );
+        }
+        admin
+          ..password = next
+          ..mustChangePassword = false;
+        // Every session of the account ends, this one included.
+        _adminAccessTokens.removeWhere((_, g) => g.admin == admin);
+        _adminRefreshTokens.removeWhere((_, a) => a == admin);
+        return _json({
+          'data': {
+            'message': 'Password changed. Sign in again with the new password.',
+          },
+        });
+      case 'domains':
+        final name = (body['name'] as String? ?? '').trim().toLowerCase();
+        if (name.isEmpty) {
+          _fail(
+            422,
+            'validation_error',
+            'Validation failed',
+            fields: {'name': 'required'},
+          );
+        }
+        if (!_domains.add(name)) {
+          _fail(409, 'already_exists', 'Domain already exists');
+        }
+        return _json({
+          'data': {'name': name, 'server_type': body['server_type']},
+        }, status: 201);
+      case 'mailboxes':
+        final address = (body['address'] as String? ?? '').trim().toLowerCase();
+        final password = body['password'] as String? ?? '';
+        final at = address.indexOf('@');
+        if (at <= 0 || password.isEmpty) {
+          _fail(
+            422,
+            'validation_error',
+            'Validation failed',
+            fields: {'address': 'must be a valid email address'},
+          );
+        }
+        final domain = address.substring(at + 1);
+        if (!_domains.contains(domain)) {
+          _fail(404, 'domain_not_found', "Domain '$domain' not found");
+        }
+        if (_mailboxAt(address) != null) {
+          _fail(409, 'already_exists', 'Mailbox already exists');
+        }
+        final box = _addMailbox(
+          address,
+          _nonEmpty(body['display_name']) ?? address.substring(0, at),
+          password: password,
+        );
+        return _json({
+          'data': {
+            'id': box.id,
+            'address': box.address,
+            'display_name': box.displayName,
+          },
+        }, status: 201);
+    }
+    return null;
+  }
 }
 
 class _Session {
@@ -742,6 +983,33 @@ class _Grant {
   const _Grant(this.session, this.expiresAt);
 
   final _Session session;
+  final DateTime expiresAt;
+}
+
+/// The fake's one admin account, and how far its first-start setup has got.
+class _FakeAdmin {
+  _FakeAdmin(this.username, this.password);
+
+  final String username;
+  String password;
+  bool mustChangePassword = true;
+  bool totpPending = false;
+  bool totpEnrolled = false;
+
+  /// What the real server reports in `setup_required`, in its order.
+  List<String> get setupRequired => [
+    if (mustChangePassword) 'password',
+    if (!totpEnrolled) 'two_factor',
+  ];
+}
+
+class _AdminGrant {
+  const _AdminGrant(this.admin, {required this.setup, required this.expiresAt});
+
+  final _FakeAdmin admin;
+
+  /// Minted while the account was in setup: the admin API refuses it.
+  final bool setup;
   final DateTime expiresAt;
 }
 

@@ -277,4 +277,151 @@ void main() {
       ),
     );
   });
+
+  group('first start of a fresh install', () {
+    const chosen = 'a passphrase only I know';
+
+    test('the bootstrap admin owes a password and an authenticator', () async {
+      final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
+
+      final admin = await client.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.bootstrapPassword,
+      );
+
+      expect(admin.setupRequired, [SetupStep.password, SetupStep.twoFactor]);
+      expect(admin.isSetUp, isFalse);
+    });
+
+    test('the admin API refuses a session still in setup', () async {
+      final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
+      await client.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.bootstrapPassword,
+      );
+
+      await expectLater(
+        client.createDomain('example.test'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'setup_required'),
+        ),
+      );
+    });
+
+    test('a wrong current password is reported, not taken for an expired '
+        'session', () async {
+      final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
+      await client.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.bootstrapPassword,
+      );
+
+      await expectLater(
+        client.changePassword(current: 'not it at all', next: chosen),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 401)
+              .having(
+                (e) => e.message,
+                'message',
+                'Current password is incorrect',
+              ),
+        ),
+      );
+      // Still signed in, so the user can simply try again.
+      expect(client.tokens, isNotNull);
+    });
+
+    test(
+      'the whole setup, then a domain and a mailbox to sign in to',
+      () async {
+        final fake = FakeRestmail(scenario: FakeScenario.freshInstall);
+        final client = _client(fake);
+        await client.signInAdmin(
+          username: FakeAccounts.adminUsername,
+          password: FakeAccounts.bootstrapPassword,
+        );
+
+        final enrollment = await client.enrollTwoFactor();
+        expect(enrollment.otpauthUri.scheme, 'otpauth');
+        expect(enrollment.recoveryCodes, isNotEmpty);
+        await client.confirmTwoFactor(FakeAccounts.totpCode);
+
+        await client.changePassword(
+          current: FakeAccounts.bootstrapPassword,
+          next: chosen,
+        );
+        // The server ended every session; so did the client.
+        expect(client.tokens, isNull);
+        expect(fake.adminPassword, chosen);
+
+        // Signing in now takes a code as well.
+        await expectLater(
+          client.signInAdmin(
+            username: FakeAccounts.adminUsername,
+            password: chosen,
+          ),
+          throwsA(isA<TotpRequiredException>()),
+        );
+        final done = await client.signInAdmin(
+          username: FakeAccounts.adminUsername,
+          password: chosen,
+          totpCode: FakeAccounts.totpCode,
+        );
+        expect(done.isSetUp, isTrue);
+
+        await client.createDomain('example.test');
+        await client.createMailbox(
+          address: 'me@example.test',
+          password: 'my mailbox password',
+          displayName: 'Me',
+        );
+        expect(fake.hasMailbox('me@example.test'), isTrue);
+
+        // And that mailbox is an ordinary account now.
+        final mail = _client(fake);
+        final result = await mail.login(
+          email: 'me@example.test',
+          password: 'my mailbox password',
+        );
+        expect(result.user.email, 'me@example.test');
+      },
+    );
+
+    test('a domain already there is reported as such', () async {
+      final fake = FakeRestmail(scenario: FakeScenario.freshInstall);
+      final client = _client(fake);
+      await client.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.bootstrapPassword,
+      );
+      await client.enrollTwoFactor();
+      await client.confirmTwoFactor(FakeAccounts.totpCode);
+      await client.changePassword(
+        current: FakeAccounts.bootstrapPassword,
+        next: chosen,
+      );
+      await client.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: chosen,
+        totpCode: FakeAccounts.totpCode,
+      );
+
+      await client.createDomain('example.test');
+      await expectLater(
+        client.createDomain('example.test'),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'already_exists'),
+        ),
+      );
+      await expectLater(
+        client.createMailbox(address: 'me@elsewhere.test', password: 'x'),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'domain_not_found'),
+        ),
+      );
+    });
+  });
 }

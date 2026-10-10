@@ -6,6 +6,7 @@ import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'add_account_screen.dart';
 import 'server_screen.dart';
+import 'server_setup_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 
@@ -113,6 +114,20 @@ class WelcomeScreen extends StatelessWidget {
                         label: 'Enter a server address',
                         onPressed: () => unawaited(_chooseServerFirst(context)),
                       ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => unawaited(_setUpServer(context)),
+                          child: Text(
+                            'Set up a new server',
+                            style: rmText(
+                              13.5,
+                              color: c.accent,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -120,6 +135,22 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// A server just installed has no mailbox to sign in to: its bootstrap
+  /// admin sets it up first.
+  Future<void> _setUpServer(BuildContext context) async {
+    final server = await Navigator.push<Uri>(
+      context,
+      MaterialPageRoute(builder: (_) => const ServerScreen()),
+    );
+    if (server == null || !context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ServerSetupScreen(server: server),
       ),
     );
   }

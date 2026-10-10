@@ -13,9 +13,20 @@ abstract final class FakeAccounts {
   /// A second mailbox on the same server, for linking.
   static const otherEmail = 'dana@oakline.test';
 
-  /// For [FakeScenario.twoFactor].
+  /// For [FakeScenario.twoFactor], and the code the authenticator shows once
+  /// an admin has enrolled.
   static const totpCode = '123456';
   static const recoveryCode = 'RECOVER-1234';
+
+  /// The bootstrap admin of a [FakeScenario.freshInstall] server: the account
+  /// and password a deploy made, which must be replaced at first sign-in.
+  static const adminUsername = 'admin';
+  static const bootstrapPassword = 'bootstrap-password-0123456789';
+
+  /// What 2FA enrollment hands out: a base32 secret and its provisioning URI.
+  static const totpSecret = 'JBSWY3DPEHPK3PXP';
+  static const totpUri =
+      'otpauth://totp/rest-mail:admin?secret=$totpSecret&issuer=rest-mail';
 }
 
 const _dana = FakeRecipient(FakeAccounts.email, 'Dana Ruiz');
