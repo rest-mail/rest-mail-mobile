@@ -52,6 +52,8 @@ dependencies:
   # Scans the setup QR code a new server prints to its log. BSD-3. Apple's
   # Vision framework on iOS, so no ML Kit there; ML Kit on Android.
   mobile_scanner: ^7.4.2
+  # Opens the app from restmail://setup?token=… links. Apache-2.0.
+  app_links: ^7.2.2
 
 dev_dependencies:
   flutter_test:

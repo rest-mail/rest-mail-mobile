@@ -5,6 +5,7 @@ import 'state/app_state.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
 import 'ui/mailbox_screen.dart';
+import 'ui/setup_link_handler.dart';
 import 'ui/welcome_screen.dart';
 import 'ui/widgets/avatar.dart';
 
@@ -30,8 +31,12 @@ class RestmailApp extends StatelessWidget {
           themeMode: state.settings.themeMode,
           home: switch (state.phase) {
             AppPhase.starting => const _Launch(),
-            AppPhase.signedOut => const WelcomeScreen(),
-            AppPhase.signedIn => MailboxScreen(mailbox: state.mailbox!),
+            AppPhase.signedOut => const SetupLinkHandler(
+              child: WelcomeScreen(),
+            ),
+            AppPhase.signedIn => SetupLinkHandler(
+              child: MailboxScreen(mailbox: state.mailbox!),
+            ),
           },
         ),
       ),

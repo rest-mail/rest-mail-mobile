@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 
+import '../util/setup_code.dart';
 import 'mailbox_state.dart';
 import 'settings.dart';
 import 'storage.dart';
@@ -39,6 +40,33 @@ class AppState extends ChangeNotifier {
 
   int _sessions = 0;
   bool _signingOut = false;
+
+  SetupCodeScan? _pendingSetup;
+  String? _lastLink;
+
+  /// A setup link the app was opened with, waiting for the screen on top to
+  /// start setting the server up. [takePendingSetup] hands it over once.
+  SetupCodeScan? get pendingSetup => _pendingSetup;
+
+  /// Takes a link the app was opened with. A setup link
+  /// (`restmail://setup?token=…`, optionally `&server=…`) waits in
+  /// [pendingSetup]; anything else is ignored. The same link delivered twice
+  /// (at launch, and again by the stream of links) counts once.
+  void openLink(Uri link) {
+    final raw = link.toString();
+    if (raw == _lastLink) return;
+    _lastLink = raw;
+    final scan = SetupCodeScan.parse(raw);
+    if (scan == null) return;
+    _pendingSetup = scan;
+    notifyListeners();
+  }
+
+  SetupCodeScan? takePendingSetup() {
+    final scan = _pendingSetup;
+    _pendingSetup = null;
+    return scan;
+  }
 
   /// Changes whenever a session starts or ends; keys the navigator.
   Object get sessionKey => (phase, _sessions);

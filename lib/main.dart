@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
@@ -17,6 +20,12 @@ Future<void> main() async {
         );
   runApp(RestmailApp(state: state));
   await state.start();
+  // restmail://setup?token=… links, from a server's setup QR code or sent by
+  // whoever set the server up: the app opens on its setup, code filled in.
+  final links = AppLinks();
+  links.uriLinkStream.listen(state.openLink);
+  final initial = await links.getInitialLink();
+  if (initial != null) state.openLink(initial);
 }
 
 /// The app on an in-memory server. Nothing is kept between launches: the

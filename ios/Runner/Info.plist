@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.antimatterstudios.restmail</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>restmail</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>rest-mail uses the camera only to scan the setup QR code a new server prints.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

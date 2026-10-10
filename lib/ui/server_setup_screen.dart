@@ -48,9 +48,12 @@ enum _Step {
 /// The admin session lives only on this screen. It is never stored: the app
 /// signs in to the mailbox made at the end, as any account is signed in.
 class ServerSetupScreen extends StatefulWidget {
-  const ServerSetupScreen({super.key, required this.server});
+  const ServerSetupScreen({super.key, required this.server, this.setupCode});
 
   final Uri server;
+
+  /// The setup code from a link the app was opened with, filled in.
+  final String? setupCode;
 
   /// Opens the camera for the setup QR code. Tests replace it: there is no
   /// camera there.
@@ -74,7 +77,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String? _error;
 
   // Sign-in, kept for the steps that need them again.
-  final _setupCode = TextEditingController();
+  late final _setupCode = TextEditingController(text: widget.setupCode);
   final _username = TextEditingController(text: 'admin');
   final _password = TextEditingController();
   final _code = TextEditingController();
