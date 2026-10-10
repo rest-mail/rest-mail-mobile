@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  How an archive becomes something App Store Connect will take:
-
-      flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+  How an archive becomes something App Store Connect will take: `chore ipa`,
+  which hands this file to `flutter build ipa` as its export options (the full
+  command is in chores.yml; it cannot be quoted here, as an XML comment may not
+  hold a double hyphen).
 
   Signing is left to Xcode (signingStyle automatic): it picks the distribution
   certificate and provisioning profile for this team from the machine doing the
@@ -25,8 +26,8 @@
 	<key>destination</key>
 	<string>export</string>
 
-	<!-- Let Apple manage the app's encryption declaration from the Info.plist
-	     key rather than asking again per upload. -->
+	<!-- Xcode does not renumber the build: `chore ipa` stamps the build number
+	     from the commit count, so a build in TestFlight names its commit. -->
 	<key>manageAppVersionAndBuildNumber</key>
 	<false/>
 
