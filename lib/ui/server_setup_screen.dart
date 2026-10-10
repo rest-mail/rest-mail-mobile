@@ -55,8 +55,11 @@ class ServerSetupScreen extends StatefulWidget {
 }
 
 class _ServerSetupScreenState extends State<ServerSetupScreen> {
-  late final RestmailClient _admin = AppScope.read(context)
-      .probe(widget.server);
+  /// Made on first use: leaving before any call must not look up the app
+  /// scope from dispose(), where the tree is already being torn down.
+  RestmailClient? _client;
+  RestmailClient get _admin =>
+      _client ??= AppScope.read(context).probe(widget.server);
 
   var _step = _Step.claim;
   var _busy = false;
@@ -86,7 +89,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   @override
   void dispose() {
-    _admin.close();
+    _client?.close();
     for (final c in [
       _setupCode,
       _username,
