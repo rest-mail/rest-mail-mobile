@@ -13,21 +13,9 @@ const _user = {
   'display_name': 'Ada',
 };
 
-const _loginBody = {
-  'data': {'expires_in': 900, 'user': _user},
-};
-
 const _expired = {
   'error': {'code': 'unauthorized', 'message': 'Invalid or expired token'},
 };
-
-/// The Set-Cookie lines a login sets, folded into one value the way dart:io's
-/// client hands them over — Expires dates and their commas included.
-String _setCookie({required String access, required String refresh}) => [
-  '$accessCookieName=$access; Path=/; Expires=Thu, 10 Sep 2026 22:15:00 GMT; HttpOnly; Secure; SameSite=Strict',
-  '$refreshCookieName=$refresh; Path=/api/v1/auth; Expires=Thu, 17 Sep 2026 22:00:00 GMT; HttpOnly; Secure; SameSite=Strict',
-  'restmail_csrf=csrf; Path=/; Secure; SameSite=Strict',
-].join(', ');
 
 /// JSON with no charset in its Content-Type, as the server sends it.
 http.Response _json(
@@ -40,12 +28,16 @@ http.Response _json(
   headers: {'content-type': 'application/json', ...headers},
 );
 
-http.Response _signedIn(String n) => _json(
-  _loginBody,
-  headers: {
-    'set-cookie': _setCookie(access: 'access-$n', refresh: 'refresh-$n'),
+/// What a native sign-in or refresh answers: the pair in the body.
+http.Response _signedIn(String n) => _json({
+  'data': {
+    'expires_in': 900,
+    'user': _user,
+    'access_token': 'access-$n',
+    'refresh_token': 'refresh-$n',
+    'refresh_expires_in': 604800,
   },
-);
+});
 
 SessionTokens _tokens(
   String n, {
@@ -61,36 +53,68 @@ bool _isRefresh(http.BaseRequest request) =>
 
 void main() {
   group('login', () {
-    test('lifts both tokens out of Set-Cookie', () async {
-      late http.Request sent;
-      final changes = <SessionTokens?>[];
+    test(
+      'signs in as a native client and reads the pair from the body',
+      () async {
+        late http.Request sent;
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            sent = request;
+            return _signedIn('1');
+          }),
+        );
+
+        final result = await client.login(
+          email: 'ada@mail.example.test',
+          password: 'pw',
+        );
+
+        expect(
+          sent.url.toString(),
+          'https://mail.example.test/api/v1/auth/login',
+        );
+        expect(jsonDecode(sent.body), {
+          'email': 'ada@mail.example.test',
+          'password': 'pw',
+          'client': 'native',
+        });
+        expect(sent.headers.containsKey('Cookie'), isFalse);
+        expect(result.user.displayName, 'Ada');
+        expect(result.tokens.accessToken, 'access-1');
+        expect(result.tokens.refreshToken, 'refresh-1');
+        expect(
+          result.tokens.expiresWithin(const Duration(minutes: 14)),
+          isFalse,
+        );
+        expect(changes.single?.accessToken, 'access-1');
+      },
+    );
+
+    test('a server that answers with cookies only is no session', () async {
       final client = RestmailClient(
         server: _server,
-        onTokensChanged: changes.add,
-        httpClient: MockClient((request) async {
-          sent = request;
-          return _signedIn('1');
-        }),
+        httpClient: MockClient(
+          (_) async => _json(
+            {
+              'data': {'expires_in': 900, 'user': _user},
+            },
+            headers: {
+              'set-cookie':
+                  'restmail_access=a; Path=/, restmail_refresh=r; Path=/api/v1/auth',
+            },
+          ),
+        ),
       );
-
-      final result = await client.login(
-        email: 'ada@mail.example.test',
-        password: 'pw',
+      await expectLater(
+        client.login(email: 'a@b.test', password: 'pw'),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'missing_tokens'),
+        ),
       );
-
-      expect(
-        sent.url.toString(),
-        'https://mail.example.test/api/v1/auth/login',
-      );
-      expect(jsonDecode(sent.body), {
-        'email': 'ada@mail.example.test',
-        'password': 'pw',
-      });
-      expect(result.user.displayName, 'Ada');
-      expect(result.tokens.accessToken, 'access-1');
-      expect(result.tokens.refreshToken, 'refresh-1');
-      expect(result.tokens.expiresWithin(const Duration(minutes: 14)), isFalse);
-      expect(changes.single?.accessToken, 'access-1');
+      expect(client.tokens, isNull);
     });
 
     test('asks for a second factor when the account has one', () async {
@@ -137,7 +161,8 @@ void main() {
         onTokensChanged: changes.add,
         httpClient: MockClient((request) async {
           final credential =
-              request.headers['Authorization'] ?? request.headers['Cookie'];
+              request.headers['Authorization'] ??
+              (jsonDecode(request.body) as Map)['refresh_token'];
           seen.add('${request.method} ${request.url.path} $credential');
           if (_isRefresh(request)) return _signedIn('2');
           if (request.headers['Authorization'] == 'Bearer access-1') {
@@ -162,7 +187,7 @@ void main() {
       expect(accounts.single.address, 'ada@mail.example.test');
       expect(seen, [
         'GET /api/v1/accounts Bearer access-1',
-        'POST /api/v1/auth/refresh restmail_refresh=refresh-1',
+        'POST /api/v1/auth/refresh refresh-1',
         'GET /api/v1/accounts Bearer access-2',
       ]);
       expect(changes.single?.refreshToken, 'refresh-2');
@@ -285,6 +310,33 @@ void main() {
           ),
         );
         expect(client.tokens?.accessToken, 'access-2');
+      },
+    );
+  });
+
+  group('logout', () {
+    test(
+      'ends the session here and sends the refresh token in the body',
+      () async {
+        late http.Request sent;
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            sent = request;
+            return http.Response('', 204);
+          }),
+        );
+
+        await client.logout();
+
+        expect(sent.url.path, '/api/v1/auth/logout');
+        expect(jsonDecode(sent.body), {'refresh_token': 'refresh-1'});
+        expect(sent.headers.containsKey('Cookie'), isFalse);
+        expect(client.tokens, isNull);
+        expect(changes, [null]);
       },
     );
   });
