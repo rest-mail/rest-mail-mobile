@@ -218,7 +218,7 @@ packages:
     source: hosted
     version: "2.2.1"
   restmail_api:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       path: "../restmail_api"
       relative: true
