@@ -253,16 +253,27 @@ certificate against it.
 
 ### A TestFlight build
 
-On a Mac signed in to the Apple Developer account:
+Every merge into `main` becomes one, without anyone opening Xcode:
+`.github/workflows/testflight.yml` builds it, signs it and hands it to App
+Store Connect, and internal testers have it as soon as processing finishes.
+Run it against `main` by hand with `gh workflow run TestFlight`.
+
+That workflow stands in for a Mac signed in to the developer account, so it
+needs the signing material as repository secrets. The comment at the top of
+the file lists all six and says where each comes from. Set them with
+`gh secret set <NAME>`, which keeps the values out of shell history.
+
+The same build on a Mac that *is* signed in:
 
 ```sh
 chore ipa
 ```
 
-The build number is the count of commits on `HEAD`, so every build from a
-newer `main` can be uploaded and each one names the commit it came from. It
-refuses to build with uncommitted changes. The version (`0.1.0`) comes from
-`pubspec.yaml`; change it there for a new release.
+Either way the build number is the count of commits on `HEAD`, so every build
+from a newer `main` can be uploaded and each one names the commit it came
+from. `chore ipa` refuses to build with uncommitted changes, for the same
+reason: the number would name a commit the build does not match. The version
+(`0.1.0`) comes from `pubspec.yaml`; change it there for a new release.
 
 ## Identity
 

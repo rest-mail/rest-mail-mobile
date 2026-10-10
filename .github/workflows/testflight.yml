@@ -1,0 +1,212 @@
+name: TestFlight
+
+# Every merge into main becomes a TestFlight build, so a change reaches the
+# phone without anyone opening Xcode. Builds go to internal testers the moment
+# App Store Connect finishes processing them: internal testing skips review.
+#
+# Six secrets stand in for the Mac that would otherwise be signed in to the
+# developer account. Set them with `gh secret set <NAME>` so the values never
+# pass through a terminal's history or a chat window:
+#
+#   APP_STORE_CONNECT_ISSUER_ID    App Store Connect, Users and Access,
+#   APP_STORE_CONNECT_KEY_ID       Integrations, App Store Connect API. A team
+#   APP_STORE_CONNECT_PRIVATE_KEY  key with the App Manager role; the .p8 text
+#                                  downloads once and cannot be fetched again.
+#   IOS_DISTRIBUTION_CERT_P12      The Apple Distribution certificate and its
+#   IOS_DISTRIBUTION_CERT_PASSWORD private key, exported from Keychain Access
+#                                  as a .p12, then base64 encoded.
+#   IOS_PROVISIONING_PROFILE       An App Store distribution profile for the
+#                                  bundle id below, base64 encoded.
+#
+# The profile expires after a year. When it does, this fails at the archive
+# step; make a new one in the developer portal and set the secret again.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One upload at a time. Two builds racing would reach App Store Connect out of
+# order, and the loser's build number is already spent.
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Kept in step with ci.yml, which checks the code against this same version.
+  FLUTTER_VERSION: "3.47.1"
+  BUNDLE_ID: com.antimatterstudios.restmail
+  TEAM_ID: 43UMKXZ8P4
+
+jobs:
+  upload:
+    name: Build and upload
+    runs-on: macos-latest
+    steps:
+      - name: Say plainly which secrets are missing
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          IOS_DISTRIBUTION_CERT_P12: ${{ secrets.IOS_DISTRIBUTION_CERT_P12 }}
+          IOS_DISTRIBUTION_CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        # Without this the first run fails deep inside xcodebuild, where the
+        # real cause is several hundred lines of build log away.
+        run: |
+          set -euo pipefail
+          missing=
+          for name in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_ID \
+                      APP_STORE_CONNECT_PRIVATE_KEY IOS_DISTRIBUTION_CERT_P12 \
+                      IOS_DISTRIBUTION_CERT_PASSWORD IOS_PROVISIONING_PROFILE; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::not set:$missing — see the comment at the top of this workflow" >&2
+            exit 1
+          fi
+          echo "all six are set"
+
+      - uses: actions/checkout@v4
+        with:
+          # The build number counts the commits behind HEAD, so the history has
+          # to be here. The default shallow checkout would count one, forever.
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Take the signing identity into a throwaway keychain
+        env:
+          CERT_P12: ${{ secrets.IOS_DISTRIBUTION_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(uuidgen)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+
+          printf '%s' "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+          # codesign reads the private key without asking only once the key's
+          # partition list names it, and there is nobody here to answer a prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$password" "$keychain" > /dev/null
+
+          # xcodebuild looks for identities only in the search list, so put the
+          # new keychain at the front of it rather than replacing what is there.
+          security list-keychains -d user -s "$keychain" \
+            $(security list-keychains -d user | tr -d '"')
+
+          security find-identity -v -p codesigning "$keychain"
+
+      - name: Put the provisioning profile where Xcode looks for it
+        env:
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+
+          # A profile is a signed plist in a CMS envelope. Xcode finds it by the
+          # UUID in its filename; the export options name it by its Name.
+          plist="$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$plist"
+          uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist")
+          name=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$plist")
+
+          # Xcode 16 reads the second of these; earlier versions read the first.
+          # Writing both means the runner's Xcode version does not matter.
+          for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" \
+                     "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            cp "$RUNNER_TEMP/profile.mobileprovision" "$dir/$uuid.mobileprovision"
+          done
+
+          echo "PROFILE_NAME=$name" >> "$GITHUB_ENV"
+          echo "installed '$name' ($uuid), expires $(/usr/libexec/PlistBuddy -c 'Print :ExpirationDate' "$plist")"
+
+      - name: Number the build by the commits behind it
+        # The same rule `chore ipa` follows, so a build built here and a build
+        # built on a Mac from the same commit carry the same number.
+        run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+
+      - run: flutter pub get
+
+      - name: Compile the app, leaving the signing to the archive
+        run: flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
+
+      - name: Archive it with the distribution identity
+        # Not `flutter build ipa`: the Runner target is set to sign automatically,
+        # which wants an Apple ID this runner has not got. Settings given on the
+        # command line beat the ones in the project, so the archive signs with the
+        # certificate and profile installed above instead.
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+
+      - name: Export the ipa App Store Connect will take
+        # ios/ExportOptions.plist says what kind of export is wanted, and signs
+        # the way a Mac signed in to the account would. This copy keeps the rest
+        # of it and names the profile that was just installed.
+        run: |
+          set -euo pipefail
+          opts="$RUNNER_TEMP/ExportOptions.plist"
+          cp ios/ExportOptions.plist "$opts"
+          /usr/libexec/PlistBuddy \
+            -c 'Set :signingStyle manual' \
+            -c 'Add :signingCertificate string Apple Distribution' \
+            -c 'Add :provisioningProfiles dict' \
+            -c "Add :provisioningProfiles:$BUNDLE_ID string $PROFILE_NAME" \
+            "$opts"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$opts" \
+            -exportPath "$RUNNER_TEMP/ipa"
+
+      - name: Hand the build to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        # Export compliance is answered once in Info.plist, by
+        # ITSAppUsesNonExemptEncryption, so no build waits on that question here.
+        run: |
+          set -euo pipefail
+          # altool takes the key by its id and reads the file from this directory.
+          dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$dir"
+          printf '%s\n' "$PRIVATE_KEY" > "$dir/AuthKey_$KEY_ID.p8"
+          trap 'rm -f "$dir/AuthKey_$KEY_ID.p8"' EXIT
+
+          ipa=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' | head -1)
+          test -n "$ipa" || { echo "::error::the export produced no ipa" >&2; exit 1; }
+
+          xcrun altool --upload-app -f "$ipa" -t ios \
+            --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          echo "::notice::build $BUILD_NUMBER uploaded; TestFlight shows it once processing finishes"
+
+      - name: Take the keychain back out of the search list
+        if: always()
+        run: |
+          security list-keychains -d user -s login.keychain-db || true
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
