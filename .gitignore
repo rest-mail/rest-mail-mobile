@@ -49,3 +49,6 @@ app.*.map.json
 
 # A local testbed's CA, handed to debug builds with --dart-define-from-file.
 /.dev/
+
+# Local secrets, such as the token the pipeline uses to merge. Never committed.
+/.env.secrets
