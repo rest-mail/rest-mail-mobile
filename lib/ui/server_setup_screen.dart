@@ -14,8 +14,12 @@ import 'widgets/common.dart';
 
 /// Where the first-start setup has got to.
 enum _Step {
-  /// Sign in as the admin a fresh install made, with the password the deploy
-  /// generated.
+  /// Claim a server nobody has claimed with the setup code it printed, choosing
+  /// the first admin's name and password.
+  claim,
+
+  /// Or sign in as the admin a fresh install made, with the password the
+  /// deploy generated.
   signIn,
 
   /// Enroll an authenticator, keeping the recovery codes.
@@ -32,10 +36,12 @@ enum _Step {
   mailbox,
 }
 
-/// Takes a freshly installed rest-mail server from its bootstrap admin to the
-/// owner reading their own mail: the server insists the admin set a new
-/// password and enroll an authenticator before it will do anything else, and
-/// a server with no mailbox has nothing to read.
+/// Takes a freshly installed rest-mail server to the owner reading their own
+/// mail. A fresh install prints a setup code to its own output; redeeming it
+/// makes the owner its first admin, with a password they choose. (An install
+/// given a bootstrap admin password signs in with that instead, and must
+/// replace it.) Either way the server insists on an authenticator before it
+/// will do anything else, and a server with no mailbox has nothing to read.
 ///
 /// The admin session lives only on this screen. It is never stored: the app
 /// signs in to the mailbox made at the end, as any account is signed in.
@@ -52,11 +58,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   late final RestmailClient _admin = AppScope.read(context)
       .probe(widget.server);
 
-  var _step = _Step.signIn;
+  var _step = _Step.claim;
   var _busy = false;
   String? _error;
 
   // Sign-in, kept for the steps that need them again.
+  final _setupCode = TextEditingController();
   final _username = TextEditingController(text: 'admin');
   final _password = TextEditingController();
   final _code = TextEditingController();
@@ -81,6 +88,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   void dispose() {
     _admin.close();
     for (final c in [
+      _setupCode,
       _username,
       _password,
       _code,
@@ -121,6 +129,11 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String _describe(ApiException e) {
     if (e.fields.isNotEmpty) return e.fields.values.first;
     return switch (e.code) {
+      'invalid_token' =>
+        "That setup code didn't work. Check it, or restart the server for "
+            'a new one.',
+      'already_claimed' =>
+        'This server already has an admin. Sign in with its password instead.',
       'unauthorized' => switch (_step) {
         _Step.signIn =>
           _needsCode ? "That code didn't work." : 'Wrong username or password.',
@@ -132,6 +145,25 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   }
 
   // ── Steps ──────────────────────────────────────────────────────────────
+
+  Future<void> _claim() => _run(() async {
+    final password = _newPassword.text;
+    if (password != _repeatPassword.text) {
+      setState(() => _error = "The passwords don't match.");
+      return;
+    }
+    final admin = await _admin.claimServer(
+      code: _setupCode.text.trim(),
+      username: _username.text.trim(),
+      password: password,
+    );
+    // Signing back in later takes these.
+    _password.text = password;
+    _newPassword.clear();
+    _repeatPassword.clear();
+    _owed = admin.setupRequired;
+    _advance();
+  });
 
   Future<void> _signIn() => _run(() async {
     try {
@@ -158,6 +190,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     } else if (_owed.contains(SetupStep.password)) {
       _step = _Step.password;
     } else if (_step == _Step.signIn || _step == _Step.signBackIn) {
+      // (A claim always owes an authenticator, so never lands here.)
       _step = _Step.mailbox;
     } else {
       // Setup just finished; this session was minted while it was owed.
@@ -236,6 +269,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     final c = context.rm;
     final error = _error;
     final (title, intro, fields, action) = switch (_step) {
+      _Step.claim => _claimStep(c),
       _Step.signIn => _signInStep(c),
       _Step.authenticator => _authenticatorStep(c),
       _Step.password => _passwordStep(c),
@@ -272,6 +306,58 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     );
   }
 
+  _StepView _claimStep(RmColors c) => (
+    'Set up ${widget.server.host}',
+    'A new server prints a setup code when it starts, until someone claims '
+        'it: look in its log. Enter it here to become its first admin.',
+    [
+      if (sampleMode) ...[
+        const SizedBox(height: 14),
+        _SampleHint('Sample server: setup code ${FakeAccounts.setupCode}.'),
+      ],
+      const SizedBox(height: 22),
+      const SectionLabel('Setup code'),
+      const SizedBox(height: 8),
+      _field(
+        _setupCode,
+        hint: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
+        autocorrect: false,
+        capitalize: true,
+      ),
+      const SizedBox(height: 22),
+      const SectionLabel('Admin username'),
+      const SizedBox(height: 8),
+      _field(
+        _username,
+        autocorrect: false,
+        autofill: const [AutofillHints.newUsername],
+      ),
+      const SizedBox(height: 22),
+      const SectionLabel('Admin password'),
+      const SizedBox(height: 8),
+      _field(
+        _newPassword,
+        obscure: true,
+        hint: '12 characters or more',
+        autofill: const [AutofillHints.newPassword],
+      ),
+      const SizedBox(height: 22),
+      const SectionLabel('Repeat it'),
+      const SizedBox(height: 8),
+      _field(_repeatPassword, obscure: true, onSubmitted: _claim),
+      const SizedBox(height: 12),
+      _switchTo(_Step.signIn, 'Have an admin password instead?'),
+    ],
+    _primary(
+      'Claim this server',
+      _claim,
+      ready:
+          _setupCode.text.trim().isNotEmpty &&
+          _username.text.trim().isNotEmpty &&
+          _newPassword.text.length >= 12,
+    ),
+  );
+
   _StepView _signInStep(RmColors c) => (
     'Set up ${widget.server.host}',
     'Sign in as the admin your install created, with the password the deploy '
@@ -304,6 +390,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         const SizedBox(height: 8),
         _codeField(onSubmitted: _signIn),
       ],
+      const SizedBox(height: 12),
+      _switchTo(_Step.claim, 'Have a setup code instead?'),
     ],
     _primary('Continue', _signIn, ready: _password.text.isNotEmpty),
   );
@@ -425,8 +513,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   _StepView _signBackInStep(RmColors c) => (
     'Sign back in',
-    'Changing the password signed this admin out everywhere. Type a fresh '
-        'code from your authenticator to carry on.',
+    'The admin account is set up. Sign in again with a fresh code from your '
+        'authenticator to carry on.',
     [
       const SizedBox(height: 22),
       const SectionLabel('Two-factor code'),
@@ -487,10 +575,28 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   // ── Pieces ─────────────────────────────────────────────────────────────
 
+  /// A link to the other way of starting: a setup code, or a password.
+  Widget _switchTo(_Step step, String label) => Align(
+    alignment: Alignment.centerLeft,
+    child: TextButton(
+      onPressed: _busy
+          ? null
+          : () => setState(() {
+              _step = step;
+              _error = null;
+            }),
+      child: Text(
+        label,
+        style: rmText(13.5, color: context.rm.accent, weight: FontWeight.w600),
+      ),
+    ),
+  );
+
   Widget _field(
     TextEditingController controller, {
     bool obscure = false,
     bool autocorrect = true,
+    bool capitalize = false,
     String? hint,
     List<String>? autofill,
     Future<void> Function()? onSubmitted,
@@ -498,7 +604,10 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     controller: controller,
     obscureText: obscure,
     autocorrect: autocorrect && !obscure,
-    enableSuggestions: !obscure,
+    enableSuggestions: !obscure && autocorrect,
+    textCapitalization: capitalize
+        ? TextCapitalization.characters
+        : TextCapitalization.none,
     autofillHints: autofill,
     onChanged: (_) => setState(() => _error = null),
     onSubmitted: onSubmitted == null ? null : (_) => unawaited(onSubmitted()),
@@ -542,7 +651,7 @@ class _Progress extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.rm;
     final index = switch (step) {
-      _Step.signIn => 0,
+      _Step.claim || _Step.signIn => 0,
       _Step.authenticator => 1,
       _Step.password || _Step.signBackIn => 2,
       _Step.mailbox => 3,

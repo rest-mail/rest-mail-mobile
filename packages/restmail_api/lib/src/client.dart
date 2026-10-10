@@ -187,6 +187,31 @@ class RestmailClient {
     return AdminSignIn.fromJson(data);
   }
 
+  /// Claims a server nobody has claimed yet with [code], the setup code it
+  /// printed to its own output at startup, making [username] its first admin
+  /// with [password]. The session is still in setup: the account owes an
+  /// authenticator ([AdminSignIn.setupRequired]).
+  Future<AdminSignIn> claimServer({
+    required String code,
+    required String username,
+    required String password,
+  }) async {
+    final response = await _send(
+      'POST',
+      _uri(['auth', 'claim']),
+      body: {
+        'token': code,
+        'username': username,
+        'password': password,
+        'client': 'native',
+      },
+    );
+    _throwIfError(response);
+    final data = _data(response);
+    _setTokens(_tokensFrom(response, data));
+    return AdminSignIn.fromJson(data);
+  }
+
   /// Starts enrolling an authenticator. Show the result once, then
   /// [confirmTwoFactor] with a code the authenticator produces.
   Future<TotpEnrollment> enrollTwoFactor() async => TotpEnrollment.fromJson(
