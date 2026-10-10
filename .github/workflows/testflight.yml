@@ -5,8 +5,10 @@ name: TestFlight
 # App Store Connect finishes processing them: internal testing skips review.
 #
 # Six secrets stand in for the Mac that would otherwise be signed in to the
-# developer account. Set them with `gh secret set <NAME>` so the values never
-# pass through a terminal's history or a chat window:
+# developer account. They live in the `release` environment, which only main
+# may deploy from, so a workflow run on any other branch cannot read them. Set
+# them with `gh secret set <NAME> --env release` so the values never pass
+# through a terminal's history or a chat window:
 #
 #   APP_STORE_CONNECT_ISSUER_ID    App Store Connect, Users and Access,
 #   APP_STORE_CONNECT_KEY_ID       Integrations, App Store Connect API. A team
@@ -14,7 +16,9 @@ name: TestFlight
 #                                  downloads once and cannot be fetched again.
 #   IOS_DISTRIBUTION_CERT_P12      The Apple Distribution certificate and its
 #   IOS_DISTRIBUTION_CERT_PASSWORD private key, exported from Keychain Access
-#                                  as a .p12, then base64 encoded.
+#                                  as a .p12, then base64 encoded. A .p12
+#                                  packed by OpenSSL 3 needs `-legacy`, or
+#                                  `security import` rejects its password.
 #   IOS_PROVISIONING_PROFILE       An App Store distribution profile for the
 #                                  bundle id below, base64 encoded.
 #
@@ -45,6 +49,7 @@ jobs:
   upload:
     name: Build and upload
     runs-on: macos-latest
+    environment: release
     steps:
       - name: Say plainly which secrets are missing
         env:
