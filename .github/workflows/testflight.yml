@@ -94,7 +94,7 @@ jobs:
           security set-keychain-settings -lut 3600 "$keychain"
           security unlock-keychain -p "$password" "$keychain"
 
-          printf '%s' "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$CERT_P12" | base64 -d > "$RUNNER_TEMP/cert.p12"
           security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$CERT_PASSWORD" \
             -T /usr/bin/codesign -T /usr/bin/security
           rm -f "$RUNNER_TEMP/cert.p12"
@@ -116,7 +116,7 @@ jobs:
           PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
         run: |
           set -euo pipefail
-          printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          printf '%s' "$PROFILE" | base64 -d > "$RUNNER_TEMP/profile.mobileprovision"
 
           # A profile is a signed plist in a CMS envelope. Xcode finds it by the
           # UUID in its filename; the export options name it by its Name.
