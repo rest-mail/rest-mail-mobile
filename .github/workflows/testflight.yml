@@ -3,10 +3,13 @@ name: TestFlight
 # Builds go to internal testers the moment App Store Connect finishes
 # processing them: internal testing skips review.
 #
-# The push trigger below does not currently fire. auto-merge.yml arms the merge
-# with GITHUB_TOKEN, and GitHub starts no workflow run for an event that token
-# caused, so a merge into main reaches nothing here. Until that is settled, the
-# way to build is `gh workflow run TestFlight --ref main`. See issue #17.
+# Every merge into main becomes a build. That rests on auto-merge.yml arming
+# the merge with a personal access token rather than GITHUB_TOKEN, because
+# GitHub starts no workflow run for an event that token caused — armed that
+# way, merges reached nothing here. Changing it is what made run 38052345280
+# start on its own. Should merges stop producing builds, look there first.
+#
+# `gh workflow run TestFlight --ref main` still builds on demand.
 #
 # Six secrets stand in for the Mac that would otherwise be signed in to the
 # developer account. They live in the `release` environment, which only main
