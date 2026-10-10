@@ -9,6 +9,13 @@ name: Auto-merge
 # GITHUB_TOKEN caused. Armed that way, a merge into main reached nothing: no
 # CI, and no TestFlight build. The token makes the merge an ordinary push, so
 # the workflows watching main run.
+#
+# PIPELINE_RESTMAIL_TOKEN expires 2026-11-09, the 30-day default for a new
+# fine-grained token, and holds Contents, Pull requests and Workflows on this
+# repository alone. Past that date the step below fails to authenticate and
+# nothing merges — a failure that reads as "auto-merge stopped working" with
+# nothing naming a credential, which is why the date is written here rather
+# than left to be rediscovered. Re-issue it and set the secret again.
 on:
   pull_request:
     # `edited` covers a stacked pull request retargeted to main after the one
