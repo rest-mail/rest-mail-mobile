@@ -3,21 +3,28 @@ name: Auto-merge
 # Every pull request into main is set to squash-merge itself once the checks
 # that protect main have passed. This only asks for the merge; branch
 # protection decides when, so nothing merges on red.
+#
+# The merge is armed with a personal access token rather than this workflow's
+# own GITHUB_TOKEN, because GitHub starts no workflow run for an event that
+# GITHUB_TOKEN caused. Armed that way, a merge into main reached nothing: no
+# CI, and no TestFlight build. The token makes the merge an ordinary push, so
+# the workflows watching main run.
 on:
   pull_request:
     # `edited` covers a stacked pull request retargeted to main after the one
     # beneath it merges.
     types: [opened, reopened, synchronize, ready_for_review, edited]
 
-permissions:
-  contents: write
-  pull-requests: write
+# Nothing here uses GITHUB_TOKEN, so it is given nothing.
+permissions: {}
 
 jobs:
   arm:
     name: Arm auto-merge
     # This repository's own branches, into main, and never a draft. A pull
-    # request from a fork gets a read-only token and could not arm it anyway.
+    # request from a fork is never given the token, so it could not arm it
+    # anyway, but saying so here means it fails as a skip rather than as an
+    # authentication error someone has to read a log to understand.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.base.ref == github.event.repository.default_branch &&
@@ -26,5 +33,5 @@ jobs:
     steps:
       - run: gh pr merge --auto --squash "$PR"
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PIPELINE_RESTMAIL_TOKEN }}
           PR: ${{ github.event.pull_request.html_url }}
