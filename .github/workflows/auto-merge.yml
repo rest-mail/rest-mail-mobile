@@ -10,6 +10,14 @@ name: Auto-merge
 # CI, and no TestFlight build. The token makes the merge an ordinary push, so
 # the workflows watching main run.
 #
+# Pull requests cannot reach the token. It lives in the `automerge`
+# environment, which only main may use, and this runs on pull_request_target:
+# GitHub runs main's copy of this file, not the pull request's, so a pull
+# request cannot rewrite the step below to print the token. Under plain
+# pull_request it ran the branch's copy, with the token in reach of any branch
+# pushed here. Nothing here checks out or runs the pull request's code, which
+# is what keeps pull_request_target safe; keep it that way.
+#
 # PIPELINE_RESTMAIL_TOKEN expires 2026-11-09, the 30-day default for a new
 # fine-grained token, and holds Contents, Pull requests and Workflows on this
 # repository alone. Past that date the step below fails to authenticate and
@@ -17,7 +25,7 @@ name: Auto-merge
 # nothing naming a credential, which is why the date is written here rather
 # than left to be rediscovered. Re-issue it and set the secret again.
 on:
-  pull_request:
+  pull_request_target:
     # `edited` covers a stacked pull request retargeted to main after the one
     # beneath it merges.
     types: [opened, reopened, synchronize, ready_for_review, edited]
@@ -28,15 +36,16 @@ permissions: {}
 jobs:
   arm:
     name: Arm auto-merge
-    # This repository's own branches, into main, and never a draft. A pull
-    # request from a fork is never given the token, so it could not arm it
-    # anyway, but saying so here means it fails as a skip rather than as an
-    # authentication error someone has to read a log to understand.
+    # This repository's own branches, into main, and never a draft. Under
+    # pull_request_target a fork's pull request runs with secrets too, so the
+    # first line is what keeps a stranger from arming a merge. It is read from
+    # main's copy of this file, which a pull request cannot change.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.base.ref == github.event.repository.default_branch &&
       !github.event.pull_request.draft
     runs-on: ubuntu-latest
+    environment: automerge
     steps:
       - run: gh pr merge --auto --squash "$PR"
         env:
