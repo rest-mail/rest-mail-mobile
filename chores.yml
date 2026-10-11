@@ -60,12 +60,32 @@ tasks:
       # stays under Android's versionCode ceiling should the bundle use it too.
       BUILD_NUMBER:
         sh: git rev-list --count HEAD
-    preconditions:
-      - sh: git diff --quiet HEAD
-        msg: "Commit first: the build number names a commit, and this tree has changes on top of it"
+      # The same rule as a release: pubspec.yaml's MAJOR.MINOR, the build count
+      # as the patch.
+      SERIES:
+        sh: awk '/^version:/ { split($2, v, "."); print v[1] "." v[2]; exit }' pubspec.yaml
+      VERSION: "{{.SERIES}}.{{.BUILD_NUMBER}}"
     cmds:
-      - flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-number={{.BUILD_NUMBER}}
-      - echo "Build {{.BUILD_NUMBER}} in build/ios/ipa. Upload it with Transporter, or xcrun altool."
+      - 'git diff --quiet HEAD || { echo "Commit first: the build number names a commit, and this tree has changes on top of it" >&2; exit 1; }'
+      - flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-name={{.VERSION}} --build-number={{.BUILD_NUMBER}}
+      - echo "{{.VERSION}} ({{.BUILD_NUMBER}}) in build/ios/ipa. Upload it with Transporter, or xcrun altool."
+
+  release:
+    desc: "Release main to TestFlight: tags it vMAJOR.MINOR.<build count>, from pubspec.yaml's MAJOR.MINOR"
+    vars:
+      SERIES:
+        sh: awk '/^version:/ { split($2, v, "."); print v[1] "." v[2]; exit }' pubspec.yaml
+      BUILD_NUMBER:
+        sh: git rev-list --count HEAD
+      VERSION: "{{.SERIES}}.{{.BUILD_NUMBER}}"
+    cmds:
+      # Checks first: a failing command ends the task before anything is tagged.
+      - 'git diff --quiet HEAD || { echo "Commit first: a release names a commit, and this tree has changes on top of it" >&2; exit 1; }'
+      - 'git fetch -q origin main && test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Release what is on main: check out main and pull, so HEAD is origin/main" >&2; exit 1; }'
+      - 'test -z "$(git tag -l v{{.VERSION}})" || { echo "v{{.VERSION}} is released already: nothing has been merged since" >&2; exit 1; }'
+      - git tag -a v{{.VERSION}} -m "rest-mail {{.VERSION}}"
+      - git push origin v{{.VERSION}}
+      - echo "Tagged v{{.VERSION}}. testflight.yml builds it as {{.VERSION}} ({{.BUILD_NUMBER}}); follow it with gh run watch."
 
   run:sample:
     desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
