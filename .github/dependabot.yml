@@ -1,0 +1,10 @@
+# Actions are pinned to commit SHAs, because a tag like v4 can be moved to
+# different code and a workflow holding secrets would run it. A pin left alone
+# goes stale, so Dependabot proposes the move to each new release: the SHA and
+# the version comment beside it, together, as a pull request that CI checks.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
