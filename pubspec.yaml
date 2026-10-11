@@ -2,10 +2,11 @@ name: restmail
 description: rest-mail client for iOS and Android.
 publish_to: 'none'
 
-# A release takes its version from its tag, not from here: pushing v0.2.0
-# builds 0.2.0 (testflight.yml). This is the version of a local build, so keep
-# it at the release being worked towards. The build number after the + is for
-# local builds only; TestFlight's comes from the commit count.
+# MAJOR.MINOR of the next release. The patch is never set here: a release is
+# MAJOR.MINOR.<build count>, the build count being the number of commits behind
+# it, so every build has its own version and no version comes round twice.
+# Raise MINOR for a release with something new in it; `chore release` tags it
+# (testflight.yml). The rest of this line is what a plain `flutter run` shows.
 version: 0.2.0+1
 
 environment:

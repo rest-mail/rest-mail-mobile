@@ -254,18 +254,21 @@ certificate against it.
 ### A TestFlight build
 
 A release is a tag. Merging into `main` runs CI and nothing else; when what is
-on `main` should reach testers, tag it:
+on `main` should reach testers, on an up-to-date `main`:
 
 ```sh
-git tag v0.2.0 && git push origin v0.2.0
+chore release
 ```
 
-`.github/workflows/testflight.yml` builds it as 0.2.0, signs it, hands it to
-App Store Connect — internal testers have it as soon as processing finishes —
-and publishes v0.2.0 on the Releases page. The tag is the version testers see,
-so git itself rules out releasing one twice, and
-`tool/ci/release_gate.sh` refuses a tag that is not `vMAJOR.MINOR.PATCH`, that
-names a commit not on `main`, or that is older than the newest release.
+That tags it `vMAJOR.MINOR.<build count>`: `pubspec.yaml`'s MAJOR.MINOR, with
+the number of commits behind it as the patch, so 0.2 at 28 commits is v0.2.28.
+`.github/workflows/testflight.yml` builds it as 0.2.28 (28), signs it, hands
+it to App Store Connect — internal testers have it as soon as processing
+finishes — and publishes it on the Releases page. The build count only goes
+up, so no version comes round twice; raise MINOR in `pubspec.yaml` for a
+release with something new in it. `tool/ci/release_gate.sh` refuses a tag
+that is not `vMAJOR.MINOR.PATCH`, whose patch is not its commit's build count,
+that names a commit not on `main`, or that is older than the newest release.
 
 That workflow stands in for a Mac signed in to the developer account, so it
 needs the signing material. It lives in the `release` environment, which only
@@ -283,8 +286,8 @@ chore ipa
 Either way the build number is the count of commits on `HEAD`, so every build
 from a newer `main` can be uploaded and each one names the commit it came
 from. `chore ipa` refuses to build with uncommitted changes, for the same
-reason: the number would name a commit the build does not match. A release's
-version comes from its tag; `pubspec.yaml`'s names a local build.
+reason: the number would name a commit the build does not match. `chore ipa`
+names the build the same way a release does, MAJOR.MINOR.<build count>.
 
 ## Identity
 

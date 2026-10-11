@@ -4,17 +4,18 @@ name: TestFlight
 # processing them: internal testing skips review.
 #
 # A release is a tag, and nothing else makes one. Merging into main runs CI
-# only; when what is on main should reach testers, tag it:
+# only; when what is on main should reach testers, on main:
 #
-#   git tag v0.2.0 && git push origin v0.2.0
+#   chore release
 #
-# The tag is the version testers see — the build is named after it, whatever
-# pubspec.yaml says — so git itself rules out releasing a version twice.
+# which tags it vMAJOR.MINOR.<build count>: pubspec.yaml's MAJOR.MINOR, and the
+# number of commits behind it as the patch. The tag is the version testers
+# see, and the build count only goes up, so no version comes round twice.
 # tool/ci/release_gate.sh refuses, before anything is built or any secret
-# read, a tag that is not vMAJOR.MINOR.PATCH, names a commit that is not on
-# main, or is older than the newest release. Once the upload succeeds the tag
-# is published on the Releases page, with notes from the pull requests merged
-# since the last one.
+# read, a tag that is not vMAJOR.MINOR.PATCH, whose patch is not its commit's
+# build count, that names a commit not on main, or that is older than the
+# newest release. Once the upload succeeds the tag is published on the
+# Releases page, with notes from the pull requests merged since the last one.
 #
 # Six secrets stand in for the Mac that would otherwise be signed in to the
 # developer account. They live in the `release` environment, which only v*
