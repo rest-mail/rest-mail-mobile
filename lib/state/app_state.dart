@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 
 import '../util/setup_code.dart';
+import '../version.dart';
 import 'mailbox_state.dart';
 import 'settings.dart';
 import 'storage.dart';
@@ -25,7 +26,7 @@ class AppState extends ChangeNotifier {
 
   static const _sessionKey = 'session';
   static const _settingsKey = 'settings';
-  static const userAgent = 'restmail-mobile/0.1.0';
+  static const userAgent = 'restmail-mobile/$appVersion';
 
   AppPhase phase = AppPhase.starting;
   AppSettings settings = const AppSettings();

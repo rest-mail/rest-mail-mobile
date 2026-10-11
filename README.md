@@ -253,15 +253,26 @@ certificate against it.
 
 ### A TestFlight build
 
-Every merge into `main` becomes one, without anyone opening Xcode:
-`.github/workflows/testflight.yml` builds it, signs it and hands it to App
-Store Connect, and internal testers have it as soon as processing finishes.
-Run it against `main` by hand with `gh workflow run TestFlight`.
+A release is a tag. Merging into `main` runs CI and nothing else; when what is
+on `main` should reach testers, tag it:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+`.github/workflows/testflight.yml` builds it as 0.2.0, signs it, hands it to
+App Store Connect — internal testers have it as soon as processing finishes —
+and publishes v0.2.0 on the Releases page. The tag is the version testers see,
+so git itself rules out releasing one twice, and
+`tool/ci/release_gate.sh` refuses a tag that is not `vMAJOR.MINOR.PATCH`, that
+names a commit not on `main`, or that is older than the newest release.
 
 That workflow stands in for a Mac signed in to the developer account, so it
-needs the signing material as repository secrets. The comment at the top of
-the file lists all six and says where each comes from. Set them with
-`gh secret set <NAME>`, which keeps the values out of shell history.
+needs the signing material. It lives in the `release` environment, which only
+`v*` tags can use: no branch, `main` included, can read it. The comment at the
+top of the file lists all six secrets and says where each comes from. Set them
+with `gh secret set <NAME> --env release`, which keeps the values out of shell
+history.
 
 The same build on a Mac that *is* signed in:
 
@@ -272,8 +283,8 @@ chore ipa
 Either way the build number is the count of commits on `HEAD`, so every build
 from a newer `main` can be uploaded and each one names the commit it came
 from. `chore ipa` refuses to build with uncommitted changes, for the same
-reason: the number would name a commit the build does not match. The version
-(`0.1.0`) comes from `pubspec.yaml`; change it there for a new release.
+reason: the number would name a commit the build does not match. A release's
+version comes from its tag; `pubspec.yaml`'s names a local build.
 
 ## Identity
 

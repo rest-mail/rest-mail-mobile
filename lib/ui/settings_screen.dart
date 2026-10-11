@@ -7,16 +7,10 @@ import '../state/app_scope.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
+import '../version.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
-
-/// The build's `--build-name`: pubspec's version unless a release overrides
-/// it, and "dev" when nothing passes one (as under `flutter test`).
-const _version = String.fromEnvironment(
-  'FLUTTER_BUILD_NAME',
-  defaultValue: 'dev',
-);
 
 void _push(BuildContext context, Widget screen) => unawaited(
   Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen)),
@@ -143,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 22),
                     Text(
                       [
-                        'rest-mail for mobile $_version · $host',
+                        'rest-mail for mobile $appVersion · $host',
                         if (quota != null)
                           '${countLabel(quota.messageCount)} messages · ${_storage(quota)}',
                       ].join('\n'),
