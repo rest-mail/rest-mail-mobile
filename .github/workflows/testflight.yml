@@ -3,17 +3,23 @@ name: TestFlight
 # Builds go to internal testers the moment App Store Connect finishes
 # processing them: internal testing skips review.
 #
-# Every merge into main becomes a build. That rests on auto-merge.yml arming
-# the merge with a personal access token rather than GITHUB_TOKEN, because
-# GitHub starts no workflow run for an event that token caused — armed that
-# way, merges reached nothing here. Changing it is what made run 38052345280
-# start on its own. Should merges stop producing builds, look there first.
+# A release is a tag, and nothing else makes one. Merging into main runs CI
+# only; when what is on main should reach testers, tag it:
 #
-# `gh workflow run TestFlight --ref main` still builds on demand.
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# The tag is the version testers see — the build is named after it, whatever
+# pubspec.yaml says — so git itself rules out releasing a version twice.
+# tool/ci/release_gate.sh refuses, before anything is built or any secret
+# read, a tag that is not vMAJOR.MINOR.PATCH, names a commit that is not on
+# main, or is older than the newest release. Once the upload succeeds the tag
+# is published on the Releases page, with notes from the pull requests merged
+# since the last one.
 #
 # Six secrets stand in for the Mac that would otherwise be signed in to the
-# developer account. They live in the `release` environment, which only main
-# may deploy from, so a workflow run on any other branch cannot read them. Set
+# developer account. They live in the `release` environment, which only v*
+# tags may deploy from: no branch, main included, can read them, and the gate
+# makes sure a tag can only release what is already on main. Set
 # them with `gh secret set <NAME> --env release` so the values never pass
 # through a terminal's history or a chat window:
 #
@@ -34,8 +40,7 @@ name: TestFlight
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
 
 # One upload at a time. Two builds racing would reach App Store Connect out of
 # order, and the loser's build number is already spent.
@@ -54,10 +59,26 @@ env:
   BUNDLE_ID: com.antimatterstudios.restmail
 
 jobs:
+  gate:
+    name: Release gate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The tags, and main's history, to judge this tag against.
+          fetch-depth: 0
+      - id: gate
+        run: tool/ci/release_gate.sh
+
   upload:
     name: Build and upload
+    needs: gate
     runs-on: macos-latest
     environment: release
+    outputs:
+      build: ${{ steps.number.outputs.build }}
     steps:
       - name: Say plainly which secrets are missing
         env:
@@ -152,12 +173,17 @@ jobs:
       - name: Number the build by the commits behind it
         # The same rule `chore ipa` follows, so a build built here and a build
         # built on a Mac from the same commit carry the same number.
-        run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+        id: number
+        run: |
+          echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
       - run: flutter pub get
 
       - name: Compile the app, leaving the signing to the archive
-        run: flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
+        run: flutter build ios --release --no-codesign --build-name="$VERSION" --build-number="$BUILD_NUMBER"
 
       - name: Point the app's own target at the profile
         # Settings passed to xcodebuild on the command line reach every target in
@@ -201,6 +227,7 @@ jobs:
 
       - name: Hand the build to App Store Connect
         env:
+          VERSION: ${{ needs.gate.outputs.version }}
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
@@ -219,10 +246,31 @@ jobs:
 
           xcrun altool --upload-app -f "$ipa" -t ios \
             --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
-          echo "::notice::build $BUILD_NUMBER uploaded; TestFlight shows it once processing finishes"
+          echo "::notice::$VERSION (build $BUILD_NUMBER) uploaded; TestFlight shows it once processing finishes"
 
       - name: Take the keychain back out of the search list
         if: always()
         run: |
           security list-keychains -d user -s login.keychain-db || true
           security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+
+  publish:
+    name: Publish the release
+    # The upload succeeded: the tag goes on the Releases page, with notes from
+    # the pull requests merged since the last release.
+    needs: [gate, upload]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.gate.outputs.version }}
+          BUILD: ${{ needs.upload.outputs.build }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "rest-mail $VERSION" \
+            --notes "TestFlight build $BUILD." \
+            --generate-notes
+          echo "::notice::published v$VERSION (TestFlight build $BUILD)"

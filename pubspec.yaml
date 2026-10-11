@@ -2,9 +2,11 @@ name: restmail
 description: rest-mail client for iOS and Android.
 publish_to: 'none'
 
-# The build number after the + is for local builds only; a release sets its
-# own. Nothing has shipped, so this stays below 1.0.
-version: 0.1.0+1
+# A release takes its version from its tag, not from here: pushing v0.2.0
+# builds 0.2.0 (testflight.yml). This is the version of a local build, so keep
+# it at the release being worked towards. The build number after the + is for
+# local builds only; TestFlight's comes from the commit count.
+version: 0.2.0+1
 
 environment:
   sdk: ^3.13.1
