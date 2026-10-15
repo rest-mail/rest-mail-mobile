@@ -46,26 +46,32 @@ void main() {
 
   test("the app's own scheme", () {
     final link = SignInLink.parse(
-      'restmail://setup?server=https%3A%2F%2Fmail.example.com'
+      'rest-mail://setup?server=https%3A%2F%2Fmail.example.com'
       '&username=admin&password=$encoded',
     );
     expect(link?.server, Uri.parse('https://mail.example.com'));
     expect(link?.password, password);
   });
 
+  // rest-mail, as rest-mail.com: the scheme was restmail:// before the app
+  // was released, and nothing made a sign-in link with it.
+  test('the old restmail:// scheme is not ours', () {
+    expect(SignInLink.parse('restmail://setup?password=x'), isNull);
+  });
+
   test('no username means admin, the one an install makes', () {
-    expect(SignInLink.parse('restmail://setup?password=x')?.username, 'admin');
+    expect(SignInLink.parse('rest-mail://setup?password=x')?.username, 'admin');
   });
 
   test('a link naming no server leaves the app to ask which', () {
-    expect(SignInLink.parse('restmail://setup?password=x')?.server, isNull);
+    expect(SignInLink.parse('rest-mail://setup?password=x')?.server, isNull);
   });
 
   // Servers before rest-mail 0.7 printed a setup code; nothing redeems one.
   test('an old setup code is not a sign-in', () {
     const code = '7KQ2-M9XD-4TPA-HV3N-8RWC-ZB6E';
     for (final raw in [
-      'restmail://setup?token=$code',
+      'rest-mail://setup?token=$code',
       'https://rest-mail.com/setup#token=$code',
       code,
     ]) {
@@ -78,9 +84,9 @@ void main() {
       null,
       '',
       'https://example.com',
-      'restmail://reset?token=abc&password=x',
-      'restmail://setup',
-      'restmail://setup?username=admin',
+      'rest-mail://reset?token=abc&password=x',
+      'rest-mail://setup',
+      'rest-mail://setup?username=admin',
       'not a link at all, really not',
     ]) {
       expect(SignInLink.parse(raw), isNull, reason: raw);

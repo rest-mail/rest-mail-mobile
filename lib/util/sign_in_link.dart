@@ -12,7 +12,7 @@ const setupLinkPath = '/setup';
 /// Two forms, the same thing:
 ///
 ///   https://rest-mail.com/setup#server=URL&username=NAME&password=PASSWORD
-///   restmail://setup?server=URL&username=NAME&password=PASSWORD
+///   rest-mail://setup?server=URL&username=NAME&password=PASSWORD
 ///
 /// The installer draws the first, because a phone's own camera offers to open
 /// a web link and a chat app makes one tappable. It carries its parameters
@@ -54,7 +54,7 @@ class SignInLink {
 
   /// The parameters of a sign-in link, or null for a link that is not one.
   static Map<String, String>? _parametersOf(Uri link) {
-    if (link.scheme == 'restmail') {
+    if (link.scheme == 'rest-mail') {
       return link.host == 'setup' ? link.queryParameters : null;
     }
     // A web link: only the site the app is associated with, so that scanning

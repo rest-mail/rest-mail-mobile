@@ -9,7 +9,7 @@
 			<string>com.antimatterstudios.restmail</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>restmail</string>
+				<string>rest-mail</string>
 			</array>
 		</dict>
 	</array>
