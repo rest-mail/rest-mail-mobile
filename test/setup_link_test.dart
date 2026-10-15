@@ -13,11 +13,11 @@ void main() {
   const password = FakeAccounts.bootstrapPassword;
   const username = FakeAccounts.adminUsername;
   final withServer = Uri.parse(
-    'restmail://setup?server=https%3A%2F%2F${FakeAccounts.host}'
+    'rest-mail://setup?server=https%3A%2F%2F${FakeAccounts.host}'
     '&username=$username&password=$password',
   );
   final withoutServer = Uri.parse(
-    'restmail://setup?username=$username&password=$password',
+    'rest-mail://setup?username=$username&password=$password',
   );
   final webLink = Uri.parse(
     'https://rest-mail.com/setup#server=https%3A%2F%2F${FakeAccounts.host}'
@@ -53,11 +53,11 @@ void main() {
     test('anything else is ignored', () {
       final state = newState();
       for (final link in [
-        'restmail://reset?token=abc',
+        'rest-mail://reset?token=abc',
         'https://example.com/setup?password=$password',
         'https://rest-mail.com/#password=$password',
         // A setup code, from a server before rest-mail 0.7.
-        'restmail://setup?token=7KQ2-M9XD-4TPA-HV3N-8RWC-ZB6E',
+        'rest-mail://setup?token=7KQ2-M9XD-4TPA-HV3N-8RWC-ZB6E',
       ]) {
         state.openLink(Uri.parse(link));
       }

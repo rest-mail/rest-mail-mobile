@@ -32,7 +32,7 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- restmail://setup?server=…&username=…&password=… links open
+            <!-- rest-mail://setup?server=…&username=…&password=… links open
                  the app on its setup, sign-in filled in (app_links hands them
                  to Dart; Flutter's own deep linking is off so it does not
                  route them as well). rest-mail.com/setup offers one when a
@@ -42,7 +42,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="restmail" android:host="setup"/>
+                <data android:scheme="rest-mail" android:host="setup"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
