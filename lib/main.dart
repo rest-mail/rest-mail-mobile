@@ -20,8 +20,8 @@ Future<void> main() async {
         );
   runApp(RestmailApp(state: state));
   await state.start();
-  // restmail://setup?token=… links, from a server's setup QR code or sent by
-  // whoever set the server up: the app opens on its setup, code filled in.
+  // Sign-in links, from the QR code the installer showed: the app opens on the
+  // server's setup, sign-in filled in.
   final links = AppLinks();
   links.uriLinkStream.listen(state.openLink);
   final initial = await links.getInitialLink();

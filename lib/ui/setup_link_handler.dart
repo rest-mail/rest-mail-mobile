@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
-import '../util/setup_code.dart';
+import '../util/sign_in_link.dart';
 import 'server_screen.dart';
 import 'server_setup_screen.dart';
 
-/// Starts setting a server up when the app is opened with a setup link: on
-/// the server the link names, or, when it names none (the link a server
-/// prints does not know its own address), the one the owner picks next.
+/// Starts setting a server up when the app is opened with a sign-in link, from
+/// the QR code the installer showed: on the server the link names, or, when it
+/// names none, the one the owner picks next. The sign-in is filled in.
 class SetupLinkHandler extends StatefulWidget {
   const SetupLinkHandler({super.key, required this.child});
 
@@ -32,7 +32,7 @@ class _SetupLinkHandlerState extends State<SetupLinkHandler> {
     return widget.child;
   }
 
-  Future<void> _start(SetupCodeScan scan) async {
+  Future<void> _start(SignInLink scan) async {
     final server =
         scan.server ??
         await Navigator.push<Uri>(
@@ -43,7 +43,11 @@ class _SetupLinkHandlerState extends State<SetupLinkHandler> {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => ServerSetupScreen(server: server, setupCode: scan.code),
+        builder: (_) => ServerSetupScreen(
+          server: server,
+          username: scan.username,
+          password: scan.password,
+        ),
       ),
     );
   }
