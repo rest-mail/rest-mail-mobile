@@ -2,26 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../theme/tokens.dart';
-import '../util/setup_code.dart';
+import '../util/sign_in_link.dart';
 import 'widgets/common.dart';
 
-/// Points the camera at the QR code a fresh server printed to its log, and
-/// returns the setup code in it.
-class ScanSetupCodeScreen extends StatefulWidget {
-  const ScanSetupCodeScreen({super.key});
+/// Points the camera at the QR code the installer showed, and returns the
+/// sign-in in it.
+class ScanSignInScreen extends StatefulWidget {
+  const ScanSignInScreen({super.key});
 
   /// Opens the scanner; null when the owner backs out.
-  static Future<SetupCodeScan?> open(BuildContext context) =>
-      Navigator.push<SetupCodeScan>(
+  static Future<SignInLink?> open(BuildContext context) =>
+      Navigator.push<SignInLink>(
         context,
-        MaterialPageRoute(builder: (_) => const ScanSetupCodeScreen()),
+        MaterialPageRoute(builder: (_) => const ScanSignInScreen()),
       );
 
   @override
-  State<ScanSetupCodeScreen> createState() => _ScanSetupCodeScreenState();
+  State<ScanSignInScreen> createState() => _ScanSignInScreenState();
 }
 
-class _ScanSetupCodeScreenState extends State<ScanSetupCodeScreen> {
+class _ScanSignInScreenState extends State<ScanSignInScreen> {
   final _controller = MobileScannerController(
     formats: const [BarcodeFormat.qrCode],
   );
@@ -37,7 +37,7 @@ class _ScanSetupCodeScreenState extends State<ScanSetupCodeScreen> {
   void _onDetect(BarcodeCapture capture) {
     if (_done) return;
     for (final barcode in capture.barcodes) {
-      final scan = SetupCodeScan.parse(barcode.rawValue);
+      final scan = SignInLink.parse(barcode.rawValue);
       if (scan != null) {
         _done = true;
         Navigator.pop(context, scan);
@@ -55,16 +55,16 @@ class _ScanSetupCodeScreenState extends State<ScanSetupCodeScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Scan the setup code',
+              title: 'Scan the sign-in code',
               onBack: () => Navigator.pop(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
               child: Text(
                 _notACode
-                    ? "That QR code isn't a rest-mail setup code. Point at "
-                          'the one in the server’s log.'
-                    : 'Point the camera at the QR code in your server’s log.',
+                    ? "That QR code isn't a rest-mail sign-in. Point at the "
+                          'one the installer showed.'
+                    : 'Point the camera at the QR code the installer showed.',
                 style: rmText(15, color: c.ink2, height: 1.45),
               ),
             ),
@@ -81,9 +81,10 @@ class _ScanSetupCodeScreenState extends State<ScanSetupCodeScreen> {
                         error.errorCode ==
                                 MobileScannerErrorCode.permissionDenied
                             ? 'rest-mail needs the camera to scan the code. '
-                                  'Allow it in Settings, or type the code '
+                                  'Allow it in Settings, or type the password '
                                   'instead.'
-                            : "The camera didn't start. Type the code instead.",
+                            : "The camera didn't start. Type the password "
+                                  'instead.',
                         textAlign: TextAlign.center,
                         style: rmText(15, color: c.ink2, height: 1.45),
                       ),

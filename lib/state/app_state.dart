@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 
-import '../util/setup_code.dart';
+import '../util/sign_in_link.dart';
 import '../version.dart';
 import 'mailbox_state.dart';
 import 'settings.dart';
@@ -42,28 +42,29 @@ class AppState extends ChangeNotifier {
   int _sessions = 0;
   bool _signingOut = false;
 
-  SetupCodeScan? _pendingSetup;
+  SignInLink? _pendingSetup;
   String? _lastLink;
 
-  /// A setup link the app was opened with, waiting for the screen on top to
+  /// A sign-in link the app was opened with, waiting for the screen on top to
   /// start setting the server up. [takePendingSetup] hands it over once.
-  SetupCodeScan? get pendingSetup => _pendingSetup;
+  SignInLink? get pendingSetup => _pendingSetup;
 
-  /// Takes a link the app was opened with. A setup link
-  /// (`restmail://setup?token=…`, optionally `&server=…`) waits in
-  /// [pendingSetup]; anything else is ignored. The same link delivered twice
-  /// (at launch, and again by the stream of links) counts once.
+  /// Takes a link the app was opened with. A sign-in link, from the QR code
+  /// the installer showed (`https://rest-mail.com/setup#server=…&username=…`
+  /// `&password=…`), waits in [pendingSetup]; anything else is ignored. The
+  /// same link delivered twice (at launch, and again by the stream of links)
+  /// counts once.
   void openLink(Uri link) {
     final raw = link.toString();
     if (raw == _lastLink) return;
     _lastLink = raw;
-    final scan = SetupCodeScan.parse(raw);
+    final scan = SignInLink.parse(raw);
     if (scan == null) return;
     _pendingSetup = scan;
     notifyListeners();
   }
 
-  SetupCodeScan? takePendingSetup() {
+  SignInLink? takePendingSetup() {
     final scan = _pendingSetup;
     _pendingSetup = null;
     return scan;
