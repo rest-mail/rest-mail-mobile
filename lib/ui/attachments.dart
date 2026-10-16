@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../state/mail_backend.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import 'widgets/common.dart';
@@ -15,7 +16,7 @@ import 'widgets/painters.dart';
 /// the system share sheet, which offers to open, save or send it.
 Future<void> openAttachment(
   BuildContext context,
-  RestmailClient client,
+  MailBackend backend,
   Attachment attachment,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
@@ -33,7 +34,7 @@ Future<void> openAttachment(
       ),
     );
   try {
-    final bytes = await client.downloadAttachment(attachment.id);
+    final bytes = await backend.downloadAttachment(attachment.id);
     final folder = Directory(
       '${(await getTemporaryDirectory()).path}/attachments/${attachment.id}',
     );
@@ -74,11 +75,11 @@ String safeFileName(String name) {
 class AttachmentSummary extends StatelessWidget {
   const AttachmentSummary({
     super.key,
-    required this.client,
+    required this.backend,
     required this.attachments,
   });
 
-  final RestmailClient client;
+  final MailBackend backend;
   final List<Attachment> attachments;
 
   @override
@@ -89,7 +90,7 @@ class AttachmentSummary extends StatelessWidget {
         title: attachment.filename,
         meta:
             '${kindLabel(attachment.contentType)} · ${sizeLabel(attachment.sizeBytes)}',
-        onTap: (context) => openAttachment(context, client, attachment),
+        onTap: (context) => openAttachment(context, backend, attachment),
       );
     }
     return _AttachmentCard(
@@ -99,7 +100,7 @@ class AttachmentSummary extends StatelessWidget {
         context,
         MaterialPageRoute<void>(
           builder: (_) =>
-              AttachmentsScreen(client: client, attachments: attachments),
+              AttachmentsScreen(backend: backend, attachments: attachments),
         ),
       ),
     );
@@ -177,11 +178,11 @@ class _AttachmentCard extends StatelessWidget {
 class AttachmentsScreen extends StatelessWidget {
   const AttachmentsScreen({
     super.key,
-    required this.client,
+    required this.backend,
     required this.attachments,
   });
 
-  final RestmailClient client;
+  final MailBackend backend;
   final List<Attachment> attachments;
 
   @override
@@ -201,7 +202,7 @@ class AttachmentsScreen extends StatelessWidget {
               ),
               itemCount: attachments.length,
               itemBuilder: (context, index) => _AttachmentTile(
-                client: client,
+                backend: backend,
                 attachment: attachments[index],
               ),
             ),
@@ -213,9 +214,9 @@ class AttachmentsScreen extends StatelessWidget {
 }
 
 class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile({required this.client, required this.attachment});
+  const _AttachmentTile({required this.backend, required this.attachment});
 
-  final RestmailClient client;
+  final MailBackend backend;
   final Attachment attachment;
 
   @override
@@ -229,7 +230,7 @@ class _AttachmentTile extends StatelessWidget {
         side: BorderSide(color: c.line),
       ),
       child: InkWell(
-        onTap: () => unawaited(openAttachment(context, client, attachment)),
+        onTap: () => unawaited(openAttachment(context, backend, attachment)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
