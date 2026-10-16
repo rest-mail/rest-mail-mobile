@@ -62,7 +62,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
     final m = widget.mailbox;
     if (m.folder == StandardFolder.drafts || message.isDraft) {
       try {
-        final draft = await m.client.message(message.id);
+        final draft = await m.backend.message(message.id);
         if (!mounted) return;
         await openCompose(context, mailbox: m, seed: draftSeed(draft));
       } on ApiException catch (e) {
@@ -130,7 +130,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
     }
     if (m.messages.isEmpty && error != null) {
       return _Problem(
-        text: describeError(error, host: m.client.server.host),
+        text: describeError(error, host: m.backend.host),
         onRetry: () => unawaited(m.retry()),
       );
     }

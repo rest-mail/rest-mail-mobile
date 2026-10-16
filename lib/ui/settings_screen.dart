@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final account = widget.mailbox.account;
     if (account == null) return;
     try {
-      final quota = await widget.mailbox.client.quota(account.id);
+      final quota = await widget.mailbox.backend.quota(account.id);
       if (mounted) setState(() => _quota = quota);
     } on ApiException {
       // The footer leaves storage out.
@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final app = AppScope.of(context);
     final settings = app.settings;
     final m = widget.mailbox;
-    final host = m.client.server.host;
+    final host = m.backend.host;
     final quota = _quota;
     final signature = settings.signature.trim();
     return ListenableBuilder(
@@ -263,7 +263,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _loadQuota() async {
     try {
-      final quota = await widget.mailbox.client.quota(widget.account.id);
+      final quota = await widget.mailbox.backend.quota(widget.account.id);
       if (mounted) setState(() => _quota = quota);
     } on ApiException {
       // Storage is left off.
@@ -272,7 +272,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _remove() async {
     final account = widget.account;
-    final host = widget.mailbox.client.server.host;
+    final host = widget.mailbox.backend.host;
     final app = AppScope.read(context);
     if (account.isPrimary) {
       final sure = await confirmAction(
@@ -294,7 +294,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (!sure || !mounted) return;
     setState(() => _busy = true);
     try {
-      await widget.mailbox.client.unlinkAccount(account.id);
+      await widget.mailbox.backend.unlinkAccount(account.id);
       await widget.mailbox.reloadAccounts();
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -313,7 +313,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final c = context.rm;
     final account = widget.account;
-    final host = widget.mailbox.client.server.host;
+    final host = widget.mailbox.backend.host;
     final quota = _quota;
     return Scaffold(
       body: SafeArea(
@@ -550,13 +550,13 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
   }
 
   Future<void> _link() async {
-    final host = widget.mailbox.client.server.host;
+    final host = widget.mailbox.backend.host;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final linked = await widget.mailbox.client.linkAccount(
+      final linked = await widget.mailbox.backend.linkAccount(
         address: _email.text.trim(),
         password: _password.text,
       );
@@ -583,7 +583,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final host = widget.mailbox.client.server.host;
+    final host = widget.mailbox.backend.host;
     final error = _error;
     return Scaffold(
       body: SafeArea(

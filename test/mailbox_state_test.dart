@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:restmail/state/mail_backend.dart';
 import 'package:restmail/state/mailbox_state.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -97,7 +98,7 @@ Future<void> _settle() =>
 void main() {
   test('starts on the primary account, rest-mail folders first', () async {
     final server = _Server()..inbox = [_message(1)];
-    final mailbox = MailboxState(server.client);
+    final mailbox = MailboxState(RestBackend(server.client));
     addTearDown(mailbox.dispose);
 
     await mailbox.start();
@@ -115,7 +116,7 @@ void main() {
 
   test('a new message in the folder on screen lands at the top', () async {
     final server = _Server()..inbox = [_message(1)];
-    final mailbox = MailboxState(server.client);
+    final mailbox = MailboxState(RestBackend(server.client));
     addTearDown(mailbox.dispose);
     await mailbox.start();
     await _settle();
@@ -130,7 +131,7 @@ void main() {
 
   test('a message read on another device shows as read here', () async {
     final server = _Server()..inbox = [_message(1)];
-    final mailbox = MailboxState(server.client);
+    final mailbox = MailboxState(RestBackend(server.client));
     addTearDown(mailbox.dispose);
     await mailbox.start();
     await _settle();
@@ -149,7 +150,7 @@ void main() {
     final server = _Server()
       ..inbox = [_message(1)]
       ..refuseDeletes = true;
-    final mailbox = MailboxState(server.client);
+    final mailbox = MailboxState(RestBackend(server.client));
     addTearDown(mailbox.dispose);
     await mailbox.start();
 

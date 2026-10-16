@@ -7,6 +7,7 @@ import 'package:restmail_api/restmail_api.dart';
 
 import '../util/sign_in_link.dart';
 import '../version.dart';
+import 'mail_backend.dart';
 import 'mailbox_state.dart';
 import 'settings.dart';
 import 'storage.dart';
@@ -147,7 +148,7 @@ class AppState extends ChangeNotifier {
       userAgent: userAgent,
     );
     this.client = client;
-    mailbox = MailboxState(client)..start();
+    mailbox = MailboxState(RestBackend(client))..start();
     phase = AppPhase.signedIn;
     _sessions++;
   }

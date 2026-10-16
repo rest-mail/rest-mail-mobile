@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../state/app_scope.dart';
+import '../state/mail_backend.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
@@ -72,7 +73,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
   String? _error;
 
   MailboxState get _mailbox => widget.mailbox;
-  RestmailClient get _client => _mailbox.client;
+  MailBackend get _backend => _mailbox.backend;
   bool get _busy => _sending || _saving;
   bool get _dirty => _snapshot() != _pristine;
 
@@ -159,15 +160,15 @@ class _ComposeSheetState extends State<ComposeSheet> {
     try {
       final draftId = _draftId;
       if (draftId != null && bcc.valid.isEmpty) {
-        await _client.updateDraft(draftId, message);
-        await _client.sendDraft(draftId);
+        await _backend.updateDraft(draftId, message);
+        await _backend.sendDraft(draftId);
       } else {
         // The draft endpoints have no Bcc, so a draft that gained one is
         // sent as a new message and the draft put in Trash.
-        await _client.send(message);
+        await _backend.send(message);
         if (draftId != null) {
           unawaited(
-            _client
+            _backend
                 .deleteMessage(draftId)
                 .then<void>((_) {}, onError: (Object _) {}),
           );
@@ -182,7 +183,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _error = describeError(e, host: _client.server.host);
+        _error = describeError(e, host: _backend.host);
       });
     }
   }
@@ -200,8 +201,8 @@ class _ComposeSheetState extends State<ComposeSheet> {
     try {
       final draftId = _draftId;
       final saved = draftId == null
-          ? await _client.saveDraft(draft)
-          : await _client.updateDraft(draftId, draft);
+          ? await _backend.saveDraft(draft)
+          : await _backend.updateDraft(draftId, draft);
       _draftId = saved.id;
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -212,7 +213,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = describeError(e, host: _client.server.host);
+        _error = describeError(e, host: _backend.host);
       });
     }
   }

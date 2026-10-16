@@ -3,14 +3,16 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import 'mail_backend.dart';
+
 enum LiveStatus { connecting, live, offline }
 
 /// One signed-in session's mail: its accounts, the folder on screen and the
 /// messages in it, kept current by the server's event stream.
 class MailboxState extends ChangeNotifier {
-  MailboxState(this.client);
+  MailboxState(this.backend);
 
-  final RestmailClient client;
+  final MailBackend backend;
 
   List<Account> accounts = const [];
   Account? account;
@@ -44,7 +46,7 @@ class MailboxState extends ChangeNotifier {
 
   Future<void> start() async {
     try {
-      accounts = await client.accounts();
+      accounts = await backend.accounts();
       if (accounts.isEmpty) {
         throw const ApiException(
           0,
@@ -67,7 +69,7 @@ class MailboxState extends ChangeNotifier {
   }
 
   Future<void> reloadAccounts() async {
-    accounts = await client.accounts();
+    accounts = await backend.accounts();
     if (!accounts.any((a) => a.id == account?.id) && accounts.isNotEmpty) {
       await selectAccount(accounts.first);
     }
@@ -104,7 +106,7 @@ class MailboxState extends ChangeNotifier {
     final account = this.account;
     if (account == null) return;
     try {
-      final fresh = await client.folders(account.id);
+      final fresh = await backend.folders(account.id);
       if (account.id != this.account?.id) return;
       folders = sortFolders(fresh);
       _notify();
@@ -126,7 +128,7 @@ class MailboxState extends ChangeNotifier {
     loadingMore = true;
     _notify();
     try {
-      final page = await client.messages(account.id, folder, cursor: cursor);
+      final page = await backend.messages(account.id, folder, cursor: cursor);
       if (generation != _generation) return;
       final known = {for (final m in messages) m.id};
       messages = [
@@ -148,21 +150,21 @@ class MailboxState extends ChangeNotifier {
   Future<void> setRead(Message message, bool read) => _change(
     message,
     message.copyWith(isRead: read),
-    () => client.updateMessage(message.id, isRead: read),
+    () => backend.updateMessage(message.id, isRead: read),
   );
 
   Future<void> setFlagged(Message message, bool flagged) => _change(
     message,
     message.copyWith(isFlagged: flagged),
-    () => client.updateMessage(message.id, isFlagged: flagged),
+    () => backend.updateMessage(message.id, isFlagged: flagged),
   );
 
   Future<void> move(Message message, String to) =>
-      _remove(message, () => client.updateMessage(message.id, folder: to));
+      _remove(message, () => backend.updateMessage(message.id, folder: to));
 
   /// To Trash, or gone for good if it is already there.
   Future<void> delete(Message message) =>
-      _remove(message, () => client.deleteMessage(message.id));
+      _remove(message, () => backend.deleteMessage(message.id));
 
   /// Puts back a message that [move] or [delete] took out of the list.
   void restore(Message message) {
@@ -176,7 +178,7 @@ class MailboxState extends ChangeNotifier {
   /// Undoes a [move], or a [delete] that went to Trash: sends the message
   /// back to the folder it came from and puts it back in the list.
   Future<void> undoRemoval(Message original) async {
-    await client.updateMessage(original.id, folder: original.folder);
+    await backend.updateMessage(original.id, folder: original.folder);
     restore(original);
     unawaited(refreshFolders());
   }
@@ -228,7 +230,7 @@ class MailboxState extends ChangeNotifier {
     error = null;
     _notify();
     try {
-      final page = await client.messages(account.id, folder);
+      final page = await backend.messages(account.id, folder);
       if (generation != _generation) return;
       messages = page.items;
       _cursor = page.cursor;
@@ -251,7 +253,7 @@ class MailboxState extends ChangeNotifier {
     if (account == null) return;
     final generation = _generation;
     try {
-      final page = await client.messages(account.id, folder);
+      final page = await backend.messages(account.id, folder);
       if (generation != _generation) return;
       final fresh = {for (final m in page.items) m.id};
       messages = [
@@ -271,7 +273,7 @@ class MailboxState extends ChangeNotifier {
     final account = this.account;
     if (account == null) return;
     live = LiveStatus.connecting;
-    _events = client
+    _events = backend
         .events(
           account.id,
           onLiveChanged: (up) {

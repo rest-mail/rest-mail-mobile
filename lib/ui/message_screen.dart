@@ -51,7 +51,7 @@ class _MessageScreenState extends State<MessageScreen> {
 
   Future<void> _load() async {
     try {
-      final full = await _mailbox.client.message(widget.message.id);
+      final full = await _mailbox.backend.message(widget.message.id);
       if (!mounted) return;
       setState(() {
         _message = full;
@@ -59,7 +59,7 @@ class _MessageScreenState extends State<MessageScreen> {
       });
       if (!full.isRead) unawaited(_markRead(full));
       if (full.hasAttachments) {
-        final attachments = await _mailbox.client.attachments(full.id);
+        final attachments = await _mailbox.backend.attachments(full.id);
         if (mounted) setState(() => _attachments = attachments);
       }
     } on ApiException catch (e) {
@@ -308,9 +308,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                     )
                   else if (error != null)
-                    ErrorText(
-                      describeError(error, host: _mailbox.client.server.host),
-                    )
+                    ErrorText(describeError(error, host: _mailbox.backend.host))
                   else
                     MessageBody(
                       message: m,
@@ -320,7 +318,7 @@ class _MessageScreenState extends State<MessageScreen> {
                   if (_attachments.isNotEmpty) ...[
                     const SizedBox(height: 26),
                     AttachmentSummary(
-                      client: _mailbox.client,
+                      backend: _mailbox.backend,
                       attachments: _attachments,
                     ),
                   ],

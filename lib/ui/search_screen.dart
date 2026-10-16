@@ -72,7 +72,7 @@ class _SearchScreenState extends State<SearchScreen> {
     });
     final watch = Stopwatch()..start();
     try {
-      final page = await widget.mailbox.client.search(
+      final page = await widget.mailbox.backend.search(
         account.id,
         parseSearch(query),
       );
@@ -228,7 +228,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: ErrorText(
-              describeError(error, host: widget.mailbox.client.server.host),
+              describeError(error, host: widget.mailbox.backend.host),
             ),
           )
         else if (results != null && results.items.isEmpty)
