@@ -7,7 +7,7 @@ publish_to: 'none'
 # it, so every build has its own version and no version comes round twice.
 # Raise MINOR for a release with something new in it; `chore release` tags it
 # (testflight.yml). The rest of this line is what a plain `flutter run` shows.
-version: 0.2.0+1
+version: 0.3.0+1
 
 environment:
   sdk: ^3.13.1
