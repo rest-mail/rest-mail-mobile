@@ -89,9 +89,12 @@ class _AuditScreenState extends State<AuditScreen> {
       body: (_) => AdminListView(
         list: _list,
         host: _host,
-        empty: _outcome == null
-            ? 'Nothing has been recorded yet.'
-            : 'Nothing ${_outcomeLabel(_outcome!).toLowerCase()}.',
+        empty: switch (_outcome) {
+          'denied' => 'Nothing was denied.',
+          'failed' => 'Nothing failed.',
+          'error' => 'The server has had no errors.',
+          _ => 'Nothing has been recorded yet.',
+        },
         header: [
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
@@ -160,13 +163,20 @@ class _ChainResult extends StatelessWidget {
     final text = [
       if (check.ok && check.checked == 0)
         'The chain holds: there is nothing in it yet.'
+      else if (check.ok && check.checked == 1)
+        'The chain holds: its one entry matches its hash.'
       else if (check.ok)
         'The chain holds: all $entries, from ${check.firstSeq} to '
             '${check.lastSeq}, follow one another and match their hashes.'
       else
-        'The chain breaks at entry $broken'
-            '${check.reason.isEmpty ? '' : ': ${check.reason}'}. '
+        [
+          'The chain breaks at entry $broken'
+              '${check.reason.isEmpty ? '' : ': ${check.reason}'}.',
+          if (check.checked == 1)
+            'The entry before it holds.'
+          else if (check.checked > 1)
             'The $entries before it hold.',
+        ].join(' '),
       if (check.note.isNotEmpty) check.note,
     ].join('\n\n');
     return Container(
