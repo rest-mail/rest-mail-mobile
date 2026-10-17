@@ -531,7 +531,7 @@ class SearchQuery {
     'from': ?from,
     if (after case final after?) 'after': after.toUtc().toIso8601String(),
     if (before case final before?) 'before': before.toUtc().toIso8601String(),
-    if (hasAttachment) 'has:attachment': 'true',
+    if (hasAttachment) 'has_attachment': 'true',
   };
 }
 

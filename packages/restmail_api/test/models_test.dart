@@ -103,7 +103,7 @@ void main() {
         text: '  invoice ',
         hasAttachment: true,
       ).toQueryParameters(),
-      {'q': 'invoice', 'has:attachment': 'true'},
+      {'q': 'invoice', 'has_attachment': 'true'},
     );
   });
 

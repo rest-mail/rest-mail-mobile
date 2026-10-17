@@ -964,7 +964,7 @@ class FakeRestmail {
     final text = query['q']?.toLowerCase();
     final from = query['from']?.toLowerCase();
     final folder = query['folder'];
-    final withFiles = query['has:attachment'] == 'true';
+    final withFiles = query['has_attachment'] == 'true';
     final after = DateTime.tryParse(query['after'] ?? '');
     final before = DateTime.tryParse(query['before'] ?? '');
     return (m) =>
