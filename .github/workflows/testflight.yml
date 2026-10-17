@@ -3,13 +3,9 @@ name: TestFlight
 # Builds go to internal testers the moment App Store Connect finishes
 # processing them: internal testing skips review.
 #
-# A release is a tag, and nothing else makes one. release-on-merge.yml tags
-# each commit that lands on main, so every merge reaches testers by itself. For
-# a commit that did not get its tag, the same one can be made by hand, on main:
-#
-#   chore release
-#
-# Either way the tag is vMAJOR.MINOR.<build count>: pubspec.yaml's MAJOR.MINOR,
+# A release is a tag, and only a merge makes one: release-on-merge.yml tags
+# each commit that lands on main, so every merge reaches testers by itself.
+# The tag is vMAJOR.MINOR.<build count>: pubspec.yaml's MAJOR.MINOR,
 # and the number of commits behind it as the patch. The tag is the version
 # testers see, and the build count only goes up, so no version comes round
 # twice.
@@ -184,9 +180,20 @@ jobs:
       - run: flutter pub get
 
       - name: Compile the app, leaving the signing to the archive
+        # The OAuth client IDs are public (they ship inside every copy of the
+        # app), so they are variables, not secrets. Unset, a define is empty
+        # and the build has no Sign in with Microsoft or Google button. The
+        # defines land in ios/Flutter/Generated.xcconfig, which the archive
+        # below reads.
         env:
           VERSION: ${{ needs.gate.outputs.version }}
-        run: flutter build ios --release --no-codesign --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+          MS_CLIENT_ID: ${{ vars.MS_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: >-
+          flutter build ios --release --no-codesign
+          --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+          --dart-define=MS_CLIENT_ID="$MS_CLIENT_ID"
+          --dart-define=GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID"
 
       - name: Point the app's own target at the profile
         # Settings passed to xcodebuild on the command line reach every target in

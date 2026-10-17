@@ -9,24 +9,33 @@ webmail uses, not IMAP.
 
 - Signs in with an email address and password, plus a TOTP or recovery code
   when the account has two-factor authentication. It finds the server from the
-  address's domain, or you can enter the server address yourself.
+  address's domain, or you can enter the server address yourself. There is
+  one sign-in: an administrator is an account like any other.
 - Folders, message lists, reading, reply, reply all, forward, drafts, search
-  and attachments. You can also link other mailboxes on the same server and
-  switch between them.
+  and attachments. An account can create mailboxes it owns, with no password
+  of their own, when it may (`mailboxes:write`), and link other mailboxes on
+  the same server by their password; it switches between them, and sends as
+  each.
 - Several accounts at once, on one server or on several, each with its own
   session. Signing out of one leaves the others signed in.
 - Gmail, iCloud, Yahoo, Fastmail or any other IMAP and SMTP account beside
   the REST Mail ones, signed in with a password or an app password. Gmail is
-  added with an app password, guided step by step.
+  added with an app password, guided step by step. Outlook.com, and work or
+  school accounts on Microsoft 365, sign in with Microsoft, in builds given a
+  Microsoft client ID.
 - Administration of a REST Mail server: the outbound queue, domains and
   each one's DNS check, sender lists and MTA-STS policy, mailboxes, aliases,
-  webmail accounts, administrators and their roles, bans, an overview, the
-  delivery and activity logs, message traces, the pipeline log and its
+  bans, an overview, the delivery log, the activity and audit logs, message
+  traces, the pipeline log and its
   analytics, TLS reports, the audit log and its chain check, DKIM keys,
   certificates, pipelines and custom filters. Each part shows only to a
   session whose capabilities allow it, and its changes only with the
   capability to make them.
 - Live updates over the server's event stream while the app is open.
+- New mail notifications on iPhone, from a REST Mail server that sends
+  them. The server pushes only a signal to fetch; the app fetches the mail
+  over the API and posts the notification itself, so no message passes
+  through Apple. Gmail and other IMAP accounts get none.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
   until you tap Load.
@@ -82,8 +91,20 @@ none of them knows the domain, you type the servers in.
   says so plainly if Gmail answers that it wants one.
 - **iCloud, Yahoo and Fastmail** link to their own instructions for making an
   app password.
-- **Outlook.com** says it needs Microsoft sign-in, which the app doesn't have
-  yet: Microsoft turned off passwords for other mail apps in September 2024.
+- **Outlook.com** signs in with Microsoft, since Microsoft turned off
+  passwords for other mail apps in September 2024. So do work and school
+  accounts whose servers are Microsoft 365's. **Sign in with Microsoft**
+  opens Microsoft's own page in the system browser, which asks for the
+  password and whether REST Mail may read and send the mail; the app never
+  sees the password. A build without a Microsoft client ID (see
+  [Development](#sign-in-with-microsoft-and-google)) shows no button and
+  says Outlook.com needs Microsoft sign-in.
+- **Sign in with Google** sits under Gmail's app-password setup, marked
+  *personal use*. REST Mail's Google client is unverified, so Google warns
+  about it and lets at most 100 people use it: enough for the owner and
+  family. REST Mail won't pay for the security audit Google wants before it
+  lifts that cap (#37), so an app password stays the way in for everyone
+  else. A build without a Google client ID shows only the app password.
 
 **Gmail behaves like Gmail.** The app knows it by its IMAP extensions
 (`X-GM-EXT-1`), not its domain, so Google Workspace addresses count too:
@@ -106,8 +127,14 @@ IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
 that doesn't offer STARTTLS is refused before the password is sent. Nothing
 goes in plaintext, and certificate checks can't be turned off. The password
 is kept in the system keychain with the account, since IMAP and SMTP want it
-each time they connect. While the app is open, IDLE brings new mail in as it
-arrives.
+each time they connect. An account signed in with Microsoft or Google keeps
+no password, only the refresh token they gave it, in the keychain. The
+access token it signs IMAP and SMTP in with (XOAUTH2) is kept in memory and
+renewed before it runs out. If you take REST Mail's access away at Microsoft
+or Google, or change your password there, that account signs out and the
+app asks you to sign in again; the other accounts carry on. Signing out of a
+Google account gives its token back to Google. While the app is open, IDLE
+brings new mail in as it arrives.
 
 </td>
 </tr>
@@ -138,8 +165,9 @@ otherwise. New mail arrives without a refresh.
 
 The menu button opens the drawer. Each folder shows its unread count, and
 Drafts shows how many drafts there are. Folders the server has beyond the
-standard ones, like **Receipts** here, are listed too. Linked mailboxes, then
-any other accounts signed in on the phone, sit as avatars next to the account
+standard ones, like **Receipts** here, are listed too. The account's other
+mailboxes, the ones it created or linked, then any other accounts signed in
+on the phone, sit as avatars next to the account
 at the top; tap one to switch to it. **Settings** is at the bottom.
 
 </td>
@@ -218,31 +246,47 @@ searches. Recent searches are kept only until the app closes.
 
 ### Settings
 
-- **Accounts** lists the account on screen and any linked mailboxes. Tap one
-  to see its display name, server and storage, and to **Sign out**, or
-  **Remove from this session** for a linked mailbox. Signing out ends that
-  account only: its session is removed from the phone, its mail stays on the
-  server, and any other accounts stay signed in.
-- **App passwords**, under the account a REST Mail session signed in with,
-  are for mail apps such as Thunderbird or the iPhone's Mail, and for
-  automations: each signs in to the mailbox with its own password, and can
-  be revoked on its own. The list shows when each was made, last used, and
-  when it expires. Making one asks for the mailbox's password again, as the
-  server requires; a wrong one just asks again. The new app password is
-  shown once, with the settings a mail app needs, and is forgotten when the
-  screen closes. Copying it on iOS keeps it on that iPhone and clears it
-  from the clipboard after two minutes; Android can't do either, so the app
-  says other apps can read it. Revoking one stops it at once, open IMAP
-  sessions included. Servers before REST Mail 0.10.0 have none, and the
-  screen says so.
+- **Accounts** lists the account on screen and the mailboxes it owns, the
+  ones it created or linked. Tap one to see its display name, server and
+  storage, and to **Sign out**, or **Unlink from this account** for one it
+  owns. Signing out ends that account only: its session is removed from the
+  phone, its mail stays on the server, and any other accounts stay signed
+  in.
+- **App passwords**, under each mailbox of a REST Mail account, are for mail
+  apps such as Thunderbird or the iPhone's Mail, and for automations: each
+  signs in to that mailbox with its own password, and can be revoked on its
+  own. A mailbox with no password of its own gets mail-app access this way.
+  An account with two-factor authentication must use one over IMAP and SMTP:
+  its own password is refused there. The list shows when each was made, last
+  used, and when it expires. Making one asks for the signed-in account's
+  password again, as the server requires; a wrong one just asks again. The
+  new app password is shown once, with the settings a mail app needs, and is
+  forgotten when the screen closes. Copying it on iOS keeps it on that
+  iPhone and clears it from the clipboard after two minutes; Android can't
+  do either, so the app says other apps can read it. Revoking one stops it
+  at once, open IMAP sessions included.
+- **Create a mailbox**, for an account that may (`mailboxes:write`), makes a
+  mailbox it owns, with no password of its own, on its own domain or any
+  other the server hosts and the account may see. It shows at once in the
+  drawer and here, and the account reads it and sends as it.
 - **Link another mailbox** adds another mailbox on the same server to this
-  session. An IMAP account is one mailbox, so it has no such row.
+  account, by its password, and its code when it has two-factor
+  authentication. An IMAP account is one mailbox, so it has no such rows.
 - **Other accounts** lists the other accounts signed in on the phone; tap one
   to switch to it. **Add an account** signs in to another, on this server or
   any other, or adds Gmail or other mail over IMAP.
 - **Signature** edits the signature, with a preview and the **Append on
   replies** switch.
 - **Appearance** is **System**, **Light** or **Dark**.
+- **Notifications** turns new mail notifications on and off. It is there
+  only on an iPhone, and only once the server of a signed-in account can
+  send them; the first time, after sign-in, the app explains them and asks
+  before iOS does. The phone is registered with each REST Mail session's
+  server, and taken off it at sign-out. A push says which account has mail
+  and nothing else: the app fetches it over the API, notifies of each new
+  message, leaving out the inbox on screen, and sets the badge to the
+  unread mail in those inboxes. Gmail and other IMAP accounts get no
+  notifications, and the section says so.
 
 Settings are stored only on the device.
 
@@ -254,10 +298,12 @@ Settings are stored only on the device.
 
 ### Administration
 
-**Sign in as an administrator**, under **Add an account**, takes a server,
-an admin username, its password and the code from its authenticator. An
-administrator has no mailbox, so the account opens on **Administration**
-beside the mail accounts.
+An administrator is an account like any other, `admin@example.com` say,
+and signs in through **Add an account**. When its session holds
+capabilities, **Administration** shows in the drawer and in Settings. A
+fresh install's first account, `admin@` its domain, is set up from the app
+with **Set up a new server**, or by scanning the installer's QR code: a new
+password and an authenticator, and then the app opens its mail.
 
 Administration lists only the parts the session's capabilities let it see:
 the **Outbound queue** with `queue:read`, **Domains** with `domains:read`,
@@ -269,7 +315,7 @@ refresh. Hiding is only for comfort: the server checks every request, and
 when it refuses one the app says "You don't have permission for this".
 
 The **Audit log** (`audit:read`) lists every sign-in and change, newest
-first. **Verify chain** has the server check that each entry follows the
+first, and **Activity** shows what of it went through. **Verify chain** has the server check that each entry follows the
 one before and matches its hash, and says where the chain breaks if it
 does. A message in the **Delivery log** opens its **Message trace**: each
 filter it went through and what that filter found. The **Pipeline log**
@@ -325,9 +371,9 @@ flutter run
 with no server anywhere. Sign in as `dana@restmail.test` with the password
 `restmail`; the sign-in screen shows these as well. `SCENARIO=empty`
 starts with no mail. `SCENARIO=twoFactor` asks for the code `123456`. To
-try Administration, **Sign in as an administrator** as `admin`, who may do
-everything, or `queue-watch`, who may only look at the queue; the password
-is `restmail-admin` and the code `123456`. Only debug builds can do this.
+try Administration, sign in as `admin@restmail.test`, who may do
+everything, or `queue@restmail.test`, who may only look at the queue; the
+password is `restmail-admin` and the code `123456`. Only debug builds can do this.
 
 `chore sim:sample` builds the same thing and starts it in the iOS simulator,
 booting one first if none is running, with no terminal left attached. The
@@ -337,6 +383,38 @@ sign-in screen comes up filled in, so it is one tap to the mailbox.
 against the same fake, and saves a picture of each in `build/screens/`.
 The pictures in `media/` are copies of these, used in the walkthrough above.
 Copy them over again when a screen changes.
+
+### Sign in with Microsoft and Google
+
+The OAuth client IDs come from the build, never from the source. Without
+them the app builds and runs as before, with no sign-in buttons:
+
+```sh
+flutter run \
+  --dart-define=MS_CLIENT_ID=<Entra application (client) ID> \
+  --dart-define=GOOGLE_IOS_CLIENT_ID=<id>.apps.googleusercontent.com \
+  --dart-define=GOOGLE_ANDROID_CLIENT_ID=<id>.apps.googleusercontent.com
+```
+
+They are public clients, so an ID is not a secret and there is no client
+secret anywhere: the app proves each sign-in with PKCE. TestFlight builds
+take `MS_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID` from variables in the
+`release` environment (`gh variable set MS_CLIENT_ID --env release`); while
+they are unset, the build has no sign-in buttons. The redirects the
+registrations must list are:
+
+| Provider | Redirect URI |
+|---|---|
+| Microsoft (iOS and Android) | `rest-mail://oauth/microsoft` |
+| Google, iOS client | `com.googleusercontent.apps.<id>:/oauth2redirect`, the iOS client ID reversed |
+| Google, Android client | `com.antimatterstudios.restmail:/oauth2redirect`, with *custom URI scheme* turned on in the client's advanced settings |
+
+`lib/imap/oauth.dart` holds the flow: the PKCE pair, the state check, the
+code exchange and the refresh, over the app's own HTTPS client.
+`flutter_web_auth_2` only shows the provider's page, in
+ASWebAuthenticationSession on iOS and a Custom Tab on Android, and hands
+back the URL it returns to. `test/imap/fake_auth_server.dart` plays the
+provider in the tests.
 
 ### Against a local testbed
 
@@ -370,14 +448,8 @@ A release is a tag, and every merge into `main` makes one:
 as `vMAJOR.MINOR.<build count>`: `pubspec.yaml`'s MAJOR.MINOR, with the number
 of commits behind it as the patch, so 0.2 at 28 commits is v0.2.28. It pushes
 the tag with the token `auto-merge.yml` uses, because a tag pushed with the
-workflow's own token would start no build. For a commit that did not get its
-tag, make the same one by hand, on an up-to-date `main`:
-
-```sh
-chore release
-```
-
-If the commit is tagged already, it says so and stops.
+workflow's own token would start no build. Releases happen only this way: if
+a commit did not get its tag, re-run that workflow's job.
 
 `.github/workflows/testflight.yml` builds the tag as 0.2.28 (28), signs it, hands
 it to App Store Connect — internal testers have it as soon as processing
@@ -413,10 +485,12 @@ under Apple Developer team `43UMKXZ8P4`.
 
 ## Not yet
 
-- Notifications while the app is closed. The server needs to push through
-  APNs and FCM first. For IMAP accounts they need something server-side too.
-- Sign in with Google or Microsoft (#37). Creating a Gmail label from the
-  app.
+- Notifications on Android, which needs FCM, and for IMAP accounts, which
+  need something server-side. On iPhone they need a server that pushes
+  through APNs (rest-mail-mobile#8).
+- Sign in with Microsoft and Google in the TestFlight builds: they wait for
+  the app's registrations at Microsoft and Google, and their client IDs in
+  the `release` environment (#37). Creating a Gmail label from the app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
 - Editing a pipeline's filters or a custom filter, and making new ones.

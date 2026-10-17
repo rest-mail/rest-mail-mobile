@@ -8,11 +8,10 @@ import 'package:restmail_fake/restmail_fake.dart' show FakeAccounts;
 import '../imap/mail_settings.dart';
 import '../sample_mode.dart';
 import '../state/app_scope.dart';
-import '../state/app_state.dart';
 import '../theme/tokens.dart';
-import 'admin_sign_in_screen.dart';
 import 'imap_account_screen.dart';
 import 'server_screen.dart';
+import 'server_setup_screen.dart';
 import 'widgets/common.dart';
 
 enum _Discovery { idle, searching, found, notFound }
@@ -173,21 +172,18 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     ),
   );
 
-  /// An administrator signs in with a username, on the server found or
-  /// chosen here, else the one on screen.
-  void _administrator() {
-    final current = AppScope.read(context).current;
-    unawaited(
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => AdminSignInScreen(
-            server: _server ?? (current is RestAccount ? current.server : null),
-          ),
-        ),
+  /// An account still in setup, a fresh install's first one, finishes it
+  /// there: a new password and an authenticator, then its mail.
+  Future<void> _finishSetup(Uri server) => Navigator.pushReplacement(
+    context,
+    MaterialPageRoute<void>(
+      builder: (_) => ServerSetupScreen(
+        server: server,
+        address: _email.text.trim(),
+        password: _password.text,
       ),
-    );
-  }
+    ),
+  );
 
   Future<void> _continue() async {
     if (_provider != null) return _otherMail();
@@ -217,6 +213,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       _codeFocus.requestFocus();
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'setup_required') return _finishSetup(server);
       setState(() {
         _busy = false;
         _error = e.code == 'unauthorized'
@@ -394,19 +391,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         ),
                       ),
                     ),
-                    Center(
-                      child: TextButton(
-                        onPressed: _administrator,
-                        child: Text(
-                          'Sign in as an administrator',
-                          style: rmText(
-                            14,
-                            color: c.accent,
-                            weight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -420,11 +404,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   Widget? _serverCard(RmColors c) {
     final provider = _provider;
     if (provider != null) {
+      final microsoft = AppScope.read(context).oauth.microsoft != null;
+      final blocked = provider.needsMicrosoftSignIn && !microsoft;
       return _Card(
-        tone: provider.needsMicrosoftSignIn ? _Tone.missing : _Tone.good,
+        tone: blocked ? _Tone.missing : _Tone.good,
         title: provider.name,
-        detail: provider.needsMicrosoftSignIn
+        detail: blocked
             ? "Needs Sign in with Microsoft, which REST Mail doesn't have yet."
+            : provider.needsMicrosoftSignIn
+            ? 'Added over IMAP and SMTP, signed in with Microsoft. Continue to '
+                  'set it up.'
             : provider.usesAppPassword
             ? 'Added over IMAP and SMTP, with an app password. Continue to '
                   'set it up.'

@@ -277,24 +277,21 @@ void main() {
     test(
       'a 401 that survives a fresh token is the request’s own refusal',
       () async {
-        // Linking a mailbox with the wrong password answers 401 as well; that
-        // must not be taken for the end of the session.
+        // The renewal worked, so the session goes on: the 401 is reported
+        // like any other error, not taken for the end of the session.
         final client = RestmailClient(
           server: _server,
           tokens: _tokens('1'),
           httpClient: MockClient((request) async {
             if (_isRefresh(request)) return _signedIn('2');
             return _json({
-              'error': {
-                'code': 'unauthorized',
-                'message': 'Invalid email or password',
-              },
+              'error': {'code': 'unauthorized', 'message': 'Not for you'},
             }, status: 401);
           }),
         );
 
         await expectLater(
-          client.linkAccount(address: 'other@example.test', password: 'wrong'),
+          client.accounts(),
           throwsA(
             isA<ApiException>()
                 .having(
@@ -302,11 +299,7 @@ void main() {
                   'ends the session',
                   isFalse,
                 )
-                .having(
-                  (e) => e.message,
-                  'message',
-                  'Invalid email or password',
-                ),
+                .having((e) => e.message, 'message', 'Not for you'),
           ),
         );
         expect(client.tokens?.accessToken, 'access-2');
@@ -437,6 +430,165 @@ void main() {
     });
   });
 
+  group('accounts', () {
+    test('lists accounts by id, the mailbox id, own first', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json({
+            'data': [
+              {
+                'id': 4,
+                'address': 'admin@example.test',
+                'display_name': 'Admin',
+                'is_primary': true,
+              },
+              {
+                'id': 9,
+                'address': 'chris@example.test',
+                'display_name': '',
+                'is_primary': false,
+              },
+            ],
+          }),
+        ),
+      );
+      final accounts = await client.accounts();
+      expect([for (final a in accounts) a.id], [4, 9]);
+      expect(accounts.first.isPrimary, isTrue);
+      expect(accounts.last.label, 'chris@example.test');
+    });
+
+    test('creates an account with no password, owned by this one', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {
+              'id': 9,
+              'address': 'chris@example.test',
+              'display_name': 'Chris',
+              'is_primary': false,
+            },
+          }, status: 201);
+        }),
+      );
+      final created = await client.createAccount(
+        address: 'chris@example.test',
+        displayName: 'Chris',
+      );
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/v1/accounts');
+      expect(jsonDecode(sent.body), {
+        'address': 'chris@example.test',
+        'display_name': 'Chris',
+      });
+      expect(created.id, 9);
+      expect(created.isPrimary, isFalse);
+    });
+
+    test('links by password, at /accounts/link, asking for the code when the '
+        'account has two-factor authentication', () async {
+      final bodies = <Map<String, dynamic>>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/accounts/link');
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          bodies.add(body);
+          if (body['totp_code'] == null) {
+            return _json({
+              'error': {
+                'code': 'totp_required',
+                'message': 'That account has two-factor authentication',
+              },
+            }, status: 403);
+          }
+          return _json({
+            'data': {
+              'id': 5,
+              'address': 'other@example.test',
+              'display_name': '',
+              'is_primary': false,
+            },
+          }, status: 201);
+        }),
+      );
+
+      await expectLater(
+        client.linkAccount(address: 'other@example.test', password: 'pw'),
+        throwsA(
+          isA<TotpRequiredException>().having(
+            (e) => e.statusCode,
+            'status',
+            403,
+          ),
+        ),
+      );
+      // Its own refusal: the session is not renewed for it.
+      expect(client.tokens?.accessToken, 'access-1');
+      final linked = await client.linkAccount(
+        address: 'other@example.test',
+        password: 'pw',
+        totpCode: '123456',
+      );
+      expect(linked.id, 5);
+      expect(bodies, [
+        {'address': 'other@example.test', 'password': 'pw'},
+        {
+          'address': 'other@example.test',
+          'password': 'pw',
+          'totp_code': '123456',
+        },
+      ]);
+    });
+
+    for (final (code, message) in [
+      ('invalid_credentials', 'Invalid email or password'),
+      ('totp_required', 'That account has two-factor authentication'),
+      ('invalid_totp', 'Invalid two-factor authentication code'),
+    ]) {
+      test('a refused link, $code, is sent once and leaves the session as it '
+          'was', () async {
+        // 403, not 401: the secrets were the other account's. Renewing the
+        // session and sending them again would spend a refresh token and
+        // count twice against the sign-in throttle.
+        var sent = 0;
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          httpClient: MockClient((request) async {
+            if (_isRefresh(request)) fail('renewed the session');
+            sent++;
+            return _json({
+              'error': {'code': code, 'message': message},
+            }, status: 403);
+          }),
+        );
+
+        await expectLater(
+          client.linkAccount(
+            address: 'other@example.test',
+            password: 'pw',
+            totpCode: code == 'invalid_totp' ? '000000' : null,
+          ),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'status', 403)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+        expect(sent, 1);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
+  });
+
   group('app passwords', () {
     const secret =
         'rm_7Kq2xT9bLm4P_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
@@ -525,7 +677,7 @@ void main() {
             if (_isRefresh(request)) return _signedIn('2');
             return _json({
               'error': {'code': code, 'message': 'The password is incorrect'},
-            }, status: 401);
+            }, status: 403);
           }),
         );
 
@@ -533,7 +685,7 @@ void main() {
           client.createAppPassword(7, name: 'Mail', password: 'wrong'),
           throwsA(
             isA<ApiException>()
-                .having((e) => e.statusCode, 'statusCode', 401)
+                .having((e) => e.statusCode, 'statusCode', 403)
                 .having((e) => e.code, 'code', code),
           ),
         );
@@ -634,6 +786,84 @@ void main() {
     });
   });
 
+  group('push devices', () {
+    test('lists, registers and removes this session\'s devices', () async {
+      final sent = <http.Request>[];
+      const device = {
+        'id': 'd-1',
+        'platform': 'apns',
+        'environment': 'production',
+        'created_at': '2026-10-17T09:00:00Z',
+      };
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent.add(request);
+          return switch (request.method) {
+            'GET' => _json({
+              'data': {
+                'platforms': ['apns'],
+                'devices': [device],
+              },
+            }),
+            'POST' => _json({'data': device}, status: 201),
+            _ => http.Response('', 204),
+          };
+        }),
+      );
+
+      final listed = await client.pushDevices();
+      final registered = await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: 'ab12',
+        environment: ApnsEnvironment.production,
+        appId: 'com.antimatterstudios.restmail',
+      );
+      await client.removePushDevice(registered.id);
+
+      expect(listed.supports(PushPlatform.apns), isTrue);
+      expect(listed.supports(PushPlatform.fcm), isFalse);
+      expect(listed.devices.single.id, 'd-1');
+      expect(registered.environment, 'production');
+      expect(registered.createdAt?.toUtc(), DateTime.utc(2026, 10, 17, 9));
+      expect(
+        [for (final r in sent) '${r.method} ${r.url.path}'],
+        [
+          'GET /api/v1/devices',
+          'POST /api/v1/devices',
+          'DELETE /api/v1/devices/d-1',
+        ],
+      );
+      expect(jsonDecode(sent[1].body), {
+        'platform': 'apns',
+        'token': 'ab12',
+        'environment': 'production',
+        'app_id': 'com.antimatterstudios.restmail',
+      });
+      expect(sent[1].headers['authorization'], 'Bearer access-1');
+    });
+
+    test('a server without push answers 404, as an ApiException', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => http.Response('404 page not found\n', 404),
+        ),
+      );
+
+      await expectLater(
+        client.pushDevices(),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+    });
+
+    test('a numeric device id is read as a string', () {
+      expect(PushDevice.fromJson({'id': 12, 'platform': 'apns'}).id, '12');
+    });
+  });
+
   group('events', () {
     test('delivers events and resumes from the last id after a drop', () async {
       final lastEventIds = <String?>[];
@@ -709,7 +939,11 @@ void main() {
             return _json({
               'data': {
                 'expires_in': 900,
-                'user': {'id': 1, 'email': 'ops', 'display_name': 'ops'},
+                'user': {
+                  'id': 1,
+                  'email': 'ops@mail.example.test',
+                  'display_name': 'Ops',
+                },
                 'capabilities': ['queue:read', 'queue:manage'],
                 'access_token': 'access-1',
                 'refresh_token': 'refresh-1',
@@ -720,16 +954,45 @@ void main() {
         }),
       );
 
-      final admin = await client.signInAdmin(
-        username: 'ops',
+      final admin = await client.login(
+        email: 'ops@mail.example.test',
         password: 'pw',
         totpCode: '123456',
       );
-      expect(admin.capabilities.names, {'queue:read', 'queue:manage'});
-      expect(client.tokens!.capabilities, admin.capabilities);
+      expect(admin.isSetUp, isTrue);
+      expect(admin.tokens.capabilities.names, {'queue:read', 'queue:manage'});
+      expect(client.tokens!.capabilities, admin.tokens.capabilities);
 
       await client.refresh();
       expect(changes.last!.capabilities.names, {'queue:read'});
+    });
+
+    test('an account in setup is signed in, and says what it owes', () async {
+      final client = RestmailClient(
+        server: _server,
+        httpClient: MockClient(
+          (_) async => _json({
+            'data': {
+              'expires_in': 900,
+              'user': {
+                'id': 1,
+                'email': 'admin@mail.example.test',
+                'display_name': '',
+              },
+              'setup_required': ['password', 'two_factor'],
+              'access_token': 'access-1',
+              'refresh_token': 'refresh-1',
+            },
+          }),
+        ),
+      );
+      final result = await client.login(
+        email: 'admin@mail.example.test',
+        password: 'from-the-deploy',
+      );
+      expect(result.isSetUp, isFalse);
+      expect(result.setupRequired, [SetupStep.password, SetupStep.twoFactor]);
+      expect(result.tokens.capabilities.isEmpty, isTrue);
     });
 
     test('reads the queue page and the domain list as the server sends '

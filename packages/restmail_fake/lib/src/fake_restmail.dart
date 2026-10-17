@@ -10,7 +10,8 @@ import 'sample_mail.dart';
 
 /// Ready-made states for a fake to start in.
 enum FakeScenario {
-  /// Dana's mailbox with a week of mail, and a second one she can link.
+  /// Dana's mailbox with a week of mail, a second one she can link, and
+  /// the server's administrator, [FakeAccounts.adminEmail].
   sample,
 
   /// The same two mailboxes with nothing in them.
@@ -19,9 +20,10 @@ enum FakeScenario {
   /// The sample, with Dana's sign-in behind two-factor authentication.
   twoFactor,
 
-  /// A server just installed: no domain, no mailbox, and only its bootstrap
-  /// admin, who must set a new password and enroll an authenticator before
-  /// the admin API answers anything else.
+  /// A server just installed: only its bootstrap account,
+  /// [FakeAccounts.adminEmail], and its domain. The account must set a new
+  /// password and enroll an authenticator before the server answers it
+  /// anything else.
   freshInstall,
 }
 
@@ -44,7 +46,7 @@ class FakeRestmail {
     this.host = FakeAccounts.host,
     this.accessTokenLifetime = const Duration(minutes: 15),
     this.latency = Duration.zero,
-    this.appPasswords = true,
+    this.pushPlatforms = const {'apns'},
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     _load();
@@ -63,9 +65,10 @@ class FakeRestmail {
   /// A pause before every answer, for a slow network.
   final Duration latency;
 
-  /// False to act like a server from before app passwords (REST Mail
-  /// 0.10.0), which has no route for them.
-  final bool appPasswords;
+  /// The services the fake is set up to push through. Empty to act like a
+  /// server with no APNs or FCM credentials set, which answers 404 on the
+  /// devices routes.
+  final Set<String> pushPlatforms;
   final DateTime Function() _clock;
 
   /// False to act like a server that cannot be reached.
@@ -85,25 +88,24 @@ class FakeRestmail {
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
   final _senderRules = <int, FakeSenderRule>{};
-  final _webmailAccounts = <int, FakeWebmailAccount>{};
   final _audit = <FakeAuditEntry>[];
+
+  /// The owner grants: by account, the accounts it created or linked.
+  final _owned = <int, Set<int>>{};
 
   /// Read-only records, kept as the server answers them: newest first, and
   /// traces by the message they are for. [_traceLog] has every trace, those
   /// of mail that never became a message too.
-  final _activity = <Map<String, Object?>>[];
   final _tlsReports = <Map<String, Object?>>[];
   final _traces = <int, Map<String, Object?>>{};
   final _traceLog = <Map<String, Object?>>[];
-  final _admins = <String, _FakeAdmin>{};
-  final _adminAccessTokens = <String, _AdminGrant>{};
-  final _adminRefreshTokens = <String, _FakeAdmin>{};
   final _appPasswords = <int, FakeAppPassword>{};
+  final _devices = <String, (FakePushDevice, _Session)>{};
+  final _pushes = <FakePush>[];
   var _nextId = 1;
   var _nextMailboxId = 1;
 
-  /// For domains, aliases, queue entries, admins and the other admin
-  /// records.
+  /// For domains, aliases, queue entries and the other admin records.
   var _nextRowId = 1;
   var _nextEventId = 0;
   var _nextToken = 0;
@@ -157,22 +159,13 @@ class FakeRestmail {
     _accessTokens.updateAll(
       (_, grant) => _Grant(grant.session, past, grant.capabilities),
     );
-    _adminAccessTokens.updateAll(
-      (_, grant) => _AdminGrant(
-        grant.admin,
-        setup: grant.setup,
-        capabilities: grant.capabilities,
-        expiresAt: past,
-      ),
-    );
   }
 
   /// Ends every session: the next refresh is refused.
   void revokeSessions() {
     _accessTokens.clear();
     _refreshTokens.clear();
-    _adminAccessTokens.clear();
-    _adminRefreshTokens.clear();
+    _devices.clear();
   }
 
   /// Ends the sessions signed in as [address] only; the rest carry on.
@@ -181,93 +174,62 @@ class FakeRestmail {
     if (box == null) return;
     _accessTokens.removeWhere((_, grant) => grant.session.primary == box.id);
     _refreshTokens.removeWhere((_, session) => session.primary == box.id);
+    _devices.removeWhere((_, entry) => entry.$2.primary == box.id);
   }
 
-  /// The first admin's password as it stands, for a test to check a change.
-  String? get adminPassword => _admins.values.firstOrNull?.password;
+  /// [address]'s password as it stands, for a test to check a change; null
+  /// for an account with none.
+  String? passwordOf(String address) => _mailboxAt(address)?.password;
 
-  /// The first admin's username, once there is one.
-  String? get adminUsername => _admins.values.firstOrNull?.username;
-
-  /// Adds an admin user who is set up already, with an authenticator that
-  /// shows [FakeAccounts.totpCode]. Its role is the one that grants exactly
-  /// [capabilities], made for it if there is none.
-  void addAdmin(
-    String username, {
-    String password = FakeAccounts.adminPassword,
-    Set<String> capabilities = const {'*'},
+  /// Adds an account on [host]'s domain, or another, that is set up
+  /// already: with [capabilities] it is an administrator, and with
+  /// [twoFactor] signing in takes [FakeAccounts.totpCode] too.
+  void addAccount(
+    String address, {
+    String? password = FakeAccounts.adminPassword,
+    Set<String> capabilities = const {},
+    bool twoFactor = true,
+    String name = '',
   }) {
-    final role = _roleGranting(capabilities);
-    _admins[username] =
-        _FakeAdmin(
-            _nextRowId++,
-            username,
-            password,
-            capabilities: {...capabilities},
-          )
-          ..roles = {role.id}
-          ..setUp();
+    _addMailbox(
+      address,
+      name,
+      password: password,
+      twoFactor: twoFactor,
+    ).capabilities = {
+      ...capabilities,
+    };
   }
 
-  /// The roles the real server seeds, and any [addAdmin] made.
-  static const _seededRoles = [
-    (1, 'superadmin', 'Everything', {'*'}),
-    (
-      2,
-      'admin',
-      'Runs the mail: domains, mailboxes, queue, bans and pipelines',
-      {
-        'domains:read', 'domains:write', 'domains:delete', //
-        'mailboxes:read', 'mailboxes:write', 'mailboxes:delete',
-        'queue:read', 'queue:manage', 'bans:read', 'bans:write',
-        'bans:delete', 'pipelines:read', 'pipelines:write',
-        'pipelines:delete', 'messages:read', 'observability:read',
-        'audit:read',
-      },
-    ),
-    (
-      3,
-      'readonly',
-      'Sees everything, changes nothing',
-      {
-        'domains:read', 'mailboxes:read', 'users:read', 'queue:read', //
-        'bans:read', 'pipelines:read', 'messages:read',
-        'observability:read',
-      },
-    ),
-  ];
-  final _roles = <int, _FakeRole>{
-    for (final (id, name, description, capabilities) in _seededRoles)
-      id: _FakeRole(id, name, description, capabilities, system: true),
+  /// What the `admin` role carries, as the real server seeds it: everything
+  /// but the people who run the server.
+  static const adminRole = {
+    'domains:read', 'domains:write', 'domains:delete', //
+    'mailboxes:read', 'mailboxes:write', 'mailboxes:delete',
+    'queue:read', 'queue:manage', 'bans:read', 'bans:write',
+    'bans:delete', 'pipelines:read', 'pipelines:write',
+    'pipelines:delete', 'messages:read', 'observability:read',
+    'audit:read',
   };
 
-  /// The role that grants exactly [capabilities], named after them if it has
-  /// to be made.
-  _FakeRole _roleGranting(Set<String> capabilities) {
-    for (final role in _roles.values) {
-      if (role.capabilities.length == capabilities.length &&
-          role.capabilities.containsAll(capabilities)) {
-        return role;
-      }
+  /// Changes what [address] may do on the admin API, as a change of its
+  /// grants on the server does. An access token keeps the capabilities it
+  /// was minted with, for the app to show; the session gets the new ones
+  /// when it next refreshes. Creating an account reads them as they are.
+  void grant(String address, Set<String> capabilities) {
+    final box = _mailboxAt(address);
+    if (box == null) {
+      throw ArgumentError.value(address, 'address', 'No such account');
     }
-    final id = _roles.keys.reduce(max) + 1;
-    final names = [...capabilities]..sort();
-    return _roles[id] = _FakeRole(id, names.join(' '), '', {...capabilities});
+    box.capabilities = {...capabilities};
   }
 
-  /// Changes what [who], an admin's username or a mailbox's address, may do
-  /// on the admin API, as a change of roles on the server does. As there, an
-  /// access token keeps the capabilities it was minted with; the session
-  /// gets the new ones when it next refreshes.
-  void grant(String who, Set<String> capabilities) {
-    if (_admins[who] case final admin?) {
-      admin.capabilities = {...capabilities};
-    } else if (_mailboxAt(who) case final box?) {
-      box.capabilities = {...capabilities};
-    } else {
-      throw ArgumentError.value(who, 'who', 'No such admin or mailbox');
-    }
-  }
+  /// The addresses [owner] holds the owner grant on: the accounts it
+  /// created or linked.
+  List<String> ownedBy(String owner) => [
+    for (final id in _owned[_mailboxAt(owner)?.id] ?? const <int>{})
+      ?_mailboxes[id]?.address,
+  ];
 
   /// Whether a mailbox exists, for a test to check onboarding created it.
   bool hasMailbox(String address) => _mailboxAt(address) != null;
@@ -281,7 +243,6 @@ class FakeRestmail {
   List<FakePipeline> get pipelines => [..._pipelines.values];
   List<FakeCustomFilter> get customFilters => [..._customFilters.values];
   List<FakeSenderRule> get senderRules => [..._senderRules.values];
-  List<FakeWebmailAccount> get webmailAccounts => [..._webmailAccounts.values];
 
   /// The audit log, oldest first.
   List<FakeAuditEntry> get auditLog => [..._audit];
@@ -291,12 +252,6 @@ class FakeRestmail {
   void tamperWithAudit(int seq) =>
       _audit.firstWhere((e) => e.seq == seq).actorName = 'nobody';
 
-  /// The names of an admin's roles, for a test to check a change.
-  List<String> rolesOf(String username) => [
-    for (final id in _admins[username]?.roles ?? const <int>{})
-      ?_roles[id]?.name,
-  ];
-
   /// A mailbox's app passwords, revoked ones included, for a test to check.
   List<FakeAppPassword> appPasswordsOf(String address) {
     final box = _mailboxAt(address);
@@ -305,6 +260,18 @@ class FakeRestmail {
         if (p.mailboxId == box?.id) p,
     ];
   }
+
+  /// The phones registered for push by sessions signed in as [address].
+  List<FakePushDevice> devicesOf(String address) {
+    final box = _mailboxAt(address);
+    return [
+      for (final (device, _) in _devices.values)
+        if (device.mailboxId == box?.id) device,
+    ];
+  }
+
+  /// Every push the fake would have sent, oldest first.
+  List<FakePush> get pushes => [..._pushes];
 
   /// Whether a mail client signing in to [address] with [password] would be
   /// let in now, as the gateways ask the real server: an app password of
@@ -384,18 +351,23 @@ class FakeRestmail {
         });
       case ('POST', ['api', 'v1', 'auth', 'login']):
         final body = _object(bytes);
-        final admin = body.containsKey('username');
+        final email = '${body['email'] ?? ''}';
         return _audited(
           request,
           'auth.sign_in',
-          actorKind: admin ? 'admin' : 'mailbox',
-          actorName: '${body[admin ? 'username' : 'email']}',
-          () => admin ? _adminLogin(body) : _login(body),
+          actorKind: 'account',
+          actorName: email,
+          actorId: _mailboxAt(email)?.id,
+          () => _login(body),
         );
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'logout']):
-        _refreshTokens.remove(_object(bytes)['refresh_token']);
+        // As on the server, the session's push devices end with it.
+        if (_refreshTokens.remove(_object(bytes)['refresh_token'])
+            case final session?) {
+          _forgetDevices(session);
+        }
         return _noContent();
     }
 
@@ -406,37 +378,24 @@ class FakeRestmail {
           : method == 'GET'
           ? null
           : 'admin.change';
-      final token = _bearer(request);
-      final admin = _adminAccessTokens[token]?.admin;
-      final box = _mailboxes[_accessTokens[token]?.session.primary];
+      final box = _mailboxes[_accessTokens[_bearer(request)]?.session.primary];
       return action == null
           ? _adminApi(request, method, rest, bytes)
           : _audited(
               request,
               action,
-              actorKind: admin != null
-                  ? 'admin'
-                  : box != null
-                  ? 'mailbox'
-                  : 'anonymous',
-              actorName: admin?.username ?? box?.address ?? '',
-              actorId: admin?.id ?? box?.id,
+              actorKind: box != null ? 'account' : 'anonymous',
+              actorName: box?.address ?? '',
+              actorId: box?.id,
               () => _adminApi(request, method, rest, bytes),
             );
     }
-    if (_adminSelf(request, method, path, bytes) case final response?) {
+    if (_setup(request, method, path, bytes) case final response?) {
       return response;
     }
-    // A server from before app passwords: its router has no such route,
-    // and says so in plain text, before any check of the session.
-    if (path case [
-      'api',
-      'v1',
-      'accounts',
-      _,
-      'credentials',
-      ...,
-    ] when !appPasswords) {
+
+    // Nor has a server without push any route for devices.
+    if (path case ['api', 'v1', 'devices', ...] when pushPlatforms.isEmpty) {
       return http.StreamedResponse(
         Stream.value(utf8.encode('404 page not found\n')),
         404,
@@ -448,13 +407,22 @@ class FakeRestmail {
     final query = request.url.queryParameters;
     return switch ((method, path)) {
       ('GET', ['api', 'v1', 'accounts']) => _json({
-        'data': [for (final id in session.mailboxes) _account(id, session)],
+        'data': [for (final id in _reach(session)) _account(id, session)],
       }),
-      ('POST', ['api', 'v1', 'accounts']) => _link(session, _object(bytes)),
-      ('DELETE', ['api', 'v1', 'accounts', final id]) => _unlink(
+      // Recorded in the audit log, refused ones too, as the server does.
+      ('POST', ['api', 'v1', 'accounts']) => _auditedBy(
+        request,
         session,
-        _own(session, id),
+        'accounts.create',
+        () => _createAccount(session, _object(bytes)),
       ),
+      ('POST', ['api', 'v1', 'accounts', 'link']) => _auditedBy(
+        request,
+        session,
+        'accounts.link',
+        () => _link(session, _object(bytes)),
+      ),
+      ('DELETE', ['api', 'v1', 'accounts', final id]) => _unlink(session, id),
       ('GET', ['api', 'v1', 'accounts', final id, 'folders']) => _folders(
         _own(session, id),
       ),
@@ -483,7 +451,7 @@ class FakeRestmail {
         _own(session, id),
       ),
       ('GET', ['api', 'v1', 'accounts', final id, 'credentials']) =>
-        _listAppPasswords(_primary(session, id)),
+        _listAppPasswords(_manageable(session, id)),
       // Recorded in the audit log, refused ones too, as the server does.
       ('POST', ['api', 'v1', 'accounts', final id, 'credentials']) =>
         _auditedBy(
@@ -500,8 +468,17 @@ class FakeRestmail {
           request,
           session,
           'credentials.revoke',
-          () => _revokeAppPassword(_primary(session, id), credential),
+          () => _revokeAppPassword(_manageable(session, id), credential),
         ),
+      ('GET', ['api', 'v1', 'devices']) => _listDevices(session),
+      ('POST', ['api', 'v1', 'devices']) => _registerDevice(
+        session,
+        _object(bytes),
+      ),
+      ('DELETE', ['api', 'v1', 'devices', final id]) => _removeDevice(
+        session,
+        id,
+      ),
       ('POST', ['api', 'v1', 'messages', 'send']) => _send(
         session,
         _object(bytes),
@@ -540,8 +517,20 @@ class FakeRestmail {
 
   http.StreamedResponse _login(Map<String, dynamic> body) {
     _spendSignInBudget();
-    final box = _mailboxAt(body['email'] as String? ?? '');
-    if (box == null || body['password'] != box.password) {
+    // There is no username: an account signs in by its address.
+    if (body['email'] is! String) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'email': 'required'},
+      );
+    }
+    final box = _mailboxAt(body['email'] as String);
+    // An account with no password is answered as a wrong password.
+    if (box == null ||
+        box.password == null ||
+        body['password'] != box.password) {
       _fail(401, 'unauthorized', 'Invalid email or password');
     }
     if (!box.active) _fail(401, 'unauthorized', 'Account is disabled');
@@ -555,8 +544,6 @@ class FakeRestmail {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
     }
-    // As on the server, a mailbox's first sign-in makes its webmail account.
-    _webmailAccountOf(box);
     // The real server marks a session that took the second factor, and a
     // refresh keeps the mark; making an app password asks for it.
     return _issue(
@@ -575,7 +562,7 @@ class FakeRestmail {
     request,
     action,
     answer,
-    actorKind: 'mailbox',
+    actorKind: 'account',
     actorName: _mailboxes[session.primary]!.address,
     actorId: session.primary,
   );
@@ -607,9 +594,6 @@ class FakeRestmail {
   /// refresh token sent in the body is a native client's, and so is the
   /// answer.
   http.StreamedResponse _refresh(Map<String, dynamic> body) {
-    if (_adminRefreshTokens.remove(body['refresh_token']) case final admin?) {
-      return _issueAdmin(admin);
-    }
     final session = _refreshTokens.remove(body['refresh_token']);
     if (session == null) _fail(401, 'unauthorized', 'Invalid refresh token');
     return _issue(session, native: true);
@@ -617,11 +601,14 @@ class FakeRestmail {
 
   /// Hands out a new pair. Only a native client gets it in the body; a login
   /// that does not say `"client": "native"` is a browser's, which the real
-  /// server answers with cookies, so here it gets no tokens at all.
+  /// server answers with cookies, so here it gets no tokens at all. The
+  /// capabilities are the account's grants as they are now; an account in
+  /// setup holds none, and says what it owes.
   http.StreamedResponse _issue(_Session session, {required bool native}) {
     final access = _token('access'), refresh = _token('refresh');
     final user = _mailboxes[session.primary]!;
-    final capabilities = {...user.capabilities};
+    final setup = user.setupRequired;
+    final capabilities = setup.isEmpty ? {...user.capabilities} : <String>{};
     _accessTokens[access] = _Grant(
       session,
       _clock().add(accessTokenLifetime),
@@ -637,6 +624,7 @@ class FakeRestmail {
           'display_name': user.displayName,
         },
         if (capabilities.isNotEmpty) 'capabilities': [...capabilities],
+        if (setup.isNotEmpty) 'setup_required': setup,
         if (native) ...{
           'access_token': access,
           'refresh_token': refresh,
@@ -646,16 +634,33 @@ class FakeRestmail {
     });
   }
 
+  /// The session of the request's access token. One whose account is in
+  /// setup reaches nothing but the setup ([_setup]).
   _Session _authenticate(http.BaseRequest request) {
-    final header = request.headers['authorization'] ?? '';
-    final grant = header.startsWith('Bearer ')
-        ? _accessTokens[header.substring('Bearer '.length)]
-        : null;
+    final session = _sessionOf(request);
+    if (_mailboxes[session.primary]!.setupRequired.isNotEmpty) {
+      _fail(403, 'setup_required', 'Finish setting up this account first');
+    }
+    return session;
+  }
+
+  _Session _sessionOf(http.BaseRequest request) {
+    final grant = _accessTokens[_bearer(request)];
     if (grant == null || !_clock().isBefore(grant.expiresAt)) {
       _fail(401, 'unauthorized', 'Invalid or expired token');
     }
     return grant.session;
   }
+
+  /// The accounts [session] reaches: its own, then every one it holds the
+  /// owner grant on, by address.
+  List<int> _reach(_Session session) => [
+    session.primary,
+    ...([
+      for (final id in _owned[session.primary] ?? const <int>{})
+        ?_mailboxes[id],
+    ]..sort((a, b) => a.address.compareTo(b.address))).map((b) => b.id),
+  ];
 
   // ── Accounts and folders ──────────────────────────────────────────────
 
@@ -663,49 +668,140 @@ class FakeRestmail {
     final box = _mailboxes[id]!;
     return {
       'id': box.id,
-      'mailbox_id': box.id,
       'address': box.address,
       'display_name': box.displayName,
       'is_primary': id == session.primary,
     };
   }
 
-  http.StreamedResponse _link(_Session session, Map<String, dynamic> body) {
-    final box = _mailboxAt(body['address'] as String? ?? '');
-    if (box == null || body['password'] != box.password) {
-      _fail(401, 'unauthorized', 'Invalid email or password');
+  /// Gives [session]'s account the owner grant on [box].
+  void _grantOwner(_Session session, FakeMailbox box) =>
+      (_owned[session.primary] ??= {}).add(box.id);
+
+  /// The real server's rules (rest-mail-server#347): `mailboxes:write`
+  /// covering the domain, as the account's grants are now; 409 for an
+  /// address taken; 422 for a bad address, a domain the server doesn't host,
+  /// or a short password. The creator becomes the owner.
+  http.StreamedResponse _createAccount(
+    _Session session,
+    Map<String, dynamic> body,
+  ) {
+    final address = (body['address'] as String? ?? '').trim().toLowerCase();
+    final password = body['password'] as String? ?? '';
+    final at = address.indexOf('@');
+    final invalid = <String, String>{
+      if (address.isEmpty)
+        'address': 'required'
+      else if (at <= 0 || at == address.length - 1 || address.contains(' '))
+        'address': 'must be a mail address: local@domain',
+      if (password.isNotEmpty && password.length < 12)
+        'password': 'must be at least 12 characters',
+    };
+    if (invalid.isNotEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: invalid,
+      );
     }
-    if (session.mailboxes.contains(box.id)) {
-      _fail(409, 'conflict', 'Account already linked');
+    final domain = address.substring(at + 1);
+    final held = _mailboxes[session.primary]!.capabilities;
+    if (!held.contains('*') && !held.contains('mailboxes:write')) {
+      _fail(403, 'forbidden', 'You cannot create accounts on $domain');
     }
-    session.linked.add(box.id);
-    _webmailAccountOf(_mailboxes[session.primary]!).linked.putIfAbsent(
-      box.id,
-      () => (
-        id: _nextRowId++,
-        displayName: body['display_name'] as String? ?? '',
-        at: _clock(),
-      ),
+    if (!_domains.containsKey(domain)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'address': 'this server does not host $domain'},
+      );
+    }
+    if (_mailboxAt(address) != null) {
+      _fail(
+        409,
+        'already_exists',
+        'An account with this address already exists',
+      );
+    }
+    final box = _addMailbox(
+      address,
+      (body['display_name'] as String? ?? '').trim(),
+      password: password.isEmpty ? null : password,
     );
+    _grantOwner(session, box);
     return _json({'data': _account(box.id, session)}, status: 201);
   }
 
-  http.StreamedResponse _unlink(_Session session, FakeMailbox box) {
-    if (box.id == session.primary) {
-      _fail(400, 'bad_request', 'The primary account cannot be unlinked');
+  /// Linking proves the account's password, and its second factor when it
+  /// has one: the same proof as signing in to it. Throttled with sign-in.
+  http.StreamedResponse _link(_Session session, Map<String, dynamic> body) {
+    _spendSignInBudget();
+    final address = (body['address'] as String? ?? '').trim();
+    final password = body['password'] as String? ?? '';
+    if (address.isEmpty || password.isEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'address': 'required', 'password': 'required'},
+      );
     }
-    session.linked.remove(box.id);
-    _webmailAccountOf(_mailboxes[session.primary]!).linked.remove(box.id);
-    return _noContent();
+    // As on the real server, a refused link is 403, never 401: the secrets
+    // are the other account's, and this session is still good.
+    final box = _mailboxAt(address);
+    if (box == null ||
+        box.password == null ||
+        box.password != password ||
+        !box.active) {
+      _fail(403, 'invalid_credentials', 'Invalid email or password');
+    }
+    if (box.mustChangePassword) {
+      _fail(
+        403,
+        'setup_required',
+        'That account must first sign in and choose its own password',
+      );
+    }
+    if (box.totpCode != null) {
+      final code = body['totp_code'] as String? ?? '';
+      final recovery = body['recovery_code'] as String? ?? '';
+      if (code.isEmpty && recovery.isEmpty) {
+        _fail(
+          403,
+          'totp_required',
+          'That account has two-factor authentication: send its code too',
+        );
+      }
+      if (code != box.totpCode && recovery != box.recoveryCode) {
+        _fail(403, 'invalid_totp', 'Invalid two-factor authentication code');
+      }
+    }
+    if (box.id == session.primary) {
+      _fail(409, 'already_exists', 'This is your own account');
+    }
+    if (_owned[session.primary]?.contains(box.id) ?? false) {
+      _fail(409, 'already_exists', 'This account is already linked');
+    }
+    final name = (body['display_name'] as String? ?? '').trim();
+    if (name.isNotEmpty && box.displayName.isEmpty) box.displayName = name;
+    _grantOwner(session, box);
+    return _json({'data': _account(box.id, session)}, status: 201);
   }
 
-  FakeWebmailAccount _webmailAccountOf(FakeMailbox box) =>
-      _webmailAccounts.values.where((a) => a.mailboxId == box.id).firstOrNull ??
-      (_webmailAccounts[_nextRowId] = FakeWebmailAccount(
-        id: _nextRowId++,
-        mailboxId: box.id,
-        createdAt: _clock(),
-      ));
+  /// Removes the session's own grant on the account.
+  http.StreamedResponse _unlink(_Session session, String id) {
+    final accountId = int.tryParse(id);
+    if (accountId == null) _fail(400, 'bad_request', 'Invalid account ID');
+    if (accountId == session.primary) {
+      _fail(409, 'own_account', 'You cannot unlink your own account');
+    }
+    if (!(_owned[session.primary]?.remove(accountId) ?? false)) {
+      _fail(404, 'not_found', 'Linked account not found');
+    }
+    return _noContent();
+  }
 
   http.StreamedResponse _folders(FakeMailbox box) {
     final mine = _messages.values.where((m) => m.mailboxId == box.id).toList();
@@ -737,18 +833,19 @@ class FakeRestmail {
 
   // ── App passwords ─────────────────────────────────────────────────────
   //
-  // The real server's rules (rest-mail-server#344): only the session's own
-  // mailbox, never one it has linked; making one needs the mailbox's current
-  // password entered again, and the second factor when the mailbox has one;
-  // the secret is answered once; a revoked one stops working at once.
+  // The real server's rules (rest-mail-server#344, #347): the session's own
+  // account, or one it owns; making one needs the session's own current
+  // password entered again, and its second factor when it has one; the
+  // secret is answered once; a revoked one stops working at once.
 
   /// `/accounts/{id}` for the app password routes: the session's own
-  /// mailbox only.
-  FakeMailbox _primary(_Session session, String id) {
-    if (int.tryParse(id) != session.primary) {
+  /// account, or one it holds the owner grant on.
+  FakeMailbox _manageable(_Session session, String id) {
+    final box = _mailboxes[int.tryParse(id)];
+    if (box == null || !_reach(session).contains(box.id)) {
       _fail(404, 'not_found', 'Account not found');
     }
-    return _mailboxes[session.primary]!;
+    return box;
   }
 
   http.StreamedResponse _listAppPasswords(FakeMailbox box) {
@@ -773,7 +870,8 @@ class FakeRestmail {
   ) {
     // Login's throttle sits in front of the route, before anything else.
     _spendSignInBudget();
-    final box = _primary(session, id);
+    final box = _manageable(session, id);
+    final own = _mailboxes[session.primary]!;
     final body = _object(bytes);
     final name = (body['name'] as String? ?? '').trim();
     final rawExpiry = body['expires_at'];
@@ -806,19 +904,19 @@ class FakeRestmail {
     final password = body['password'] as String? ?? '';
     if (password.isEmpty) {
       _fail(
-        401,
+        403,
         'reauth_required',
-        "Enter the mailbox's current password to create an app password",
+        'Enter your current password to create an app password',
       );
     }
-    if (password != box.password || !box.active) {
-      _fail(401, 'invalid_password', 'The password is incorrect');
+    if (password != own.password || !own.active || !box.active) {
+      _fail(403, 'invalid_password', 'The password is incorrect');
     }
-    if (box.totpCode != null && !session.twoFactor) {
+    if (own.totpCode != null && !session.twoFactor) {
       _fail(
         403,
         'two_factor_required',
-        'This mailbox has two-factor authentication: sign in again with '
+        'Your account has two-factor authentication: sign in again with '
             'your code to create an app password',
       );
     }
@@ -909,7 +1007,7 @@ class FakeRestmail {
     final text = query['q']?.toLowerCase();
     final from = query['from']?.toLowerCase();
     final folder = query['folder'];
-    final withFiles = query['has:attachment'] == 'true';
+    final withFiles = query['has_attachment'] == 'true';
     final after = DateTime.tryParse(query['after'] ?? '');
     final before = DateTime.tryParse(query['before'] ?? '');
     return (m) =>
@@ -1093,7 +1191,7 @@ class FakeRestmail {
     final owner = attachment == null ? null : _messages[attachment.messageId];
     if (attachment == null ||
         owner == null ||
-        !session.mailboxes.contains(owner.mailboxId)) {
+        !_reach(session).contains(owner.mailboxId)) {
       _fail(404, 'not_found', 'Attachment not found');
     }
     return http.StreamedResponse(
@@ -1142,17 +1240,144 @@ class FakeRestmail {
         message.folder,
       ).where((m) => !m.isRead).length,
     });
+    if (message.folder == 'INBOX') _pushNewMail(message.mailboxId);
+  }
+
+  // ── Push devices ──────────────────────────────────────────────────────
+  //
+  // The contract the app expects of the server (rest-mail-mobile#8): a
+  // device belongs to the session that registered it and goes when that
+  // session ends; new mail in the inbox of any mailbox the session lists
+  // pushes to it; and the push carries only the device, the account and its
+  // unread count, never a sender, a subject or any of the message.
+
+  http.StreamedResponse _listDevices(_Session session) => _json({
+    'data': {
+      'platforms': [...pushPlatforms],
+      'devices': [
+        for (final (device, owner) in _devices.values)
+          if (identical(owner, session)) _deviceJson(device),
+      ],
+    },
+  });
+
+  http.StreamedResponse _registerDevice(
+    _Session session,
+    Map<String, dynamic> body,
+  ) {
+    final platform = body['platform'], token = body['token'];
+    final environment = body['environment'] as String?;
+    if (platform is! String || !pushPlatforms.contains(platform)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Push is not set up for this platform',
+        fields: {'platform': 'not configured on this server'},
+      );
+    }
+    if (token is! String ||
+        token.isEmpty ||
+        (platform == 'apns' &&
+            !RegExp(r'^[0-9a-f]{64,200}$').hasMatch(token))) {
+      _fail(
+        422,
+        'validation_failed',
+        'Invalid device token',
+        fields: {'token': 'not a device token'},
+      );
+    }
+    if (environment != null &&
+        platform == 'apns' &&
+        environment != 'production' &&
+        environment != 'sandbox') {
+      _fail(
+        422,
+        'validation_failed',
+        'Invalid environment',
+        fields: {'environment': 'production or sandbox'},
+      );
+    }
+    // The same token from the same session is the same device.
+    for (final (device, owner) in _devices.values) {
+      if (identical(owner, session) && device.token == token) {
+        return _json({'data': _deviceJson(device)});
+      }
+    }
+    final device = FakePushDevice(
+      id: 'dev-${_nextRowId++}',
+      mailboxId: session.primary,
+      platform: platform,
+      token: token,
+      environment: environment,
+      appId: body['app_id'] as String?,
+      createdAt: _clock(),
+    );
+    _devices[device.id] = (device, session);
+    return _json({'data': _deviceJson(device)}, status: 201);
+  }
+
+  http.StreamedResponse _removeDevice(_Session session, String id) {
+    final entry = _devices[id];
+    if (entry == null || !identical(entry.$2, session)) {
+      _fail(404, 'not_found', 'Device not found');
+    }
+    _devices.remove(id);
+    return _noContent();
+  }
+
+  Map<String, Object?> _deviceJson(FakePushDevice device) => {
+    'id': device.id,
+    'platform': device.platform,
+    'environment': device.environment,
+    'created_at': _time(device.createdAt),
+  };
+
+  void _forgetDevices(_Session session) =>
+      _devices.removeWhere((_, entry) => identical(entry.$2, session));
+
+  /// Records the push each device with [mailboxId] in its session's
+  /// mailboxes would get: a signal to fetch, and nothing of the mail.
+  void _pushNewMail(int mailboxId) {
+    final box = _mailboxes[mailboxId];
+    if (box == null) return;
+    final unread = messagesIn(
+      box.address,
+      'INBOX',
+    ).where((m) => !m.isRead).length;
+    for (final (device, session) in _devices.values) {
+      if (!_reach(session).contains(mailboxId)) continue;
+      _pushes.add(
+        FakePush(
+          device: device.id,
+          token: device.token,
+          payload: {
+            'aps': {'content-available': 1},
+            'restmail': {
+              'v': 1,
+              'device': device.id,
+              'account': mailboxId,
+              'unread': unread,
+            },
+          },
+        ),
+      );
+    }
   }
 
   // ── State ─────────────────────────────────────────────────────────────
 
   void _load() {
     if (scenario == FakeScenario.freshInstall) {
-      _admins[FakeAccounts.adminUsername] = _FakeAdmin(
-        _nextRowId++,
-        FakeAccounts.adminUsername,
-        FakeAccounts.bootstrapPassword,
-      )..roles = {1};
+      // The bootstrap account, made from the deploy's password, holding the
+      // admin role; its domain is made with it.
+      _addMailbox(
+          FakeAccounts.adminEmail,
+          '',
+          password: FakeAccounts.bootstrapPassword,
+        )
+        ..capabilities = {...adminRole}
+        ..mustChangePassword = true
+        ..owesTwoFactor = true;
       return;
     }
     final now = _clock();
@@ -1163,8 +1388,8 @@ class FakeRestmail {
       twoFactor: twoFactor,
     );
     final other = _addMailbox(FakeAccounts.otherEmail, 'Dana at Oakline');
-    addAdmin(FakeAccounts.adminUsername);
-    addAdmin(FakeAccounts.queueWatcher, capabilities: {'queue:read'});
+    addAccount(FakeAccounts.adminEmail, capabilities: {'*'});
+    addAccount(FakeAccounts.queueWatcher, capabilities: {'queue:read'});
     if (scenario == FakeScenario.empty) return;
     for (final message in danaMail(now)) {
       _add(dana, message);
@@ -1320,35 +1545,6 @@ class FakeRestmail {
       );
     }
 
-    for (final (action, type, detail, age) in [
-      ('create', 'domain', 'Added $host', const Duration(days: 6)),
-      (
-        'create',
-        'mailbox',
-        'Added ${FakeAccounts.email}',
-        const Duration(days: 6),
-      ),
-      (
-        'update',
-        'mailbox',
-        'Changed ${FakeAccounts.otherEmail}',
-        const Duration(days: 2),
-      ),
-      ('create', 'ban', 'Banned 203.0.113.7', const Duration(hours: 2)),
-    ].reversed) {
-      _activity.add({
-        'id': _nextRowId++,
-        'actor': type == 'ban' ? 'system' : FakeAccounts.adminUsername,
-        'action': action,
-        'resource_type': type,
-        'resource_id': null,
-        'detail': detail,
-        'metadata': null,
-        'ip': '192.0.2.10',
-        'created_at': _time(now.subtract(age)),
-      });
-    }
-
     final day = DateTime.utc(now.year, now.month, now.day);
     for (final (org, ok, failed, details) in [
       ('Google Inc.', 214, 0, null),
@@ -1457,13 +1653,6 @@ class FakeRestmail {
       id: _nextRowId++,
       mxHosts: 'mx.$host',
     );
-    // Dana has signed in to webmail before; her other mailbox has not.
-    _webmailAccounts[_nextRowId] = FakeWebmailAccount(
-      id: _nextRowId++,
-      mailboxId: dana.id,
-      createdAt: now.subtract(const Duration(days: 6)),
-    );
-
     // A week of the audit log, oldest first: sign-ins, a few changes, and
     // someone guessing passwords.
     final start = now.subtract(const Duration(days: 7));
@@ -1480,7 +1669,7 @@ class FakeRestmail {
         status,
       ) = switch (i % 6) {
         0 || 3 => (
-          'mailbox',
+          'account',
           FakeAccounts.email,
           dana.id,
           'auth.sign_in',
@@ -1490,7 +1679,7 @@ class FakeRestmail {
           200,
         ),
         1 => (
-          'mailbox',
+          'account',
           'root@$host',
           null,
           'auth.sign_in',
@@ -1500,9 +1689,9 @@ class FakeRestmail {
           401,
         ),
         2 => (
-          'admin',
-          FakeAccounts.adminUsername,
-          _admins[FakeAccounts.adminUsername]!.id,
+          'account',
+          FakeAccounts.adminEmail,
+          _mailboxAt(FakeAccounts.adminEmail)!.id,
           'admin.change',
           'success',
           'PATCH',
@@ -1510,9 +1699,9 @@ class FakeRestmail {
           200,
         ),
         4 => (
-          'admin',
+          'account',
           FakeAccounts.queueWatcher,
-          _admins[FakeAccounts.queueWatcher]!.id,
+          _mailboxAt(FakeAccounts.queueWatcher)!.id,
           'admin.change',
           'denied',
           'POST',
@@ -1533,7 +1722,7 @@ class FakeRestmail {
           method: method,
           route: route,
           status: status,
-          ip: outcome == 'denied' && kind == 'mailbox'
+          ip: outcome == 'denied' && kind == 'account'
               ? '203.0.113.7'
               : '192.0.2.10',
         ),
@@ -1595,7 +1784,7 @@ class FakeRestmail {
     String address,
     String name, {
     bool twoFactor = false,
-    String password = FakeAccounts.password,
+    String? password = FakeAccounts.password,
   }) {
     _domainNamed(address.split('@').last);
     final box = FakeMailbox(
@@ -1634,7 +1823,7 @@ class FakeRestmail {
 
   FakeMailbox _own(_Session session, String id) {
     final box = _mailboxes[int.tryParse(id)];
-    if (box == null || !session.mailboxes.contains(box.id)) {
+    if (box == null || !_reach(session).contains(box.id)) {
       _fail(404, 'not_found', 'Account not found');
     }
     return box;
@@ -1642,7 +1831,7 @@ class FakeRestmail {
 
   FakeMailbox _sender(_Session session, Map<String, dynamic> body) {
     final box = _mailboxAt(body['from'] as String? ?? '');
-    if (box == null || !session.mailboxes.contains(box.id)) {
+    if (box == null || !_reach(session).contains(box.id)) {
       _fail(403, 'forbidden', 'You cannot send from that address');
     }
     return box;
@@ -1650,7 +1839,7 @@ class FakeRestmail {
 
   FakeMessage _message(_Session session, String id) {
     final message = _messages[int.tryParse(id)];
-    if (message == null || !session.mailboxes.contains(message.mailboxId)) {
+    if (message == null || !_reach(session).contains(message.mailboxId)) {
       _fail(404, 'not_found', 'Message not found');
     }
     return message;
@@ -1667,11 +1856,11 @@ class FakeRestmail {
 
   // ── Admin ─────────────────────────────────────────────────────────────
   //
-  // The real server's rules: an admin in setup gets a session with no
+  // The real server's rules: an account in setup gets a session with no
   // capabilities that reaches only the calls finishing the setup, and every
-  // admin route answers 403 setup_required until it is done. After that, each
+  // other route answers 403 setup_required until it is done. After that, each
   // admin route needs its capability, as the access token carries them; `*`
-  // allows them all. A mailbox session holds none, and is refused outright.
+  // allows them all. A session holding none is refused outright.
 
   /// Answers with [answer], and records the request in the audit log with
   /// how it went, refused or not.
@@ -1762,8 +1951,8 @@ class FakeRestmail {
     final invalid = <String, String>{};
     final kind = query['actor_kind'], outcome = query['outcome'];
     if (kind != null &&
-        !const {'mailbox', 'admin', 'system', 'anonymous'}.contains(kind)) {
-      invalid['actor_kind'] = 'must be mailbox, admin, system or anonymous';
+        !const {'account', 'system', 'anonymous'}.contains(kind)) {
+      invalid['actor_kind'] = 'must be account, system or anonymous';
     }
     if (outcome != null &&
         !const {'success', 'denied', 'failed', 'error'}.contains(outcome)) {
@@ -1822,54 +2011,6 @@ class FakeRestmail {
     'hash': e.hash,
   };
 
-  http.StreamedResponse _adminLogin(Map<String, dynamic> body) {
-    final admin = _admins[body['username']];
-    if (admin == null || body['password'] != admin.password) {
-      _fail(401, 'unauthorized', 'Invalid username or password');
-    }
-    if (!admin.active) _fail(401, 'unauthorized', 'Account is disabled');
-    if (admin.totpEnrolled) {
-      final code = body['totp_code'] as String? ?? '';
-      if (code.isEmpty) {
-        _fail(401, 'totp_required', 'Two-factor authentication code required');
-      }
-      if (code != FakeAccounts.totpCode) {
-        _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
-      }
-    }
-    return _issueAdmin(admin);
-  }
-
-  /// A sign-in or refresh: the capabilities come from the admin's roles as
-  /// they are now.
-  http.StreamedResponse _issueAdmin(_FakeAdmin admin) {
-    final access = _token('access'), refresh = _token('refresh');
-    final setup = admin.setupRequired;
-    final capabilities = setup.isEmpty ? {...admin.capabilities} : <String>{};
-    _adminAccessTokens[access] = _AdminGrant(
-      admin,
-      setup: setup.isNotEmpty,
-      capabilities: capabilities,
-      expiresAt: _clock().add(accessTokenLifetime),
-    );
-    _adminRefreshTokens[refresh] = admin;
-    return _json({
-      'data': {
-        'expires_in': accessTokenLifetime.inSeconds,
-        'user': {
-          'id': admin.id,
-          'email': admin.username,
-          'display_name': admin.username,
-        },
-        if (capabilities.isNotEmpty) 'capabilities': [...capabilities],
-        if (setup.isNotEmpty) 'setup_required': setup,
-        'access_token': access,
-        'refresh_token': refresh,
-        'refresh_expires_in': _refreshTokenLifetime.inSeconds,
-      },
-    });
-  }
-
   String? _bearer(http.BaseRequest request) {
     final header = request.headers['authorization'] ?? '';
     return header.startsWith('Bearer ')
@@ -1877,9 +2018,9 @@ class FakeRestmail {
         : null;
   }
 
-  /// Answers an admin's calls on its own account, or null for a route that is
-  /// not one.
-  http.StreamedResponse? _adminSelf(
+  /// Answers an account's calls finishing its setup, or null for a route
+  /// that is not one: the only ones a session in setup reaches.
+  http.StreamedResponse? _setup(
     http.BaseRequest request,
     String method,
     List<String> path,
@@ -1893,25 +2034,19 @@ class FakeRestmail {
       _ => null,
     };
     if (route == null) return null;
-
-    final grant = _adminAccessTokens[_bearer(request)];
-    if (grant == null || !_clock().isBefore(grant.expiresAt)) {
-      // Not an admin token: the mailbox routes below decide.
-      return null;
-    }
-    final admin = grant.admin;
+    final box = _mailboxes[_sessionOf(request).primary]!;
     final body = _object(bytes);
 
     switch (route) {
       case 'enroll':
-        if (admin.totpEnrolled) {
+        if (box.totpCode != null) {
           _fail(
             409,
             'conflict',
             'Two-factor authentication is already enabled',
           );
         }
-        admin.totpPending = true;
+        box.totpPending = true;
         return _json({
           'data': {
             'secret': FakeAccounts.totpSecret,
@@ -1920,15 +2055,17 @@ class FakeRestmail {
           },
         });
       case 'confirm':
-        if (!admin.totpPending) {
+        if (!box.totpPending) {
           _fail(400, 'bad_request', 'No pending 2FA enrollment');
         }
-        if (body['code'] != FakeAccounts.totpCode) {
-          _fail(401, 'unauthorized', 'Invalid 2FA code');
+        // As on the real server, a wrong code is 403, never 401.
+        if (body['totp_code'] != FakeAccounts.totpCode) {
+          _fail(403, 'invalid_totp', 'Invalid two-factor authentication code');
         }
-        admin
+        box
           ..totpPending = false
-          ..totpEnrolled = true;
+          ..totpCode = FakeAccounts.totpCode
+          ..recoveryCode = FakeAccounts.recoveryCode;
         return _noContent();
       case 'password':
         final current = body['current_password'] as String? ?? '';
@@ -1944,8 +2081,8 @@ class FakeRestmail {
             },
           );
         }
-        if (current != admin.password) {
-          _fail(401, 'unauthorized', 'Current password is incorrect');
+        if (current != box.password) {
+          _fail(403, 'invalid_password', 'Current password is incorrect');
         }
         if (next.length < 12) {
           _fail(
@@ -1963,12 +2100,17 @@ class FakeRestmail {
             fields: {'new_password': 'must differ from the current password'},
           );
         }
-        admin
+        box
           ..password = next
           ..mustChangePassword = false;
-        // Every session of the account ends, this one included.
-        _adminAccessTokens.removeWhere((_, g) => g.admin == admin);
-        _adminRefreshTokens.removeWhere((_, a) => a == admin);
+        // Every session of the account ends, this one included, and every
+        // app password goes: whoever knew the old password could have made
+        // one.
+        revokeSessionsOf(box.address);
+        final now = _clock();
+        for (final p in _appPasswords.values) {
+          if (p.mailboxId == box.id && !p.isRevoked) p.revokedAt = now;
+        }
         return _json({
           'data': {
             'message': 'Password changed. Sign in again with the new password.',
@@ -1981,18 +2123,8 @@ class FakeRestmail {
   /// What the caller's access token may do on the admin API, refusing one
   /// that may do nothing there.
   Set<String> _adminCapabilities(http.BaseRequest request) {
-    final token = _bearer(request);
-    final admin = _adminAccessTokens[token];
-    if (admin != null && _clock().isBefore(admin.expiresAt)) {
-      if (admin.setup) {
-        _fail(403, 'setup_required', 'Finish setting up this account first');
-      }
-      return admin.capabilities;
-    }
-    final grant = _accessTokens[token];
-    if (grant == null || !_clock().isBefore(grant.expiresAt)) {
-      _fail(401, 'unauthorized', 'Invalid or expired token');
-    }
+    _authenticate(request);
+    final grant = _accessTokens[_bearer(request)]!;
     if (grant.capabilities.isEmpty) {
       _fail(403, 'forbidden', 'Admin access required');
     }
@@ -2165,9 +2297,6 @@ class FakeRestmail {
           query,
           _mailboxJson,
         );
-      case ('POST', ['mailboxes']):
-        need('mailboxes:write');
-        return _createMailbox(_object(bytes));
       case ('GET', ['mailboxes', final id]):
         need('mailboxes:read');
         return _json({'data': _mailboxJson(_adminMailbox(id))});
@@ -2211,74 +2340,6 @@ class FakeRestmail {
         _aliases.remove(_alias(id).id);
         return _noContent();
 
-      case ('GET', ['webmail-accounts']):
-        need('mailboxes:read');
-        return _listPage(
-          _webmailAccounts.values.toList()
-            ..sort((a, b) => a.id.compareTo(b.id)),
-          query,
-          _webmailAccountJson,
-        );
-      case ('POST', ['webmail-accounts']):
-        need('mailboxes:write');
-        final mailboxId = _object(bytes)['primary_mailbox_id'];
-        if (mailboxId is! int || mailboxId == 0) {
-          _fail(
-            422,
-            'validation_failed',
-            'Request body failed validation',
-            fields: {'primary_mailbox_id': 'required'},
-          );
-        }
-        final box =
-            _mailboxes[mailboxId] ??
-            _fail(404, 'mailbox_not_found', 'Mailbox not found');
-        if (_webmailAccounts.values.any((a) => a.mailboxId == box.id)) {
-          _fail(
-            409,
-            'already_exists',
-            'Webmail account already exists for this mailbox',
-          );
-        }
-        // Go leaves out the links of a new one: they are not loaded.
-        return _json({
-          'data': _webmailAccountJson(_webmailAccountOf(box))
-            ..remove('linked_accounts'),
-        }, status: 201);
-      case ('GET', ['webmail-accounts', final id]):
-        need('mailboxes:read');
-        return _json({'data': _webmailAccountJson(_webmailAccount(id))});
-      case ('DELETE', ['webmail-accounts', final id]):
-        need('mailboxes:delete');
-        _webmailAccounts.remove(_webmailAccount(id).id);
-        return _noContent();
-
-      case ('GET', ['admin-users']):
-        need('users:read');
-        return _listPage(
-          _admins.values.toList()
-            ..sort((a, b) => a.username.compareTo(b.username)),
-          query,
-          _adminUserJson,
-        );
-      case ('POST', ['admin-users']):
-        need('users:write');
-        return _createAdminUser(_object(bytes));
-      case ('PUT', ['admin-users', final id]):
-        need('users:write');
-        return _updateAdminUser(_adminUser(id), _object(bytes));
-      case ('DELETE', ['admin-users', final id]):
-        need('users:delete');
-        final admin = _adminUser(id);
-        _endAdminSessions(admin);
-        _admins.remove(admin.username);
-        return _noContent();
-      case ('GET', ['roles']):
-        need('users:read');
-        return _json({
-          'data': [for (final role in _roles.values) _roleJson(role)],
-        });
-
       case ('GET', ['stats']):
         // The real server asks no capability of this one, only an admin.
         return _stats();
@@ -2315,9 +2376,6 @@ class FakeRestmail {
           query,
           _queueJson,
         );
-      case ('GET', ['logs', 'activity']):
-        need('users:read');
-        return _listPage(_activity, query, (a) => a);
       case ('GET', ['messages', final id, 'trace']):
         need('observability:read');
         return _json({
@@ -2600,44 +2658,12 @@ class FakeRestmail {
     'domain': _noDomain,
   };
 
-  Map<String, Object?> _webmailAccountJson(FakeWebmailAccount a) => {
-    'id': a.id,
-    'primary_mailbox_id': a.mailboxId,
-    'created_at': _time(a.createdAt),
-    'updated_at': _time(a.createdAt),
-    'primary_mailbox': {
-      ..._mailboxJson(_mailboxes[a.mailboxId]!),
-      'domain': _noDomain,
-    },
-    // Go leaves out an empty list here.
-    if (a.linked.isNotEmpty)
-      'linked_accounts': [
-        for (final MapEntry(key: mailboxId, value: link) in a.linked.entries)
-          {
-            'id': link.id,
-            'webmail_account_id': a.id,
-            'mailbox_id': mailboxId,
-            'display_name': link.displayName,
-            'created_at': _time(link.at),
-            'webmail_account': {'id': 0, 'primary_mailbox_id': 0},
-            'mailbox': {
-              ..._mailboxJson(_mailboxes[mailboxId]!),
-              'domain': _noDomain,
-            },
-          },
-      ],
-  };
-
   DateTime _createdAt(Map<String, Object?> record) =>
       DateTime.parse(record['created_at']! as String);
 
   /// `allow` or `block`, from the route's `allowlist` or `blocklist`.
   static String _listType(String route) =>
       route == 'allowlist' ? 'allow' : 'block';
-
-  FakeWebmailAccount _webmailAccount(String id) =>
-      _webmailAccounts[int.tryParse(id)] ??
-      _fail(404, 'not_found', 'Webmail account not found');
 
   http.StreamedResponse _addSenderRule(
     String id,
@@ -2898,47 +2924,17 @@ class FakeRestmail {
     return _json({'data': _domainJson(_domainNamed(name))}, status: 201);
   }
 
-  http.StreamedResponse _createMailbox(Map<String, dynamic> body) {
-    final address = (body['address'] as String? ?? '').trim().toLowerCase();
-    final password = body['password'] as String? ?? '';
-    final at = address.indexOf('@');
-    if (at <= 0 || password.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {
-          if (at <= 0) 'address': 'must be a valid email address',
-          if (password.isEmpty) 'password': 'required',
-        },
-      );
-    }
-    final domain = address.substring(at + 1);
-    if (!_domains.containsKey(domain)) {
-      _fail(404, 'domain_not_found', "Domain '$domain' not found");
-    }
-    if (_mailboxAt(address) != null) {
-      _fail(409, 'already_exists', 'Mailbox already exists');
-    }
-    final box = _addMailbox(
-      address,
-      _nonEmpty(body['display_name']) ?? address.substring(0, at),
-      password: password,
-    );
-    return _json({'data': _mailboxJson(box)}, status: 201);
-  }
-
   http.StreamedResponse _updateMailbox(
     FakeMailbox box,
     Map<String, dynamic> body,
   ) {
     if (body['password'] case final String password) {
-      if (password.length < 8) {
+      if (password.length < 12) {
         _fail(
           422,
           'validation_failed',
           'Request body failed validation',
-          fields: {'password': 'must be at least 8 characters'},
+          fields: {'password': 'must be at least 12 characters'},
         );
       }
       box.password = password;
@@ -2958,21 +2954,16 @@ class FakeRestmail {
     return _json({'data': _mailboxJson(box)});
   }
 
-  /// The mailbox, its mail, and every session that could read it.
+  /// The account, its mail, its sessions, and every grant on it or held by
+  /// it.
   void _deleteMailbox(FakeMailbox box) {
     revokeSessionsOf(box.address);
-    for (final session in [
-      ..._refreshTokens.values,
-      for (final g in _accessTokens.values) g.session,
-    ]) {
-      session.linked.remove(box.id);
+    _owned.remove(box.id);
+    for (final owned in _owned.values) {
+      owned.remove(box.id);
     }
     _messages.removeWhere((_, m) => m.mailboxId == box.id);
     _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
-    _webmailAccounts.removeWhere((_, a) => a.mailboxId == box.id);
-    for (final account in _webmailAccounts.values) {
-      account.linked.remove(box.id);
-    }
     _mailboxes.remove(box.id);
   }
 
@@ -3028,28 +3019,6 @@ class FakeRestmail {
       '${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][day.month - 1]} '
       '${day.day}';
 
-  Map<String, Object?> _roleJson(_FakeRole role) => {
-    'id': role.id,
-    'name': role.name,
-    'description': role.description,
-    'system_role': role.system,
-  };
-
-  Map<String, Object?> _adminUserJson(_FakeAdmin admin) => {
-    'id': admin.id,
-    'username': admin.username,
-    'email': null,
-    'active': admin.active,
-    'password_change_required': admin.mustChangePassword,
-    'last_password_change': null,
-    'created_at': _time(_clock()),
-    'updated_at': _time(_clock()),
-    'roles': [
-      for (final id in admin.roles)
-        if (_roles[id] case final role?) _roleJson(role),
-    ],
-  };
-
   Map<String, Object?> _banJson(FakeBan ban) => {
     'id': ban.id,
     'ip': ban.ip,
@@ -3059,88 +3028,6 @@ class FakeRestmail {
     if (ban.expiresAt case final expires?) 'expires_at': _time(expires),
     'created_at': _time(ban.createdAt),
   };
-
-  _FakeAdmin _adminUser(String id) =>
-      _admins.values.where((a) => a.id == int.tryParse(id)).firstOrNull ??
-      _fail(404, 'not_found', 'Admin user not found');
-
-  /// The real server ends an admin's sessions when its password, roles or
-  /// standing change, or it goes.
-  void _endAdminSessions(_FakeAdmin admin) {
-    _adminAccessTokens.removeWhere((_, g) => g.admin == admin);
-    _adminRefreshTokens.removeWhere((_, a) => a == admin);
-  }
-
-  Set<int> _roleIds(Object? raw) {
-    final ids = {
-      if (raw is List)
-        for (final id in raw)
-          if (id is num) id.toInt(),
-    };
-    if (!_roles.keys.toSet().containsAll(ids)) {
-      _fail(500, 'internal_error', 'Failed to assign roles');
-    }
-    return ids;
-  }
-
-  Set<String> _capabilitiesOf(Set<int> roles) => {
-    for (final id in roles) ...?_roles[id]?.capabilities,
-  };
-
-  http.StreamedResponse _createAdminUser(Map<String, dynamic> body) {
-    final username = (body['username'] as String? ?? '').trim();
-    final password = body['password'] as String? ?? '';
-    if (username.isEmpty || password.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'username': 'required', 'password': 'required'},
-      );
-    }
-    if (_admins.containsKey(username)) {
-      _fail(500, 'internal_error', 'Failed to create admin user');
-    }
-    final roles = _roleIds(body['role_ids']);
-    // As on the real server, it owes no setup: it signs in with the password
-    // it was given, and no second factor unless it enrolls one.
-    final admin = _admins[username] =
-        _FakeAdmin(
-            _nextRowId++,
-            username,
-            password,
-            capabilities: _capabilitiesOf(roles),
-          )
-          ..roles = roles
-          ..mustChangePassword = false
-          ..twoFactorRequired = false;
-    return _json({'data': _adminUserJson(admin)}, status: 201);
-  }
-
-  http.StreamedResponse _updateAdminUser(
-    _FakeAdmin admin,
-    Map<String, dynamic> body,
-  ) {
-    var revoke = false;
-    if (body['password'] case final String password when password.isNotEmpty) {
-      admin.password = password;
-      revoke = true;
-    }
-    if (body['active'] case final bool active) {
-      admin.active = active;
-      revoke |= !active;
-    }
-    if (body.containsKey('role_ids') && body['role_ids'] != null) {
-      admin
-        ..roles = _roleIds(body['role_ids'])
-        ..capabilities = _capabilitiesOf(admin.roles);
-      revoke = true;
-    }
-    if (revoke) _endAdminSessions(admin);
-    return _json({
-      'data': {'message': 'Admin user updated successfully'},
-    });
-  }
 
   http.StreamedResponse _createBan(Map<String, dynamic> body) {
     final ip = (body['ip'] as String? ?? '').trim();
@@ -3219,13 +3106,12 @@ class FakeRestmail {
 class _Session {
   _Session(this.primary, {this.twoFactor = false});
 
+  /// The account it signed in to. The others it reaches are the server's
+  /// owner grants, as they are now.
   final int primary;
 
-  /// Its sign-in took the mailbox's second factor.
+  /// Its sign-in took the account's second factor.
   final bool twoFactor;
-  final linked = <int>{};
-
-  Set<int> get mailboxes => {primary, ...linked};
 }
 
 class _Grant {
@@ -3234,80 +3120,8 @@ class _Grant {
   final _Session session;
   final DateTime expiresAt;
 
-  /// What the mailbox could do on the admin API when the token was minted.
+  /// What the account could do on the admin API when the token was minted.
   final Set<String> capabilities;
-}
-
-/// An admin user, and how far its first-start setup has got.
-class _FakeAdmin {
-  _FakeAdmin(
-    this.id,
-    this.username,
-    this.password, {
-    this.capabilities = const {'*'},
-  });
-
-  final int id;
-  final String username;
-  String password;
-
-  /// What its roles grant, once it is set up.
-  Set<String> capabilities;
-  Set<int> roles = {};
-  bool active = true;
-  bool mustChangePassword = true;
-
-  /// Kept in setup until an authenticator is enrolled, as a bootstrap admin
-  /// is.
-  bool twoFactorRequired = true;
-  bool totpPending = false;
-  bool totpEnrolled = false;
-
-  /// Its own password chosen and an authenticator enrolled.
-  void setUp() {
-    mustChangePassword = false;
-    totpEnrolled = true;
-  }
-
-  /// What the real server reports in `setup_required`, in its order.
-  List<String> get setupRequired => [
-    if (mustChangePassword) 'password',
-    if (twoFactorRequired && !totpEnrolled) 'two_factor',
-  ];
-}
-
-class _AdminGrant {
-  const _AdminGrant(
-    this.admin, {
-    required this.setup,
-    required this.capabilities,
-    required this.expiresAt,
-  });
-
-  final _FakeAdmin admin;
-
-  /// Minted while the account was in setup: the admin API refuses it.
-  final bool setup;
-
-  /// What the admin's roles granted when the token was minted.
-  final Set<String> capabilities;
-  final DateTime expiresAt;
-}
-
-class _FakeRole {
-  const _FakeRole(
-    this.id,
-    this.name,
-    this.description,
-    this.capabilities, {
-    this.system = false,
-  });
-
-  final int id;
-  final String name;
-  final String description;
-  final Set<String> capabilities;
-  final bool system;
 }
 
 /// An error answer, thrown from deep in a handler and returned as is.

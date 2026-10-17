@@ -45,6 +45,29 @@
                 <data android:scheme="rest-mail" android:host="setup"/>
             </intent-filter>
         </activity>
+        <!-- Where Sign in with Microsoft and Google come back to, from the
+             Custom Tab, for flutter_web_auth_2 to hand to Dart: Microsoft
+             to rest-mail://oauth/microsoft, and Google to the package name,
+             the only scheme it allows an Android client
+             (com.antimatterstudios.restmail:/oauth2redirect). Its host
+             keeps the first apart from rest-mail://setup, which opens
+             MainActivity. -->
+        <activity
+            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth_2">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="rest-mail" android:host="oauth"/>
+            </intent-filter>
+            <intent-filter android:label="flutter_web_auth_2">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.antimatterstudios.restmail"/>
+            </intent-filter>
+        </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

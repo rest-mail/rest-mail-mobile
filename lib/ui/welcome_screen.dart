@@ -139,8 +139,9 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  /// A server just installed has no mailbox to sign in to: its bootstrap
-  /// admin sets it up first.
+  /// A server just installed has one account, `admin@` its domain, which
+  /// must choose its own password and enroll an authenticator before it
+  /// reads its mail.
   Future<void> _setUpServer(BuildContext context) async {
     final server = await Navigator.push<Uri>(
       context,

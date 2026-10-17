@@ -16,8 +16,8 @@ import 'widgets/common.dart';
 
 /// Where the first-start setup has got to.
 enum _Step {
-  /// Sign in as the admin a fresh install made, with the password the
-  /// installer generated and showed.
+  /// Sign in as the account a fresh install made (`admin@` its domain), with
+  /// the password the installer generated and showed.
   signIn,
 
   /// Enroll an authenticator, keeping the recovery codes.
@@ -27,33 +27,31 @@ enum _Step {
   password,
 
   /// The server ended every session when the password changed: sign back in,
-  /// with a code this time.
+  /// with a code this time. That session is the one the app keeps.
   signBackIn,
-
-  /// Make the domain and the owner's own mailbox, then sign in to it.
-  mailbox,
 }
 
-/// Takes a freshly installed rest-mail server to the owner reading their own
-/// mail. The installer made its first admin with a password it showed once,
-/// as text and as a QR code; signing in with it, the owner must replace it
-/// with their own and enroll an authenticator before the server will do
-/// anything else, and a server with no mailbox has nothing to read.
+/// Takes a freshly installed REST Mail server to the owner reading their own
+/// mail. The installer made its first account, `admin@` its domain, with a
+/// password it showed once, as text and as a QR code; signing in with it, the
+/// owner must replace it with their own and enroll an authenticator before
+/// the server will do anything else. That account is a mailbox, and an
+/// administrator by the grants it holds: once it is set up, the app keeps its
+/// session as any account's, and Administration shows by its capabilities.
 ///
-/// The admin session lives only on this screen. It is never stored: the app
-/// signs in to the mailbox made at the end, as any account is signed in.
+/// The sessions in setup live only on this screen, and are never stored.
 class ServerSetupScreen extends StatefulWidget {
   const ServerSetupScreen({
     super.key,
     required this.server,
-    this.username,
+    this.address,
     this.password,
   });
 
   final Uri server;
 
   /// The sign-in from the installer's QR code, filled in.
-  final String? username;
+  final String? address;
   final String? password;
 
   /// Opens the camera for the installer's QR code. Tests replace it: there is
@@ -78,8 +76,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String? _error;
 
   // Sign-in, kept for the steps that need them again.
-  late final _username = TextEditingController(
-    text: widget.username ?? 'admin',
+  late final _address = TextEditingController(
+    text: widget.address ?? 'admin@${_defaultDomain()}',
   );
   late final _password = TextEditingController(text: widget.password);
   final _code = TextEditingController();
@@ -94,25 +92,15 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   final _newPassword = TextEditingController();
   final _repeatPassword = TextEditingController();
 
-  // Mailbox.
-  late final _domain = TextEditingController(text: _defaultDomain());
-  final _localPart = TextEditingController();
-  final _displayName = TextEditingController();
-  final _mailboxPassword = TextEditingController();
-
   @override
   void dispose() {
     _client?.close();
     for (final c in [
-      _username,
+      _address,
       _password,
       _code,
       _newPassword,
       _repeatPassword,
-      _domain,
-      _localPart,
-      _displayName,
-      _mailboxPassword,
     ]) {
       c.dispose();
     }
@@ -120,7 +108,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   }
 
   /// `mail.example.com` serves `example.com`: the app finds a server at
-  /// `mail.<domain>` from an address at `<domain>`.
+  /// `mail.<domain>` from an address at `<domain>`, and an install's first
+  /// account is `admin@<domain>`.
   String _defaultDomain() {
     final host = widget.server.host;
     return host.startsWith('mail.') ? host.substring(5) : host;
@@ -144,12 +133,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String _describe(ApiException e) {
     if (e.fields.isNotEmpty) return e.fields.values.first;
     return switch (e.code) {
-      'unauthorized' => switch (_step) {
-        _Step.signIn =>
-          _needsCode ? "That code didn't work." : 'Wrong username or password.',
-        _Step.password => e.message,
-        _ => "That code didn't work.",
-      },
+      'unauthorized' when _step == _Step.signIn =>
+        _needsCode ? "That code didn't work." : 'Wrong address or password.',
+      // A wrong code or password once signed in is 403, and the session
+      // stays: say which, and let them try again.
+      'invalid_totp' => "That code didn't work.",
+      'invalid_password' => "That isn't the current password.",
       _ => describeError(e, host: widget.server.host),
     };
   }
@@ -168,7 +157,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       return;
     }
     setState(() {
-      _username.text = scan.username;
+      if (scan.address case final address?) _address.text = address;
       _password.text = scan.password;
       _error = null;
     });
@@ -176,35 +165,42 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   Future<void> _signIn() => _run(() async {
     try {
-      final admin = await _admin.signInAdmin(
-        username: _username.text.trim(),
+      final result = await _admin.login(
+        email: _address.text.trim(),
         password: _password.text,
         totpCode: _needsCode ? _code.text.trim() : null,
       );
       _code.clear();
-      _owed = admin.setupRequired;
-      _advance();
+      _owed = result.setupRequired;
+      await _advance(result);
     } on TotpRequiredException {
       // Already has an authenticator: a setup started before, or a server set
-      // up already, where all that is left is the mailbox.
+      // up already, where all that is left is to sign in.
       setState(() => _needsCode = true);
     }
   });
 
-  /// Moves to the next thing the account owes, or past setup when it owes
-  /// nothing.
-  void _advance() => setState(() {
-    if (_owed.contains(SetupStep.twoFactor)) {
-      _step = _Step.authenticator;
-    } else if (_owed.contains(SetupStep.password)) {
-      _step = _Step.password;
-    } else if (_step == _Step.signIn || _step == _Step.signBackIn) {
-      _step = _Step.mailbox;
-    } else {
-      // Setup just finished; this session was minted while it was owed.
-      _step = _Step.signBackIn;
+  /// Moves to the next thing the account owes. A session that owes nothing
+  /// is kept as the account's, and the app opens its mail.
+  Future<void> _advance(LoginResult? signedIn) async {
+    if (signedIn != null && signedIn.isSetUp) {
+      await AppScope.read(context)
+          .keep(widget.server, signedIn.user, _admin.tokens!);
+      TextInput.finishAutofillContext();
+      // Signed in: the app replaces this screen with the mailbox on its own.
+      return;
     }
-  });
+    setState(() {
+      if (_owed.contains(SetupStep.twoFactor)) {
+        _step = _Step.authenticator;
+      } else if (_owed.contains(SetupStep.password)) {
+        _step = _Step.password;
+      } else {
+        // Setup just finished; this session was minted while it was owed.
+        _step = _Step.signBackIn;
+      }
+    });
+  }
 
   Future<void> _startEnrollment() => _run(() async {
     final enrollment = await _admin.enrollTwoFactor();
@@ -215,7 +211,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     await _admin.confirmTwoFactor(_code.text.trim());
     _code.clear();
     _owed = [..._owed]..remove(SetupStep.twoFactor);
-    _advance();
+    await _advance(null);
   });
 
   Future<void> _changePassword() => _run(() async {
@@ -228,46 +224,18 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     // The server ended every session: the new password is the one now.
     _password.text = next;
     _owed = [..._owed]..remove(SetupStep.password);
-    _advance();
+    await _advance(null);
   });
 
   Future<void> _signBackIn() => _run(() async {
-    final admin = await _admin.signInAdmin(
-      username: _username.text.trim(),
+    final result = await _admin.login(
+      email: _address.text.trim(),
       password: _password.text,
       totpCode: _code.text.trim(),
     );
     _code.clear();
-    _owed = admin.setupRequired;
-    _advance();
-  });
-
-  Future<void> _createMailbox() => _run(() async {
-    final domain = _domain.text.trim().toLowerCase();
-    final address = '${_localPart.text.trim().toLowerCase()}@$domain';
-    final name = _displayName.text.trim();
-    try {
-      await _admin.createDomain(domain);
-    } on ApiException catch (e) {
-      // Already served here: that is the domain wanted.
-      if (e.code != 'already_exists') rethrow;
-    }
-    await _admin.createMailbox(
-      address: address,
-      password: _mailboxPassword.text,
-      displayName: name.isEmpty ? null : name,
-    );
-    if (!mounted) return;
-    // The admin session ends here; the owner's mailbox is the account kept.
-    await _admin.logout();
-    if (!mounted) return;
-    await AppScope.read(context).signIn(
-      server: widget.server,
-      email: address,
-      password: _mailboxPassword.text,
-    );
-    TextInput.finishAutofillContext();
-    // Signed in: the app replaces this screen with the mailbox on its own.
+    _owed = result.setupRequired;
+    await _advance(result);
   });
 
   // ── Layout ─────────────────────────────────────────────────────────────
@@ -281,7 +249,6 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       _Step.authenticator => _authenticatorStep(c),
       _Step.password => _passwordStep(c),
       _Step.signBackIn => _signBackInStep(c),
-      _Step.mailbox => _mailboxStep(c),
     };
     return Scaffold(
       body: SafeArea(
@@ -315,14 +282,14 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   _StepView _signInStep(RmColors c) => (
     'Set up ${widget.server.host}',
-    'Sign in as the admin your install created, with the password the '
-        'installer showed you: scan its QR code, or type it. You will replace '
-        'it in a moment.',
+    'Sign in as the account your install created, admin at your domain, '
+        'with the password the installer showed you: scan its QR code, or '
+        'type it. You will replace it in a moment.',
     [
       if (sampleMode) ...[
         const SizedBox(height: 14),
         _SampleHint(
-          'Sample server: ${FakeAccounts.adminUsername}, password '
+          'Sample server: ${FakeAccounts.adminEmail}, password '
           '${FakeAccounts.bootstrapPassword}, codes ${FakeAccounts.totpCode}.',
         ),
       ],
@@ -332,9 +299,14 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         onPressed: _busy ? null : () => unawaited(_scan()),
       ),
       const SizedBox(height: 22),
-      const SectionLabel('Admin username'),
+      const SectionLabel('Email address'),
       const SizedBox(height: 8),
-      _field(_username, autofill: const [AutofillHints.username]),
+      _field(
+        _address,
+        autocorrect: false,
+        email: true,
+        autofill: const [AutofillHints.email],
+      ),
       const SizedBox(height: 22),
       const SectionLabel('Password'),
       const SizedBox(height: 8),
@@ -352,7 +324,11 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         _codeField(onSubmitted: _signIn),
       ],
     ],
-    _primary('Continue', _signIn, ready: _password.text.isNotEmpty),
+    _primary(
+      'Continue',
+      _signIn,
+      ready: _address.text.contains('@') && _password.text.isNotEmpty,
+    ),
   );
 
   _StepView _authenticatorStep(RmColors c) {
@@ -360,8 +336,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     if (enrollment == null) {
       return (
         'Two-factor sign-in',
-        'This account needs an authenticator app: from now on, signing in as '
-            'admin takes a code from it as well as the password.',
+        'This account needs an authenticator app: from now on, signing in to '
+            'it takes a code from it as well as the password.',
         const [],
         _primary('Set up authenticator', _startEnrollment),
       );
@@ -415,8 +391,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
             SharePlus.instance.share(
               ShareParams(
                 text:
-                    'rest-mail recovery codes for '
-                    '${_username.text.trim()}@${widget.server.host}:\n'
+                    'REST Mail recovery codes for '
+                    '${_address.text.trim()} on ${widget.server.host}:\n'
                     '${enrollment.recoveryCodes.join('\n')}',
               ),
             ),
@@ -472,8 +448,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   _StepView _signBackInStep(RmColors c) => (
     'Sign back in',
-    'The admin account is set up. Sign in again with a fresh code from your '
-        'authenticator to carry on.',
+    'The account is set up. Sign in again with a fresh code from your '
+        'authenticator to open its mail.',
     [
       const SizedBox(height: 22),
       const SectionLabel('Two-factor code'),
@@ -483,61 +459,13 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     _primary('Continue', _signBackIn, ready: _code.text.trim().length >= 6),
   );
 
-  _StepView _mailboxStep(RmColors c) => (
-    'Your mailbox',
-    'The server is yours now. Make the mailbox you will read here.',
-    [
-      const SizedBox(height: 22),
-      const SectionLabel('Address'),
-      const SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(child: _field(_localPart, hint: 'you', autocorrect: false)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text('@', style: rmText(17, color: c.ink2)),
-          ),
-          Expanded(
-            flex: 2,
-            child: _field(_domain, hint: 'example.com', autocorrect: false),
-          ),
-        ],
-      ),
-      const SizedBox(height: 22),
-      const SectionLabel('Your name'),
-      const SizedBox(height: 8),
-      _field(_displayName, autofill: const [AutofillHints.name]),
-      const SizedBox(height: 22),
-      const SectionLabel('Mailbox password'),
-      const SizedBox(height: 8),
-      _field(
-        _mailboxPassword,
-        obscure: true,
-        autofill: const [AutofillHints.newPassword],
-        onSubmitted: _createMailbox,
-      ),
-      const SizedBox(height: 8),
-      Text(
-        'What you sign in to your mail with. Separate from the admin password.',
-        style: rmText(12.5, color: c.ink3, height: 1.4),
-      ),
-    ],
-    _primary(
-      'Create mailbox and sign in',
-      _createMailbox,
-      ready:
-          _localPart.text.trim().isNotEmpty &&
-          _domain.text.trim().isNotEmpty &&
-          _mailboxPassword.text.isNotEmpty,
-    ),
-  );
-
   // ── Pieces ─────────────────────────────────────────────────────────────
 
   Widget _field(
     TextEditingController controller, {
     bool obscure = false,
     bool autocorrect = true,
+    bool email = false,
     String? hint,
     List<String>? autofill,
     Future<void> Function()? onSubmitted,
@@ -547,6 +475,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     autocorrect: autocorrect && !obscure,
     enableSuggestions: !obscure && autocorrect,
     autofillHints: autofill,
+    keyboardType: email ? TextInputType.emailAddress : null,
     onChanged: (_) => setState(() => _error = null),
     onSubmitted: onSubmitted == null ? null : (_) => unawaited(onSubmitted()),
     style: rmText(16, color: context.rm.ink),
@@ -579,7 +508,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 /// A step: its title, what it asks, its fields, and the button that takes it.
 typedef _StepView = (String, String, List<Widget>, Widget);
 
-/// Where the owner is in the four things a fresh server needs.
+/// Where the owner is in the three things a fresh server needs.
 class _Progress extends StatelessWidget {
   const _Progress({required this.step});
 
@@ -592,10 +521,9 @@ class _Progress extends StatelessWidget {
       _Step.signIn => 0,
       _Step.authenticator => 1,
       _Step.password || _Step.signBackIn => 2,
-      _Step.mailbox => 3,
     };
     return Text(
-      'Step ${index + 1} of 4',
+      'Step ${index + 1} of 3',
       style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
     );
   }

@@ -8,13 +8,25 @@ import 'package:restmail/imap/mail_connection.dart';
 /// [pattern], [reply], with `{tag}` standing for the command's tag. A rule
 /// answers once unless [repeat] is set.
 class Rule {
-  Rule(String pattern, this.reply, {this.repeat = false})
-    : pattern = RegExp(pattern, caseSensitive: false);
+  Rule(String pattern, String reply, {this.repeat = false})
+    : pattern = RegExp(pattern, caseSensitive: false),
+      _reply = ((_) => reply);
+
+  /// A rule whose answer depends on the command, as one checking a token
+  /// does.
+  Rule.answering(
+    String pattern,
+    String Function(String command) reply, {
+    this.repeat = false,
+  }) : pattern = RegExp(pattern, caseSensitive: false),
+       _reply = reply;
 
   final RegExp pattern;
-  final String reply;
+  final String Function(String command) _reply;
   final bool repeat;
   bool used = false;
+
+  String replyTo(String command) => _reply(command);
 }
 
 /// A pretend IMAP or SMTP server on localhost, answering from recorded
@@ -115,7 +127,9 @@ class ScriptedServer {
       }
       rule.used = true;
       if (smtp && command.toUpperCase() == 'DATA') inData = true;
-      client.write('${_crlf(rule.reply.replaceAll('{tag}', tag))}\r\n');
+      client.write(
+        '${_crlf(rule.replyTo(command).replaceAll('{tag}', tag))}\r\n',
+      );
     }
 
     void line(String text) {

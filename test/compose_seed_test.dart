@@ -7,10 +7,8 @@ const _me = {'ada@example.test'};
 Message _message({
   String sender = 'bob@example.test',
   String? senderName = 'Bob',
-  List<Map<String, String>> to = const [
-    {'address': 'ada@example.test'},
-  ],
-  List<Map<String, String>> cc = const [],
+  List<String> to = const ['ada@example.test'],
+  List<String> cc = const [],
   String subject = 'Lunch',
   String body = 'Thursday?\nAt noon',
 }) => Message.fromJson({
@@ -56,14 +54,11 @@ void main() {
     () {
       final seed = replySeed(
         _message(
-          to: const [
-            {'address': 'ada@example.test'},
-            {'address': 'carol@example.test'},
-          ],
+          to: const ['ada@example.test', 'carol@example.test'],
           cc: const [
-            {'address': 'dave@example.test'},
-            {'address': 'Bob@example.test'},
-            {'address': 'carol@example.test'},
+            'dave@example.test',
+            'Bob@example.test',
+            'carol@example.test',
           ],
         ),
         ownAddresses: _me,
@@ -77,12 +72,7 @@ void main() {
 
   test('replying to something the user sent goes to its recipients', () {
     final seed = replySeed(
-      _message(
-        sender: 'ada@example.test',
-        to: const [
-          {'address': 'carol@example.test'},
-        ],
-      ),
+      _message(sender: 'ada@example.test', to: const ['carol@example.test']),
       ownAddresses: _me,
     );
 

@@ -1,3 +1,5 @@
+import 'oauth.dart';
+
 /// How the app sends over SMTP. There is deliberately no plaintext choice:
 /// a server that offers neither is refused.
 enum SmtpSecurity {
@@ -138,6 +140,13 @@ class MailProvider {
 
   bool get isGmail => id == 'gmail';
 
+  /// Who can sign it in instead of a password, given a client for them.
+  OAuthKind? get signsInWith => switch (id) {
+    'outlook' => OAuthKind.microsoft,
+    'gmail' => OAuthKind.google,
+    _ => null,
+  };
+
   /// Sign-in takes an app password rather than the account's own.
   bool get usesAppPassword => appPasswordUrl != null;
 }
@@ -231,6 +240,19 @@ abstract final class MailProviders {
     if (domain == null) return null;
     return all.where((p) => p.domains.contains(domain)).firstOrNull;
   }
+}
+
+/// Who can sign an account in instead of a password: its provider's, or
+/// for an address at a domain of its own, the one whose servers it uses,
+/// such as a work account on Microsoft 365 or Google Workspace.
+OAuthKind? oauthKindFor(MailProvider? provider, MailServerSettings? settings) {
+  final known = provider?.signsInWith;
+  if (known != null) return known;
+  return switch (settings?.imapHost.toLowerCase()) {
+    'outlook.office365.com' => OAuthKind.microsoft,
+    'imap.gmail.com' => OAuthKind.google,
+    _ => null,
+  };
 }
 
 /// The lower-cased domain of an address, or null if it isn't one yet.

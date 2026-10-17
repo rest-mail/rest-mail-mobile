@@ -29,14 +29,20 @@ class ImapBackend implements MailBackend {
   ImapBackend({
     required this.address,
     required this.displayName,
-    required this.password,
+    this.password,
+    this.accessToken,
     required this.settings,
     required this.openSocket,
-  });
+  }) : assert((password == null) != (accessToken == null));
 
   final String address;
   final String displayName;
-  final String password;
+
+  /// What IMAP and SMTP sign in with: the password, or for an account
+  /// signed in with Microsoft or Google, an access token (XOAUTH2).
+  final String? password;
+  final AccessToken? accessToken;
+
   final MailServerSettings settings;
   final OpenMailSocket openSocket;
 
@@ -93,28 +99,34 @@ class ImapBackend implements MailBackend {
     }
     if (c == null || !c.isOpen) {
       _selected = null;
-      c = _connection = await ImapConnection.open(
-        settings,
-        address: address,
-        password: password,
-        openSocket: openSocket,
-      );
+      c = _connection = await _open();
       _gmail = c.isGmail;
     }
     _lastUsed = DateTime.now();
     return c;
   }
 
+  Future<ImapConnection> _open() => ImapConnection.open(
+    settings,
+    address: address,
+    password: password,
+    accessToken: accessToken,
+    openSocket: openSocket,
+  );
+
+  Future<SmtpClient> _openSmtp() => openSmtp(
+    settings,
+    address: address,
+    password: password,
+    accessToken: accessToken,
+    openSocket: openSocket,
+  );
+
   /// Checks the address and password against both servers, as adding the
   /// account does, and keeps the IMAP connection for what comes next.
   Future<void> verify() async {
     await _run((_) async {});
-    final smtp = await openSmtp(
-      settings,
-      address: address,
-      password: password,
-      openSocket: openSocket,
-    );
+    final smtp = await _openSmtp();
     unawaited(_quit(smtp));
   }
 
@@ -945,12 +957,7 @@ class ImapBackend implements MailBackend {
   @override
   Future<Message> send(OutgoingMessage message) async {
     final mime = buildMime(message, displayName: displayName);
-    final smtp = await openSmtp(
-      settings,
-      address: address,
-      password: password,
-      openSocket: openSocket,
-    );
+    final smtp = await _openSmtp();
     try {
       await smtp
           .sendMessage(mime, from: MailAddress(null, message.from))
@@ -1169,7 +1176,6 @@ class ImapBackend implements MailBackend {
   Future<List<Account>> accounts() async => [
     Account(
       id: accountId,
-      mailboxId: accountId,
       address: address,
       displayName: displayName,
       isPrimary: true,
@@ -1184,6 +1190,8 @@ class ImapBackend implements MailBackend {
     required String address,
     required String password,
     String? displayName,
+    String? totpCode,
+    String? recoveryCode,
   }) => throw const ApiException(
     400,
     'not_supported',
@@ -1276,12 +1284,7 @@ class _Watcher {
     while (!_stopped) {
       StreamSubscription<ImapEvent>? heard;
       try {
-        final c = _connection = await ImapConnection.open(
-          backend.settings,
-          address: backend.address,
-          password: backend.password,
-          openSocket: backend.openSocket,
-        );
+        final c = _connection = await backend._open();
         if (_stopped) break;
         await c.run((client) => client.selectInbox());
         heard = c.client.eventBus.on<ImapEvent>().listen(_heard);
@@ -1304,7 +1307,8 @@ class _Watcher {
         }
       } on ApiException catch (e) {
         // A password that no longer works won't start working by asking
-        // again every minute, and asking could get the account locked.
+        // again every minute, and asking could get the account locked. A
+        // sign-in with Microsoft or Google that ended ends the account.
         if (e.statusCode == 401) {
           onLiveChanged?.call(false);
           if (!events.isClosed) events.addError(e);

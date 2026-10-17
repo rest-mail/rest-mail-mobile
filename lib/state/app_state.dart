@@ -8,11 +8,15 @@ import 'package:restmail_api/restmail_api.dart';
 import '../imap/imap_backend.dart';
 import '../imap/mail_connection.dart';
 import '../imap/mail_settings.dart';
+import '../imap/oauth.dart';
+import '../imap/oauth_browser.dart';
 import '../net/http_client.dart';
+import '../push/push_service.dart';
 import '../util/sign_in_link.dart';
 import '../version.dart';
 import 'mail_backend.dart';
 import 'mailbox_state.dart';
+import 'push_state.dart';
 import 'settings.dart';
 import 'storage.dart';
 
@@ -40,10 +44,6 @@ sealed class SignedInAccount {
   /// Its mail. The account keeps it for as long as it is signed in.
   MailBackend get backend;
 
-  /// False for an administrator, which signs in to the server, not to a
-  /// mailbox, and so opens on Administration.
-  bool get hasMailbox => true;
-
   /// What it may do on the server's admin API, as its session last heard.
   Capabilities get capabilities => Capabilities.none;
 
@@ -51,25 +51,20 @@ sealed class SignedInAccount {
   void close();
 }
 
-/// A session on a REST Mail server: a mailbox's, whose linked mailboxes
-/// belong to it, or an administrator's, which has none.
+/// A session on a REST Mail server: an account's, which is a mailbox, with
+/// the accounts it created or linked. What it may administer comes with the
+/// session, as [capabilities].
 class RestAccount extends SignedInAccount {
   RestAccount._(
     this.server,
     this.user,
     this.client, {
-    required this.isAdministrator,
     required this.capabilities,
   }) : backend = RestBackend(client);
 
   final Uri server;
-
-  /// For an administrator, `email` is the username.
   final User user;
   final RestmailClient client;
-
-  /// Signed in as an admin user: a username, not a mailbox.
-  final bool isAdministrator;
 
   @override
   final MailBackend backend;
@@ -79,13 +74,10 @@ class RestAccount extends SignedInAccount {
   Capabilities capabilities;
 
   @override
-  bool get hasMailbox => !isAdministrator;
-
-  @override
   AccountKind get kind => AccountKind.rest;
 
   @override
-  String get key => _restKey(server, user, isAdministrator);
+  String get key => _keyOf(server, user.email);
 
   @override
   String get address => user.email;
@@ -101,16 +93,20 @@ class RestAccount extends SignedInAccount {
 }
 
 /// A mailbox read over IMAP and sent through SMTP, signed in with its
-/// password or an app password. Both are kept in the Keychain or Keystore,
-/// as IMAP and SMTP want them each time they connect.
+/// password or an app password, kept in the Keychain or Keystore as IMAP
+/// and SMTP want it each time they connect; or signed in with Microsoft or
+/// Google, when the Keychain or Keystore holds the refresh token instead.
 class ImapAccount extends SignedInAccount {
-  ImapAccount._(this.backend, {this.provider});
+  ImapAccount._(this.backend, {this.provider, this.oauth});
 
   @override
   final ImapBackend backend;
 
   /// The provider whose preset it was set up from, if it was.
   final MailProvider? provider;
+
+  /// Its sign-in with Microsoft or Google, if it has no password.
+  final OAuthSession? oauth;
 
   MailServerSettings get settings => backend.settings;
 
@@ -136,11 +132,6 @@ class ImapAccount extends SignedInAccount {
 
 String _keyOf(Uri server, String email) => '$server|${email.toLowerCase()}';
 
-/// An administrator's username is kept apart from the mailbox addresses: a
-/// colon cannot be in one.
-String _restKey(Uri server, User user, bool administrator) =>
-    _keyOf(server, administrator ? 'admin:${user.email}' : user.email);
-
 /// Who is signed in to which servers, and the settings — everything that
 /// outlives a single screen.
 class AppState extends ChangeNotifier {
@@ -148,7 +139,12 @@ class AppState extends ChangeNotifier {
     required this.store,
     required this.httpClientFactory,
     OpenMailSocket? mailSockets,
-  }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext);
+    this.oauth = OAuthClients.none,
+    this.oauthBrowser = systemOAuthBrowser,
+    PushService pushService = const NoPushService(),
+  }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext) {
+    push = PushNotifications(this, pushService);
+  }
 
   final KeyValueStore store;
 
@@ -159,8 +155,16 @@ class AppState extends ChangeNotifier {
   /// Opens the IMAP and SMTP sockets: TLS with the same trust as HTTPS.
   final OpenMailSocket mailSockets;
 
-  /// Before there could be more than one account, its session lived here.
-  static const _legacySessionKey = 'session';
+  /// The Microsoft and Google clients this build has. A provider without
+  /// one has no sign-in button.
+  final OAuthClients oauth;
+
+  /// Shows a provider's sign-in page in the system browser.
+  final OAuthBrowser oauthBrowser;
+
+  /// New mail notifications, for the REST Mail accounts whose server can
+  /// send them.
+  late final PushNotifications push;
 
   /// Which accounts there are, in order, and which one is on screen. Each
   /// account's session is stored under its own key, so one that can't be
@@ -204,7 +208,7 @@ class AppState extends ChangeNotifier {
   SignInLink? get pendingSetup => _pendingSetup;
 
   /// Takes a link the app was opened with. A sign-in link, from the QR code
-  /// the installer showed (`https://rest-mail.com/setup#server=…&username=…`
+  /// the installer showed (`https://rest-mail.com/setup#server=…&address=…`
   /// `&password=…`), waits in [pendingSetup]; anything else is ignored. The
   /// same link delivered twice (at launch, and again by the stream of links)
   /// counts once.
@@ -229,7 +233,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> start() async {
     settings = AppSettings.decode(await _read(_settingsKey));
-    await _moveLegacySession();
     final (saved, currentKey, dropped) = await _readSaved();
     accounts = [for (final s in saved) _open(s)];
     if (accounts.isEmpty) {
@@ -244,6 +247,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     if (dropped) await _writeIndex();
+    unawaited(push.start());
   }
 
   /// A client for [server] with no session, for discovery and health checks.
@@ -254,10 +258,14 @@ class AppState extends ChangeNotifier {
   );
 
   /// Signs in and adds the account, or renews it if it is already here, and
-  /// puts it on screen.
+  /// puts it on screen. An administrator signs in here too, as the account
+  /// it is; Administration shows by the session's capabilities.
   ///
   /// Throws [TotpRequiredException] when the account wants a second factor,
-  /// and [ApiException] for anything else the server refuses.
+  /// and [ApiException] for anything else the server refuses: 403
+  /// `setup_required` for an account that has still to choose its own
+  /// password or enroll an authenticator (a fresh install's first one),
+  /// which is not kept until it has.
   Future<void> signIn({
     required Uri server,
     required String email,
@@ -273,56 +281,29 @@ class AppState extends ChangeNotifier {
         totpCode: totpCode,
         recoveryCode: recoveryCode,
       );
-      final saved = _SavedSession(server, result.user, result.tokens);
-      await store.write(_accountKey(saved.key), saved.encode());
-      await _add(_openRest(saved));
+      if (!result.isSetUp) {
+        // A session that can only finish the setup is no use kept.
+        await candidate.logout();
+        throw ApiException(
+          403,
+          'setup_required',
+          '${result.user.email} has to choose its own password and set up '
+              'two-factor sign-in first.',
+        );
+      }
+      await keep(server, result.user, result.tokens);
     } finally {
       candidate.close();
     }
   }
 
-  /// Signs in as an administrator, an admin user with no mailbox of its own,
-  /// and adds the account, or renews it if it is already here, and puts it
-  /// on screen. It opens on Administration.
-  ///
-  /// Throws [TotpRequiredException] for the code from its authenticator, and
-  /// [ApiException] for anything else the server refuses: `setup_required`
-  /// for an admin that has still to choose its own password and enroll an
-  /// authenticator, which is not kept until it has.
-  Future<void> signInAdmin({
-    required Uri server,
-    required String username,
-    required String password,
-    String? totpCode,
-  }) async {
-    final candidate = probe(server);
-    try {
-      final result = await candidate.signInAdmin(
-        username: username,
-        password: password,
-        totpCode: totpCode,
-      );
-      if (!result.isSetUp) {
-        // A session that can only finish the setup is no use kept.
-        await candidate.logout();
-        throw const ApiException(
-          403,
-          'setup_required',
-          'This administrator has to choose its own password and set up '
-              'two-factor sign-in first.',
-        );
-      }
-      final saved = _SavedSession(
-        server,
-        result.user,
-        candidate.tokens!,
-        administrator: true,
-      );
-      await store.write(_accountKey(saved.key), saved.encode());
-      await _add(_openRest(saved));
-    } finally {
-      candidate.close();
-    }
+  /// Adds a session already signed in, such as the one finishing a server's
+  /// setup ends with, or renews the account if it is already here, and puts
+  /// it on screen. Whatever signed in hands it over and uses it no more.
+  Future<void> keep(Uri server, User user, SessionTokens tokens) async {
+    final saved = _SavedSession(server, user, tokens);
+    await store.write(_accountKey(saved.key), saved.encode());
+    await _add(_openRest(saved));
   }
 
   /// Adds a Gmail or other IMAP account, or renews it if it is already
@@ -358,6 +339,64 @@ class AppState extends ChangeNotifier {
     await _add(account);
   }
 
+  /// Adds an account by signing in with Microsoft or Google ([kind]) in
+  /// the system browser, rather than with a password, or renews it if it is
+  /// already here, and puts it on screen. [address] is a hint: the account
+  /// is the one that signed in. Its refresh token is kept in the Keychain
+  /// or Keystore; the access token, in memory only.
+  ///
+  /// Throws [ApiException]: `cancelled` if the browser was closed,
+  /// `access_denied` if permission was refused, `oauth_state` for an answer
+  /// to some other request, and what IMAP and SMTP throw.
+  Future<void> addOAuthAccount({
+    required OAuthKind kind,
+    required String address,
+    required MailServerSettings settings,
+    String displayName = '',
+    MailProvider? provider,
+  }) async {
+    final client = oauth[kind];
+    if (client == null) {
+      throw ApiException(
+        0,
+        'oauth_unavailable',
+        "This build of REST Mail can't sign in with ${kind.label}.",
+      );
+    }
+    final http = httpClientFactory();
+    final OAuthGrant grant;
+    try {
+      grant = await signInWithOAuth(
+        client,
+        httpClient: http,
+        browser: oauthBrowser,
+        loginHint: address,
+      );
+    } finally {
+      http.close();
+    }
+    final name = displayName.trim();
+    final saved = _SavedImap(
+      address: grant.email ?? address.trim(),
+      displayName: name.isNotEmpty ? name : grant.name ?? '',
+      oauth: _SavedOAuth(kind, grant.refreshToken),
+      settings: settings,
+      provider: provider?.id,
+    );
+    final account = _openImap(saved, access: grant.access);
+    try {
+      await account.backend.verify();
+    } on Object {
+      account.close();
+      rethrow;
+    }
+    // The refresh token as it is now: one that came while checking the
+    // servers replaced the first.
+    final kept = saved.withRefreshToken(account.oauth!.refreshToken);
+    await store.write(_accountKey(kept.key), kept.encode());
+    await _add(account);
+  }
+
   /// Puts [account] in the list, in place of one with the same key, and on
   /// screen.
   Future<void> _add(SignedInAccount account) async {
@@ -371,14 +410,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     switch (replaced) {
       // The session this one replaces is ended on the server too, rather
-      // than left valid until it expires.
+      // than left valid until it expires, and its push registration goes
+      // first: the new session registers its own.
       case RestAccount(:final client):
-        unawaited(client.logout().whenComplete(client.close));
+        final device = await push.detach(replaced);
+        unawaited(
+          () async {
+            if (device != null) {
+              try {
+                await client.removePushDevice(device);
+              } on ApiException {
+                // It goes with the session regardless.
+              }
+            }
+            await client.logout();
+          }().whenComplete(client.close),
+        );
       case ImapAccount():
         replaced.close();
       case null:
     }
     await _writeIndex();
+    unawaited(push.sync());
   }
 
   /// Puts [account] on screen.
@@ -397,8 +450,18 @@ class AppState extends ChangeNotifier {
     _signingOut.add(account);
     try {
       // An IMAP account has no session on the server to end; forgetting
-      // its password here is signing out.
-      if (account is RestAccount) await account.client.logout();
+      // its password here is signing out. One signed in with Google gives
+      // its refresh token back, so it stops working there too. A REST Mail
+      // one takes this phone off its server's push list first, while its
+      // session still can.
+      switch (account) {
+        case RestAccount(:final client):
+          await push.unregister(account);
+          await client.logout();
+        case ImapAccount(:final oauth?):
+          await _revoke(oauth);
+        case ImapAccount():
+      }
     } finally {
       _signingOut.remove(account);
     }
@@ -430,31 +493,94 @@ class AppState extends ChangeNotifier {
       saved.server,
       saved.user,
       client,
-      isAdministrator: saved.administrator,
       capabilities: saved.tokens.capabilities,
     );
   }
 
-  ImapAccount _openImap(_SavedImap saved) => ImapAccount._(
-    ImapBackend(
-      address: saved.address,
-      displayName: saved.displayName,
-      password: saved.password,
-      settings: saved.settings,
-      openSocket: mailSockets,
-    ),
-    provider: MailProviders.byId(saved.provider),
-  );
+  ImapAccount _openImap(_SavedImap saved, {AccessGrant? access}) {
+    late final ImapAccount account;
+    final signIn = saved.oauth;
+    final session = signIn == null
+        ? null
+        : OAuthSession(
+            kind: signIn.kind,
+            provider: oauth[signIn.kind],
+            refreshToken: signIn.refreshToken,
+            httpClient: httpClientFactory,
+            access: access,
+            onRefreshTokenChanged: (token) =>
+                _refreshTokenChanged(account, saved, token),
+            onEnded: () => _oauthEnded(account),
+          );
+    return account = ImapAccount._(
+      ImapBackend(
+        address: saved.address,
+        displayName: saved.displayName,
+        password: saved.password,
+        accessToken: session?.accessToken,
+        settings: saved.settings,
+        openSocket: mailSockets,
+      ),
+      provider: MailProviders.byId(saved.provider),
+      oauth: session,
+    );
+  }
+
+  /// Keeps the refresh token Microsoft sends with each new access token:
+  /// the one before it may soon stop working.
+  void _refreshTokenChanged(
+    ImapAccount account,
+    _SavedImap saved,
+    String token,
+  ) {
+    // An account already ended or replaced is never saved, so it can't
+    // overwrite the one that took its place.
+    if (!accounts.contains(account)) return;
+    final next = saved.withRefreshToken(token);
+    unawaited(store.write(_accountKey(next.key), next.encode()));
+  }
+
+  /// The provider no longer takes the account's refresh token: its owner
+  /// took REST Mail's access away, or changed their password. The account
+  /// ends, and has to be signed in again.
+  void _oauthEnded(ImapAccount account) {
+    if (_signingOut.contains(account)) return;
+    final who = account.oauth?.kind.label ?? 'The provider';
+    unawaited(
+      _end(
+        account,
+        reason: accounts.length > 1
+            ? '$who no longer lets REST Mail into ${account.address}. Add '
+                  'the account again to carry on.'
+            : '$who no longer lets REST Mail into ${account.address}. Sign '
+                  'in again to carry on.',
+      ),
+    );
+  }
+
+  /// Gives a refresh token back, where the provider takes them back
+  /// (Google). Best effort: signing out goes ahead whatever it answers.
+  Future<void> _revoke(OAuthSession session) async {
+    final endpoint = session.provider?.revocationEndpoint;
+    if (endpoint == null || session.hasEnded) return;
+    final http = httpClientFactory();
+    try {
+      await http
+          .post(endpoint, body: {'token': session.refreshToken})
+          .timeout(const Duration(seconds: 10));
+    } on Object {
+      // Signed out on the phone all the same.
+    } finally {
+      http.close();
+    }
+  }
 
   /// Starts [account]'s mail and stops the previous account's.
   void _show(SignedInAccount account) {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
-    // An administrator has no mail to load.
-    mailbox = account.hasMailbox
-        ? (MailboxState(account.backend)..start())
-        : null;
+    mailbox = MailboxState(account.backend)..start();
     phase = AppPhase.signedIn;
     _sessions++;
     previous?.dispose();
@@ -473,12 +599,7 @@ class AppState extends ChangeNotifier {
       unawaited(
         store.write(
           _accountKey(account.key),
-          _SavedSession(
-            account.server,
-            account.user,
-            tokens,
-            administrator: account.isAdministrator,
-          ).encode(),
+          _SavedSession(account.server, account.user, tokens).encode(),
         ),
       );
       // The server re-reads the grants at every refresh: what it took away
@@ -521,6 +642,7 @@ class AppState extends ChangeNotifier {
     if (reason != null && accounts.isNotEmpty) _notices.add(reason);
     account.close();
     await store.delete(_accountKey(account.key));
+    await push.forget(account);
     await _writeIndex();
   }
 
@@ -535,37 +657,17 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  /// Moves a session saved before there could be several accounts into the
-  /// list, so an upgrade keeps it signed in. The old entry goes only once the
-  /// new ones are written.
-  Future<void> _moveLegacySession() async {
-    final raw = await _read(_legacySessionKey);
-    if (raw == null) return;
-    final saved = _SavedSession.decode(raw);
-    if (saved != null) {
-      final (order, _) = _decodeIndex(await _read(_accountsKey));
-      await store.write(_accountKey(saved.key), saved.encode());
-      await store.write(
-        _accountsKey,
-        _encodeIndex([
-          ...order.where((k) => k != saved.key),
-          saved.key,
-        ], saved.key),
-      );
-    }
-    await store.delete(_legacySessionKey);
-  }
-
   /// The saved accounts in order, which one was on screen, and whether any
-  /// had to be dropped. An entry that can't be read is deleted: that account
-  /// signs in again, and the others are kept.
+  /// had to be dropped. An entry that can't be read, or isn't the account its
+  /// key names, is deleted: that account signs in again, and the others are
+  /// kept.
   Future<(List<_Saved>, String?, bool)> _readSaved() async {
     final (order, currentKey) = _decodeIndex(await _read(_accountsKey));
     final saved = <_Saved>[];
     var dropped = false;
     for (final key in order) {
       final session = _Saved.decode(await _read(_accountKey(key)));
-      if (session == null) {
+      if (session == null || session.key != key) {
         await store.delete(_accountKey(key));
         dropped = true;
       } else if (saved.any((s) => s.key == session.key)) {
@@ -606,6 +708,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    push.dispose();
     mailbox?.dispose();
     for (final account in accounts) {
       account.close();
@@ -616,8 +719,7 @@ class AppState extends ChangeNotifier {
 }
 
 /// One account's entry in the Keychain or Keystore. `kind` says which sort
-/// it is; entries written before there were IMAP accounts have none and are
-/// REST Mail sessions.
+/// it is; an entry without one can't be read, and is dropped.
 sealed class _Saved {
   const _Saved();
 
@@ -625,7 +727,7 @@ sealed class _Saved {
     if (raw == null) return null;
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      return switch (json['kind'] ?? AccountKind.rest.name) {
+      return switch (json['kind']) {
         'rest' => _SavedSession.fromJson(json),
         'imap' => _SavedImap.fromJson(json),
         _ => null,
@@ -641,32 +743,20 @@ sealed class _Saved {
 }
 
 class _SavedSession extends _Saved {
-  const _SavedSession(
-    this.server,
-    this.user,
-    this.tokens, {
-    this.administrator = false,
-  });
-
-  static _SavedSession? decode(String? raw) => switch (_Saved.decode(raw)) {
-    final _SavedSession session => session,
-    _ => null,
-  };
+  const _SavedSession(this.server, this.user, this.tokens);
 
   factory _SavedSession.fromJson(Map<String, dynamic> json) => _SavedSession(
     Uri.parse(json['server'] as String),
     User.fromJson(json['user'] as Map<String, dynamic>),
     SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
-    administrator: json['administrator'] == true,
   );
 
   final Uri server;
   final User user;
   final SessionTokens tokens;
-  final bool administrator;
 
   @override
-  String get key => _restKey(server, user, administrator);
+  String get key => _keyOf(server, user.email);
 
   @override
   String encode() => jsonEncode({
@@ -674,26 +764,57 @@ class _SavedSession extends _Saved {
     'server': server.toString(),
     'user': user.toJson(),
     'tokens': tokens.toJson(),
-    if (administrator) 'administrator': true,
   });
 }
 
+/// An IMAP account's sign-in with Microsoft or Google: who, and the
+/// refresh token.
+class _SavedOAuth {
+  const _SavedOAuth(this.kind, this.refreshToken);
+
+  static _SavedOAuth? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final kind = OAuthKind.values
+        .where((k) => k.name == json['provider'])
+        .firstOrNull;
+    final token = json['refresh_token'];
+    if (kind == null || token is! String || token.isEmpty) return null;
+    return _SavedOAuth(kind, token);
+  }
+
+  final OAuthKind kind;
+  final String refreshToken;
+
+  Map<String, String> toJson() => {
+    'provider': kind.name,
+    'refresh_token': refreshToken,
+  };
+}
+
+/// An IMAP account with its password, or with its sign-in with Microsoft
+/// or Google; never both.
 class _SavedImap extends _Saved {
   const _SavedImap({
     required this.address,
     required this.displayName,
-    required this.password,
+    this.password,
+    this.oauth,
     required this.settings,
     this.provider,
-  });
+  }) : assert((password == null) != (oauth == null));
 
   static _SavedImap? fromJson(Map<String, dynamic> json) {
     final settings = MailServerSettings.fromJson(json['settings']);
-    if (settings == null) return null;
+    final password = json['password'] as String?;
+    final oauth = _SavedOAuth.fromJson(json['oauth']);
+    if (settings == null || (password == null) == (oauth == null)) {
+      return null;
+    }
     return _SavedImap(
       address: json['address'] as String,
       displayName: json['display_name'] as String? ?? '',
-      password: json['password'] as String,
+      password: password,
+      oauth: oauth,
       settings: settings,
       provider: json['provider'] as String?,
     );
@@ -701,9 +822,18 @@ class _SavedImap extends _Saved {
 
   final String address;
   final String displayName;
-  final String password;
+  final String? password;
+  final _SavedOAuth? oauth;
   final MailServerSettings settings;
   final String? provider;
+
+  _SavedImap withRefreshToken(String token) => _SavedImap(
+    address: address,
+    displayName: displayName,
+    oauth: _SavedOAuth(oauth!.kind, token),
+    settings: settings,
+    provider: provider,
+  );
 
   @override
   String get key =>
@@ -714,7 +844,8 @@ class _SavedImap extends _Saved {
     'kind': AccountKind.imap.name,
     'address': address,
     'display_name': displayName,
-    'password': password,
+    'password': ?password,
+    'oauth': ?oauth?.toJson(),
     'settings': settings.toJson(),
     'provider': ?provider,
   });

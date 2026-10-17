@@ -24,6 +24,61 @@ String _actor(AuditEntry entry) => switch (entry.actorKind) {
   _ => 'Someone not signed in',
 };
 
+/// What was done on the server and by whom, newest first: the audit log's
+/// entries that went through. Tapping one opens it as the audit log does.
+class ActivityScreen extends StatefulWidget {
+  const ActivityScreen({super.key, required this.account});
+
+  final RestAccount account;
+
+  @override
+  State<ActivityScreen> createState() => _ActivityScreenState();
+}
+
+class _ActivityScreenState extends State<ActivityScreen> {
+  late final _list = AdminList<AuditEntry>.cursor(
+    (cursor) => widget.account.client.audit(before: cursor, outcome: 'success'),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.activity)) {
+      unawaited(_list.reload());
+    }
+  }
+
+  @override
+  void dispose() {
+    _list.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AdminPage(
+    account: widget.account,
+    section: AdminSection.activity,
+    title: 'Activity',
+    body: (_) => AdminListView(
+      list: _list,
+      host: widget.account.server.host,
+      empty: 'Nothing has been done yet.',
+      row: (entry) => RmRow(
+        label: [entry.action, ?entry.target['address']].join(' · '),
+        subtitle: [
+          'By ${_actor(entry)} · ${timeLabel(entry.occurredAt)}',
+          if (entry.ip.isNotEmpty) 'From ${entry.ip}',
+        ].join('\n'),
+        onTap: () => pushScreen(
+          context,
+          AuditEntryScreen(account: widget.account, entry: entry),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Every sign-in and change on the server, newest first. Each entry carries
 /// the hash of the one before, so the server can check that none was changed
 /// or taken out: **Verify chain** asks it to. Reading the log is itself

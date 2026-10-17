@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../../state/admin_access.dart';
+import '../../state/app_scope.dart';
 import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
@@ -56,7 +57,11 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
       context,
       AdminFormScreen(
         title: 'Add a mailbox',
-        intro: 'On a domain this server already has.',
+        intro:
+            'On a domain this server hosts. Accounts are made in one place, '
+            'so this account becomes its owner, and it shows among your '
+            'mailboxes. Without a password, only its owners reach it; with '
+            'one (12 characters or more), it can sign in too.',
         fields: [
           AdminField(
             'Address',
@@ -64,18 +69,24 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             email: true,
           ),
           const AdminField('Name', optional: true),
-          const AdminField('Password', obscure: true),
+          const AdminField('Password', obscure: true, optional: true),
         ],
         action: 'Add mailbox',
         host: _host,
-        submit: (values) => widget.account.client.createMailbox(
+        submit: (values) => widget.account.client.createAccount(
           address: values[0].toLowerCase(),
           displayName: values[1].isEmpty ? null : values[1],
-          password: values[2],
+          password: values[2].isEmpty ? null : values[2],
         ),
       ),
     );
-    if (added) unawaited(_list.reload());
+    if (!added || !mounted) return;
+    unawaited(_list.reload());
+    // The creator owns it: it joins the account's mailboxes at once.
+    final app = AppScope.read(context);
+    if (identical(app.current, widget.account)) {
+      unawaited(app.mailbox?.reloadAccounts());
+    }
   }
 
   Future<void> _open(AdminMailbox mailbox) async {
@@ -185,7 +196,7 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
       AdminFormScreen(
         title: 'New password',
         intro:
-            'Its sessions end, and it signs in again with this one. Eight '
+            'Its sessions end, and it signs in again with this one. Twelve '
             'characters or more.',
         fields: const [AdminField('Password', obscure: true)],
         action: 'Set password',

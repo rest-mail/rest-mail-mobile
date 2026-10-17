@@ -6,8 +6,8 @@ import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
-import 'ui/admin/admin_screen.dart';
 import 'ui/mailbox_screen.dart';
+import 'ui/push_offer.dart';
 import 'ui/setup_link_handler.dart';
 import 'ui/welcome_screen.dart';
 import 'ui/widgets/avatar.dart';
@@ -21,7 +21,7 @@ class RestmailApp extends StatefulWidget {
   State<RestmailApp> createState() => _RestmailAppState();
 }
 
-class _RestmailAppState extends State<RestmailApp> {
+class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   late final StreamSubscription<String> _notices;
 
   /// A new one with each navigator, so a snackbar from the account going
@@ -32,6 +32,11 @@ class _RestmailAppState extends State<RestmailApp> {
   @override
   void initState() {
     super.initState();
+    // Notifications leave out the inbox on screen, and the badge takes the
+    // count the app last showed.
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null) didChangeAppLifecycleState(lifecycle);
     // After the frame, so a notice that came with a change of account lands
     // on the new account's screen rather than the one going away.
     _notices = widget.state.notices.listen((notice) {
@@ -47,9 +52,16 @@ class _RestmailAppState extends State<RestmailApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_notices.cancel());
     super.dispose();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) => widget
+      .state
+      .push
+      .lifecycleChanged(onScreen: lifecycle == AppLifecycleState.resumed);
 
   GlobalKey<ScaffoldMessengerState> _messengerFor(Object session) {
     if (session != _messengerSession) {
@@ -82,16 +94,12 @@ class _RestmailAppState extends State<RestmailApp> {
               child: WelcomeScreen(),
             ),
             AppPhase.signedIn => SetupLinkHandler(
-              child: switch ((state.mailbox, state.current)) {
-                (final mailbox?, _) => MailboxScreen(mailbox: mailbox),
-                // An administrator has no mailbox: it opens on what it may
-                // administer.
-                (null, final RestAccount account) => AdministrationScreen(
-                  account: account,
-                  home: true,
-                ),
-                _ => const _Launch(),
-              },
+              child: PushOffer(
+                child: switch (state.mailbox) {
+                  final mailbox? => MailboxScreen(mailbox: mailbox),
+                  null => const _Launch(),
+                },
+              ),
             ),
           },
         ),

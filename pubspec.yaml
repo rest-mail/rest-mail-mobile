@@ -64,6 +64,14 @@ dependencies:
   # Reads the autoconfig files that say where a domain's IMAP and SMTP
   # servers are. MIT.
   xml: ^6.6.1
+  # Sign in with Microsoft or Google: shows the provider's page in the
+  # system browser (ASWebAuthenticationSession on iOS, a Custom Tab on
+  # Android) and hands back the URL it returns to. MIT; its Android side is
+  # androidx.browser, Apache-2.0. Only the browser: PKCE, the state check
+  # and the tokens are done in lib/imap/oauth.dart, where tests reach them.
+  flutter_web_auth_2: ^5.1.0
+  # dart-lang, BSD-3. SHA-256 for the PKCE challenge.
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

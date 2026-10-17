@@ -14,7 +14,7 @@ abstract interface class MailBackend {
   String get host;
 
   /// The mailboxes this session can show. [Account.isPrimary] marks the one
-  /// it signed in with.
+  /// it signed in with; the others are the ones it created or linked.
   Future<List<Account>> accounts();
 
   /// Whether [linkAccount] can add more mailboxes to this session. A REST
@@ -22,14 +22,18 @@ abstract interface class MailBackend {
   bool get canLinkMailboxes;
 
   /// Adds another mailbox on the same server, proving access to it with its
-  /// own password.
+  /// own password, and its code when it has two-factor authentication:
+  /// without one that is needed, throws [TotpRequiredException].
   Future<Account> linkAccount({
     required String address,
     required String password,
     String? displayName,
+    String? totpCode,
+    String? recoveryCode,
   });
 
-  /// Removes a linked mailbox. The primary one cannot be.
+  /// Gives up a mailbox this session created or linked. The primary one
+  /// cannot be.
   Future<void> unlinkAccount(int id);
 
   Future<List<Folder>> folders(int accountId);
@@ -124,10 +128,14 @@ class RestBackend implements MailBackend {
     required String address,
     required String password,
     String? displayName,
+    String? totpCode,
+    String? recoveryCode,
   }) => client.linkAccount(
     address: address,
     password: password,
     displayName: displayName,
+    totpCode: totpCode,
+    recoveryCode: recoveryCode,
   );
 
   @override

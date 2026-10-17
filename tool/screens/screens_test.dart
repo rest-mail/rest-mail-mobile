@@ -155,28 +155,27 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.text('Settings'));
   await _shot(tester, '11-accounts-settings$suffix');
 
-  // An administrator beside them, which opens on Administration.
+  // The administrator beside them: an account like the others, signed in
+  // with a code, which reaches Administration from the drawer.
   await tester.tap(find.text('Add an account'));
   await tester.pumpAndSettle();
-  final administrator = find.text('Sign in as an administrator');
-  await tester.ensureVisible(administrator);
-  await tester.pumpAndSettle();
-  await tester.tap(administrator);
+  await tester.enterText(find.byType(TextField).at(0), FakeAccounts.adminEmail);
+  await tester.pump(const Duration(milliseconds: 600));
   await tester.pumpAndSettle();
   await tester.enterText(
     find.byType(TextField).at(1),
-    FakeAccounts.adminUsername,
-  );
-  await tester.enterText(
-    find.byType(TextField).at(2),
     FakeAccounts.adminPassword,
   );
   await tester.pump();
-  await tester.tap(find.text('Sign in'));
+  await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(3), FakeAccounts.totpCode);
+  await tester.enterText(find.byType(TextField).at(2), FakeAccounts.totpCode);
   await _shot(tester, '12-admin-sign-in$suffix');
-  await tester.tap(find.text('Sign in'));
+  await tester.tap(find.text('Continue'));
+  await tester.pumpAndSettle();
+  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Administration'));
   await _shot(tester, '13-administration$suffix');
   await tester.tap(find.text('Outbound queue'));
   await _shot(tester, '14-queue$suffix');
@@ -198,14 +197,6 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
   }
-  await tester.tap(find.text('Administrators'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(FakeAccounts.queueWatcher));
-  await _shot(tester, '19-administrator$suffix');
-  await tester.tap(find.byTooltip('Back'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Back'));
-  await tester.pumpAndSettle();
   await tester.tap(find.text('Bans'));
   await _shot(tester, '20-bans$suffix');
   await tester.tap(find.byTooltip('Back'));
@@ -262,8 +253,8 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
 
-  await open('Webmail accounts');
-  await _shot(tester, '28-webmail-accounts$suffix');
+  await open('Activity');
+  await _shot(tester, '28-activity$suffix');
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
   await open('Domains');
@@ -279,6 +270,23 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
   }
+  for (var i = 0; i < 3; i++) {
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+  }
+
+  // A mailbox the administrator creates, owned by it, from Settings.
+  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Settings'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Create a mailbox'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField).first, 'chris');
+  await tester.enterText(find.byType(TextField).last, 'Chris');
+  await _shot(tester, '32-create-mailbox$suffix');
+  await tester.tap(find.text('Create mailbox'));
+  await _shot(tester, '33-created-mailbox$suffix');
 
   await tester.pumpWidget(const SizedBox());
   state.dispose();

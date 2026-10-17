@@ -13,9 +13,18 @@ void main() {
     'a saved session the server will not renew ends, and says why',
     () async {
       final store = MemoryKeyValueStore();
+      const key = 'https://mail.example.test|ada@example.test';
       await store.write(
-        'session',
+        'accounts',
         jsonEncode({
+          'order': [key],
+          'current': key,
+        }),
+      );
+      await store.write(
+        'account:$key',
+        jsonEncode({
+          'kind': 'rest',
           'server': 'https://mail.example.test',
           'user': {'id': 1, 'email': 'ada@example.test', 'display_name': 'Ada'},
           'tokens': {
@@ -49,7 +58,6 @@ void main() {
 
       expect(state.phase, AppPhase.signedOut);
       expect(state.signedOutReason, isNotNull);
-      expect(store.values, isNot(contains('session')));
       expect(store.values.keys.where((k) => k.startsWith('account')), isEmpty);
     },
   );
@@ -58,7 +66,15 @@ void main() {
     'an unreadable saved session means signing in again, not a crash',
     () async {
       final store = MemoryKeyValueStore();
-      await store.write('session', '{not json');
+      const key = 'https://mail.example.test|ada@example.test';
+      await store.write(
+        'accounts',
+        jsonEncode({
+          'order': [key],
+          'current': key,
+        }),
+      );
+      await store.write('account:$key', '{not json');
       final state = AppState(
         store: store,
         httpClientFactory: () =>
@@ -110,41 +126,83 @@ void main() {
       return state;
     }
 
-    test(
-      'an old single session moves into the list, still signed in',
-      () async {
-        final client = RestmailClient(server: _server, httpClient: fake.client);
-        final login = await client.login(
-          email: FakeAccounts.email,
-          password: FakeAccounts.password,
-        );
-        await store.write(
-          'session',
-          jsonEncode({
-            'server': _server.toString(),
-            'user': login.user.toJson(),
-            'tokens': login.tokens.toJson(),
-          }),
-        );
+    test('a saved entry that is not the account its key names, such as an '
+        'administrator session from before accounts were mailboxes, is '
+        'dropped, and deleted', () async {
+      final client = RestmailClient(server: _server, httpClient: fake.client);
+      final login = await client.login(
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+      );
+      final key = '$_server|admin:admin';
+      await store.write(
+        'accounts',
+        jsonEncode({
+          'order': [key, _key(FakeAccounts.email)],
+          'current': key,
+        }),
+      );
+      await store.write(
+        'account:$key',
+        jsonEncode({
+          'kind': 'rest',
+          'server': _server.toString(),
+          'user': {'id': 1, 'email': 'admin', 'display_name': 'admin'},
+          'tokens': login.tokens.toJson(),
+          'administrator': true,
+        }),
+      );
+      await store.write(
+        _entry(FakeAccounts.email),
+        jsonEncode({
+          'kind': 'rest',
+          'server': _server.toString(),
+          'user': login.user.toJson(),
+          'tokens': login.tokens.toJson(),
+        }),
+      );
 
-        final state = newState();
-        await state.start();
-        await _settle();
+      final state = newState();
+      await state.start();
 
-        expect(state.phase, AppPhase.signedIn);
-        expect(_addresses(state), [FakeAccounts.email]);
-        expect(state.mailbox!.account!.address, FakeAccounts.email);
-        expect(requests, isNot(contains('/api/v1/auth/login')));
-        expect(store.values.containsKey('session'), isFalse);
-        expect(store.values.containsKey(_entry(FakeAccounts.email)), isTrue);
+      expect(_addresses(state), [FakeAccounts.email]);
+      expect(store.values.containsKey('account:$key'), isFalse);
+      final index =
+          jsonDecode(store.values['accounts']!) as Map<String, dynamic>;
+      expect(index['order'], [_key(FakeAccounts.email)]);
+    });
 
-        // And it stays that way: the next launch reads the new layout.
-        final again = newState();
-        await again.start();
-        expect(_addresses(again), [FakeAccounts.email]);
-        expect(again.current!.address, FakeAccounts.email);
-      },
-    );
+    test('a saved entry must say what kind it is; one that does not is '
+        'dropped', () async {
+      final client = RestmailClient(server: _server, httpClient: fake.client);
+      final login = await client.login(
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+      );
+      final key = _key(FakeAccounts.email);
+      await store.write(
+        'accounts',
+        jsonEncode({
+          'order': [key],
+          'current': key,
+        }),
+      );
+      await store.write(
+        _entry(FakeAccounts.email),
+        jsonEncode({
+          'server': _server.toString(),
+          'user': login.user.toJson(),
+          'tokens': login.tokens.toJson(),
+        }),
+      );
+
+      final state = newState();
+      await state.start();
+
+      expect(state.phase, AppPhase.signedOut);
+      expect(store.values.containsKey(_entry(FakeAccounts.email)), isFalse);
+      expect(store.values.containsKey('accounts'), isFalse);
+    });
 
     test('signing out of the one on screen shows the other', () async {
       final state = await signedInToBoth();
@@ -247,8 +305,8 @@ void main() {
       });
     }
 
-    test('an administrator is kept beside the mail accounts, with no mailbox '
-        'and the capabilities the server last sent', () async {
+    test('an administrator signs in as the account it is: its mail, beside '
+        'the others, with the capabilities the server last sent', () async {
       final state = newState();
       await state.start();
       await state.signIn(
@@ -256,29 +314,22 @@ void main() {
         email: FakeAccounts.email,
         password: FakeAccounts.password,
       );
-      await _settle();
-      requests.clear();
-      await state.signInAdmin(
+      await state.signIn(
         server: _server,
-        username: FakeAccounts.adminUsername,
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.adminPassword,
         totpCode: FakeAccounts.totpCode,
       );
       await _settle();
 
       final admin = state.current! as RestAccount;
-      expect(_addresses(state), [
-        FakeAccounts.email,
-        FakeAccounts.adminUsername,
-      ]);
-      expect(admin.hasMailbox, isFalse);
-      expect(state.mailbox, isNull);
+      expect(_addresses(state), [FakeAccounts.email, FakeAccounts.adminEmail]);
+      expect(state.mailbox!.account!.address, FakeAccounts.adminEmail);
       expect(admin.capabilities.names, {'*'});
-      expect(requests, isNot(contains('/api/v1/accounts')));
 
       // A refresh brings the server's grants as they are now, and they are
       // what the next launch starts from.
-      fake.grant(FakeAccounts.adminUsername, {'queue:read'});
+      fake.grant(FakeAccounts.adminEmail, {'queue:read'});
       await admin.client.refresh();
       await _settle();
       expect(admin.capabilities.names, {'queue:read'});
@@ -286,12 +337,12 @@ void main() {
       final again = newState();
       await again.start();
       final restored = again.current! as RestAccount;
-      expect(restored.isAdministrator, isTrue);
+      expect(restored.address, FakeAccounts.adminEmail);
       expect(restored.capabilities.names, {'queue:read'});
-      expect(again.mailbox, isNull);
+      expect(again.mailbox, isNotNull);
     });
 
-    test('an administrator still in setup is not kept', () async {
+    test('an account still in setup is not kept', () async {
       final fresh = FakeRestmail(scenario: FakeScenario.freshInstall);
       addTearDown(fresh.close);
       final state = AppState(
@@ -302,9 +353,9 @@ void main() {
       await state.start();
 
       await expectLater(
-        state.signInAdmin(
+        state.signIn(
           server: _server,
-          username: FakeAccounts.adminUsername,
+          email: FakeAccounts.adminEmail,
           password: FakeAccounts.bootstrapPassword,
         ),
         throwsA(
