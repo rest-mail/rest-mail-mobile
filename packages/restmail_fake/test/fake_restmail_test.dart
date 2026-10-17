@@ -774,4 +774,255 @@ void main() {
       expect(fake.customFilters, isEmpty);
     });
   });
+
+  group('app passwords', () {
+    Matcher refused(int status, String code) => throwsA(
+      isA<ApiException>()
+          .having((e) => e.statusCode, 'status', status)
+          .having((e) => e.code, 'code', code),
+    );
+
+    test('made with the current password, shown once, listed without its '
+        'secret, and stopped at once by revoking', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+
+      final created = await client.createAppPassword(
+        account.id,
+        name: '  iPhone Mail ',
+        password: FakeAccounts.password,
+      );
+      final secret = created.secret!;
+
+      expect(secret, matches(RegExp(r'^rm_[A-Za-z0-9]{12}_[A-Za-z0-9]{43}$')));
+      expect(secret, startsWith('rm_${created.appPassword.publicId}_'));
+      expect(created.appPassword.name, 'iPhone Mail');
+      final listed = (await client.appPasswords(account.id)).single;
+      expect(listed.publicId, created.appPassword.publicId);
+      expect(listed.lastUsedAt, isNull);
+
+      // A mail client signs in with it, and the list hears of it.
+      expect(fake.acceptsAppPassword(FakeAccounts.email, secret), isTrue);
+      expect(fake.acceptsAppPassword(FakeAccounts.otherEmail, secret), isFalse);
+      expect(
+        (await client.appPasswords(account.id)).single.lastUsedAt,
+        isNotNull,
+      );
+
+      await client.revokeAppPassword(account.id, listed.id);
+      expect(fake.acceptsAppPassword(FakeAccounts.email, secret), isFalse);
+      expect(await client.appPasswords(account.id), isEmpty);
+      expect(fake.appPasswordsOf(FakeAccounts.email).single.isRevoked, isTrue);
+      await expectLater(
+        client.revokeAppPassword(account.id, listed.id),
+        refused(404, 'not_found'),
+      );
+    });
+
+    test('a missing or wrong password is refused, makes nothing, and leaves '
+        'the session as it was', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+      final tokens = client.tokens;
+
+      await expectLater(
+        client.createAppPassword(account.id, name: 'Mail', password: ''),
+        refused(401, 'reauth_required'),
+      );
+      await expectLater(
+        client.createAppPassword(account.id, name: 'Mail', password: 'nope'),
+        refused(401, 'invalid_password'),
+      );
+
+      expect(fake.appPasswordsOf(FakeAccounts.email), isEmpty);
+      expect(client.tokens, same(tokens));
+      expect(await client.appPasswords(account.id), isEmpty);
+      // Both recorded as refused, and neither holds the password.
+      final refusals = fake.auditLog.where(
+        (e) => e.action == 'credentials.create',
+      );
+      expect(refusals.map((e) => (e.outcome, e.status)), [
+        ('denied', 401),
+        ('denied', 401),
+      ]);
+      expect(refusals.map((e) => e.content).join(), isNot(contains('nope')));
+    });
+
+    test('a mailbox with two-factor authentication needs a session that '
+        'took the code', () async {
+      final fake = FakeRestmail();
+      final before = await _signedIn(fake);
+      final account = await _account(before);
+      fake.enableTwoFactor(FakeAccounts.email);
+
+      await expectLater(
+        before.createAppPassword(
+          account.id,
+          name: 'Mail',
+          password: FakeAccounts.password,
+        ),
+        refused(403, 'two_factor_required'),
+      );
+
+      final withCode = _client(fake);
+      await withCode.login(
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+        totpCode: FakeAccounts.totpCode,
+      );
+      // A refresh keeps the mark.
+      fake.expireAccessTokens();
+      final created = await withCode.createAppPassword(
+        account.id,
+        name: 'Mail',
+        password: FakeAccounts.password,
+      );
+      expect(created.secret, isNotNull);
+    });
+
+    test('only for the session\'s own mailbox, never a linked one', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final linked = await client.linkAccount(
+        address: FakeAccounts.otherEmail,
+        password: FakeAccounts.password,
+      );
+
+      await expectLater(
+        client.appPasswords(linked.id),
+        refused(404, 'not_found'),
+      );
+      await expectLater(
+        client.createAppPassword(
+          linked.id,
+          name: 'Mail',
+          password: FakeAccounts.password,
+        ),
+        refused(404, 'not_found'),
+      );
+    });
+
+    test('names and expiry are checked as the server checks them', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+
+      Future<NewAppPassword> create(String name, [DateTime? expiresAt]) =>
+          client.createAppPassword(
+            account.id,
+            name: name,
+            password: FakeAccounts.password,
+            expiresAt: expiresAt,
+          );
+
+      await expectLater(create('  '), refused(422, 'validation_failed'));
+      await expectLater(create('x' * 101), refused(422, 'validation_failed'));
+      await expectLater(create('a\nb'), refused(422, 'validation_failed'));
+      await expectLater(
+        create('Mail', DateTime.now().subtract(const Duration(minutes: 1))),
+        refused(422, 'validation_failed'),
+      );
+
+      final later = DateTime.now().add(const Duration(days: 30));
+      final created = await create('Mail', later);
+      expect(
+        created.appPassword.expiresAt?.millisecondsSinceEpoch,
+        later.millisecondsSinceEpoch,
+      );
+    });
+
+    test('an expired one is listed but no longer let in', () async {
+      var now = DateTime(2026, 10, 17, 9);
+      final fake = FakeRestmail(clock: () => now);
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+      final created = await client.createAppPassword(
+        account.id,
+        name: 'Mail',
+        password: FakeAccounts.password,
+        expiresAt: now.add(const Duration(days: 1)),
+      );
+
+      now = now.add(const Duration(days: 2));
+      fake.expireAccessTokens();
+
+      expect(
+        fake.acceptsAppPassword(FakeAccounts.email, created.secret!),
+        isFalse,
+      );
+      expect(
+        (await client.appPasswords(account.id)).single.isExpiredAt(now),
+        isTrue,
+      );
+    });
+
+    test('a new password for the mailbox revokes them all', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+      final created = await client.createAppPassword(
+        account.id,
+        name: 'Mail',
+        password: FakeAccounts.password,
+      );
+      final admin = _client(fake);
+      await admin.signInAdmin(
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      );
+
+      final box = (await admin.mailboxes()).items.firstWhere(
+        (b) => b.address == FakeAccounts.email,
+      );
+      await admin.updateMailbox(box.id, password: 'a new password');
+
+      expect(
+        fake.acceptsAppPassword(FakeAccounts.email, created.secret!),
+        isFalse,
+      );
+    });
+
+    test('shares sign-in\'s budget: a 429 with the wait', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+      fake.throttleSignIns(const Duration(seconds: 30));
+
+      await expectLater(
+        client.createAppPassword(
+          account.id,
+          name: 'Mail',
+          password: FakeAccounts.password,
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 429)
+              .having(
+                (e) => e.retryAfter,
+                'retryAfter',
+                const Duration(seconds: 30),
+              ),
+        ),
+      );
+      await expectLater(
+        _client(
+          fake,
+        ).login(email: FakeAccounts.email, password: FakeAccounts.password),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 's', 429)),
+      );
+    });
+
+    test('a server from before them answers 404 in plain text', () async {
+      final client = await _signedIn(FakeRestmail(appPasswords: false));
+      final account = await _account(client);
+
+      await expectLater(
+        client.appPasswords(account.id),
+        refused(404, 'http_404'),
+      );
+    });
+  });
 }

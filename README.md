@@ -221,6 +221,18 @@ searches. Recent searches are kept only until the app closes.
   **Remove from this session** for a linked mailbox. Signing out ends that
   account only: its session is removed from the phone, its mail stays on the
   server, and any other accounts stay signed in.
+- **App passwords**, under the account a REST Mail session signed in with,
+  are for mail apps such as Thunderbird or the iPhone's Mail, and for
+  automations: each signs in to the mailbox with its own password, and can
+  be revoked on its own. The list shows when each was made, last used, and
+  when it expires. Making one asks for the mailbox's password again, as the
+  server requires; a wrong one just asks again. The new app password is
+  shown once, with the settings a mail app needs, and is forgotten when the
+  screen closes. Copying it on iOS keeps it on that iPhone and clears it
+  from the clipboard after two minutes; Android can't do either, so the app
+  says other apps can read it. Revoking one stops it at once, open IMAP
+  sessions included. Servers before REST Mail 0.10.0 have none, and the
+  screen says so.
 - **Link another mailbox** adds another mailbox on the same server to this
   session. An IMAP account is one mailbox, so it has no such row.
 - **Other accounts** lists the other accounts signed in on the phone; tap one

@@ -22,10 +22,13 @@ enum _Discovery { idle, searching, found, notFound }
 /// provider the app knows (Gmail, iCloud, …) goes on to [ImapAccountScreen],
 /// as does Other mail (IMAP).
 class AddAccountScreen extends StatefulWidget {
-  const AddAccountScreen({super.key, this.server});
+  const AddAccountScreen({super.key, this.server, this.email});
 
   /// A server already chosen by hand, which skips discovery.
   final Uri? server;
+
+  /// An address to start from, for signing an account in again.
+  final String? email;
 
   @override
   State<AddAccountScreen> createState() => _AddAccountScreenState();
@@ -33,8 +36,8 @@ class AddAccountScreen extends StatefulWidget {
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
   // Sample mode fills in the sample account, so trying the app is one tap.
-  final _email = TextEditingController(
-    text: sampleMode ? FakeAccounts.email : null,
+  late final _email = TextEditingController(
+    text: widget.email ?? (sampleMode ? FakeAccounts.email : null),
   );
   final _password = TextEditingController(
     text: sampleMode ? FakeAccounts.password : null,

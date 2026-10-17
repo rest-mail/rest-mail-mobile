@@ -437,6 +437,203 @@ void main() {
     });
   });
 
+  group('app passwords', () {
+    const secret =
+        'rm_7Kq2xT9bLm4P_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
+    const credential = {
+      'id': 4,
+      'name': 'iPhone Mail',
+      'kind': 'app_password',
+      'public_id': '7Kq2xT9bLm4P',
+      'created_at': '2026-10-17T09:00:00Z',
+      'last_used_at': null,
+      'expires_at': '2027-01-15T09:00:00Z',
+    };
+
+    test('lists, creates and revokes on the account', () async {
+      final sent = <http.Request>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent.add(request);
+          return switch (request.method) {
+            'GET' => _json({
+              'data': [credential],
+            }),
+            'POST' => _json({
+              'data': {...credential, 'password': secret},
+            }, status: 201),
+            _ => http.Response('', 204),
+          };
+        }),
+      );
+
+      final listed = (await client.appPasswords(7)).single;
+      final created = await client.createAppPassword(
+        7,
+        name: 'iPhone Mail',
+        password: 'current password',
+        expiresAt: DateTime.utc(2027, 1, 15, 9),
+      );
+      await client.revokeAppPassword(7, 4);
+
+      expect(listed.name, 'iPhone Mail');
+      expect(listed.lastUsedAt, isNull);
+      expect(listed.expiresAt?.toUtc(), DateTime.utc(2027, 1, 15, 9));
+      expect(listed.isExpiredAt(DateTime.utc(2027, 1, 15, 9)), isTrue);
+      expect(created.appPassword.publicId, '7Kq2xT9bLm4P');
+      expect(created.secret, secret);
+      expect(
+        [for (final r in sent) '${r.method} ${r.url.path}'],
+        [
+          'GET /api/v1/accounts/7/credentials',
+          'POST /api/v1/accounts/7/credentials',
+          'DELETE /api/v1/accounts/7/credentials/4',
+        ],
+      );
+      expect(jsonDecode(sent[1].body), {
+        'name': 'iPhone Mail',
+        'password': 'current password',
+        'expires_at': '2027-01-15T09:00:00.000Z',
+      });
+    });
+
+    test('the secret stays out of toString, and goes when forgotten', () {
+      final created = NewAppPassword.fromJson({
+        ...credential,
+        'password': secret,
+      });
+
+      expect('$created', isNot(contains(secret)));
+      created.forget();
+      expect(created.secret, isNull);
+      expect(created.appPassword.name, 'iPhone Mail');
+    });
+
+    for (final code in ['reauth_required', 'invalid_password']) {
+      test('$code is the request\'s own refusal: no refresh, and the '
+          'session stays', () async {
+        final seen = <String>[];
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            seen.add('${request.method} ${request.url.path}');
+            if (_isRefresh(request)) return _signedIn('2');
+            return _json({
+              'error': {'code': code, 'message': 'The password is incorrect'},
+            }, status: 401);
+          }),
+        );
+
+        await expectLater(
+          client.createAppPassword(7, name: 'Mail', password: 'wrong'),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 401)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+
+        // Sent once, and nothing else: the password counted against the
+        // sign-in budget once, and the refresh token was not spent.
+        expect(seen, ['POST /api/v1/accounts/7/credentials']);
+        expect(changes, isEmpty);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
+
+    test('an expired token on create is still renewed, and the request '
+        'sent again', () async {
+      final seen = <String>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          seen.add('${request.method} ${request.url.path}');
+          if (_isRefresh(request)) return _signedIn('2');
+          if (request.headers['Authorization'] == 'Bearer access-1') {
+            return _json(_expired, status: 401);
+          }
+          return _json({
+            'data': {...credential, 'password': secret},
+          }, status: 201);
+        }),
+      );
+
+      final created = await client.createAppPassword(
+        7,
+        name: 'Mail',
+        password: 'right',
+      );
+
+      expect(created.secret, secret);
+      expect(seen, [
+        'POST /api/v1/accounts/7/credentials',
+        'POST /api/v1/auth/refresh',
+        'POST /api/v1/accounts/7/credentials',
+      ]);
+    });
+
+    test('a 429 says how long to wait', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json(
+            {
+              'error': {
+                'code': 'rate_limited',
+                'message': 'Too many requests; please slow down',
+              },
+            },
+            status: 429,
+            headers: {'retry-after': '42'},
+          ),
+        ),
+      );
+
+      await expectLater(
+        client.createAppPassword(7, name: 'Mail', password: 'pw'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 429)
+              .having(
+                (e) => e.retryAfter,
+                'retryAfter',
+                const Duration(seconds: 42),
+              ),
+        ),
+      );
+    });
+
+    test('a server from before app passwords answers 404', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => http.Response(
+            '404 page not found',
+            404,
+            headers: {'content-type': 'text/plain; charset=utf-8'},
+          ),
+        ),
+      );
+
+      await expectLater(
+        client.appPasswords(7),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 404)
+              .having((e) => e.code, 'code', 'http_404'),
+        ),
+      );
+    });
+  });
+
   group('events', () {
     test('delivers events and resumes from the last id after a drop', () async {
       final lastEventIds = <String?>[];
