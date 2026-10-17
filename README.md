@@ -18,12 +18,14 @@ webmail uses, not IMAP.
 - Gmail, iCloud, Yahoo, Fastmail or any other IMAP and SMTP account beside
   the REST Mail ones, signed in with a password or an app password. Gmail is
   added with an app password, guided step by step.
-- Administration of a REST Mail server: the outbound queue, domains,
-  mailboxes, aliases, administrators and their roles, bans, an overview, the
-  delivery and activity logs, message traces, TLS reports, the audit log and
-  its chain check, DKIM keys, certificates, pipelines and custom filters.
-  Each part shows only to a session whose capabilities allow it, and its
-  changes only with the capability to make them.
+- Administration of a REST Mail server: the outbound queue, domains and
+  each one's DNS check, sender lists and MTA-STS policy, mailboxes, aliases,
+  webmail accounts, administrators and their roles, bans, an overview, the
+  delivery and activity logs, message traces, the pipeline log and its
+  analytics, TLS reports, the audit log and its chain check, DKIM keys,
+  certificates, pipelines and custom filters. Each part shows only to a
+  session whose capabilities allow it, and its changes only with the
+  capability to make them.
 - Live updates over the server's event stream while the app is open.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
@@ -270,7 +272,15 @@ The **Audit log** (`audit:read`) lists every sign-in and change, newest
 first. **Verify chain** has the server check that each entry follows the
 one before and matches its hash, and says where the chain breaks if it
 does. A message in the **Delivery log** opens its **Message trace**: each
-filter it went through and what that filter found.
+filter it went through and what that filter found. The **Pipeline log**
+(`pipelines:read`) has the trace of every message the filters handled,
+mail they turned away too, and **Pipeline analytics**
+(`observability:read`) counts what they did over a day or a week.
+
+A domain opens its **DNS check**, which says which of its records are right
+and which are missing, its **Sender lists** of senders turned away and
+senders let past the spam checks, and its **MTA-STS** policy. All three are
+read with `domains:read` and changed with `domains:write`.
 
 A phone can remove a DKIM key or a certificate, and turn a pipeline or a
 custom filter on or off, but setting a key, adding a certificate and

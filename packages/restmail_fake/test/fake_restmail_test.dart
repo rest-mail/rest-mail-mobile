@@ -773,6 +773,251 @@ void main() {
       expect(fake.pipelines, hasLength(1));
       expect(fake.customFilters, isEmpty);
     });
+
+    test('the pipeline log needs pipelines:read, and its analytics '
+        'observability:read', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('reader', capabilities: {'pipelines:read'})
+        ..addAdmin('watcher', capabilities: {'observability:read'});
+      final reader = await admin(fake, 'reader');
+
+      final log = await reader.pipelineLog();
+      final times = log.items.map((t) => t.createdAt).toList();
+      expect(times, [...times]..sort((a, b) => b.compareTo(a)));
+      final rejected = await reader.pipelineLog(outcome: 'rejected');
+      expect(rejected.items.map((t) => t.mailFrom), [
+        'promo@deals.test',
+        'billing@paypa1.test',
+        'news@deals.test',
+      ]);
+      // Mail turned away never became a message.
+      expect(rejected.items.every((t) => t.messageId == null), isTrue);
+      expect(rejected.items.first.reasonCode, 'spam_threshold');
+      expect(
+        (await reader.pipelineLog(direction: 'outbound')).items,
+        hasLength(4),
+      );
+      await expectLater(reader.pipelineAnalytics(), refused('forbidden'));
+
+      final watcher = await admin(fake, 'watcher');
+      await expectLater(watcher.pipelineLog(), refused('forbidden'));
+      final day = await watcher.pipelineAnalytics();
+      expect(day.until.difference(day.since), const Duration(days: 1));
+      expect(day.rejectReasons, [(reason: 'spam_threshold', count: 1)]);
+      final week = await watcher.pipelineAnalytics(
+        window: const Duration(days: 7),
+      );
+      expect(week.rejectReasons.map((r) => r.reason), [
+        'custom_reject',
+        'dmarc_reject',
+        'spam_threshold',
+      ]);
+      expect(
+        week.outcomes,
+        contains((direction: 'inbound', outcome: 'quarantined', count: 1)),
+      );
+      expect(
+        week.senderChecks,
+        contains((mechanism: 'dmarc', result: 'fail', count: 1)),
+      );
+      expect(week.received.map((r) => r.transport), ['plaintext', 'tls']);
+    });
+
+    test('webmail accounts need mailboxes:*, and follow sign-ins and '
+        'links', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('reader', capabilities: {'mailboxes:read'})
+        ..addAdmin(
+          'writer',
+          capabilities: {'mailboxes:read', 'mailboxes:write'},
+        );
+      final reader = await admin(fake, 'reader');
+
+      final dana = (await reader.webmailAccounts()).items.single;
+      expect(dana.address, FakeAccounts.email);
+      expect(dana.linked, isEmpty);
+
+      // Dana links her other mailbox in webmail.
+      await (await _signedIn(fake)).linkAccount(
+        address: FakeAccounts.otherEmail,
+        password: FakeAccounts.password,
+        displayName: 'Oakline',
+      );
+      final linked = (await reader.webmailAccount(dana.id)).linked.single;
+      expect(linked.address, FakeAccounts.otherEmail);
+      expect(linked.displayName, 'Oakline');
+
+      final other = (await reader.mailboxes()).items.firstWhere(
+        (b) => b.address == FakeAccounts.otherEmail,
+      );
+      await expectLater(
+        reader.createWebmailAccount(other.id),
+        refused('forbidden'),
+      );
+      final writer = await admin(fake, 'writer');
+      final made = await writer.createWebmailAccount(other.id);
+      expect(made.address, FakeAccounts.otherEmail);
+      await expectLater(
+        writer.createWebmailAccount(other.id),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)),
+      );
+      await expectLater(
+        writer.deleteWebmailAccount(made.id),
+        refused('forbidden'),
+      );
+
+      await (await admin(fake)).deleteWebmailAccount(made.id);
+      expect(fake.webmailAccounts.map((a) => a.id), [dana.id]);
+    });
+
+    test('sender lists are read with domains:read, and changed with '
+        'domains:write, as the server asks', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('deleter', capabilities: {'domains:read', 'domains:delete'})
+        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
+      final deleter = await admin(fake, 'deleter');
+      final domain = (await deleter.domains()).items.firstWhere(
+        (d) => d.name == FakeAccounts.host,
+      );
+
+      final blocked = await deleter.senderRules(domain.id, SenderList.block);
+      expect(blocked.map((r) => (r.pattern, r.reason)), [
+        ('@deals.test', 'Sends spam'),
+      ]);
+      expect(
+        (await deleter.senderRules(domain.id, SenderList.allow)).single.pattern,
+        'ana@harbor.test',
+      );
+      await expectLater(
+        deleter.addSenderRule(domain.id, SenderList.block, pattern: '@x.test'),
+        refused('forbidden'),
+      );
+      await expectLater(
+        deleter.removeSenderRule(domain.id, SenderList.block, blocked.first.id),
+        refused('forbidden'),
+      );
+
+      final writer = await admin(fake, 'writer');
+      await writer.addSenderRule(
+        domain.id,
+        SenderList.block,
+        pattern: 'spam@x.test',
+        reason: 'Phishing',
+      );
+      expect(
+        (await writer.senderRules(
+          domain.id,
+          SenderList.block,
+        )).map((r) => r.pattern),
+        ['spam@x.test', '@deals.test'],
+      );
+      // The server's unique index refuses the same sender twice.
+      await expectLater(
+        writer.addSenderRule(
+          domain.id,
+          SenderList.block,
+          pattern: '@deals.test',
+        ),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 500)),
+      );
+      // A rule is removed only from the list it is on.
+      await expectLater(
+        writer.removeSenderRule(domain.id, SenderList.allow, blocked.first.id),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+      await writer.removeSenderRule(
+        domain.id,
+        SenderList.block,
+        blocked.first.id,
+      );
+      expect(fake.senderRules.map((r) => r.pattern), [
+        'ana@harbor.test',
+        'spam@x.test',
+      ]);
+    });
+
+    test('an MTA-STS policy is read with domains:read, and set and deleted '
+        'with domains:write', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('reader', capabilities: {'domains:read'})
+        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
+      final reader = await admin(fake, 'reader');
+      final domains = (await reader.domains()).items;
+      final host = domains.firstWhere((d) => d.name == FakeAccounts.host);
+      final other = domains.firstWhere((d) => d.name != FakeAccounts.host);
+
+      final policy = (await reader.mtaStsPolicy(host.id))!;
+      expect(policy.mode, MtaStsMode.testing);
+      expect(policy.mxHosts, ['mx.${FakeAccounts.host}']);
+      expect(policy.maxAge, const Duration(days: 7));
+      expect(policy.active, isTrue);
+      expect(await reader.mtaStsPolicy(other.id), isNull);
+      await expectLater(
+        reader.setMtaStsPolicy(other.id, mode: MtaStsMode.enforce),
+        refused('forbidden'),
+      );
+      await expectLater(
+        reader.deleteMtaStsPolicy(host.id),
+        refused('forbidden'),
+      );
+
+      final writer = await admin(fake, 'writer');
+      final made = await writer.setMtaStsPolicy(
+        other.id,
+        mode: MtaStsMode.enforce,
+        mxHosts: ['mx.${FakeAccounts.host}', '*.oakline.test'],
+        maxAge: const Duration(days: 1),
+      );
+      expect(made.mxHosts, hasLength(2));
+      // What is left out stays as it was.
+      final off = await writer.setMtaStsPolicy(other.id, active: false);
+      expect(
+        (off.mode, off.active, off.maxAge),
+        (MtaStsMode.enforce, false, const Duration(days: 1)),
+      );
+      await writer.deleteMtaStsPolicy(other.id);
+      expect(await writer.mtaStsPolicy(other.id), isNull);
+      await expectLater(
+        writer.deleteMtaStsPolicy(other.id),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+    });
+
+    test(
+      'the DNS check needs domains:read, and says what is missing',
+      () async {
+        final fake = FakeRestmail()
+          ..addAdmin('reader', capabilities: {'domains:read'});
+        final reader = await admin(fake, 'reader');
+        final domains = (await reader.domains()).items;
+        final host = domains.firstWhere((d) => d.name == FakeAccounts.host);
+        final other = domains.firstWhere((d) => d.name != FakeAccounts.host);
+
+        final full = await reader.dnsCheck(host.id);
+        expect(full.records.map((r) => r.type), [
+          'MX',
+          'SPF',
+          'DMARC',
+          'DKIM',
+          'MTA-STS',
+          'TLS-RPT',
+        ]);
+        expect(full.records.every((r) => r.ok), isTrue);
+        expect(full.summary, '6/6 records verified');
+        final half = await reader.dnsCheck(other.id);
+        expect(half.records.where((r) => r.ok).map((r) => r.type), [
+          'MX',
+          'SPF',
+        ]);
+        expect(
+          half.records.firstWhere((r) => r.type == 'DMARC').message,
+          'No DMARC record found',
+        );
+
+        final watcher = await admin(fake, FakeAccounts.queueWatcher);
+        await expectLater(watcher.dnsCheck(host.id), refused('forbidden'));
+      },
+    );
   });
 
   group('app passwords', () {

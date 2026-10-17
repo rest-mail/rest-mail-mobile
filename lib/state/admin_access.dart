@@ -38,6 +38,15 @@ enum AdminSection {
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
   ),
+
+  /// The server keeps webmail accounts with mailboxes, under `mailboxes:*`.
+  webmailAccounts(
+    'Webmail accounts',
+    'Webmail sign-ins and their linked mailboxes',
+    read: Capability.mailboxesRead,
+    write: Capability.mailboxesWrite,
+    delete: Capability.mailboxesDelete,
+  ),
   users(
     'Administrators',
     'Who runs this server, and their roles',
@@ -75,6 +84,21 @@ enum AdminSection {
   trace.readOnly(
     'Message trace',
     'Each filter a message went through',
+    read: Capability.observabilityRead,
+    group: AdminGroup.logs,
+  ),
+
+  /// The log is the pipelines', under `pipelines:read`; its analytics are
+  /// observability, as message traces are.
+  pipelineLog.readOnly(
+    'Pipeline log',
+    'Each message the filters handled, and how it ended',
+    read: Capability.pipelinesRead,
+    group: AdminGroup.logs,
+  ),
+  pipelineAnalytics.readOnly(
+    'Pipeline analytics',
+    'What the filters did with a day or a week of mail',
     read: Capability.observabilityRead,
     group: AdminGroup.logs,
   ),
@@ -125,6 +149,33 @@ enum AdminSection {
     write: Capability.pipelinesWrite,
     delete: Capability.pipelinesDelete,
     group: AdminGroup.setup,
+  ),
+
+  /// The DNS check, sender lists and MTA-STS are each about one domain, so
+  /// they are opened from it. The server reads them with `domains:read`,
+  /// and removes a sender or a policy with `domains:write`, not
+  /// `domains:delete`.
+  dnsCheck.readOnly(
+    'DNS check',
+    'Which records are right, and which are missing',
+    read: Capability.domainsRead,
+    group: AdminGroup.domain,
+  ),
+  senderLists(
+    'Sender lists',
+    'Senders turned away, and senders let in',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  mtaSts(
+    'MTA-STS',
+    'Whether other servers must send here over TLS',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
   );
 
   const AdminSection(
@@ -164,7 +215,10 @@ enum AdminGroup {
   /// Mail, the people who run the server, and bans: what a phone is for.
   manage(null),
   logs('Logs and reports'),
-  setup('Signing and filtering');
+  setup('Signing and filtering'),
+
+  /// In a domain's own screen, not in Administration's list.
+  domain(null);
 
   const AdminGroup(this.title);
 
@@ -185,7 +239,13 @@ class AdminAccess {
   /// The sections to show, in the order a phone wants them.
   List<AdminSection> get sections => [
     for (final section in AdminSection.values)
-      if (canRead(section)) section,
+      if (section.group != AdminGroup.domain && canRead(section)) section,
+  ];
+
+  /// The sections to show in a domain's own screen.
+  List<AdminSection> get domainSections => [
+    for (final section in AdminSection.values)
+      if (section.group == AdminGroup.domain && canRead(section)) section,
   ];
 
   /// Whether to show the way into Administration: only when there is

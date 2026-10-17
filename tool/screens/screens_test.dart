@@ -215,12 +215,18 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
 
+  /// Scrolls down to [section] from the top of the list, wherever it was
+  /// left, and opens it.
   Future<void> open(String section) async {
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, 3000));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text(section),
       200,
       scrollable: find.byType(Scrollable).last,
     );
+    // Laid out where the scroll left it, before the tap looks for it.
+    await tester.pumpAndSettle();
     await tester.tap(find.text(section));
     await tester.pumpAndSettle();
   }
@@ -243,6 +249,36 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await open('Pipelines');
   await tester.tap(find.text('Coming in · 7 filters'));
   await _shot(tester, '25-pipeline$suffix');
+  for (var i = 0; i < 2; i++) {
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+  }
+  await open('Pipeline log');
+  await _shot(tester, '26-pipeline-log$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await open('Pipeline analytics');
+  await _shot(tester, '27-pipeline-analytics$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+
+  await open('Webmail accounts');
+  await _shot(tester, '28-webmail-accounts$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await open('Domains');
+  await tester.tap(find.text(FakeAccounts.host));
+  await tester.pumpAndSettle();
+  for (final (section, name) in [
+    ('DNS check', '29-dns-check'),
+    ('Sender lists', '30-sender-lists'),
+    ('MTA-STS', '31-mta-sts'),
+  ]) {
+    await open(section);
+    await _shot(tester, '$name$suffix');
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+  }
 
   await tester.pumpWidget(const SizedBox());
   state.dispose();
