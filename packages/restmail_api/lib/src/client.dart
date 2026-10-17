@@ -486,6 +486,150 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'bans', '$id']);
   }
 
+  /// Mail sent to other servers, newest first, with how each went: the
+  /// outbound queue's history. Needs `messages:read`.
+  Future<OffsetPage<QueueEntry>> deliveryLog({
+    QueueStatus? status,
+    String? recipient,
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['admin', 'logs', 'delivery'],
+    QueueEntry.fromJson,
+    offset,
+    limit,
+    {'status': ?status?.name, 'recipient': ?recipient},
+  );
+
+  /// What was done on the server, newest first. Needs `users:read`.
+  Future<OffsetPage<ActivityEntry>> activityLog({
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['admin', 'logs', 'activity'],
+    ActivityEntry.fromJson,
+    offset,
+    limit,
+  );
+
+  /// How the message stored as [messageId] went through the filters. Throws
+  /// [ApiException] 404 for one with no trace: mail that was turned away
+  /// never became a message. Needs `observability:read`.
+  Future<MessageTrace> messageTrace(int messageId) async =>
+      MessageTrace.fromJson(
+        _data(
+          await _authed('GET', ['admin', 'messages', '$messageId', 'trace']),
+        ),
+      );
+
+  /// The TLS reports other servers sent, newest first. Needs `domains:read`.
+  Future<OffsetPage<TlsReport>> tlsReports({int offset = 0, int limit = 50}) =>
+      _offsetPage(['admin', 'tls-reports'], TlsReport.fromJson, offset, limit);
+
+  /// The audit log, newest first, a page at a time: hand the page's cursor
+  /// back as [before] for the next. Only entries with [outcome] or by an
+  /// [actorKind], when given. The server records the read itself. Needs
+  /// `audit:read`.
+  Future<Paged<AuditEntry>> audit({
+    String? before,
+    String? outcome,
+    String? actorKind,
+    int limit = 50,
+  }) async => _cursorPage(
+    await _authed(
+      'GET',
+      ['admin', 'audit'],
+      query: {
+        'before_seq': ?before,
+        'outcome': ?outcome,
+        'actor_kind': ?actorKind,
+        'limit': '$limit',
+      },
+    ),
+    AuditEntry.fromJson,
+  );
+
+  /// Has the server walk the whole audit log and check its chain. Needs
+  /// `audit:read`.
+  Future<AuditCheck> verifyAudit() async => AuditCheck.fromJson(
+    _data(await _authed('GET', ['admin', 'audit', 'verify'])),
+  );
+
+  /// The domains that sign their mail. Needs `domains:read`.
+  Future<List<DkimKey>> dkimKeys() async =>
+      _list(await _authed('GET', ['admin', 'dkim']), DkimKey.fromJson);
+
+  /// Stops signing [domainId]'s mail and forgets its key. Needs
+  /// `domains:write`, as the server asks.
+  Future<void> deleteDkimKey(int domainId) async {
+    await _authed('DELETE', ['admin', 'dkim', '$domainId']);
+  }
+
+  /// Needs `domains:read`.
+  Future<OffsetPage<TlsCertificate>> certificates({
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'certificates'],
+    TlsCertificate.fromJson,
+    offset,
+    limit,
+  );
+
+  /// Needs `domains:write`, as the server asks.
+  Future<void> deleteCertificate(int id) async {
+    await _authed('DELETE', ['admin', 'certificates', '$id']);
+  }
+
+  /// Needs `pipelines:read`.
+  Future<OffsetPage<Pipeline>> pipelines({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'pipelines'], Pipeline.fromJson, offset, limit);
+
+  /// Turns a pipeline on or off. Needs `pipelines:write`.
+  Future<Pipeline> updatePipeline(int id, {bool? active}) async =>
+      Pipeline.fromJson(
+        _data(
+          await _authed(
+            'PATCH',
+            ['admin', 'pipelines', '$id'],
+            body: {'active': ?active},
+          ),
+        ),
+      );
+
+  /// Needs `pipelines:delete`.
+  Future<void> deletePipeline(int id) async {
+    await _authed('DELETE', ['admin', 'pipelines', '$id']);
+  }
+
+  /// Needs `pipelines:read`.
+  Future<OffsetPage<CustomFilter>> customFilters({
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'custom-filters'],
+    CustomFilter.fromJson,
+    offset,
+    limit,
+  );
+
+  /// Turns a custom filter on or off. Needs `pipelines:write`.
+  Future<CustomFilter> updateCustomFilter(int id, {bool? enabled}) async =>
+      CustomFilter.fromJson(
+        _data(
+          await _authed(
+            'PATCH',
+            ['admin', 'custom-filters', '$id'],
+            body: {'enabled': ?enabled},
+          ),
+        ),
+      );
+
+  /// Needs `pipelines:delete`.
+  Future<void> deleteCustomFilter(int id) async {
+    await _authed('DELETE', ['admin', 'custom-filters', '$id']);
+  }
+
   // ── Accounts and folders ─────────────────────────────────────────────
 
   Future<List<Account>> accounts() async =>
@@ -896,14 +1040,21 @@ class RestmailClient {
     T Function(Map<String, dynamic>) fromJson,
   ) => _items(_envelope(response)['data'], response, fromJson);
 
-  Paged<Message> _messagePage(http.Response response) {
+  Paged<Message> _messagePage(http.Response response) =>
+      _cursorPage(response, Message.fromJson);
+
+  /// A `{"data": [...], "pagination": {"cursor", "has_more"}}` list.
+  Paged<T> _cursorPage<T>(
+    http.Response response,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
     final envelope = _envelope(response);
     final pagination = envelope['pagination'];
     final page = pagination is Map<String, dynamic>
         ? pagination
         : const <String, dynamic>{};
     return Paged(
-      _items(envelope['data'], response, Message.fromJson),
+      _items(envelope['data'], response, fromJson),
       cursor: switch (page['cursor']) {
         final String cursor when cursor.isNotEmpty => cursor,
         _ => null,

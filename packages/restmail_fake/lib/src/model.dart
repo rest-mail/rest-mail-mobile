@@ -40,6 +40,11 @@ class FakeDomain {
   final int id;
   final String name;
   bool active;
+
+  /// Where its DKIM key is published; empty once the key is gone.
+  String dkimSelector = 'mail';
+
+  bool get signs => dkimSelector.isNotEmpty;
 }
 
 /// Mail to [source] goes to [destination].
@@ -66,12 +71,16 @@ class FakeQueueEntry {
     required this.recipient,
     required this.status,
     required this.createdAt,
+    this.messageId,
     this.attempts = 0,
     this.lastError = '',
     this.lastErrorCode = 0,
   });
 
   final int id;
+
+  /// The sender's copy, which the message's trace is kept under.
+  final int? messageId;
   final String sender;
   final String recipient;
 
@@ -208,4 +217,118 @@ class FakeBan {
   final String createdBy;
   final DateTime createdAt;
   final DateTime? expiresAt;
+}
+
+/// A TLS certificate held for a domain.
+class FakeCertificate {
+  FakeCertificate({
+    required this.id,
+    required this.domain,
+    required this.notBefore,
+    required this.notAfter,
+    this.issuer = "CN=R11,O=Let's Encrypt,C=US",
+    this.autoRenew = true,
+  });
+
+  final int id;
+  final String domain;
+  final String issuer;
+  final DateTime notBefore;
+  final DateTime notAfter;
+  final bool autoRenew;
+}
+
+/// The filters a domain's mail goes through one way, in order.
+class FakePipeline {
+  FakePipeline({
+    required this.id,
+    required this.domain,
+    required this.direction,
+    required this.filters,
+  });
+
+  final int id;
+  final String domain;
+
+  /// `inbound` or `outbound`.
+  final String direction;
+
+  /// The server's filter configs: `name`, `type`, `enabled`.
+  final List<Map<String, Object?>> filters;
+  bool active = true;
+}
+
+/// A filter an admin wrote.
+class FakeCustomFilter {
+  FakeCustomFilter({
+    required this.id,
+    required this.domain,
+    required this.name,
+    required this.config,
+    this.description = '',
+    this.filterType = 'action',
+    this.direction = 'inbound',
+  });
+
+  final int id;
+  final String domain;
+  final String name;
+  final String description;
+  final String filterType;
+  final String direction;
+  final Map<String, Object?> config;
+  bool enabled = true;
+}
+
+/// One entry of the audit log, chained to the one before by its hash.
+class FakeAuditEntry {
+  FakeAuditEntry({
+    required this.seq,
+    required this.occurredAt,
+    required this.actorKind,
+    required this.actorName,
+    required this.action,
+    required this.outcome,
+    required this.method,
+    required this.route,
+    required this.status,
+    this.actorId,
+    this.ip = '192.0.2.10',
+    this.userAgent = 'REST Mail',
+  });
+
+  final int seq;
+  final DateTime occurredAt;
+  final String actorKind;
+  final int? actorId;
+
+  /// Changeable, so a test can tamper with the log.
+  String actorName;
+  final String action;
+  final String outcome;
+  final String method;
+  final String route;
+  final int status;
+  final String ip;
+  final String userAgent;
+  String prevHash = '';
+  String hash = '';
+
+  /// What the hash covers: everything but the hash.
+  String get content => jsonEncode([
+    'restmail-audit-v1',
+    seq,
+    occurredAt.toUtc().toIso8601String(),
+    actorKind,
+    actorId,
+    actorName,
+    action,
+    outcome,
+    method,
+    route,
+    status,
+    ip,
+    userAgent,
+    prevHash,
+  ]);
 }

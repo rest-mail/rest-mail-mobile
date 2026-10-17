@@ -10,11 +10,17 @@ import '../add_account_screen.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'aliases_screen.dart';
+import 'audit_screen.dart';
 import 'bans_screen.dart';
 import 'domains_screen.dart';
+import 'keys_screen.dart';
+import 'logs_screen.dart';
 import 'mailboxes_screen.dart';
 import 'overview_screen.dart';
+import 'pipelines_screen.dart';
 import 'queue_screen.dart';
+import 'tls_reports_screen.dart';
+import 'trace_screen.dart';
 import 'users_screen.dart';
 
 /// The server's administration: a row for each section this session may
@@ -40,6 +46,15 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.users => UsersScreen(account: account),
     AdminSection.bans => BansScreen(account: account),
     AdminSection.overview => OverviewScreen(account: account),
+    AdminSection.deliveryLog => DeliveryLogScreen(account: account),
+    AdminSection.activity => ActivityScreen(account: account),
+    AdminSection.trace => TraceLookupScreen(account: account),
+    AdminSection.tlsReports => TlsReportsScreen(account: account),
+    AdminSection.audit => AuditScreen(account: account),
+    AdminSection.dkim => DkimScreen(account: account),
+    AdminSection.certificates => CertificatesScreen(account: account),
+    AdminSection.pipelines => PipelinesScreen(account: account),
+    AdminSection.customFilters => CustomFiltersScreen(account: account),
   };
 
   Future<void> _signOut(BuildContext context) async {
@@ -83,19 +98,27 @@ class AdministrationScreen extends StatelessWidget {
                   if (sections.isEmpty)
                     AdminMessage(
                       "This account can't administer anything on $host.",
-                    )
-                  else
-                    RmGroup(
-                      children: [
-                        for (final section in sections)
-                          RmRow(
-                            label: section.title,
-                            subtitle: section.subtitle,
-                            onTap: () =>
-                                pushScreen(context, _screenFor(section)),
-                          ),
-                      ],
                     ),
+                  for (final group in AdminGroup.values)
+                    if (sections.where((s) => s.group == group).toList()
+                        case final inGroup when inGroup.isNotEmpty) ...[
+                      if (group.title case final title?) ...[
+                        const SizedBox(height: 22),
+                        SectionLabel(title),
+                        const SizedBox(height: 9),
+                      ],
+                      RmGroup(
+                        children: [
+                          for (final section in inGroup)
+                            RmRow(
+                              label: section.title,
+                              subtitle: section.subtitle,
+                              onTap: () =>
+                                  pushScreen(context, _screenFor(section)),
+                            ),
+                        ],
+                      ),
+                    ],
                   if (home) ...[
                     const SizedBox(height: 22),
                     const SectionLabel('Accounts'),

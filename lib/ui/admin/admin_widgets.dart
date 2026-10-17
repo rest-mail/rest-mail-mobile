@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -31,6 +32,24 @@ AdminAccess adminAccessOf(BuildContext context, RestAccount account) {
   AppScope.of(context);
   return AdminAccess(account.capabilities);
 }
+
+/// The names of the server's domains by id, for lists that give only the id;
+/// none when the session may not read them.
+Future<Map<int, String>> domainNames(RestAccount account) async {
+  if (!AdminAccess(account.capabilities).canRead(AdminSection.domains)) {
+    return const {};
+  }
+  try {
+    final domains = await account.client.domains(limit: 200);
+    return {for (final d in domains.items) d.id: d.name};
+  } on ApiException {
+    return const {};
+  }
+}
+
+/// [value] as indented JSON, for a filter's config or a report's details.
+String prettyJson(Object? value) =>
+    const JsonEncoder.withIndent('  ').convert(value);
 
 void pushScreen(BuildContext context, Widget screen) => unawaited(
   Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen)),
@@ -118,12 +137,26 @@ class AdminMessage extends StatelessWidget {
 
 /// An admin list, loaded a page at a time.
 class AdminList<T> extends ChangeNotifier {
-  AdminList(this._load);
+  /// One the server pages by offset, as most admin lists are.
+  AdminList(Future<OffsetPage<T>> Function(int offset) load)
+    : _load = ((next) async {
+        final page = await load(int.parse(next ?? '0'));
+        return (page.items, page.hasMore ? '${page.next}' : null);
+      });
 
-  final Future<OffsetPage<T>> Function(int offset) _load;
+  /// One the server pages by cursor, as the audit log is.
+  AdminList.cursor(Future<Paged<T>> Function(String? cursor) load)
+    : _load = ((next) async {
+        final page = await load(next);
+        return (page.items, page.hasMore ? page.cursor : null);
+      });
+
+  /// The page that starts at `next`, or the first; and where the one after
+  /// it starts, if there is one.
+  final Future<(List<T>, String?)> Function(String? next) _load;
 
   List<T> items = const [];
-  int _total = 0;
+  String? _next;
   bool loading = true;
   bool loadingMore = false;
 
@@ -133,7 +166,7 @@ class AdminList<T> extends ChangeNotifier {
   bool _disposed = false;
   int _generation = 0;
 
-  bool get hasMore => items.length < _total;
+  bool get hasMore => _next != null;
 
   /// From the top, as after a change.
   Future<void> reload() async {
@@ -142,10 +175,10 @@ class AdminList<T> extends ChangeNotifier {
     error = null;
     _notify();
     try {
-      final page = await _load(0);
+      final (page, next) = await _load(null);
       if (generation != _generation) return;
-      items = page.items;
-      _total = page.total;
+      items = page;
+      _next = next;
     } on ApiException catch (e) {
       if (generation != _generation) return;
       error = e;
@@ -163,10 +196,10 @@ class AdminList<T> extends ChangeNotifier {
     loadingMore = true;
     _notify();
     try {
-      final page = await _load(items.length);
+      final (page, next) = await _load(_next);
       if (generation != _generation) return;
-      items = [...items, ...page.items];
-      _total = page.total;
+      items = [...items, ...page];
+      _next = next;
     } on ApiException {
       // Load more again retries.
     } finally {

@@ -10,7 +10,7 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _statusLabel(QueueStatus status) => switch (status) {
+String queueStatusLabel(QueueStatus status) => switch (status) {
   QueueStatus.pending => 'Pending',
   QueueStatus.delivering => 'Delivering',
   QueueStatus.deferred => 'Deferred',
@@ -20,7 +20,7 @@ String _statusLabel(QueueStatus status) => switch (status) {
   QueueStatus.unknown => 'Unknown',
 };
 
-String _attempts(int n) => n == 1 ? '1 attempt' : '$n attempts';
+String attemptsLabel(int n) => n == 1 ? '1 attempt' : '$n attempts';
 
 /// Mail on its way out to other servers: what is waiting, what was put off
 /// and why, and what bounced. With `queue:manage`, an entry can be retried,
@@ -93,7 +93,7 @@ class _QueueScreenState extends State<QueueScreen> {
         host: _host,
         empty: _status == null
             ? 'Nothing in the queue.'
-            : 'Nothing ${_statusLabel(_status!).toLowerCase()}.',
+            : 'Nothing ${queueStatusLabel(_status!).toLowerCase()}.',
         onRefresh: _reload,
         header: [
           if (stats != null) ...[
@@ -129,7 +129,7 @@ class _QueueScreenState extends State<QueueScreen> {
         row: (entry) => RmRow(
           label: entry.recipient,
           subtitle: [
-            '${_statusLabel(entry.status)} · ${_attempts(entry.attempts)} · '
+            '${queueStatusLabel(entry.status)} · ${attemptsLabel(entry.attempts)} · '
                 '${timeLabel(entry.createdAt)}',
             if (entry.lastError.isNotEmpty) entry.lastError,
           ].join('\n'),
@@ -196,7 +196,7 @@ class _QueueEntryScreenState extends State<QueueEntryScreen> {
             children: [
               RmRow(label: 'To', value: entry.recipient),
               RmRow(label: 'From', value: entry.sender),
-              RmRow(label: 'Status', value: _statusLabel(entry.status)),
+              RmRow(label: 'Status', value: queueStatusLabel(entry.status)),
               RmRow(
                 label: 'Attempts',
                 value: entry.maxRetries > 0

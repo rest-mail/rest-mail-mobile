@@ -76,6 +76,16 @@ class FakeRestmail {
   final _aliases = <int, FakeAlias>{};
   final _queue = <int, FakeQueueEntry>{};
   final _bans = <int, FakeBan>{};
+  final _certificates = <int, FakeCertificate>{};
+  final _pipelines = <int, FakePipeline>{};
+  final _customFilters = <int, FakeCustomFilter>{};
+  final _audit = <FakeAuditEntry>[];
+
+  /// Read-only records, kept as the server answers them: newest first, and
+  /// traces by the message they are for.
+  final _activity = <Map<String, Object?>>[];
+  final _tlsReports = <Map<String, Object?>>[];
+  final _traces = <int, Map<String, Object?>>{};
   final _admins = <String, _FakeAdmin>{};
   final _adminAccessTokens = <String, _AdminGrant>{};
   final _adminRefreshTokens = <String, _FakeAdmin>{};
@@ -253,6 +263,17 @@ class FakeRestmail {
   List<FakeAlias> get aliases => [..._aliases.values];
   List<FakeQueueEntry> get queue => [..._queue.values];
   List<FakeBan> get bans => [..._bans.values];
+  List<FakeCertificate> get certificates => [..._certificates.values];
+  List<FakePipeline> get pipelines => [..._pipelines.values];
+  List<FakeCustomFilter> get customFilters => [..._customFilters.values];
+
+  /// The audit log, oldest first.
+  List<FakeAuditEntry> get auditLog => [..._audit];
+
+  /// Changes entry [seq] of the audit log behind the chain's back, as
+  /// someone with the database might; checking the chain then finds it.
+  void tamperWithAudit(int seq) =>
+      _audit.firstWhere((e) => e.seq == seq).actorName = 'nobody';
 
   /// The names of an admin's roles, for a test to check a change.
   List<String> rolesOf(String username) => [
@@ -300,7 +321,14 @@ class FakeRestmail {
         });
       case ('POST', ['api', 'v1', 'auth', 'login']):
         final body = _object(bytes);
-        return body.containsKey('username') ? _adminLogin(body) : _login(body);
+        final admin = body.containsKey('username');
+        return _audited(
+          request,
+          'auth.sign_in',
+          actorKind: admin ? 'admin' : 'mailbox',
+          actorName: '${body[admin ? 'username' : 'email']}',
+          () => admin ? _adminLogin(body) : _login(body),
+        );
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'logout']):
@@ -309,7 +337,29 @@ class FakeRestmail {
     }
 
     if (path case ['api', 'v1', 'admin', ...final rest]) {
-      return _adminApi(request, method, rest, bytes);
+      // Changes are audited, and so is every read of the audit log.
+      final action = rest.firstOrNull == 'audit'
+          ? 'audit.read'
+          : method == 'GET'
+          ? null
+          : 'admin.change';
+      final token = _bearer(request);
+      final admin = _adminAccessTokens[token]?.admin;
+      final box = _mailboxes[_accessTokens[token]?.session.primary];
+      return action == null
+          ? _adminApi(request, method, rest, bytes)
+          : _audited(
+              request,
+              action,
+              actorKind: admin != null
+                  ? 'admin'
+                  : box != null
+                  ? 'mailbox'
+                  : 'anonymous',
+              actorName: admin?.username ?? box?.address ?? '',
+              actorId: admin?.id ?? box?.id,
+              () => _adminApi(request, method, rest, bytes),
+            );
     }
     if (_adminSelf(request, method, path, bytes) case final response?) {
       return response;
@@ -850,8 +900,9 @@ class FakeRestmail {
       ),
       ('lee@harbor.test', 'delivered', 1, 0, '', const Duration(hours: 9)),
     ]) {
-      _queue[_nextRowId] = FakeQueueEntry(
+      final entry = _queue[_nextRowId] = FakeQueueEntry(
         id: _nextRowId++,
+        messageId: _nextId++,
         sender: FakeAccounts.email,
         recipient: recipient,
         status: status,
@@ -860,7 +911,21 @@ class FakeRestmail {
         lastError: error,
         createdAt: now.subtract(age),
       );
+      _traces[entry.messageId!] = _traceJson(
+        messageId: entry.messageId!,
+        direction: 'outbound',
+        outcome: 'queued',
+        from: entry.sender,
+        to: recipient,
+        at: entry.createdAt,
+        stages: [
+          ('sender_verify', 'continue', 'pass'),
+          ('header_cleanup', 'continue', 'removed 2 headers'),
+          ('dkim_sign', 'continue', 'signed with mail._domainkey'),
+        ],
+      );
     }
+    _loadAdminRecords(now, dana);
     _bans[_nextRowId] = FakeBan(
       id: _nextRowId++,
       ip: '203.0.113.7',
@@ -870,6 +935,262 @@ class FakeRestmail {
       expiresAt: now.add(const Duration(hours: 22)),
     );
   }
+
+  /// The logs, reports, keys and filters a running server has.
+  void _loadAdminRecords(DateTime now, FakeMailbox dana) {
+    final host = FakeAccounts.host;
+    final latest = messagesIn(dana.address, 'INBOX')
+      ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    if (latest.firstOrNull case final message?) {
+      _traces[message.id] = _traceJson(
+        messageId: message.id,
+        direction: 'inbound',
+        outcome: 'delivered',
+        transport: 'tls',
+        from: message.sender,
+        to: dana.address,
+        at: message.receivedAt,
+        stages: [
+          ('size_check', 'continue', 'pass'),
+          ('spf_check', 'continue', 'pass'),
+          ('dkim_verify', 'continue', 'pass'),
+          ('dmarc_check', 'continue', 'pass'),
+          ('rspamd', 'continue', 'score 1.2'),
+        ],
+      );
+    }
+
+    for (final (action, type, detail, age) in [
+      ('create', 'domain', 'Added $host', const Duration(days: 6)),
+      (
+        'create',
+        'mailbox',
+        'Added ${FakeAccounts.email}',
+        const Duration(days: 6),
+      ),
+      (
+        'update',
+        'mailbox',
+        'Changed ${FakeAccounts.otherEmail}',
+        const Duration(days: 2),
+      ),
+      ('create', 'ban', 'Banned 203.0.113.7', const Duration(hours: 2)),
+    ].reversed) {
+      _activity.add({
+        'id': _nextRowId++,
+        'actor': type == 'ban' ? 'system' : FakeAccounts.adminUsername,
+        'action': action,
+        'resource_type': type,
+        'resource_id': null,
+        'detail': detail,
+        'metadata': null,
+        'ip': '192.0.2.10',
+        'created_at': _time(now.subtract(age)),
+      });
+    }
+
+    final day = DateTime.utc(now.year, now.month, now.day);
+    for (final (org, ok, failed, details) in [
+      ('Google Inc.', 214, 0, null),
+      (
+        'Microsoft Corporation',
+        96,
+        3,
+        [
+          {
+            'result-type': 'certificate-expired',
+            'sending-mta-ip': '198.51.100.20',
+            'receiving-mx-hostname': 'mx.$host',
+            'failed-session-count': 3,
+          },
+        ],
+      ),
+    ]) {
+      _tlsReports.add({
+        'id': _nextRowId++,
+        'domain_id': _domains[host]?.id ?? 0,
+        'reporting_org': org,
+        'start_date': _time(day.subtract(const Duration(days: 1))),
+        'end_date': _time(day.subtract(const Duration(seconds: 1))),
+        'policy_type': 'sts',
+        'policy_domain': host,
+        'total_successful': ok,
+        'total_failure': failed,
+        'failure_details': details,
+        'raw_report': '',
+        'received_at': _time(day.add(const Duration(hours: 3))),
+        'created_at': _time(day.add(const Duration(hours: 3))),
+      });
+    }
+
+    for (final domain in _domains.values) {
+      _certificates[_nextRowId] = FakeCertificate(
+        id: _nextRowId++,
+        domain: domain.name,
+        notBefore: now.subtract(const Duration(days: 30)),
+        notAfter: now.add(const Duration(days: 60)),
+      );
+    }
+
+    for (final (direction, filters) in [
+      (
+        'inbound',
+        [
+          'size_check',
+          'spf_check',
+          'dkim_verify',
+          'dmarc_check',
+          'rspamd',
+          'greylist',
+          'sieve',
+        ],
+      ),
+      ('outbound', ['sender_verify', 'header_cleanup', 'dkim_sign']),
+    ]) {
+      _pipelines[_nextRowId] = FakePipeline(
+        id: _nextRowId++,
+        domain: host,
+        direction: direction,
+        filters: [
+          for (final name in filters)
+            {
+              'name': name,
+              'type': name == 'header_cleanup' || name == 'dkim_sign'
+                  ? 'transform'
+                  : 'action',
+              'enabled': name != 'greylist',
+              if (name == 'dkim_sign') 'unskippable': true,
+            },
+        ],
+      );
+    }
+    _customFilters[_nextRowId] = FakeCustomFilter(
+      id: _nextRowId++,
+      domain: host,
+      name: 'Hold invoices from strangers',
+      description: 'Quarantines invoices from senders not in contacts',
+      config: {
+        'match': {'subject_contains': 'invoice', 'sender_known': false},
+        'action': 'quarantine',
+      },
+    );
+
+    // A week of the audit log, oldest first: sign-ins, a few changes, and
+    // someone guessing passwords.
+    final start = now.subtract(const Duration(days: 7));
+    for (var i = 0; i < 60; i++) {
+      final at = start.add(Duration(hours: i * 2 + 1));
+      final (
+        kind,
+        name,
+        id,
+        action,
+        outcome,
+        method,
+        route,
+        status,
+      ) = switch (i % 6) {
+        0 || 3 => (
+          'mailbox',
+          FakeAccounts.email,
+          dana.id,
+          'auth.sign_in',
+          'success',
+          'POST',
+          '/api/v1/auth/login',
+          200,
+        ),
+        1 => (
+          'mailbox',
+          'root@$host',
+          null,
+          'auth.sign_in',
+          'denied',
+          'POST',
+          '/api/v1/auth/login',
+          401,
+        ),
+        2 => (
+          'admin',
+          FakeAccounts.adminUsername,
+          _admins[FakeAccounts.adminUsername]!.id,
+          'admin.change',
+          'success',
+          'PATCH',
+          '/api/v1/admin/mailboxes/{id}',
+          200,
+        ),
+        4 => (
+          'admin',
+          FakeAccounts.queueWatcher,
+          _admins[FakeAccounts.queueWatcher]!.id,
+          'admin.change',
+          'denied',
+          'POST',
+          '/api/v1/admin/queue/{id}/retry',
+          403,
+        ),
+        _ => ('system', 'system', null, 'system.prune', 'success', '', '', 0),
+      };
+      _record(
+        FakeAuditEntry(
+          seq: i + 1,
+          occurredAt: at,
+          actorKind: kind,
+          actorId: id,
+          actorName: name,
+          action: action,
+          outcome: outcome,
+          method: method,
+          route: route,
+          status: status,
+          ip: outcome == 'denied' && kind == 'mailbox'
+              ? '203.0.113.7'
+              : '192.0.2.10',
+        ),
+      );
+    }
+  }
+
+  Map<String, Object?> _traceJson({
+    required int messageId,
+    required String direction,
+    required String outcome,
+    required String from,
+    required String to,
+    required DateTime at,
+    required List<(String, String, String)> stages,
+    String transport = '',
+  }) => {
+    'id': _nextRowId++,
+    'message_id': messageId,
+    'rfc_message_id': '<$messageId@fake.restmail.test>',
+    'direction': direction,
+    'transport': transport,
+    'mail_from': from,
+    'rcpt_to': to,
+    'client_ip': direction == 'inbound' ? '198.51.100.20' : '',
+    'pipeline_id': 0,
+    'final_action': 'continue',
+    'outcome': outcome,
+    'reason_code': '',
+    'spam_score': direction == 'inbound' ? 1.2 : null,
+    'duration_ms': 18 * stages.length,
+    'stages': [
+      for (final (filter, action, result) in stages)
+        {
+          'filter_name': filter,
+          'filter_type': 'action',
+          'action': action,
+          'log': {'filter': filter, 'result': result},
+          // Go writes a time.Duration as nanoseconds, whatever the name.
+          'duration_ms': 18000000,
+        },
+    ],
+    'sampled': true,
+    'created_at': _time(at),
+    'expires_at': null,
+  };
 
   FakeMailbox _addMailbox(
     String address,
@@ -952,6 +1273,155 @@ class FakeRestmail {
   // admin route answers 403 setup_required until it is done. After that, each
   // admin route needs its capability, as the access token carries them; `*`
   // allows them all. A mailbox session holds none, and is refused outright.
+
+  /// Answers with [answer], and records the request in the audit log with
+  /// how it went, refused or not.
+  http.StreamedResponse _audited(
+    http.BaseRequest request,
+    String action,
+    http.StreamedResponse Function() answer, {
+    required String actorKind,
+    required String actorName,
+    int? actorId,
+  }) {
+    http.StreamedResponse response;
+    try {
+      response = answer();
+    } on _Reply catch (reply) {
+      response = reply.response;
+    }
+    final status = response.statusCode;
+    _record(
+      FakeAuditEntry(
+        seq: (_audit.lastOrNull?.seq ?? 0) + 1,
+        occurredAt: _clock(),
+        actorKind: actorKind,
+        // A sign-in names its account even when it fails, but proves it
+        // only when it does not.
+        actorId: status < 400 ? actorId : null,
+        actorName: actorName,
+        action: action,
+        outcome: switch (status) {
+          < 400 => 'success',
+          401 || 403 || 429 => 'denied',
+          < 500 => 'failed',
+          _ => 'error',
+        },
+        method: request.method,
+        route: request.url.path,
+        status: status,
+      ),
+    );
+    return response;
+  }
+
+  void _record(FakeAuditEntry entry) {
+    entry
+      ..prevHash = _audit.lastOrNull?.hash ?? _zeroHash
+      ..hash = _auditHash(entry);
+    _audit.add(entry);
+  }
+
+  static final _zeroHash = '0' * 64;
+
+  /// Walks the chain from the first entry, as the server's check does.
+  Map<String, Object?> _verifyAudit() {
+    var previous = _zeroHash;
+    var checked = 0;
+    FakeAuditEntry? last;
+    for (final entry in _audit) {
+      final reason = entry.prevHash != previous
+          ? 'prev_hash does not match the previous entry'
+          : entry.hash != _auditHash(entry)
+          ? 'hash does not match its contents'
+          : null;
+      if (reason != null) {
+        return {
+          'ok': false,
+          'checked': checked,
+          'first_seq': _audit.first.seq,
+          'last_seq': last?.seq ?? 0,
+          'last_hash': last?.hash ?? _zeroHash,
+          'broken_at_seq': entry.seq,
+          'reason': reason,
+        };
+      }
+      previous = entry.hash;
+      last = entry;
+      checked++;
+    }
+    return {
+      'ok': true,
+      'checked': checked,
+      'first_seq': _audit.firstOrNull?.seq ?? 0,
+      'last_seq': last?.seq ?? 0,
+      'last_hash': last?.hash ?? _zeroHash,
+    };
+  }
+
+  http.StreamedResponse _auditList(Map<String, String> query) {
+    final invalid = <String, String>{};
+    final kind = query['actor_kind'], outcome = query['outcome'];
+    if (kind != null &&
+        !const {'mailbox', 'admin', 'system', 'anonymous'}.contains(kind)) {
+      invalid['actor_kind'] = 'must be mailbox, admin, system or anonymous';
+    }
+    if (outcome != null &&
+        !const {'success', 'denied', 'failed', 'error'}.contains(outcome)) {
+      invalid['outcome'] = 'must be success, denied, failed or error';
+    }
+    final before = int.tryParse(query['before_seq'] ?? '');
+    if (query['before_seq'] != null && (before == null || before < 1)) {
+      invalid['before_seq'] = 'must be a positive whole number';
+    }
+    final limit = int.tryParse(query['limit'] ?? '50');
+    if (limit == null || limit < 1 || limit > 200) {
+      invalid['limit'] = 'must be between 1 and 200';
+    }
+    if (invalid.isNotEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: invalid,
+      );
+    }
+    final matching = [
+      for (final entry in _audit.reversed)
+        if ((kind == null || entry.actorKind == kind) &&
+            (outcome == null || entry.outcome == outcome) &&
+            (before == null || entry.seq < before))
+          entry,
+    ];
+    final page = matching.take(limit!).toList();
+    final more = matching.length > page.length;
+    return _json({
+      'data': [for (final entry in page) _auditJson(entry)],
+      'pagination': {'has_more': more, if (more) 'cursor': '${page.last.seq}'},
+    });
+  }
+
+  Map<String, Object?> _auditJson(FakeAuditEntry e) => {
+    'seq': e.seq,
+    'occurred_at': _time(e.occurredAt),
+    'actor_kind': e.actorKind,
+    'actor_id': e.actorId,
+    'actor_name': e.actorName,
+    'credential_id': null,
+    'session_id': '',
+    'action': e.action,
+    'outcome': e.outcome,
+    'error_code': '',
+    'method': e.method,
+    'route': e.route,
+    'status': e.status,
+    'target': <String, String>{},
+    'ip': e.ip,
+    'user_agent': e.userAgent,
+    'request_id': 'req-${e.seq}',
+    'prev_hash': e.prevHash,
+    'hash': e.hash,
+  };
 
   http.StreamedResponse _adminLogin(Map<String, dynamic> body) {
     final admin = _admins[body['username']];
@@ -1325,6 +1795,127 @@ class FakeRestmail {
         need('bans:delete');
         _bans.remove(int.tryParse(id));
         return _noContent();
+
+      case ('GET', ['logs', 'delivery']):
+        need('messages:read');
+        final status = query['status'], recipient = query['recipient'];
+        return _listPage(
+          _queue.values
+              .where(
+                (e) =>
+                    (status == null || e.status == status) &&
+                    (recipient == null ||
+                        e.recipient.contains(recipient.toLowerCase())),
+              )
+              .toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+          query,
+          _queueJson,
+        );
+      case ('GET', ['logs', 'activity']):
+        need('users:read');
+        return _listPage(_activity, query, (a) => a);
+      case ('GET', ['messages', final id, 'trace']):
+        need('observability:read');
+        return _json({
+          'data':
+              _traces[int.tryParse(id)] ??
+              _fail(404, 'not_found', 'No pipeline trace for this message'),
+        });
+      case ('GET', ['tls-reports']):
+        need('domains:read');
+        return _listPage(_tlsReports, query, (r) => r);
+
+      case ('GET', ['audit']):
+        need('audit:read');
+        return _auditList(query);
+      case ('GET', ['audit', 'verify']):
+        need('audit:read');
+        return _json({'data': _verifyAudit()});
+
+      case ('GET', ['dkim']):
+        need('domains:read');
+        final signing = _domains.values.where((d) => d.signs).toList();
+        // Go's nil slice: no keys at all is null, not [].
+        return _json({
+          'data': signing.isEmpty
+              ? null
+              : [
+                  for (final d in signing)
+                    {
+                      'domain_id': d.id,
+                      'domain': d.name,
+                      'selector': d.dkimSelector,
+                      'has_key': true,
+                    },
+                ],
+        });
+      case ('DELETE', ['dkim', final id]):
+        need('domains:write');
+        _domain(id).dkimSelector = '';
+        return _noContent();
+
+      case ('GET', ['certificates']):
+        need('domains:read');
+        return _listPage(
+          _certificates.values.toList(),
+          query,
+          _certificateJson,
+        );
+      case ('DELETE', ['certificates', final id]):
+        need('domains:write');
+        if (_certificates.remove(int.tryParse(id)) == null) {
+          _fail(404, 'not_found', 'Certificate not found');
+        }
+        return _noContent();
+
+      case ('GET', ['pipelines']):
+        need('pipelines:read');
+        return _listPage(
+          _pipelines.values.toList()
+            ..sort((a, b) => a.direction.compareTo(b.direction)),
+          query,
+          _pipelineJson,
+        );
+      case ('PATCH', ['pipelines', final id]):
+        need('pipelines:write');
+        final pipeline =
+            _pipelines[int.tryParse(id)] ??
+            _fail(404, 'not_found', 'Pipeline not found');
+        if (_object(bytes)['active'] case final bool active) {
+          pipeline.active = active;
+        }
+        return _json({'data': _pipelineJson(pipeline)});
+      case ('DELETE', ['pipelines', final id]):
+        need('pipelines:delete');
+        _pipelines.remove(int.tryParse(id));
+        return _json({
+          'data': {'status': 'deleted'},
+        });
+
+      case ('GET', ['custom-filters']):
+        need('pipelines:read');
+        return _listPage(
+          _customFilters.values.toList()
+            ..sort((a, b) => a.name.compareTo(b.name)),
+          query,
+          _customFilterJson,
+        );
+      case ('PATCH', ['custom-filters', final id]):
+        need('pipelines:write');
+        final filter =
+            _customFilters[int.tryParse(id)] ??
+            _fail(404, 'not_found', 'Custom filter not found');
+        if (_object(bytes)['enabled'] case final bool enabled) {
+          filter.enabled = enabled;
+        }
+        return _json({'data': _customFilterJson(filter)});
+      case ('DELETE', ['custom-filters', final id]):
+        need('pipelines:delete');
+        _customFilters.remove(int.tryParse(id));
+        return _json({
+          'data': {'status': 'deleted'},
+        });
     }
     _fail(404, 'not_found', 'No route for $method ${request.url.path}');
   }
@@ -1373,7 +1964,7 @@ class FakeRestmail {
 
   Map<String, Object?> _queueJson(FakeQueueEntry e) => {
     'id': e.id,
-    'message_id': null,
+    'message_id': e.messageId,
     'sender': e.sender,
     'recipient': e.recipient,
     'domain': e.domain,
@@ -1395,7 +1986,7 @@ class FakeRestmail {
     'server_type': 'restmail',
     'active': d.active,
     'default_quota_bytes': 1073741824,
-    'dkim_selector': 'mail',
+    'dkim_selector': d.dkimSelector,
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -1423,6 +2014,47 @@ class FakeRestmail {
     'destination_address': a.destination,
     'active': a.active,
     'created_at': _time(_clock()),
+  };
+
+  Map<String, Object?> _certificateJson(FakeCertificate c) => {
+    'id': c.id,
+    'domain_id': _domains[c.domain]?.id ?? 0,
+    'issuer': c.issuer,
+    'not_before': _time(c.notBefore),
+    'not_after': _time(c.notAfter),
+    'auto_renew': c.autoRenew,
+    'created_at': _time(c.notBefore),
+    'updated_at': _time(c.notBefore),
+    if (_domains[c.domain] case final domain?) 'domain': _domainJson(domain),
+  };
+
+  // The server does not load a pipeline's or a filter's domain into the
+  // list, so it comes back empty, as Go writes a zero struct.
+  static const _noDomain = {'id': 0, 'name': ''};
+
+  Map<String, Object?> _pipelineJson(FakePipeline p) => {
+    'id': p.id,
+    'domain_id': _domains[p.domain]?.id ?? 0,
+    'direction': p.direction,
+    'filters': p.filters,
+    'active': p.active,
+    'created_at': _time(_clock()),
+    'updated_at': _time(_clock()),
+    'domain': _noDomain,
+  };
+
+  Map<String, Object?> _customFilterJson(FakeCustomFilter f) => {
+    'id': f.id,
+    'domain_id': _domains[f.domain]?.id ?? 0,
+    'name': f.name,
+    'description': f.description,
+    'filter_type': f.filterType,
+    'direction': f.direction,
+    'config': f.config,
+    'enabled': f.enabled,
+    'created_at': _time(_clock()),
+    'updated_at': _time(_clock()),
+    'domain': _noDomain,
   };
 
   FakeQueueEntry _queueEntry(String id) =>
@@ -1911,6 +2543,22 @@ Map<String, dynamic> _object(List<int> bytes) {
   final decoded = jsonDecode(utf8.decode(bytes));
   if (decoded is Map<String, dynamic>) return decoded;
   _fail(400, 'bad_request', 'Invalid request body');
+}
+
+/// 64 hex digits that change with [entry]'s contents and the hash before
+/// it. Not the server's SHA-256: the app never checks a hash itself, it asks
+/// the server to.
+String _auditHash(FakeAuditEntry entry) {
+  final bytes = utf8.encode(entry.content);
+  final out = StringBuffer();
+  for (var seed = 1; seed <= 8; seed++) {
+    var hash = 0x811c9dc5 ^ seed;
+    for (final byte in bytes) {
+      hash = ((hash ^ byte) * 0x01000193) & 0xffffffff;
+    }
+    out.write(hash.toRadixString(16).padLeft(8, '0'));
+  }
+  return '$out';
 }
 
 int? _cursorId(String? cursor) {

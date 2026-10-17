@@ -212,6 +212,37 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Overview'));
   await _shot(tester, '21-overview$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+
+  Future<void> open(String section) async {
+    await tester.scrollUntilVisible(
+      find.text(section),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text(section));
+    await tester.pumpAndSettle();
+  }
+
+  await open('Delivery log');
+  await _shot(tester, '22-delivery-log$suffix');
+  await tester.tap(find.text('nobody@ryeworks.test'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Trace'));
+  await _shot(tester, '23-trace$suffix');
+  for (var i = 0; i < 3; i++) {
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+  }
+  await open('Audit log');
+  await tester.tap(find.text('Verify chain'));
+  await _shot(tester, '24-audit$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await open('Pipelines');
+  await tester.tap(find.text('Coming in · 7 filters'));
+  await _shot(tester, '25-pipeline$suffix');
 
   await tester.pumpWidget(const SizedBox());
   state.dispose();
