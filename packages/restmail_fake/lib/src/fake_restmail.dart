@@ -46,6 +46,7 @@ class FakeRestmail {
     this.host = FakeAccounts.host,
     this.accessTokenLifetime = const Duration(minutes: 15),
     this.latency = Duration.zero,
+    this.pushPlatforms = const {'apns'},
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     _load();
@@ -64,6 +65,10 @@ class FakeRestmail {
   /// A pause before every answer, for a slow network.
   final Duration latency;
 
+  /// The services the fake is set up to push through. Empty to act like a
+  /// server with no APNs or FCM credentials set, which answers 404 on the
+  /// devices routes.
+  final Set<String> pushPlatforms;
   final DateTime Function() _clock;
 
   /// False to act like a server that cannot be reached.
@@ -95,6 +100,8 @@ class FakeRestmail {
   final _traces = <int, Map<String, Object?>>{};
   final _traceLog = <Map<String, Object?>>[];
   final _appPasswords = <int, FakeAppPassword>{};
+  final _devices = <String, (FakePushDevice, _Session)>{};
+  final _pushes = <FakePush>[];
   var _nextId = 1;
   var _nextMailboxId = 1;
 
@@ -158,6 +165,7 @@ class FakeRestmail {
   void revokeSessions() {
     _accessTokens.clear();
     _refreshTokens.clear();
+    _devices.clear();
   }
 
   /// Ends the sessions signed in as [address] only; the rest carry on.
@@ -166,6 +174,7 @@ class FakeRestmail {
     if (box == null) return;
     _accessTokens.removeWhere((_, grant) => grant.session.primary == box.id);
     _refreshTokens.removeWhere((_, session) => session.primary == box.id);
+    _devices.removeWhere((_, entry) => entry.$2.primary == box.id);
   }
 
   /// [address]'s password as it stands, for a test to check a change; null
@@ -251,6 +260,18 @@ class FakeRestmail {
         if (p.mailboxId == box?.id) p,
     ];
   }
+
+  /// The phones registered for push by sessions signed in as [address].
+  List<FakePushDevice> devicesOf(String address) {
+    final box = _mailboxAt(address);
+    return [
+      for (final (device, _) in _devices.values)
+        if (device.mailboxId == box?.id) device,
+    ];
+  }
+
+  /// Every push the fake would have sent, oldest first.
+  List<FakePush> get pushes => [..._pushes];
 
   /// Whether a mail client signing in to [address] with [password] would be
   /// let in now, as the gateways ask the real server: an app password of
@@ -342,7 +363,11 @@ class FakeRestmail {
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'logout']):
-        _refreshTokens.remove(_object(bytes)['refresh_token']);
+        // As on the server, the session's push devices end with it.
+        if (_refreshTokens.remove(_object(bytes)['refresh_token'])
+            case final session?) {
+          _forgetDevices(session);
+        }
         return _noContent();
     }
 
@@ -367,6 +392,15 @@ class FakeRestmail {
     }
     if (_setup(request, method, path, bytes) case final response?) {
       return response;
+    }
+
+    // Nor has a server without push any route for devices.
+    if (path case ['api', 'v1', 'devices', ...] when pushPlatforms.isEmpty) {
+      return http.StreamedResponse(
+        Stream.value(utf8.encode('404 page not found\n')),
+        404,
+        headers: {'content-type': 'text/plain; charset=utf-8'},
+      );
     }
 
     final session = _authenticate(request);
@@ -436,6 +470,15 @@ class FakeRestmail {
           'credentials.revoke',
           () => _revokeAppPassword(_manageable(session, id), credential),
         ),
+      ('GET', ['api', 'v1', 'devices']) => _listDevices(session),
+      ('POST', ['api', 'v1', 'devices']) => _registerDevice(
+        session,
+        _object(bytes),
+      ),
+      ('DELETE', ['api', 'v1', 'devices', final id]) => _removeDevice(
+        session,
+        id,
+      ),
       ('POST', ['api', 'v1', 'messages', 'send']) => _send(
         session,
         _object(bytes),
@@ -1197,6 +1240,128 @@ class FakeRestmail {
         message.folder,
       ).where((m) => !m.isRead).length,
     });
+    if (message.folder == 'INBOX') _pushNewMail(message.mailboxId);
+  }
+
+  // ── Push devices ──────────────────────────────────────────────────────
+  //
+  // The contract the app expects of the server (rest-mail-mobile#8): a
+  // device belongs to the session that registered it and goes when that
+  // session ends; new mail in the inbox of any mailbox the session lists
+  // pushes to it; and the push carries only the device, the account and its
+  // unread count, never a sender, a subject or any of the message.
+
+  http.StreamedResponse _listDevices(_Session session) => _json({
+    'data': {
+      'platforms': [...pushPlatforms],
+      'devices': [
+        for (final (device, owner) in _devices.values)
+          if (identical(owner, session)) _deviceJson(device),
+      ],
+    },
+  });
+
+  http.StreamedResponse _registerDevice(
+    _Session session,
+    Map<String, dynamic> body,
+  ) {
+    final platform = body['platform'], token = body['token'];
+    final environment = body['environment'] as String?;
+    if (platform is! String || !pushPlatforms.contains(platform)) {
+      _fail(
+        400,
+        'validation_failed',
+        'Push is not set up for this platform',
+        fields: {'platform': 'not configured on this server'},
+      );
+    }
+    if (token is! String ||
+        token.isEmpty ||
+        (platform == 'apns' &&
+            !RegExp(r'^[0-9a-f]{64,200}$').hasMatch(token))) {
+      _fail(
+        400,
+        'validation_failed',
+        'Invalid device token',
+        fields: {'token': 'not a device token'},
+      );
+    }
+    if (environment != null &&
+        platform == 'apns' &&
+        environment != 'production' &&
+        environment != 'sandbox') {
+      _fail(
+        400,
+        'validation_failed',
+        'Invalid environment',
+        fields: {'environment': 'production or sandbox'},
+      );
+    }
+    // The same token from the same session is the same device.
+    for (final (device, owner) in _devices.values) {
+      if (identical(owner, session) && device.token == token) {
+        return _json({'data': _deviceJson(device)});
+      }
+    }
+    final device = FakePushDevice(
+      id: 'dev-${_nextRowId++}',
+      mailboxId: session.primary,
+      platform: platform,
+      token: token,
+      environment: environment,
+      appId: body['app_id'] as String?,
+      createdAt: _clock(),
+    );
+    _devices[device.id] = (device, session);
+    return _json({'data': _deviceJson(device)}, status: 201);
+  }
+
+  http.StreamedResponse _removeDevice(_Session session, String id) {
+    final entry = _devices[id];
+    if (entry == null || !identical(entry.$2, session)) {
+      _fail(404, 'not_found', 'Device not found');
+    }
+    _devices.remove(id);
+    return _noContent();
+  }
+
+  Map<String, Object?> _deviceJson(FakePushDevice device) => {
+    'id': device.id,
+    'platform': device.platform,
+    'environment': device.environment,
+    'created_at': _time(device.createdAt),
+  };
+
+  void _forgetDevices(_Session session) =>
+      _devices.removeWhere((_, entry) => identical(entry.$2, session));
+
+  /// Records the push each device with [mailboxId] in its session's
+  /// mailboxes would get: a signal to fetch, and nothing of the mail.
+  void _pushNewMail(int mailboxId) {
+    final box = _mailboxes[mailboxId];
+    if (box == null) return;
+    final unread = messagesIn(
+      box.address,
+      'INBOX',
+    ).where((m) => !m.isRead).length;
+    for (final (device, session) in _devices.values) {
+      if (!_reach(session).contains(mailboxId)) continue;
+      _pushes.add(
+        FakePush(
+          device: device.id,
+          token: device.token,
+          payload: {
+            'aps': {'content-available': 1},
+            'restmail': {
+              'v': 1,
+              'device': device.id,
+              'account': mailboxId,
+              'unread': unread,
+            },
+          },
+        ),
+      );
+    }
   }
 
   // ── State ─────────────────────────────────────────────────────────────

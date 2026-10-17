@@ -422,3 +422,40 @@ class FakeAppPassword {
 
   bool get isRevoked => revokedAt != null;
 }
+
+/// A phone a session registered for push, as the fake stores it.
+class FakePushDevice {
+  FakePushDevice({
+    required this.id,
+    required this.mailboxId,
+    required this.platform,
+    required this.token,
+    required this.createdAt,
+    this.environment,
+    this.appId,
+  });
+
+  final String id;
+
+  /// The mailbox the session that registered it signed in as.
+  final int mailboxId;
+  final String platform;
+  final String token;
+  final String? environment;
+  final String? appId;
+  final DateTime createdAt;
+}
+
+/// A push the fake would have handed to APNs or FCM: who to, and the whole
+/// payload, which is all Apple or Google would see.
+class FakePush {
+  const FakePush({
+    required this.device,
+    required this.token,
+    required this.payload,
+  });
+
+  final String device;
+  final String token;
+  final Map<String, Object?> payload;
+}

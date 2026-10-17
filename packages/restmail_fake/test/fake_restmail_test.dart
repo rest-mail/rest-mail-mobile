@@ -1349,4 +1349,112 @@ void main() {
       );
     });
   });
+
+  group('push devices', () {
+    final token = 'ab' * 32;
+
+    test('registered once per session, listed, and removed', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+
+      final first = await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: token,
+        environment: ApnsEnvironment.sandbox,
+      );
+      final again = await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: token,
+        environment: ApnsEnvironment.sandbox,
+      );
+      final listed = await client.pushDevices();
+
+      expect(again.id, first.id);
+      expect(listed.platforms, {PushPlatform.apns});
+      expect([for (final d in listed.devices) d.id], [first.id]);
+      expect(fake.devicesOf(FakeAccounts.email).single.token, token);
+
+      await client.removePushDevice(first.id);
+      expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+      await expectLater(
+        client.removePushDevice(first.id),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 's', 404)),
+      );
+    });
+
+    test('a device goes with its session: signing out removes it', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: token,
+      );
+      // Another session on the same phone keeps its own.
+      final other = await _signedIn(fake, email: FakeAccounts.otherEmail);
+      await other.registerPushDevice(platform: PushPlatform.apns, token: token);
+
+      await client.logout();
+
+      expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+      expect(fake.devicesOf(FakeAccounts.otherEmail), hasLength(1));
+    });
+
+    test('new mail pushes the account and its unread count, and nothing of '
+        'the message', () async {
+      final fake = FakeRestmail();
+      final client = await _signedIn(fake);
+      final account = await _account(client);
+      final device = await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: token,
+      );
+
+      fake.deliver(
+        to: FakeAccounts.email,
+        from: 'nadia@example.test',
+        fromName: 'Nadia Osei',
+        subject: 'Quarterly numbers',
+        body: 'The figures are attached.',
+      );
+
+      final push = fake.pushes.single;
+      expect(push.token, token);
+      final unread = (await client.folders(
+        account.id,
+      )).firstWhere((f) => f.name == StandardFolder.inbox).unread;
+      expect(push.payload, {
+        'aps': {'content-available': 1},
+        'restmail': {
+          'v': 1,
+          'device': device.id,
+          'account': account.id,
+          'unread': unread,
+        },
+      });
+      final everything = '${push.payload}';
+      for (final secret in ['Nadia', 'nadia@', 'Quarterly', 'figures']) {
+        expect(everything, isNot(contains(secret)));
+      }
+    });
+
+    test('a server without push has no route for devices', () async {
+      final client = await _signedIn(FakeRestmail(pushPlatforms: const {}));
+
+      await expectLater(
+        client.pushDevices(),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 's', 404)),
+      );
+    });
+
+    test('refuses a platform it has no credentials for', () async {
+      final client = await _signedIn(FakeRestmail());
+
+      await expectLater(
+        client.registerPushDevice(platform: PushPlatform.fcm, token: 'x'),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'c', 'validation_failed'),
+        ),
+      );
+    });
+  });
 }

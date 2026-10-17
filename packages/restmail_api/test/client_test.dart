@@ -786,6 +786,84 @@ void main() {
     });
   });
 
+  group('push devices', () {
+    test('lists, registers and removes this session\'s devices', () async {
+      final sent = <http.Request>[];
+      const device = {
+        'id': 'd-1',
+        'platform': 'apns',
+        'environment': 'production',
+        'created_at': '2026-10-17T09:00:00Z',
+      };
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent.add(request);
+          return switch (request.method) {
+            'GET' => _json({
+              'data': {
+                'platforms': ['apns'],
+                'devices': [device],
+              },
+            }),
+            'POST' => _json({'data': device}, status: 201),
+            _ => http.Response('', 204),
+          };
+        }),
+      );
+
+      final listed = await client.pushDevices();
+      final registered = await client.registerPushDevice(
+        platform: PushPlatform.apns,
+        token: 'ab12',
+        environment: ApnsEnvironment.production,
+        appId: 'com.antimatterstudios.restmail',
+      );
+      await client.removePushDevice(registered.id);
+
+      expect(listed.supports(PushPlatform.apns), isTrue);
+      expect(listed.supports(PushPlatform.fcm), isFalse);
+      expect(listed.devices.single.id, 'd-1');
+      expect(registered.environment, 'production');
+      expect(registered.createdAt?.toUtc(), DateTime.utc(2026, 10, 17, 9));
+      expect(
+        [for (final r in sent) '${r.method} ${r.url.path}'],
+        [
+          'GET /api/v1/devices',
+          'POST /api/v1/devices',
+          'DELETE /api/v1/devices/d-1',
+        ],
+      );
+      expect(jsonDecode(sent[1].body), {
+        'platform': 'apns',
+        'token': 'ab12',
+        'environment': 'production',
+        'app_id': 'com.antimatterstudios.restmail',
+      });
+      expect(sent[1].headers['authorization'], 'Bearer access-1');
+    });
+
+    test('a server without push answers 404, as an ApiException', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => http.Response('404 page not found\n', 404),
+        ),
+      );
+
+      await expectLater(
+        client.pushDevices(),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+    });
+
+    test('a numeric device id is read as a string', () {
+      expect(PushDevice.fromJson({'id': 12, 'platform': 'apns'}).id, '12');
+    });
+  });
+
   group('events', () {
     test('delivers events and resumes from the last id after a drop', () async {
       final lastEventIds = <String?>[];
