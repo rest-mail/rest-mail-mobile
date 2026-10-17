@@ -53,7 +53,8 @@ Future<ScriptedServer> _gmailServer(List<Rule> more) => ScriptedServer.start(
 
 void main() {
   group('folders', () {
-    test('take rest-mail names from their SPECIAL-USE flags', () async {
+    test('take rest-mail names from their SPECIAL-USE flags, and Gmail '
+        'names Important and Starred', () async {
       final server = await _gmailServer([
         Rule(
           r'^STATUS',
@@ -72,10 +73,10 @@ void main() {
         'Receipts',
         'All Mail',
         'Drafts',
-        '[Gmail]/Important',
+        'Important',
         'Sent',
         'Spam',
-        '[Gmail]/Starred',
+        'Starred',
         'Trash',
       ]);
       expect(folders.first.total, 3);
@@ -194,7 +195,7 @@ void main() {
         Rule(r'^FETCH 1:3 ', _inboxFetch),
         Rule(
           r'^UID FETCH 101 \(UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE '
-              r'BODYSTRUCTURE\)',
+              r'BODYSTRUCTURE( X-GM-MSGID X-GM-THRID X-GM-LABELS)?\)',
           '${_inboxFetch.split('\n').first}\n{tag} OK Success',
         ),
         Rule(
@@ -310,7 +311,8 @@ void main() {
     });
 
     test(
-      'a draft is appended to Drafts, and replaced when it changes',
+      'a draft is appended to Drafts, and replaced when it changes; on Gmail '
+      'the old one goes by way of Trash',
       () async {
         final server = await _gmailServer([
           Rule(
@@ -325,8 +327,17 @@ void main() {
             r'^SELECT "?\[Gmail\]/Drafts"?',
             selected('Drafts', validity: 3),
           ),
-          Rule(r'^UID STORE 20 \+FLAGS.SILENT \(\\Deleted\)', '{tag} OK'),
-          Rule(r'^UID EXPUNGE 20$', '* 1 EXPUNGE\n{tag} OK Success'),
+          // An EXPUNGE in Drafts would leave the old draft in All Mail.
+          Rule(
+            r'^UID MOVE 20 "?\[Gmail\]/Trash"?',
+            '* OK [COPYUID 7 20 51]\n* 1 EXPUNGE\n{tag} OK Success',
+          ),
+          Rule(r'^SELECT "?\[Gmail\]/Trash"?', selected('Trash', validity: 7)),
+          Rule(
+            r'^UID STORE 51 \+FLAGS.SILENT \(\\Deleted\)',
+            '{tag} OK Success',
+          ),
+          Rule(r'^UID EXPUNGE 51$', '* 1 EXPUNGE\n{tag} OK Success'),
         ]);
         addTearDown(server.close);
         final backend = _backend(server);
@@ -357,6 +368,16 @@ void main() {
         expect(server.bodies, hasLength(2));
         expect(server.bodies.last, contains('Second go'));
         expect(server.bodies.last, contains('"Ada Lovelace" <ada@gmail.com>'));
+        expect(
+          server.commands.where(
+            (c) => c.startsWith('UID') || c.startsWith('EXPUNGE'),
+          ),
+          [
+            'UID MOVE 20 [Gmail]/Trash',
+            r'UID STORE 51 +FLAGS.SILENT (\Deleted)',
+            'UID EXPUNGE 51',
+          ],
+        );
       },
     );
   });
@@ -386,7 +407,15 @@ void main() {
 
     test('goes over SMTP and is filed in Sent once', () async {
       final smtp = await smtpServer();
-      final imap = await _gmailServer([
+      // A provider that isn't Gmail: no X-GM-EXT-1.
+      final imap = await ScriptedServer.start('* OK IMAP ready', [
+        Rule(
+          r'^LOGIN ',
+          '{tag} OK [CAPABILITY IMAP4rev1 IDLE UIDPLUS MOVE SPECIAL-USE] '
+              'Logged in',
+        ),
+        gmailList(),
+        _logout(),
         Rule(r'^SELECT "\[Gmail\]/Sent Mail"', selected('Sent', validity: 5)),
         Rule(
           r'^UID SEARCH HEADER Message-ID',

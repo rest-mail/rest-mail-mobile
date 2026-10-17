@@ -59,8 +59,10 @@ class _MailboxScreenState extends State<MailboxScreen> {
     });
   }
 
-  Future<void> _open(Message message) async {
+  /// Opens a row: [conversation]'s newest message, the rest of it beside.
+  Future<void> _open(List<Message> conversation) async {
     final m = widget.mailbox;
+    final message = conversation.first;
     if (m.folder == StandardFolder.drafts || message.isDraft) {
       try {
         final draft = await m.backend.message(message.id);
@@ -74,19 +76,26 @@ class _MailboxScreenState extends State<MailboxScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => MessageScreen(mailbox: m, message: message),
+        builder: (_) => MessageScreen(
+          mailbox: m,
+          message: message,
+          others: conversation.sublist(1),
+        ),
       ),
     );
   }
 
-  Future<void> _swipedAway(Message message) async {
+  /// A swiped row goes to Trash whole, conversation and all.
+  Future<void> _swipedAway(List<Message> conversation) async {
     final m = widget.mailbox;
+    final message = conversation.first;
     final permanent = message.folder == StandardFolder.trash;
     await removeWithUndo(
       messenger: ScaffoldMessenger.of(context),
       mailbox: m,
       message: message,
-      action: () => m.delete(message),
+      others: conversation.sublist(1),
+      action: () => m.delete(message, others: conversation.sublist(1)),
       done: permanent ? 'Deleted' : 'Moved to Trash',
       undoable: !permanent,
     );
@@ -135,6 +144,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
         onRetry: () => unawaited(m.retry()),
       );
     }
+    final rows = m.conversations;
     return RefreshIndicator(
       color: c.accent,
       onRefresh: m.refresh,
@@ -142,10 +152,11 @@ class _MailboxScreenState extends State<MailboxScreen> {
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 110),
-        itemCount: m.messages.length + 1,
+        itemCount: rows.length + 1,
         itemBuilder: (context, index) {
-          if (index == m.messages.length) return _Footer(mailbox: m);
-          final message = m.messages[index];
+          if (index == rows.length) return _Footer(mailbox: m);
+          final conversation = rows[index];
+          final message = conversation.first;
           return Dismissible(
             key: ValueKey('message-${message.id}'),
             direction: DismissDirection.endToStart,
@@ -159,10 +170,15 @@ class _MailboxScreenState extends State<MailboxScreen> {
               ),
             ),
             confirmDismiss: (_) => confirmPermanentDelete(context, message),
-            onDismissed: (_) => unawaited(_swipedAway(message)),
+            onDismissed: (_) => unawaited(_swipedAway(conversation)),
             child: MessageRow(
-              message: message,
-              onTap: () => unawaited(_open(message)),
+              // Unread while any of it is, flagged if any of it is.
+              message: message.copyWith(
+                isRead: conversation.every((each) => each.isRead),
+                isFlagged: conversation.any((each) => each.isFlagged),
+              ),
+              count: conversation.length,
+              onTap: () => unawaited(_open(conversation)),
             ),
           );
         },

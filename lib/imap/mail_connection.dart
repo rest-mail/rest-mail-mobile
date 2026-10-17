@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,6 +9,18 @@ import 'package:enough_mail/enough_mail.dart';
 // ignore: implementation_imports
 import 'package:enough_mail/src/private/util/client_base.dart'
     show ConnectionInfo;
+// Not exported either, and needed for Gmail: the server's answers as they
+// came, to read what Gmail adds to FETCH and LIST (labels, thread and
+// message ids, `\Important`), which enough_mail skips; and a command of our
+// own for STORE X-GM-LABELS, which it has no method for.
+// ignore: implementation_imports
+import 'package:enough_mail/src/private/imap/command.dart' show Command;
+// ignore: implementation_imports
+import 'package:enough_mail/src/private/imap/fetch_parser.dart'
+    show FetchParser;
+// ignore: implementation_imports
+import 'package:enough_mail/src/private/imap/imap_response.dart'
+    show ImapResponse;
 import 'package:restmail_api/restmail_api.dart';
 
 import 'mail_settings.dart';
@@ -52,6 +65,13 @@ class _Imap extends ImapClient {
   final greeted = Completer<void>();
   final lost = Completer<Never>();
 
+  /// What Gmail added to FETCH answers, by sequence number, until taken.
+  final gmail = <int, GmailFetch>{};
+
+  /// The folders Gmail's LIST marked `\Important`. enough_mail reads that
+  /// flag as `\Flagged`, so Important and Starred would look the same.
+  final important = <String>{};
+
   @override
   FutureOr<void> onConnectionEstablished(
     ConnectionInfo connectionInfo,
@@ -59,6 +79,71 @@ class _Imap extends ImapClient {
   ) async {
     await super.onConnectionEstablished(connectionInfo, serverGreeting);
     if (!greeted.isCompleted) greeted.complete();
+  }
+
+  @override
+  void onServerResponse(ImapResponse imapResponse) {
+    _readGmail(imapResponse);
+    super.onServerResponse(imapResponse);
+  }
+
+  void _readGmail(ImapResponse response) {
+    final first = response.lines.firstOrNull?.line ?? '';
+    if (!first.startsWith('* ')) return;
+    if (first.contains(' FETCH (')) {
+      if (!response.lines.any((l) => l.rawLine?.contains('X-GM-') ?? false)) {
+        return;
+      }
+      final sequence = int.tryParse(first.substring(2, first.indexOf(' ', 2)));
+      if (sequence == null) return;
+      final items =
+          response
+              .iterate()
+              .values
+              .where((v) => v.value == 'FETCH')
+              .firstOrNull
+              ?.children ??
+          const [];
+      String? messageId, threadId;
+      List<String>? labels;
+      for (var i = 0; i + 1 < items.length; i++) {
+        switch (items[i].value) {
+          case 'X-GM-MSGID':
+            messageId = items[++i].value;
+          case 'X-GM-THRID':
+            threadId = items[++i].value;
+          case 'X-GM-LABELS':
+            final list = items[++i].children;
+            labels = [
+              if (list != null)
+                for (final label in list) ?_text(label.value, label.data),
+            ];
+        }
+      }
+      final before = gmail[sequence];
+      gmail[sequence] = GmailFetch(
+        messageId: messageId ?? before?.messageId,
+        threadId: threadId ?? before?.threadId,
+        labels: labels ?? before?.labels,
+      );
+    } else if (first.startsWith('* LIST ') || first.startsWith('* XLIST ')) {
+      if (!first.toLowerCase().contains(r'\important')) return;
+      // * LIST (\HasNoChildren \Important) "/" "[Gmail]/Important"
+      final values = response.iterate().values;
+      final flags = values.where((v) => v.children != null).firstOrNull;
+      final path = values.lastOrNull;
+      if (flags == null || path == null || identical(flags, path)) return;
+      final marked = flags.children!.any(
+        (f) => f.value?.toLowerCase() == r'\important',
+      );
+      final name = _text(path.value, path.data);
+      if (marked && name != null) important.add(name);
+    }
+  }
+
+  static String? _text(String? value, Uint8List? data) {
+    final text = value ?? (data == null ? null : utf8.decode(data));
+    return text == null ? null : unquote(text);
   }
 
   @override
@@ -132,6 +217,38 @@ class ImapConnection {
   ImapServerInfo get server => _client.serverInfo;
   bool get isOpen => _client.isConnected && !_client.lost.isCompleted;
 
+  /// Gmail, or Google Workspace: told by its IMAP extensions, not the
+  /// domain, so a company's own addresses at Google count too.
+  bool get isGmail => server.supports('X-GM-EXT-1');
+
+  /// What Gmail said about each message in FETCH answers since the last
+  /// call, by sequence number.
+  Map<int, GmailFetch> takeGmail() {
+    final taken = Map.of(_client.gmail);
+    _client.gmail.clear();
+    return taken;
+  }
+
+  /// The folders Gmail's LIST marked `\Important`, by encoded path.
+  Set<String> get importantFolders => _client.important;
+
+  /// Puts Gmail labels on the messages with [uids], or takes them off.
+  /// Gmail answers with each message's labels as they now are, which
+  /// [takeGmail] then has.
+  Future<void> storeLabels(
+    MessageSequence uids,
+    List<String> labels, {
+    required bool add,
+  }) => run(
+    (client) => client.sendCommand<FetchImapResult>(
+      Command(
+        'UID STORE $uids ${add ? '+' : '-'}X-GM-LABELS '
+        '(${labels.map(gmailLabelArgument).join(' ')})',
+      ),
+      FetchParser(isUidFetch: true),
+    ),
+  );
+
   /// A future that fails when the connection drops.
   Future<Never> get lost => _client.lost.future;
 
@@ -146,12 +263,24 @@ class ImapConnection {
     final client = _Imap();
     try {
       final socket = await openSocket(host, settings.imapPort, tls: true);
-      client.connect(
-        socket,
-        connectionInformation: ConnectionInfo(
-          host,
-          settings.imapPort,
-          isSecure: true,
+      // The socket's answers are parsed in this zone. enough_mail prints
+      // every FETCH item it doesn't know (Gmail's, here) with the whole
+      // answer, subject and addresses included, to the device log.
+      runZoned(
+        () => client.connect(
+          socket,
+          connectionInformation: ConnectionInfo(
+            host,
+            settings.imapPort,
+            isSecure: true,
+          ),
+        ),
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            if (!line.startsWith('fetch: encountered unexpected')) {
+              parent.print(zone, line);
+            }
+          },
         ),
       );
       await client.greeted.future.timeout(_greetingTimeout);
@@ -255,6 +384,31 @@ String quoted(String value) => value
     .replaceAll(RegExp(r'[\r\n]'), '')
     .replaceAll(r'\', r'\\')
     .replaceAll('"', r'\"');
+
+/// What Gmail adds to a FETCH answer
+/// (https://developers.google.com/gmail/imap/imap-extensions).
+class GmailFetch {
+  const GmailFetch({this.messageId, this.threadId, this.labels});
+
+  /// `X-GM-MSGID`: the message's id, the same in every folder it shows in.
+  final String? messageId;
+
+  /// `X-GM-THRID`: its conversation, as Gmail groups them.
+  final String? threadId;
+
+  /// `X-GM-LABELS`: Gmail's own labels with a backslash (`\Inbox`,
+  /// `\Important`, `\Sent`), the user's by their encoded folder path.
+  final List<String>? labels;
+}
+
+/// A label as STORE X-GM-LABELS takes it: Gmail's own as the atom it is,
+/// anything else quoted.
+String gmailLabelArgument(String label) =>
+    RegExp(r'^\\[A-Za-z]+$').hasMatch(label) ? label : '"${quoted(label)}"';
+
+/// Undoes [quoted]: what a quoted string held, escapes taken out.
+String unquote(String value) =>
+    value.replaceAllMapped(RegExp(r'\\(.)'), (m) => m[1]!);
 
 /// The server turned the password down. Gmail says why in words worth
 /// keeping: it wants an app password, or a sign-in in the browser first.

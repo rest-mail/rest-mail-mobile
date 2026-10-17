@@ -44,6 +44,14 @@ class MailboxState extends ChangeNotifier {
   Folder? get currentFolder =>
       folders.where((f) => f.name == folder).firstOrNull;
 
+  /// The list's rows: a message each, or where the backend groups threads
+  /// (Gmail), a conversation each, its newest message first.
+  List<List<Message>> get conversations => backend.groupsThreads
+      ? groupThreads(messages)
+      : [
+          for (final m in messages) [m],
+        ];
+
   Future<void> start() async {
     try {
       accounts = await backend.accounts();
@@ -159,12 +167,41 @@ class MailboxState extends ChangeNotifier {
     () => backend.updateMessage(message.id, isFlagged: flagged),
   );
 
-  Future<void> move(Message message, String to) =>
-      _remove(message, () => backend.updateMessage(message.id, folder: to));
+  /// Moves [message], and [others] from its conversation with it.
+  Future<void> move(
+    Message message,
+    String to, {
+    List<Message> others = const [],
+  }) => _remove([
+    message,
+    ...others,
+  ], (m) => backend.updateMessage(m.id, folder: to));
 
-  /// To Trash, or gone for good if it is already there.
-  Future<void> delete(Message message) =>
-      _remove(message, () => backend.deleteMessage(message.id));
+  /// To Trash, or gone for good if it is already there; [others] from its
+  /// conversation too.
+  Future<void> delete(Message message, {List<Message> others = const []}) =>
+      _remove([message, ...others], (m) => backend.deleteMessage(m.id));
+
+  /// Puts labels on and takes them off (Gmail), [others] from its
+  /// conversation's too. Taking off the label of the folder on screen takes
+  /// them out of it, and [undoRemoval] puts it back on.
+  Future<void> setLabels(
+    Message message, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+    List<Message> others = const [],
+  }) async {
+    Future<Message> call(Message m) =>
+        backend.updateLabels(m.id, add: add, remove: remove);
+    final all = [message, ...others];
+    if (message.folder == folder && remove.contains(folder)) {
+      return _remove(all, call);
+    }
+    for (final m in all) {
+      final labels = {...m.labels, ...add}..removeAll(remove);
+      await _change(m, m.copyWith(labels: [...labels]), () => call(m));
+    }
+  }
 
   /// Puts back a message that [move] or [delete] took out of the list.
   void restore(Message message) {
@@ -198,19 +235,32 @@ class MailboxState extends ChangeNotifier {
     }
   }
 
-  Future<void> _remove(Message message, Future<Object?> Function() call) async {
-    final index = messages.indexWhere((m) => m.id == message.id);
-    if (index >= 0) {
-      messages = [...messages]..removeAt(index);
+  /// Takes [removed] out of the list at once, a conversation's row
+  /// whole, then [call]s the server for each, putting back any it refuses.
+  Future<void> _remove(
+    List<Message> removed,
+    Future<Object?> Function(Message message) call,
+  ) async {
+    final ids = {for (final m in removed) m.id};
+    final shown = {
+      for (final m in messages)
+        if (ids.contains(m.id)) m.id,
+    };
+    if (shown.isNotEmpty) {
+      messages = messages.where((m) => !ids.contains(m.id)).toList();
       _notify();
     }
-    try {
-      await call();
-      unawaited(refreshFolders());
-    } on ApiException {
-      if (index >= 0) restore(message);
-      rethrow;
+    ApiException? refused;
+    for (final message in removed) {
+      try {
+        await call(message);
+      } on ApiException catch (e) {
+        refused ??= e;
+        if (shown.contains(message.id)) restore(message);
+      }
     }
+    if (refused != null) throw refused;
+    unawaited(refreshFolders());
   }
 
   void _replace(int id, Message message) {
@@ -344,6 +394,24 @@ class MailboxState extends ChangeNotifier {
 }
 
 int _newestFirst(Message a, Message b) => b.receivedAt.compareTo(a.receivedAt);
+
+/// [messages], newest first, as conversations: those sharing a
+/// [Message.threadId] together, in the order their newest came.
+List<List<Message>> groupThreads(List<Message> messages) {
+  final byThread = <String, List<Message>>{};
+  final rows = <List<Message>>[];
+  for (final m in messages) {
+    final thread = m.threadId;
+    if (thread == null) {
+      rows.add([m]);
+    } else if (byThread[thread] case final row?) {
+      row.add(m);
+    } else {
+      rows.add(byThread[thread] = [m]);
+    }
+  }
+  return rows;
+}
 
 /// rest-mail's own folders first, in the usual order, then the user's.
 List<Folder> sortFolders(List<Folder> folders) {

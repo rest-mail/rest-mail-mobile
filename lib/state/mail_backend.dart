@@ -65,6 +65,25 @@ abstract interface class MailBackend {
   /// good.
   Future<void> deleteMessage(int id);
 
+  /// Whether messages carry labels, several each, rather than sit in one
+  /// folder (Gmail). [Folder.isLabel] marks the folders that are labels.
+  bool get hasLabels;
+
+  /// Puts labels on a message and takes them off, by folder name.
+  Future<Message> updateLabels(
+    int id, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+  });
+
+  /// Whether a folder's messages are shown as conversations, grouped by
+  /// [Message.threadId] (Gmail, by `X-GM-THRID`).
+  bool get groupsThreads;
+
+  /// Every message in [id]'s conversation, wherever it is filed, oldest
+  /// first. [id] itself is among them under that id.
+  Future<List<Message>> conversation(int id);
+
   Future<Message> send(OutgoingMessage message);
 
   Future<Message> saveDraft(OutgoingMessage draft);
@@ -152,6 +171,28 @@ class RestBackend implements MailBackend {
 
   @override
   Future<void> deleteMessage(int id) => client.deleteMessage(id);
+
+  @override
+  bool get hasLabels => false;
+
+  @override
+  Future<Message> updateLabels(
+    int id, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+  }) => throw const ApiException(
+    400,
+    'not_supported',
+    'rest-mail has folders, not labels.',
+  );
+
+  @override
+  bool get groupsThreads => false;
+
+  @override
+  Future<List<Message>> conversation(int id) async => [
+    await client.message(id),
+  ];
 
   @override
   Future<Message> send(OutgoingMessage message) => client.send(message);

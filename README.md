@@ -77,6 +77,23 @@ none of them knows the domain, you type the servers in.
 - **Outlook.com** says it needs Microsoft sign-in, which the app doesn't have
   yet: Microsoft turned off passwords for other mail apps in September 2024.
 
+**Gmail behaves like Gmail.** The app knows it by its IMAP extensions
+(`X-GM-EXT-1`), not its domain, so Google Workspace addresses count too:
+
+- **Labels** are listed as folders, show under a message's subject, and
+  **Labels…** in its menu puts them on and takes them off. Important is one
+  of them.
+- **Archive** takes a message out of the inbox; it stays in All Mail with its
+  other labels. **Delete** puts it in Trash.
+- **Conversations:** the list shows one row per conversation, grouped as
+  Gmail groups them, with a count. An open message lists the rest of its
+  conversation, your replies included. Archive, delete and spam act on the
+  whole row.
+- **Search** takes Gmail's own syntax (`from:`, `has:attachment`, `label:`,
+  `older_than:`, `category:promotions`) and searches all mail.
+- **Star** is Gmail's star, and sent mail appears in Sent once, as Gmail files
+  it.
+
 IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
 that doesn't offer STARTTLS is refused before the password is sent. Nothing
 goes in plaintext, and certificate checks can't be turned off. The password
@@ -331,7 +348,7 @@ under Apple Developer team `43UMKXZ8P4`.
 
 - Notifications while the app is closed. The server needs to push through
   APNs and FCM first. For IMAP accounts they need something server-side too.
-- Gmail's own ways: labels, archive, threads and its search syntax (#42), and
-  Sign in with Google or Microsoft (#37).
+- Sign in with Google or Microsoft (#37). Creating a Gmail label from the
+  app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters, quarantine and administration.

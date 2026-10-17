@@ -21,6 +21,10 @@ import 'mail_settings.dart';
 ///   lives, and an id is that number above the UID's 32 bits. A message that
 ///   moves gets a new UID; its old id is kept pointing at it, so Undo works.
 /// - **Failures** are [ApiException]s, as from the REST API.
+/// - **Gmail** (anything offering `X-GM-EXT-1`, so Google Workspace too)
+///   is Gmail rather than a folder tree: messages carry labels, archiving
+///   takes a message out of the inbox, deleting puts it in Trash, the list
+///   shows conversations by `X-GM-THRID`, and search speaks Gmail's syntax.
 class ImapBackend implements MailBackend {
   ImapBackend({
     required this.address,
@@ -52,6 +56,10 @@ class ImapBackend implements MailBackend {
 
   ImapConnection? _connection;
   DateTime _lastUsed = DateTime.now();
+
+  /// Whether the server is Gmail, as its capabilities said on the last
+  /// connection.
+  bool _gmail = false;
   Future<void> _queue = Future.value();
   bool _closed = false;
 
@@ -91,6 +99,7 @@ class ImapBackend implements MailBackend {
         password: password,
         openSocket: openSocket,
       );
+      _gmail = c.isGmail;
     }
     _lastUsed = DateTime.now();
     return c;
@@ -151,7 +160,11 @@ class ImapBackend implements MailBackend {
     final boxes = await c.run(
       (client) => client.listMailboxes(recursive: true),
     );
-    return _folders = mapFolders(boxes);
+    return _folders = mapFolders(
+      boxes,
+      gmail: c.isGmail,
+      important: c.importantFolders,
+    );
   }
 
   Future<MappedFolder> _folderNamed(ImapConnection c, String name) async {
@@ -169,6 +182,12 @@ class ImapBackend implements MailBackend {
   Future<MappedFolder?> _role(ImapConnection c, String name) async =>
       (await _list(c)).where((f) => f.name == name && f.role).firstOrNull;
 
+  /// On Gmail, the folders that are labels: the inbox, Important and the
+  /// user's own. All Mail, Sent, Drafts, Spam, Trash and Starred aren't.
+  bool _isLabel(MappedFolder f) =>
+      _gmail &&
+      (!f.role || f.name == StandardFolder.inbox || f.name == gmailImportant);
+
   @override
   Future<List<Folder>> folders(int accountId) => _run((c) async {
     final folders = await _list(c, fresh: true);
@@ -185,6 +204,7 @@ class ImapBackend implements MailBackend {
           name: folder.name,
           total: status.messagesExists,
           unread: status.messagesUnseen,
+          isLabel: _isLabel(folder),
         ),
       );
     }
@@ -240,6 +260,25 @@ class ImapBackend implements MailBackend {
 
   static const _listItems =
       '(UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)';
+
+  /// The same, plus Gmail's message id, conversation and labels.
+  static const _gmailItems =
+      '(UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE '
+      'X-GM-MSGID X-GM-THRID X-GM-LABELS)';
+
+  String get _items => _gmail ? _gmailItems : _listItems;
+
+  /// What Gmail said about each message fetched, beside enough_mail's own.
+  final _gmailFetched = Expando<GmailFetch>();
+
+  /// What Gmail said about each message by id: its X-GM-MSGID, which
+  /// finds it again in another folder, and its conversation.
+  final _gmailOf = <int, GmailFetch>{};
+
+  /// The id and folder each Gmail message was last listed under outside All
+  /// Mail, by X-GM-MSGID, so a conversation names the messages the list
+  /// has rather than their All Mail selves.
+  final _listedAs = <String, (int, String)>{};
 
   /// Messages as the screens last saw them, for answering a change without
   /// fetching the message again.
@@ -310,12 +349,22 @@ class ImapBackend implements MailBackend {
     ImapConnection c,
     MessageSequence sequence,
   ) async {
+    c.takeGmail();
+    final items = _items;
     final result = await c.run(
       (client) => sequence.isUidSequence
-          ? client.uidFetchMessages(sequence, _listItems)
-          : client.fetchMessages(sequence, _listItems),
+          ? client.uidFetchMessages(sequence, items)
+          : client.fetchMessages(sequence, items),
     );
+    _keepGmail(c, result.messages);
     return result.messages;
+  }
+
+  void _keepGmail(ImapConnection c, List<MimeMessage> messages) {
+    final gmail = c.takeGmail();
+    for (final m in messages) {
+      if (gmail[m.sequenceId] case final found?) _gmailFetched[m] = found;
+    }
   }
 
   static (int, int) _parseCursor(String cursor) {
@@ -330,10 +379,8 @@ class ImapBackend implements MailBackend {
   Future<Message> message(int id) => _run((c) async {
     final (folder, uid) = await _locate(c, id);
     final sequence = MessageSequence.fromId(uid, isUid: true);
-    final head = await c.run(
-      (client) => client.uidFetchMessages(sequence, _listItems),
-    );
-    final summary = head.messages.firstOrNull;
+    final head = await _fetch(c, sequence);
+    final summary = head.firstOrNull;
     if (summary == null) throw _gone();
     MimeMessage full;
     if ((summary.size ?? 0) <= _wholeMessageLimit || summary.body == null) {
@@ -373,6 +420,7 @@ class ImapBackend implements MailBackend {
         }
       }
     }
+    _gmailFetched[full] = _gmailFetched[summary];
     full
       ..uid = uid
       ..flags = summary.flags
@@ -410,8 +458,17 @@ class ImapBackend implements MailBackend {
     if (withBody && text == null && html == null) {
       text = m.decodeContentText();
     }
+    final id = _idOf(folder.box.path, uidValidity, m.uid!);
+    final gmail = _gmailFetched[m];
+    if (gmail != null) {
+      _gmailOf[id] = gmail;
+      final gmailId = gmail.messageId;
+      if (gmailId != null && folder.name != allMail) {
+        _listedAs[gmailId] = (id, folder.name);
+      }
+    }
     final message = Message(
-      id: _idOf(folder.box.path, uidValidity, m.uid!),
+      id: id,
       mailboxId: accountId,
       folder: folder.name,
       messageId: _nonEmpty(
@@ -421,6 +478,7 @@ class ImapBackend implements MailBackend {
         envelope?.inReplyTo ?? m.getHeaderValue('in-reply-to'),
       ),
       references: _nonEmpty(m.getHeaderValue('references')),
+      threadId: gmail?.threadId,
       sender: from?.email ?? '',
       senderName: _nonEmpty(from?.personalName),
       to: recipients(envelope?.to ?? m.to),
@@ -440,10 +498,59 @@ class ImapBackend implements MailBackend {
           m.decodeDate() ??
           DateTime.fromMillisecondsSinceEpoch(0),
       dateHeader: envelope?.date ?? m.decodeDate(),
+      labels: gmail == null ? const [] : _labelsOf(gmail.labels, folder),
     );
     _remember(_known, message.id, message);
     return message;
   }
+
+  /// A message's Gmail labels as folder names, in the folder list's order.
+  /// Gmail leaves the label of the folder being read out of X-GM-LABELS,
+  /// so that one is added back.
+  List<String> _labelsOf(List<String>? labels, MappedFolder from) {
+    final names = {
+      if (_isLabel(from)) from.name,
+      for (final label in labels ?? const <String>[])
+        if (_folderOf(label) case final f? when _isLabel(f)) f.name,
+    };
+    return [
+      for (final f in _folders ?? const <MappedFolder>[])
+        if (names.contains(f.name)) f.name,
+    ];
+  }
+
+  /// The folder a Gmail label shows as: Gmail's own (`\Inbox`) by role,
+  /// the user's by path.
+  MappedFolder? _folderOf(String label) {
+    final folders = _folders ?? const <MappedFolder>[];
+    final role = switch (label.toLowerCase()) {
+      r'\inbox' => StandardFolder.inbox,
+      r'\important' => gmailImportant,
+      r'\starred' => gmailStarred,
+      r'\sent' => StandardFolder.sent,
+      r'\draft' => StandardFolder.drafts,
+      r'\spam' => StandardFolder.spam,
+      r'\trash' => StandardFolder.trash,
+      _ => null,
+    };
+    return role != null
+        ? folders.where((f) => f.role && f.name == role).firstOrNull
+        : folders
+              .where((f) => !f.role && unquote(f.box.encodedPath) == label)
+              .firstOrNull;
+  }
+
+  /// The Gmail label a folder stands for.
+  static String _labelOf(MappedFolder f) => switch (f.role ? f.name : null) {
+    StandardFolder.inbox => r'\Inbox',
+    gmailImportant => r'\Important',
+    gmailStarred => r'\Starred',
+    StandardFolder.sent => r'\Sent',
+    StandardFolder.drafts => r'\Draft',
+    StandardFolder.spam => r'\Spam',
+    StandardFolder.trash => r'\Trash',
+    _ => unquote(f.box.encodedPath),
+  };
 
   static Message _withId(Message m, int id, {String? folder}) => Message(
     id: id,
@@ -468,6 +575,7 @@ class ImapBackend implements MailBackend {
     isDraft: m.isDraft,
     receivedAt: m.receivedAt,
     dateHeader: m.dateHeader,
+    labels: m.labels,
   );
 
   // ── Changes ───────────────────────────────────────────────────────────
@@ -494,12 +602,124 @@ class ImapBackend implements MailBackend {
     final known = _known[_resolve(id)];
     var result = known?.copyWith(isRead: isRead, isFlagged: isFlagged);
     if (folder != null && folder != from.name) {
-      final to = await _folderNamed(c, folder);
-      await _move(c, id, from, uid, to, messageId: known?.messageId);
-      result = result?.copyWith(folder: to.name);
+      if (_gmail && folder == StandardFolder.archive) {
+        // Gmail has no Archive folder: archiving takes the Inbox label
+        // off, and the message stays in All Mail with any others.
+        final left = await _relabel(c, id, from, uid, remove: {r'\Inbox'});
+        result = result?.copyWith(
+          folder: left?.name,
+          labels: [...result.labels]..remove(StandardFolder.inbox),
+        );
+      } else {
+        final to = await _folderNamed(c, folder);
+        await _move(c, id, from, uid, to, messageId: known?.messageId);
+        result = result?.copyWith(folder: to.name);
+      }
     }
     return result == null ? await _summary(c, id) : _withId(result, id);
   });
+
+  @override
+  bool get hasLabels => _gmail;
+
+  @override
+  Future<Message> updateLabels(
+    int id, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+  }) => _run((c) async {
+    if (!_gmail) {
+      throw const ApiException(
+        400,
+        'not_supported',
+        'This account has folders, not labels.',
+      );
+    }
+    final before = _known[_resolve(id)] ?? await _summary(c, id);
+    Future<Set<String>> labels(Set<String> names) async => {
+      for (final name in names) _labelOf(await _folderNamed(c, name)),
+    };
+    final adding = await labels(add), removing = await labels(remove);
+    final (from, uid) = await _locate(c, id);
+    final left = await _relabel(
+      c,
+      id,
+      from,
+      uid,
+      add: adding,
+      remove: removing,
+    );
+    final now = {...before.labels, ...add}..removeAll(remove);
+    return _withId(
+      before.copyWith(
+        folder: left?.name,
+        labels: [
+          for (final f in _folders ?? const <MappedFolder>[])
+            if (now.contains(f.name)) f.name,
+        ],
+      ),
+      id,
+    );
+  });
+
+  /// Puts Gmail labels on and takes them off. Taking off the label of the
+  /// folder the message was found in takes it out of that folder, so [id]
+  /// is pointed at it in All Mail, which is returned.
+  Future<MappedFolder?> _relabel(
+    ImapConnection c,
+    int id,
+    MappedFolder from,
+    int uid, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+  }) async {
+    final sequence = MessageSequence.fromId(uid, isUid: true);
+    if (add.isNotEmpty) {
+      await c.storeLabels(sequence, [...add], add: true);
+    }
+    if (remove.isNotEmpty) {
+      await c.storeLabels(sequence, [...remove], add: false);
+    }
+    c.takeGmail();
+    if (!_isLabel(from) || !remove.contains(_labelOf(from))) return null;
+    final all = await _role(c, allMail);
+    final gmailId = _gmailOf[_resolve(id)]?.messageId;
+    if (all == null || gmailId == null) return null;
+    final moved = await _findByGmailId(c, all, gmailId);
+    if (moved != null) _follow(id, moved, all);
+    return all;
+  }
+
+  /// Points [id] at where its message is now.
+  void _follow(int id, int moved, MappedFolder to) {
+    final before = _resolve(id);
+    if (before == moved) return;
+    final known = _known[before];
+    if (known != null) {
+      _remember(_known, moved, known.copyWith(folder: to.name));
+    }
+    if (_gmailOf[before] case final gmail?) _gmailOf[moved] = gmail;
+    // It is at [moved] now, whatever was there before: back where it
+    // started, after Undo, the old pointer would go round in a circle.
+    _movedTo
+      ..remove(moved)
+      ..[before] = moved;
+  }
+
+  Future<int?> _findByGmailId(
+    ImapConnection c,
+    MappedFolder folder,
+    String gmailId,
+  ) async {
+    final box = await _select(c, folder, fresh: true);
+    final found = await c.run(
+      (client) =>
+          client.uidSearchMessages(searchCriteria: 'X-GM-MSGID $gmailId'),
+    );
+    final uids = found.matchingSequence?.toList() ?? const <int>[];
+    if (uids.isEmpty) return null;
+    return _idOf(folder.box.path, box.uidValidity ?? 0, uids.reduce(max));
+  }
 
   @override
   Future<void> deleteMessage(int id) => _run((c) async {
@@ -522,6 +742,11 @@ class ImapBackend implements MailBackend {
 
   /// Moves a message with MOVE, or COPY and EXPUNGE where the server has no
   /// MOVE, and points [id] at where it went.
+  ///
+  /// On Gmail, MOVE between labels swaps one for the other, and to Trash or
+  /// Spam it trashes or reports the message, as in Gmail. Out of All Mail,
+  /// which isn't a label, the new label is put on instead: an EXPUNGE there
+  /// could delete it.
   Future<void> _move(
     ImapConnection c,
     int id,
@@ -531,6 +756,14 @@ class ImapBackend implements MailBackend {
     String? messageId,
   }) async {
     final sequence = MessageSequence.fromId(uid, isUid: true);
+    final gmailId = _gmailOf[_resolve(id)]?.messageId;
+    if (_gmail && from.name == allMail && gmailId != null) {
+      await c.storeLabels(sequence, [_labelOf(to)], add: true);
+      c.takeGmail();
+      final moved = await _findByGmailId(c, to, gmailId);
+      if (moved != null) _follow(id, moved, to);
+      return;
+    }
     final GenericImapResult result;
     if (c.server.supportsMove) {
       result = await c.run(
@@ -547,18 +780,35 @@ class ImapBackend implements MailBackend {
     int? moved;
     if (copied != null && newUid != null) {
       moved = _idOf(to.box.path, copied.uidValidity, newUid);
+    } else if (_gmail && gmailId != null) {
+      moved = await _findByGmailId(c, to, gmailId);
     } else if (messageId != null) {
       // No COPYUID (no UIDPLUS): find it by its Message-ID instead.
       moved = await _findByMessageId(c, to, messageId);
     }
-    if (moved != null) {
-      final before = _resolve(id);
-      final known = _known[before];
-      if (known != null) {
-        _remember(_known, moved, known.copyWith(folder: to.name));
-      }
-      _movedTo[before] = moved;
-    }
+    if (moved != null) _follow(id, moved, to);
+  }
+
+  /// Removes a message for good. On Gmail an EXPUNGE outside Trash only
+  /// takes a label off, and the message lives on in All Mail, so there it
+  /// goes to Trash first and is expunged from there.
+  Future<void> _destroy(ImapConnection c, MappedFolder folder, int uid) async {
+    final trash = _gmail && folder.name != StandardFolder.trash
+        ? await _role(c, StandardFolder.trash)
+        : null;
+    if (trash == null) return _expunge(c, uid);
+    final result = await c.run(
+      (client) => client.uidMove(
+        MessageSequence.fromId(uid, isUid: true),
+        targetMailbox: trash.box,
+      ),
+    );
+    final copied = result.responseCodeCopyUid;
+    final inTrash = copied?.targetSequence.toList().firstOrNull;
+    // Without COPYUID it waits in Trash, which Gmail empties after 30 days.
+    if (inTrash == null) return;
+    final box = await _select(c, trash);
+    if (box.uidValidity == copied!.uidValidity) await _expunge(c, inTrash);
   }
 
   Future<void> _expunge(ImapConnection c, int uid) async {
@@ -612,16 +862,32 @@ class ImapBackend implements MailBackend {
     String? cursor,
   }) => _run((c) async {
     // One folder per search: the one asked for, else everything where the
-    // server has an All Mail (Gmail does), else the inbox.
+    // server has an All Mail (Gmail does), else the inbox. Gmail reads the
+    // search as typed (`X-GM-RAW`), `in:` and `label:` included, in All
+    // Mail, except in Trash and Spam, which All Mail leaves out.
     final named = query.folder;
-    final folder = named != null
-        ? await _folderNamed(c, named)
-        : await _role(c, allMail) ??
-              await _folderNamed(c, StandardFolder.inbox);
+    final typed = query.raw?.trim();
+    final raw = typed == null || typed.isEmpty ? null : typed;
+    final MappedFolder folder;
+    if (_gmail && raw != null) {
+      folder =
+          (named == StandardFolder.trash || named == StandardFolder.spam
+              ? await _role(c, named!)
+              : null) ??
+          await _role(c, allMail) ??
+          await _folderNamed(c, StandardFolder.inbox);
+    } else {
+      folder = named != null
+          ? await _folderNamed(c, named)
+          : await _role(c, allMail) ??
+                await _folderNamed(c, StandardFolder.inbox);
+    }
     final box = await _select(c, folder, fresh: true);
+    final criteria = _gmail && raw != null
+        ? gmailSearchCriteria(raw)
+        : searchCriteria(query);
     final found = await c.run(
-      (client) =>
-          client.uidSearchMessages(searchCriteria: searchCriteria(query)),
+      (client) => client.uidSearchMessages(searchCriteria: criteria),
     );
     final uids = (found.matchingSequence?.toList() ?? <int>[])..sort();
     final take = uids.sublist(max(0, uids.length - pageSize));
@@ -632,6 +898,44 @@ class ImapBackend implements MailBackend {
         if (m.uid != null) _toMessage(m, folder, box.uidValidity ?? 0),
     ]..sort((a, b) => b.id.compareTo(a.id));
     return Paged(items, total: uids.length);
+  });
+
+  // ── Conversations ─────────────────────────────────────────────────────
+
+  @override
+  bool get groupsThreads => _gmail;
+
+  @override
+  Future<List<Message>> conversation(int id) => _run((c) async {
+    final resolved = _resolve(id);
+    final opened = _known[resolved] ?? await _summary(c, id);
+    final thread = _gmailOf[resolved]?.threadId;
+    final all = _gmail ? await _role(c, allMail) : null;
+    if (thread == null || all == null) return [opened];
+    final mine = _gmailOf[resolved]?.messageId;
+    final box = await _select(c, all, fresh: true);
+    final found = await c.run(
+      (client) =>
+          client.uidSearchMessages(searchCriteria: 'X-GM-THRID $thread'),
+    );
+    final uids = (found.matchingSequence?.toList() ?? <int>[])..sort();
+    final take = uids.sublist(max(0, uids.length - pageSize));
+    if (take.isEmpty) return [opened];
+    final page = await _fetch(c, MessageSequence.fromIds(take, isUid: true));
+    final items = <Message>[];
+    for (final m in page) {
+      if (m.uid == null) continue;
+      final gmailId = _gmailFetched[m]?.messageId;
+      final listed = gmailId != null && gmailId == mine
+          ? (id, opened.folder)
+          : _listedAs[gmailId];
+      final mapped = _toMessage(m, all, box.uidValidity ?? 0);
+      items.add(
+        listed == null ? mapped : _withId(mapped, listed.$1, folder: listed.$2),
+      );
+    }
+    if (!items.any((m) => m.id == id)) items.add(opened);
+    return items..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
   });
 
   // ── Sending and drafts ────────────────────────────────────────────────
@@ -663,10 +967,13 @@ class ImapBackend implements MailBackend {
         final sent = await _role(c, StandardFolder.sent);
         if (sent == null) return _outgoing(message, mime, -1);
         final messageId = mime.getHeaderValue('message-id');
-        var id = settings.filesSentMail || messageId == null
+        // Gmail files what its SMTP server sends, set up from the preset or
+        // by hand, so a second copy is never added.
+        final filed = settings.filesSentMail || c.isGmail;
+        var id = filed || messageId == null
             ? null
             : await _findByMessageId(c, sent, messageId);
-        if (id == null && !settings.filesSentMail) {
+        if (id == null && !filed) {
           id = await _append(c, sent, mime, [MessageFlags.seen]);
         }
         return _outgoing(message, mime, id ?? -1, folder: sent.name);
@@ -766,8 +1073,8 @@ class ImapBackend implements MailBackend {
     // The old version goes once the new one is safe. A failure here
     // leaves two drafts, not none.
     try {
-      final (_, uid) = await _locate(c, id);
-      await _expunge(c, uid);
+      final (folder, uid) = await _locate(c, id);
+      await _destroy(c, folder, uid);
     } on ApiException {
       // Already gone, or left for the user to delete.
     }
@@ -782,8 +1089,8 @@ class ImapBackend implements MailBackend {
     final sent = await send(draft);
     try {
       await _run((c) async {
-        final (_, uid) = await _locate(c, id);
-        await _expunge(c, uid);
+        final (folder, uid) = await _locate(c, id);
+        await _destroy(c, folder, uid);
       });
     } on ApiException {
       // Sent; a draft left behind is a nuisance, not a failure.
@@ -1045,6 +1352,10 @@ class _Watcher {
 /// The name Gmail's All Mail and other servers' \All folders go by.
 const allMail = 'All Mail';
 
+/// Gmail's `\Important` and Starred (`\Flagged`) folders.
+const gmailImportant = 'Important';
+const gmailStarred = 'Starred';
+
 /// One folder as the screens see it, and the IMAP mailbox behind it.
 class MappedFolder {
   const MappedFolder(this.name, this.box, {this.role = false});
@@ -1061,7 +1372,15 @@ class MappedFolder {
 /// is one of the usual ones for its role (Sent Items, Deleted Messages,
 /// Junk, …) takes it instead. Every other folder keeps its own path, and
 /// one that can't be selected (Gmail's `[Gmail]`) isn't listed.
-List<MappedFolder> mapFolders(List<Mailbox> boxes) {
+///
+/// On [gmail], Important (its path among [important]) and Starred are
+/// named too, and nothing is taken by name: Gmail flags every folder that
+/// has a role, so a label called Archive stays a label.
+List<MappedFolder> mapFolders(
+  List<Mailbox> boxes, {
+  bool gmail = false,
+  Set<String> important = const {},
+}) {
   final selectable = [
     for (final box in boxes)
       if (!box.isNotSelectable && !box.hasFlag(MailboxFlag.nonExistent)) box,
@@ -1083,6 +1402,13 @@ List<MappedFolder> mapFolders(List<Mailbox> boxes) {
       claim(StandardFolder.archive, box);
     } else if (box.hasFlag(MailboxFlag.all)) {
       claim(allMail, box);
+    } else if (gmail && box.hasFlag(MailboxFlag.flagged)) {
+      claim(
+        important.contains(unquote(box.encodedPath))
+            ? gmailImportant
+            : gmailStarred,
+        box,
+      );
     }
   }
   const usual = {
@@ -1093,7 +1419,7 @@ List<MappedFolder> mapFolders(List<Mailbox> boxes) {
     StandardFolder.archive: ['archive', 'archives'],
   };
   for (final MapEntry(key: role, value: names) in usual.entries) {
-    if (byRole.containsKey(role)) continue;
+    if (gmail || byRole.containsKey(role)) continue;
     for (final box in selectable) {
       if (byRole.containsValue(box)) continue;
       final leaf = box.name.toLowerCase();
@@ -1150,6 +1476,13 @@ String searchCriteria(SearchQuery query) {
   // IMAP has no "has an attachment"; a mixed multipart is the usual sign.
   if (query.hasAttachment) parts.add('HEADER Content-Type "multipart/mixed"');
   return '${utf8 ? 'CHARSET UTF-8 ' : ''}${parts.join(' ')}';
+}
+
+/// Gmail's SEARCH for what was typed into the search box, in Gmail's own
+/// syntax (`from:`, `has:attachment`, `label:`, `older_than:`).
+String gmailSearchCriteria(String raw) {
+  final utf8 = raw.codeUnits.any((u) => u > 127);
+  return '${utf8 ? 'CHARSET UTF-8 ' : ''}X-GM-RAW ${_quote(raw)}';
 }
 
 String _quote(String value) => '"${quoted(value)}"';

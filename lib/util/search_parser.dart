@@ -2,7 +2,8 @@ import 'package:restmail_api/restmail_api.dart';
 
 /// Reads the search box the way the suggestion chips spell it: `from:` and
 /// `in:` narrow the search, `has:attachment` keeps messages with files, and
-/// the rest is free text.
+/// the rest is free text. The search as typed goes along too, for Gmail,
+/// which reads its own syntax.
 SearchQuery parseSearch(String input) {
   String? from, folder;
   var hasAttachment = false;
@@ -25,6 +26,7 @@ SearchQuery parseSearch(String input) {
     from: from,
     folder: folder,
     hasAttachment: hasAttachment,
+    raw: input.trim(),
   );
 }
 

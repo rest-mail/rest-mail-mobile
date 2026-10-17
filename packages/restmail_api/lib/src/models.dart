@@ -140,7 +140,12 @@ abstract final class StandardFolder {
 }
 
 class Folder {
-  const Folder({required this.name, required this.total, required this.unread});
+  const Folder({
+    required this.name,
+    required this.total,
+    required this.unread,
+    this.isLabel = false,
+  });
 
   factory Folder.fromJson(Map<String, dynamic> json) => Folder(
     name: json['name'] as String,
@@ -151,6 +156,10 @@ class Folder {
   final String name;
   final int total;
   final int unread;
+
+  /// A Gmail label rather than a folder: a message can carry several, and
+  /// [Message.labels] names them. rest-mail's folders never are.
+  final bool isLabel;
 }
 
 /// One address on a message's To or Cc line.
@@ -211,6 +220,7 @@ class Message {
     this.isStarred = false,
     this.isDraft = false,
     this.dateHeader,
+    this.labels = const [],
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -263,6 +273,10 @@ class Message {
   final DateTime receivedAt;
   final DateTime? dateHeader;
 
+  /// The labels it carries, by folder name, where messages have labels
+  /// rather than one folder each (Gmail). Empty on rest-mail.
+  final List<String> labels;
+
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
 
@@ -283,6 +297,7 @@ class Message {
     bool? isFlagged,
     bool? isStarred,
     String? folder,
+    List<String>? labels,
   }) => Message(
     id: id,
     mailboxId: mailboxId,
@@ -306,6 +321,7 @@ class Message {
     isDraft: isDraft,
     receivedAt: receivedAt,
     dateHeader: dateHeader,
+    labels: labels ?? this.labels,
   );
 }
 
@@ -434,6 +450,7 @@ class SearchQuery {
     this.after,
     this.before,
     this.hasAttachment = false,
+    this.raw,
   });
 
   final String? text;
@@ -442,6 +459,10 @@ class SearchQuery {
   final DateTime? after;
   final DateTime? before;
   final bool hasAttachment;
+
+  /// The search as typed, for a server with a search syntax of its own
+  /// (Gmail's `X-GM-RAW`). rest-mail reads the fields above instead.
+  final String? raw;
 
   Map<String, String> toQueryParameters() => {
     if (text?.trim() case final trimmed? when trimmed.isNotEmpty) 'q': trimmed,
