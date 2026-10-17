@@ -1269,7 +1269,7 @@ class FakeRestmail {
     final environment = body['environment'] as String?;
     if (platform is! String || !pushPlatforms.contains(platform)) {
       _fail(
-        400,
+        422,
         'validation_failed',
         'Push is not set up for this platform',
         fields: {'platform': 'not configured on this server'},
@@ -1280,7 +1280,7 @@ class FakeRestmail {
         (platform == 'apns' &&
             !RegExp(r'^[0-9a-f]{64,200}$').hasMatch(token))) {
       _fail(
-        400,
+        422,
         'validation_failed',
         'Invalid device token',
         fields: {'token': 'not a device token'},
@@ -1291,7 +1291,7 @@ class FakeRestmail {
         environment != 'production' &&
         environment != 'sandbox') {
       _fail(
-        400,
+        422,
         'validation_failed',
         'Invalid environment',
         fields: {'environment': 'production or sandbox'},

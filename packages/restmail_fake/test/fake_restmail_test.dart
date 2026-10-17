@@ -1452,7 +1452,9 @@ void main() {
       await expectLater(
         client.registerPushDevice(platform: PushPlatform.fcm, token: 'x'),
         throwsA(
-          isA<ApiException>().having((e) => e.code, 'c', 'validation_failed'),
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 422)
+              .having((e) => e.code, 'c', 'validation_failed'),
         ),
       );
     });

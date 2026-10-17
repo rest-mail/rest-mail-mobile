@@ -106,11 +106,11 @@ class PushNotifications extends ChangeNotifier {
 
   static String _storeKey(String accountKey) => 'push:$accountKey';
 
-  /// The REST Mail accounts with a mailbox. An administrator has no mail,
-  /// and an IMAP account's mail doesn't come from REST Mail.
+  /// The REST Mail accounts. An IMAP account's mail doesn't come from
+  /// REST Mail.
   List<RestAccount> get _accounts => [
     for (final a in _app.accounts)
-      if (a is RestAccount && a.hasMailbox) a,
+      if (a is RestAccount) a,
   ];
 
   /// True once this phone has a push token and the server of one of its
@@ -137,7 +137,7 @@ class PushNotifications extends ChangeNotifier {
       permission != NotificationPermission.denied;
 
   PushStatus statusOf(SignedInAccount account) => switch (account) {
-    RestAccount(hasMailbox: true) => _status[account.key] ?? PushStatus.unknown,
+    RestAccount() => _status[account.key] ?? PushStatus.unknown,
     _ => PushStatus.unsupported,
   };
 
@@ -229,11 +229,9 @@ class PushNotifications extends ChangeNotifier {
         _status[key] = PushStatus.off;
       }
     } on ApiException catch (e) {
-      // No route for devices, or no credentials for this phone's service:
-      // the server has no push, and nothing is said about it.
-      if (e.statusCode == 404 ||
-          e.statusCode == 501 ||
-          (e.code == 'validation_failed' && e.fields.containsKey('platform'))) {
+      // No route for devices: the server has no push configured, and
+      // nothing is said about it.
+      if (e.statusCode == 404) {
         _status[key] = PushStatus.unsupported;
         await _drop(key);
       }
