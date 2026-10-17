@@ -12,9 +12,6 @@ import 'add_account_screen.dart';
 import 'admin/admin_widgets.dart' show AdminMessage;
 import 'widgets/common.dart';
 
-/// What a server from before app passwords (REST Mail 0.10.0) shows.
-const _unsupported = "This server doesn't support app passwords yet.";
-
 String _day(DateTime when) => DateFormat.yMMMd().format(when);
 
 String _lastUsed(DateTime when, DateTime now) => DateUtils.isSameDay(when, now)
@@ -32,7 +29,8 @@ String _describe(ApiException e, String host) {
 
 /// A mailbox's app passwords: what mail apps such as Thunderbird or the
 /// iPhone's Mail, and automations, sign in with instead of its password. For
-/// the session's own mailbox only, which [mailbox] is.
+/// the session's own mailbox, or one it owns (created or linked), which
+/// [mailbox] is.
 class AppPasswordsScreen extends StatefulWidget {
   const AppPasswordsScreen({
     super.key,
@@ -133,9 +131,6 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
             ),
             Expanded(
               child: switch ((error, items)) {
-                (ApiException(statusCode: 404), _) => const AdminMessage(
-                  _unsupported,
-                ),
                 (final error?, _) => AdminMessage(
                   describeError(error, host: _host),
                   onRetry: () => unawaited(_load()),
@@ -166,8 +161,10 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
         Text(
           'An app password lets a mail app, such as Thunderbird or the '
           "iPhone's Mail, or an automation sign in to "
-          '${widget.mailbox.address} without your password. Each one can '
-          'be revoked on its own.',
+          '${widget.mailbox.address} without a password of yours. Each one '
+          'can be revoked on its own. An account with two-factor sign-in '
+          'must use one over IMAP and SMTP: its own password is refused '
+          'there.',
           style: rmText(14, color: c.ink2, height: 1.45),
         ),
         const SizedBox(height: 18),
@@ -286,8 +283,8 @@ enum _Expiry {
   final Duration? after;
 }
 
-/// Makes an app password: a name, an expiry, and the mailbox's password
-/// entered again, which the server asks for. The password goes as soon as it
+/// Makes an app password: a name, an expiry, and the session's own password
+/// entered again, which the server asks for, even for a mailbox it owns. The password goes as soon as it
 /// is sent, and is never offered to save as a new one.
 class CreateAppPasswordScreen extends StatefulWidget {
   const CreateAppPasswordScreen({
@@ -374,10 +371,10 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
         _error = switch (e) {
           // The request's own refusal, never the session's: ask again.
           ApiException(code: 'reauth_required' || 'invalid_password') =>
-            "That isn't the password of ${widget.mailbox.address}. "
+            "That isn't the password of ${widget.account.address}. "
                 'Enter it again.',
           ApiException(code: 'two_factor_required') =>
-            '${widget.mailbox.address} has two-factor authentication, and '
+            '${widget.account.address} has two-factor authentication, and '
                 'this session signed in without a code. Sign in again with '
                 'your code to create an app password.',
           ApiException(statusCode: 429, :final retryAfter) =>
@@ -494,7 +491,7 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                   const SizedBox(height: 6),
                   Text(
                     'REST Mail asks for the password of '
-                    '${widget.mailbox.address} again before it makes an app '
+                    '${widget.account.address} again before it makes an app '
                     'password.',
                     style: rmText(13, color: c.ink3, height: 1.4),
                   ),
@@ -659,7 +656,9 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                   Text(
                     'Thunderbird and most mail apps find these from your '
                     'address. On an iPhone, add an account of type Other in '
-                    'Settings, under Mail, and type them in.',
+                    'Settings, under Mail, and type them in. Use this app '
+                    'password, not your own: an account with two-factor '
+                    'sign-in must use an app password over IMAP and SMTP.',
                     style: rmText(13, color: c.ink3, height: 1.4),
                   ),
                   const SizedBox(height: 10),

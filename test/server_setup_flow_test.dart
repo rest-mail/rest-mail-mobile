@@ -8,10 +8,11 @@ import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail/util/sign_in_link.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
-/// A server just installed is signed in to with the bootstrap admin password
-/// its installer showed, typed or scanned off the installer's QR code. The app
-/// takes the owner from there to reading their own mailbox: authenticator, own
-/// password, sign back in, mailbox, signed in.
+/// A server just installed is signed in to as its bootstrap account,
+/// `admin@` its domain, with the password its installer showed, typed or
+/// scanned off the installer's QR code. The app takes the owner from there to
+/// reading that account's mail: authenticator, own password, sign back in,
+/// signed in, with Administration by its capabilities.
 void main() {
   setUpAll(() => EditableText.debugDeterministicCursor = true);
 
@@ -46,8 +47,9 @@ void main() {
   }
 
   Future<void> signInAsBootstrapAdmin(WidgetTester tester) async {
-    expect(find.text('Step 1 of 4'), findsOneWidget);
-    // Username is filled in; the password is the installer's.
+    expect(find.text('Step 1 of 3'), findsOneWidget);
+    // The address is filled in; the password is the installer's.
+    expect(find.text(FakeAccounts.adminEmail), findsOneWidget);
     await tester.enterText(
       find.byType(TextField).at(1),
       FakeAccounts.bootstrapPassword,
@@ -56,14 +58,13 @@ void main() {
     await tapButton(tester, 'Continue');
   }
 
-  testWidgets('a fresh server, set up from the phone, ends in its mailbox', (
-    tester,
-  ) async {
+  testWidgets('a fresh server, set up from the phone, ends in its first '
+      "account's mail, which may administer it", (tester) async {
     final (fake, state) = await openFreshServer(tester);
     await signInAsBootstrapAdmin(tester);
 
     // Authenticator, recovery codes kept.
-    expect(find.text('Step 2 of 4'), findsOneWidget);
+    expect(find.text('Step 2 of 3'), findsOneWidget);
     await tapButton(tester, 'Set up authenticator');
     expect(find.text(FakeAccounts.recoveryCode), findsOneWidget);
     await tester.enterText(find.byType(TextField), FakeAccounts.totpCode);
@@ -87,13 +88,13 @@ void main() {
     await tapButton(tester, 'Confirm');
 
     // Own password.
-    expect(find.text('Step 3 of 4'), findsOneWidget);
+    expect(find.text('Step 3 of 3'), findsOneWidget);
     const chosen = 'a passphrase only I know';
     await tester.enterText(find.byType(TextField).at(0), chosen);
     await tester.enterText(find.byType(TextField).at(1), chosen);
     await tester.pump();
     await tapButton(tester, 'Change password');
-    expect(fake.adminPassword, chosen);
+    expect(fake.passwordOf(FakeAccounts.adminEmail), chosen);
 
     // Signed out everywhere by the change: back in with a code.
     expect(find.text('Sign back in'), findsWidgets);
@@ -101,18 +102,14 @@ void main() {
     await tester.pump();
     await tapButton(tester, 'Continue');
 
-    // The mailbox, on the server's own domain.
-    expect(find.text('Step 4 of 4'), findsOneWidget);
-    expect(find.text(FakeAccounts.host), findsOneWidget);
-    await tester.enterText(find.byType(TextField).at(0), 'me');
-    await tester.enterText(find.byType(TextField).at(2), 'Me');
-    await tester.enterText(find.byType(TextField).at(3), 'my mailbox password');
-    await tester.pump();
-    await tapButton(tester, 'Create mailbox and sign in');
-
-    expect(fake.hasMailbox('me@${FakeAccounts.host}'), isTrue);
+    // That session is the account's, kept: its mail, and Administration.
     expect(state.phase, AppPhase.signedIn);
-    expect(find.text('Live · me@${FakeAccounts.host}'), findsOneWidget);
+    expect(state.accounts.single.address, FakeAccounts.adminEmail);
+    expect(find.text('Live · ${FakeAccounts.adminEmail}'), findsOneWidget);
+    expect(
+      (state.current! as RestAccount).capabilities.allows('mailboxes:write'),
+      isTrue,
+    );
 
     await tester.pumpWidget(const SizedBox());
     state.mailbox?.dispose();
@@ -144,7 +141,10 @@ void main() {
     await tapButton(tester, 'Change password');
 
     expect(find.text("The passwords don't match."), findsOneWidget);
-    expect(fake.adminPassword, FakeAccounts.bootstrapPassword);
+    expect(
+      fake.passwordOf(FakeAccounts.adminEmail),
+      FakeAccounts.bootstrapPassword,
+    );
 
     await tester.pumpWidget(const SizedBox());
     fake.close();
@@ -157,12 +157,48 @@ void main() {
     await tester.pump();
     await tapButton(tester, 'Continue');
 
-    expect(find.text('Wrong username or password.'), findsOneWidget);
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Wrong address or password.'), findsOneWidget);
+    expect(find.text('Step 1 of 3'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     fake.close();
     state.mailbox?.dispose();
+  });
+
+  testWidgets('an account in setup signing in as any account does is taken '
+      'to its setup', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final fake = FakeRestmail(scenario: FakeScenario.freshInstall);
+    final state = AppState(
+      store: MemoryKeyValueStore(),
+      httpClientFactory: () => fake.client,
+    );
+    await state.start();
+    await tester.pumpWidget(RestmailApp(state: state));
+    await tapButton(tester, 'Add an account');
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      FakeAccounts.adminEmail,
+    );
+    await tester.pump(const Duration(milliseconds: 600)); // past the debounce
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField).at(1),
+      FakeAccounts.bootstrapPassword,
+    );
+    await tester.pump();
+    await tapButton(tester, 'Continue');
+
+    // Kept nowhere until it is set up; its setup goes on from here.
+    expect(state.accounts, isEmpty);
+    expect(find.text('Set up ${FakeAccounts.host}'), findsWidgets);
+    await tapButton(tester, 'Continue');
+    expect(find.text('Step 2 of 3'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    fake.close();
   });
 
   group("scanning the installer's QR code", () {
@@ -174,7 +210,7 @@ void main() {
     ) async {
       ServerSetupScreen.scanSignIn = (_) async => SignInLink(
         server: Uri.parse('https://${FakeAccounts.host}'),
-        username: FakeAccounts.adminUsername,
+        address: FakeAccounts.adminEmail,
         password: FakeAccounts.bootstrapPassword,
       );
       final (fake, state) = await openFreshServer(tester);
@@ -182,7 +218,7 @@ void main() {
       expect(find.text(FakeAccounts.bootstrapPassword), findsOneWidget);
 
       await tapButton(tester, 'Continue');
-      expect(find.text('Step 2 of 4'), findsOneWidget);
+      expect(find.text('Step 2 of 3'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       fake.close();

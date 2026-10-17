@@ -40,10 +40,6 @@ sealed class SignedInAccount {
   /// Its mail. The account keeps it for as long as it is signed in.
   MailBackend get backend;
 
-  /// False for an administrator, which signs in to the server, not to a
-  /// mailbox, and so opens on Administration.
-  bool get hasMailbox => true;
-
   /// What it may do on the server's admin API, as its session last heard.
   Capabilities get capabilities => Capabilities.none;
 
@@ -51,25 +47,20 @@ sealed class SignedInAccount {
   void close();
 }
 
-/// A session on a REST Mail server: a mailbox's, whose linked mailboxes
-/// belong to it, or an administrator's, which has none.
+/// A session on a REST Mail server: an account's, which is a mailbox, with
+/// the accounts it created or linked. What it may administer comes with the
+/// session, as [capabilities].
 class RestAccount extends SignedInAccount {
   RestAccount._(
     this.server,
     this.user,
     this.client, {
-    required this.isAdministrator,
     required this.capabilities,
   }) : backend = RestBackend(client);
 
   final Uri server;
-
-  /// For an administrator, `email` is the username.
   final User user;
   final RestmailClient client;
-
-  /// Signed in as an admin user: a username, not a mailbox.
-  final bool isAdministrator;
 
   @override
   final MailBackend backend;
@@ -79,13 +70,10 @@ class RestAccount extends SignedInAccount {
   Capabilities capabilities;
 
   @override
-  bool get hasMailbox => !isAdministrator;
-
-  @override
   AccountKind get kind => AccountKind.rest;
 
   @override
-  String get key => _restKey(server, user, isAdministrator);
+  String get key => _keyOf(server, user.email);
 
   @override
   String get address => user.email;
@@ -136,11 +124,6 @@ class ImapAccount extends SignedInAccount {
 
 String _keyOf(Uri server, String email) => '$server|${email.toLowerCase()}';
 
-/// An administrator's username is kept apart from the mailbox addresses: a
-/// colon cannot be in one.
-String _restKey(Uri server, User user, bool administrator) =>
-    _keyOf(server, administrator ? 'admin:${user.email}' : user.email);
-
 /// Who is signed in to which servers, and the settings — everything that
 /// outlives a single screen.
 class AppState extends ChangeNotifier {
@@ -158,9 +141,6 @@ class AppState extends ChangeNotifier {
 
   /// Opens the IMAP and SMTP sockets: TLS with the same trust as HTTPS.
   final OpenMailSocket mailSockets;
-
-  /// Before there could be more than one account, its session lived here.
-  static const _legacySessionKey = 'session';
 
   /// Which accounts there are, in order, and which one is on screen. Each
   /// account's session is stored under its own key, so one that can't be
@@ -204,7 +184,7 @@ class AppState extends ChangeNotifier {
   SignInLink? get pendingSetup => _pendingSetup;
 
   /// Takes a link the app was opened with. A sign-in link, from the QR code
-  /// the installer showed (`https://rest-mail.com/setup#server=…&username=…`
+  /// the installer showed (`https://rest-mail.com/setup#server=…&address=…`
   /// `&password=…`), waits in [pendingSetup]; anything else is ignored. The
   /// same link delivered twice (at launch, and again by the stream of links)
   /// counts once.
@@ -229,7 +209,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> start() async {
     settings = AppSettings.decode(await _read(_settingsKey));
-    await _moveLegacySession();
     final (saved, currentKey, dropped) = await _readSaved();
     accounts = [for (final s in saved) _open(s)];
     if (accounts.isEmpty) {
@@ -254,10 +233,14 @@ class AppState extends ChangeNotifier {
   );
 
   /// Signs in and adds the account, or renews it if it is already here, and
-  /// puts it on screen.
+  /// puts it on screen. An administrator signs in here too, as the account
+  /// it is; Administration shows by the session's capabilities.
   ///
   /// Throws [TotpRequiredException] when the account wants a second factor,
-  /// and [ApiException] for anything else the server refuses.
+  /// and [ApiException] for anything else the server refuses: 403
+  /// `setup_required` for an account that has still to choose its own
+  /// password or enroll an authenticator (a fresh install's first one),
+  /// which is not kept until it has.
   Future<void> signIn({
     required Uri server,
     required String email,
@@ -273,56 +256,29 @@ class AppState extends ChangeNotifier {
         totpCode: totpCode,
         recoveryCode: recoveryCode,
       );
-      final saved = _SavedSession(server, result.user, result.tokens);
-      await store.write(_accountKey(saved.key), saved.encode());
-      await _add(_openRest(saved));
+      if (!result.isSetUp) {
+        // A session that can only finish the setup is no use kept.
+        await candidate.logout();
+        throw ApiException(
+          403,
+          'setup_required',
+          '${result.user.email} has to choose its own password and set up '
+              'two-factor sign-in first.',
+        );
+      }
+      await keep(server, result.user, result.tokens);
     } finally {
       candidate.close();
     }
   }
 
-  /// Signs in as an administrator, an admin user with no mailbox of its own,
-  /// and adds the account, or renews it if it is already here, and puts it
-  /// on screen. It opens on Administration.
-  ///
-  /// Throws [TotpRequiredException] for the code from its authenticator, and
-  /// [ApiException] for anything else the server refuses: `setup_required`
-  /// for an admin that has still to choose its own password and enroll an
-  /// authenticator, which is not kept until it has.
-  Future<void> signInAdmin({
-    required Uri server,
-    required String username,
-    required String password,
-    String? totpCode,
-  }) async {
-    final candidate = probe(server);
-    try {
-      final result = await candidate.signInAdmin(
-        username: username,
-        password: password,
-        totpCode: totpCode,
-      );
-      if (!result.isSetUp) {
-        // A session that can only finish the setup is no use kept.
-        await candidate.logout();
-        throw const ApiException(
-          403,
-          'setup_required',
-          'This administrator has to choose its own password and set up '
-              'two-factor sign-in first.',
-        );
-      }
-      final saved = _SavedSession(
-        server,
-        result.user,
-        candidate.tokens!,
-        administrator: true,
-      );
-      await store.write(_accountKey(saved.key), saved.encode());
-      await _add(_openRest(saved));
-    } finally {
-      candidate.close();
-    }
+  /// Adds a session already signed in, such as the one finishing a server's
+  /// setup ends with, or renews the account if it is already here, and puts
+  /// it on screen. Whatever signed in hands it over and uses it no more.
+  Future<void> keep(Uri server, User user, SessionTokens tokens) async {
+    final saved = _SavedSession(server, user, tokens);
+    await store.write(_accountKey(saved.key), saved.encode());
+    await _add(_openRest(saved));
   }
 
   /// Adds a Gmail or other IMAP account, or renews it if it is already
@@ -430,7 +386,6 @@ class AppState extends ChangeNotifier {
       saved.server,
       saved.user,
       client,
-      isAdministrator: saved.administrator,
       capabilities: saved.tokens.capabilities,
     );
   }
@@ -451,10 +406,7 @@ class AppState extends ChangeNotifier {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
-    // An administrator has no mail to load.
-    mailbox = account.hasMailbox
-        ? (MailboxState(account.backend)..start())
-        : null;
+    mailbox = MailboxState(account.backend)..start();
     phase = AppPhase.signedIn;
     _sessions++;
     previous?.dispose();
@@ -473,12 +425,7 @@ class AppState extends ChangeNotifier {
       unawaited(
         store.write(
           _accountKey(account.key),
-          _SavedSession(
-            account.server,
-            account.user,
-            tokens,
-            administrator: account.isAdministrator,
-          ).encode(),
+          _SavedSession(account.server, account.user, tokens).encode(),
         ),
       );
       // The server re-reads the grants at every refresh: what it took away
@@ -535,37 +482,17 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  /// Moves a session saved before there could be several accounts into the
-  /// list, so an upgrade keeps it signed in. The old entry goes only once the
-  /// new ones are written.
-  Future<void> _moveLegacySession() async {
-    final raw = await _read(_legacySessionKey);
-    if (raw == null) return;
-    final saved = _SavedSession.decode(raw);
-    if (saved != null) {
-      final (order, _) = _decodeIndex(await _read(_accountsKey));
-      await store.write(_accountKey(saved.key), saved.encode());
-      await store.write(
-        _accountsKey,
-        _encodeIndex([
-          ...order.where((k) => k != saved.key),
-          saved.key,
-        ], saved.key),
-      );
-    }
-    await store.delete(_legacySessionKey);
-  }
-
   /// The saved accounts in order, which one was on screen, and whether any
-  /// had to be dropped. An entry that can't be read is deleted: that account
-  /// signs in again, and the others are kept.
+  /// had to be dropped. An entry that can't be read, or isn't the account its
+  /// key names, is deleted: that account signs in again, and the others are
+  /// kept.
   Future<(List<_Saved>, String?, bool)> _readSaved() async {
     final (order, currentKey) = _decodeIndex(await _read(_accountsKey));
     final saved = <_Saved>[];
     var dropped = false;
     for (final key in order) {
       final session = _Saved.decode(await _read(_accountKey(key)));
-      if (session == null) {
+      if (session == null || session.key != key) {
         await store.delete(_accountKey(key));
         dropped = true;
       } else if (saved.any((s) => s.key == session.key)) {
@@ -616,8 +543,7 @@ class AppState extends ChangeNotifier {
 }
 
 /// One account's entry in the Keychain or Keystore. `kind` says which sort
-/// it is; entries written before there were IMAP accounts have none and are
-/// REST Mail sessions.
+/// it is; an entry without one can't be read, and is dropped.
 sealed class _Saved {
   const _Saved();
 
@@ -625,7 +551,7 @@ sealed class _Saved {
     if (raw == null) return null;
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      return switch (json['kind'] ?? AccountKind.rest.name) {
+      return switch (json['kind']) {
         'rest' => _SavedSession.fromJson(json),
         'imap' => _SavedImap.fromJson(json),
         _ => null,
@@ -641,32 +567,20 @@ sealed class _Saved {
 }
 
 class _SavedSession extends _Saved {
-  const _SavedSession(
-    this.server,
-    this.user,
-    this.tokens, {
-    this.administrator = false,
-  });
-
-  static _SavedSession? decode(String? raw) => switch (_Saved.decode(raw)) {
-    final _SavedSession session => session,
-    _ => null,
-  };
+  const _SavedSession(this.server, this.user, this.tokens);
 
   factory _SavedSession.fromJson(Map<String, dynamic> json) => _SavedSession(
     Uri.parse(json['server'] as String),
     User.fromJson(json['user'] as Map<String, dynamic>),
     SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
-    administrator: json['administrator'] == true,
   );
 
   final Uri server;
   final User user;
   final SessionTokens tokens;
-  final bool administrator;
 
   @override
-  String get key => _restKey(server, user, administrator);
+  String get key => _keyOf(server, user.email);
 
   @override
   String encode() => jsonEncode({
@@ -674,7 +588,6 @@ class _SavedSession extends _Saved {
     'server': server.toString(),
     'user': user.toJson(),
     'tokens': tokens.toJson(),
-    if (administrator) 'administrator': true,
   });
 }
 

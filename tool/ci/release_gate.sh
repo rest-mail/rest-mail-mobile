@@ -3,7 +3,7 @@
 # Runs before anything is built and before any secret is read.
 #
 # A release is a tag, made after each merge into main by release-on-merge.yml,
-# or by hand with `chore release`: vMAJOR.MINOR.PATCH, where
+# and by nothing else: vMAJOR.MINOR.PATCH, where
 # MAJOR.MINOR is pubspec.yaml's and PATCH is the build count, the number of
 # commits behind the tagged one. The tag is the version testers see, and the
 # build count only goes up, so no version can come round twice. A tag must
@@ -35,7 +35,7 @@ version=${tag#v}
 
 count=$(git rev-list --count "$tag^{commit}")
 [ "${version##*.}" = "$count" ] ||
-  fail "$tag's patch must be its commit's build count, $count: make the tag with chore release, which would make v${version%.*}.$count"
+  fail "$tag's patch must be its commit's build count, $count: release-on-merge.yml would make v${version%.*}.$count"
 
 main=${MAIN_REF:-origin/main}
 git merge-base --is-ancestor "$tag^{commit}" "$main" ||

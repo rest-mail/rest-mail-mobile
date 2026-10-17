@@ -67,6 +67,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final current = app.current;
     final administers =
         current is RestAccount && AdminAccess(current.capabilities).any;
+    // Creating takes mailboxes:write; the server checks it covers the
+    // domain asked for.
+    final creates =
+        current is RestAccount &&
+        identical(current.backend, m.backend) &&
+        current.capabilities.allows(Capability.mailboxesWrite);
     return ListenableBuilder(
       listenable: m,
       builder: (context, _) => Scaffold(
@@ -88,11 +94,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             address: account.address,
                             subtitle: account.isPrimary
                                 ? 'Signed in · $host'
-                                : 'Linked mailbox · $host',
+                                : 'Mailbox of this account · $host',
                             primary: account.isPrimary,
                             onTap: () => _push(
                               context,
                               AccountScreen(mailbox: m, account: account),
+                            ),
+                          ),
+                        if (creates)
+                          _AddRow(
+                            label: 'Create a mailbox',
+                            onTap: () => _push(
+                              context,
+                              CreateMailboxScreen(account: current, mailbox: m),
                             ),
                           ),
                         if (m.backend.canLinkMailboxes)
@@ -115,9 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _AccountRow(
                             label: other.label,
                             address: other.address,
-                            subtitle: other.hasMailbox
-                                ? 'Signed in · ${other.host}'
-                                : 'Administrator · ${other.host}',
+                            subtitle: 'Signed in · ${other.host}',
                             icon: Icons.swap_horiz_rounded,
                             onTap: () => unawaited(app.switchTo(other)),
                           ),
@@ -355,9 +367,12 @@ class _AccountScreenState extends State<AccountScreen> {
     }
     final sure = await confirmAction(
       context,
-      title: 'Remove ${account.address}?',
-      message: 'It is unlinked from this session. The mailbox and its mail are untouched.',
-      action: 'Remove',
+      title: 'Unlink ${account.address}?',
+      message:
+          'This account gives up its access to it. The mailbox and its mail '
+          'are untouched. If it has no password of its own, only an '
+          'administrator can give access to it back.',
+      action: 'Unlink',
     );
     if (!sure || !mounted) return;
     setState(() => _busy = true);
@@ -368,7 +383,7 @@ class _AccountScreenState extends State<AccountScreen> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
       messenger.showSnackBar(
-        SnackBar(content: Text('Removed ${account.address}')),
+        SnackBar(content: Text('Unlinked ${account.address}')),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -383,12 +398,11 @@ class _AccountScreenState extends State<AccountScreen> {
     final account = widget.account;
     final host = widget.mailbox.backend.host;
     final quota = _quota;
-    // App passwords are a REST Mail mailbox's, made by its own session: not
-    // a linked mailbox's, and not an IMAP account's.
+    // App passwords are a REST Mail account's: the session's own, or one it
+    // owns, which it created or linked. Not an IMAP account's.
     final session = switch (AppScope.of(context).current) {
       final RestAccount rest
-          when account.isPrimary &&
-              identical(rest.backend, widget.mailbox.backend) =>
+          when identical(rest.backend, widget.mailbox.backend) =>
         rest,
       _ => null,
     };
@@ -425,7 +439,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${account.isPrimary ? 'Primary mailbox' : 'Linked mailbox'} · $host',
+                              '${account.isPrimary ? 'Primary mailbox' : 'Mailbox of this account'} · $host',
                               style: rmText(13, color: c.ink3),
                             ),
                           ],
@@ -481,7 +495,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       RmRow(
                         label: account.isPrimary
                             ? 'Sign out'
-                            : 'Remove from this session',
+                            : 'Unlink from this account',
                         danger: true,
                         onTap: _busy ? null : () => unawaited(_remove()),
                       ),
@@ -620,7 +634,8 @@ class _SignatureScreenState extends State<SignatureScreen> {
   }
 }
 
-/// Adds another mailbox on the same server to the session.
+/// Links another account on the same server to this one, proving its
+/// password, and its code when it has two-factor authentication.
 class LinkAccountScreen extends StatefulWidget {
   const LinkAccountScreen({super.key, required this.mailbox});
 
@@ -633,16 +648,24 @@ class LinkAccountScreen extends StatefulWidget {
 class _LinkAccountScreenState extends State<LinkAccountScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _code = TextEditingController();
+  final _codeFocus = FocusNode();
+  bool _needsCode = false;
   bool _busy = false;
   String? _error;
 
   bool get _ready =>
-      !_busy && _email.text.contains('@') && _password.text.isNotEmpty;
+      !_busy &&
+      _email.text.contains('@') &&
+      _password.text.isNotEmpty &&
+      (!_needsCode || _code.text.trim().isNotEmpty);
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _code.dispose();
+    _codeFocus.dispose();
     super.dispose();
   }
 
@@ -656,6 +679,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       final linked = await widget.mailbox.backend.linkAccount(
         address: _email.text.trim(),
         password: _password.text,
+        totpCode: _needsCode ? _code.text.trim() : null,
       );
       await widget.mailbox.reloadAccounts();
       if (!mounted) return;
@@ -664,13 +688,30 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text('Linked ${linked.address}')),
       );
+    } on TotpRequiredException {
+      if (!mounted) return;
+      setState(() {
+        _needsCode = true;
+        _busy = false;
+      });
+      _codeFocus.requestFocus();
     } on ApiException catch (e) {
       if (!mounted) return;
+      // A refused link is 403 with its reason; this session is still good.
+      if (e.code == 'invalid_totp') {
+        _code.clear();
+        _codeFocus.requestFocus();
+      }
       setState(() {
         _busy = false;
         _error = switch (e) {
-          ApiException(code: 'unauthorized') => 'Wrong address or password.',
-          ApiException(statusCode: 409) => 'That mailbox is already linked.',
+          ApiException(code: 'invalid_credentials') =>
+            'Wrong address or password.',
+          ApiException(code: 'invalid_totp') => "That code didn't work.",
+          ApiException(code: 'setup_required') =>
+            'That account has to sign in and choose its own password first.',
+          ApiException(statusCode: 409) =>
+            'That mailbox is already linked, or is this account.',
           _ => describeError(e, host: host),
         };
       });
@@ -695,7 +736,8 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                 children: [
                   Text(
-                    'Add another mailbox on $host to this session. Switch between them from the menu.',
+                    'Add another mailbox on $host to this account, with its '
+                    'own password. Switch between them from the menu.',
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 22),
@@ -724,6 +766,26 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                     style: rmText(16, color: c.ink),
                     decoration: const InputDecoration(hintText: 'Its password'),
                   ),
+                  if (_needsCode) ...[
+                    const SizedBox(height: 22),
+                    const SectionLabel('Two-factor code'),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _code,
+                      focusNode: _codeFocus,
+                      keyboardType: TextInputType.number,
+                      autofillHints: const [AutofillHints.oneTimeCode],
+                      autocorrect: false,
+                      onChanged: (_) => setState(() => _error = null),
+                      onSubmitted: (_) {
+                        if (_ready) unawaited(_link());
+                      },
+                      style: rmText(16, color: c.ink, tracking: 0.08),
+                      decoration: const InputDecoration(
+                        hintText: 'From its authenticator',
+                      ),
+                    ),
+                  ],
                   if (error != null) ...[
                     const SizedBox(height: 16),
                     ErrorText(error),
@@ -733,6 +795,206 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                     label: 'Link mailbox',
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_link()) : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Creates a mailbox owned by this account, with no password of its own: it
+/// is reached by signing in as this account, which can read it, send as it
+/// and make its app passwords. Shown to a session holding `mailboxes:write`.
+class CreateMailboxScreen extends StatefulWidget {
+  const CreateMailboxScreen({
+    super.key,
+    required this.account,
+    required this.mailbox,
+  });
+
+  final RestAccount account;
+  final MailboxState mailbox;
+
+  @override
+  State<CreateMailboxScreen> createState() => _CreateMailboxScreenState();
+}
+
+class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
+  final _localPart = TextEditingController();
+  final _displayName = TextEditingController();
+
+  /// The account's own domain first, then any other the session may read
+  /// (`domains:read`); the server says which it may create on.
+  late List<String> _domains = [_ownDomain];
+  late String _domain = _ownDomain;
+  bool _busy = false;
+  String? _error;
+
+  String get _ownDomain {
+    final address = widget.account.address;
+    return address.substring(address.indexOf('@') + 1).toLowerCase();
+  }
+
+  String get _address => '${_localPart.text.trim().toLowerCase()}@$_domain';
+
+  bool get _ready =>
+      !_busy &&
+      _localPart.text.trim().isNotEmpty &&
+      !_localPart.text.contains('@');
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.account.capabilities.allows(Capability.domainsRead)) {
+      unawaited(_loadDomains());
+    }
+  }
+
+  @override
+  void dispose() {
+    _localPart.dispose();
+    _displayName.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDomains() async {
+    try {
+      final page = await widget.account.client.domains();
+      if (!mounted) return;
+      setState(
+        () => _domains = [
+          _ownDomain,
+          for (final d in page.items)
+            if (d.name.toLowerCase() != _ownDomain) d.name.toLowerCase(),
+        ],
+      );
+    } on ApiException {
+      // The account's own domain is still there to choose.
+    }
+  }
+
+  Future<void> _create() async {
+    final host = widget.account.host;
+    final address = _address;
+    final name = _displayName.text.trim();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final created = await widget.account.client.createAccount(
+        address: address,
+        displayName: name.isEmpty ? null : name,
+      );
+      await widget.mailbox.reloadAccounts();
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Created ${created.address}')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = switch (e) {
+          ApiException(statusCode: 403) =>
+            "${widget.account.address} can't create mailboxes on $_domain.",
+          ApiException(statusCode: 409) => '$address already exists.',
+          ApiException(statusCode: 422, :final fields, :final message) =>
+            fields.values.firstOrNull ?? message,
+          ApiException(statusCode: 404) =>
+            "$host can't create mailboxes: its REST Mail is older than "
+                'this app.',
+          _ => describeError(e, host: host),
+        };
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final error = _error;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            RmTopBar(
+              title: 'Create a mailbox',
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
+                children: [
+                  Text(
+                    'A new mailbox owned by ${widget.account.address}. It has '
+                    'no password of its own: you read it and send as it from '
+                    'this account. Switch to it from the menu.',
+                    style: rmText(15, color: c.ink2, height: 1.45),
+                  ),
+                  const SizedBox(height: 22),
+                  const SectionLabel('Address'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _localPart,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textInputAction: TextInputAction.next,
+                    onChanged: (_) => setState(() => _error = null),
+                    style: rmText(16, color: c.ink),
+                    decoration: InputDecoration(
+                      hintText: 'name',
+                      suffixText: _domains.length > 1 ? null : '@$_domain',
+                    ),
+                  ),
+                  if (_domains.length > 1) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _domain,
+                      items: [
+                        for (final domain in _domains)
+                          DropdownMenuItem(
+                            value: domain,
+                            child: Text(
+                              '@$domain',
+                              style: rmText(16, color: c.ink),
+                            ),
+                          ),
+                      ],
+                      onChanged: (domain) => setState(() {
+                        _domain = domain ?? _domain;
+                        _error = null;
+                      }),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  const SectionLabel('Display name'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _displayName,
+                    textCapitalization: TextCapitalization.words,
+                    onSubmitted: (_) {
+                      if (_ready) unawaited(_create());
+                    },
+                    style: rmText(16, color: c.ink),
+                    decoration: const InputDecoration(hintText: 'Optional'),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 16),
+                    ErrorText(error),
+                  ],
+                  const SizedBox(height: 26),
+                  RmPrimaryButton(
+                    label: 'Create mailbox',
+                    busy: _busy,
+                    onPressed: _ready ? () => unawaited(_create()) : null,
                   ),
                 ],
               ),

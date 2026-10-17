@@ -70,26 +70,6 @@ tasks:
       - flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-name={{.VERSION}} --build-number={{.BUILD_NUMBER}}
       - echo "{{.VERSION}} ({{.BUILD_NUMBER}}) in build/ios/ipa. Upload it with Transporter, or xcrun altool."
 
-  # release-on-merge.yml makes this same tag after every merge into main, so
-  # this is for a commit that did not get one. Should both run, whichever is
-  # second finds the tag there and stops.
-  release:
-    desc: "Release main to TestFlight by hand (merges release themselves): tags it vMAJOR.MINOR.<build count>, from pubspec.yaml's MAJOR.MINOR"
-    vars:
-      SERIES:
-        sh: awk '/^version:/ { split($2, v, "."); print v[1] "." v[2]; exit }' pubspec.yaml
-      BUILD_NUMBER:
-        sh: git rev-list --count HEAD
-      VERSION: "{{.SERIES}}.{{.BUILD_NUMBER}}"
-    cmds:
-      # Checks first: a failing command ends the task before anything is tagged.
-      - 'git diff --quiet HEAD || { echo "Commit first: a release names a commit, and this tree has changes on top of it" >&2; exit 1; }'
-      - 'git fetch -q origin main && test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Release what is on main: check out main and pull, so HEAD is origin/main" >&2; exit 1; }'
-      - 'test -z "$(git tag -l v{{.VERSION}})" || { echo "v{{.VERSION}} is released already: nothing has been merged since" >&2; exit 1; }'
-      - git tag -a v{{.VERSION}} -m "rest-mail {{.VERSION}}"
-      - git push origin v{{.VERSION}}
-      - echo "Tagged v{{.VERSION}}. testflight.yml builds it as {{.VERSION}} ({{.BUILD_NUMBER}}); follow it with gh run watch."
-
   run:sample:
     desc: "Run the app on the fake server, no rest-mail needed. SCENARIO=sample|empty|twoFactor"
     vars:

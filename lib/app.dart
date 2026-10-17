@@ -6,7 +6,6 @@ import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
-import 'ui/admin/admin_screen.dart';
 import 'ui/mailbox_screen.dart';
 import 'ui/setup_link_handler.dart';
 import 'ui/welcome_screen.dart';
@@ -82,15 +81,9 @@ class _RestmailAppState extends State<RestmailApp> {
               child: WelcomeScreen(),
             ),
             AppPhase.signedIn => SetupLinkHandler(
-              child: switch ((state.mailbox, state.current)) {
-                (final mailbox?, _) => MailboxScreen(mailbox: mailbox),
-                // An administrator has no mailbox: it opens on what it may
-                // administer.
-                (null, final RestAccount account) => AdministrationScreen(
-                  account: account,
-                  home: true,
-                ),
-                _ => const _Launch(),
+              child: switch (state.mailbox) {
+                final mailbox? => MailboxScreen(mailbox: mailbox),
+                null => const _Launch(),
               },
             ),
           },

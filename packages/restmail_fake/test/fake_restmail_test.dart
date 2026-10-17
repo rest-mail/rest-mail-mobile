@@ -233,15 +233,21 @@ void main() {
     );
   });
 
-  test('linking another mailbox needs its password, once', () async {
+  test('linking another mailbox needs its password, once, and unlinking '
+      'gives it up', () async {
     final client = await _signedIn(FakeRestmail());
+    final session = client.tokens?.accessToken;
 
+    // A wrong password is 403: this session is not renewed for it.
     await expectLater(
       client.linkAccount(address: FakeAccounts.otherEmail, password: 'nope'),
       throwsA(
-        isA<ApiException>().having((e) => e.code, 'code', 'unauthorized'),
+        isA<ApiException>()
+            .having((e) => e.statusCode, 'status', 403)
+            .having((e) => e.code, 'code', 'invalid_credentials'),
       ),
     );
+    expect(client.tokens?.accessToken, session);
     await client.linkAccount(
       address: FakeAccounts.otherEmail,
       password: FakeAccounts.password,
@@ -254,7 +260,158 @@ void main() {
       throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)),
     );
 
-    expect(await client.accounts(), hasLength(2));
+    final accounts = await client.accounts();
+    expect(accounts.map((a) => a.address), [
+      FakeAccounts.email,
+      FakeAccounts.otherEmail,
+    ]);
+    await client.unlinkAccount(accounts.last.id);
+    expect(await client.accounts(), hasLength(1));
+    await expectLater(
+      client.unlinkAccount(accounts.first.id),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', 'own_account')),
+    );
+  });
+
+  test(
+    'linking an account with two-factor authentication takes its code',
+    () async {
+      final fake = FakeRestmail()..enableTwoFactor(FakeAccounts.otherEmail);
+      final client = await _signedIn(fake);
+      final session = client.tokens?.accessToken;
+
+      // A missing or wrong code is 403: this session is not renewed for it.
+      await expectLater(
+        client.linkAccount(
+          address: FakeAccounts.otherEmail,
+          password: FakeAccounts.password,
+        ),
+        throwsA(
+          isA<TotpRequiredException>().having(
+            (e) => e.statusCode,
+            'status',
+            403,
+          ),
+        ),
+      );
+      await expectLater(
+        client.linkAccount(
+          address: FakeAccounts.otherEmail,
+          password: FakeAccounts.password,
+          totpCode: '000000',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'invalid_totp'),
+        ),
+      );
+      expect(client.tokens?.accessToken, session);
+      await client.linkAccount(
+        address: FakeAccounts.otherEmail,
+        password: FakeAccounts.password,
+        totpCode: FakeAccounts.totpCode,
+      );
+      expect(fake.ownedBy(FakeAccounts.email), [FakeAccounts.otherEmail]);
+    },
+  );
+
+  group('creating an account', () {
+    Future<RestmailClient> admin(FakeRestmail fake) async {
+      final client = _client(fake);
+      await client.login(
+        email: FakeAccounts.adminEmail,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      );
+      return client;
+    }
+
+    test(
+      'with no password, owned by its creator, listed and sendable',
+      () async {
+        final fake = FakeRestmail();
+        final client = await admin(fake);
+
+        final chris = await client.createAccount(
+          address: 'chris@${FakeAccounts.host}',
+          displayName: 'Chris',
+        );
+        expect(chris.isPrimary, isFalse);
+        expect(fake.passwordOf(chris.address), isNull);
+        expect((await client.accounts()).map((a) => a.address), [
+          FakeAccounts.adminEmail,
+          'chris@${FakeAccounts.host}',
+        ]);
+        expect(fake.auditLog.last.action, 'accounts.create');
+
+        // Its owner sends as it, and reads its mail.
+        await client.send(
+          const OutgoingMessage(
+            from: 'chris@${FakeAccounts.host}',
+            to: [FakeAccounts.email],
+            subject: 'Hello from Chris',
+            bodyText: 'Hi',
+          ),
+        );
+        expect(
+          fake.messagesIn('chris@${FakeAccounts.host}', 'Sent'),
+          hasLength(1),
+        );
+        fake.deliver(
+          to: 'chris@${FakeAccounts.host}',
+          from: 'tom@ryeworks.test',
+          subject: 'Hi Chris',
+        );
+        final inbox = await client.messages(chris.id, StandardFolder.inbox);
+        expect(inbox.items.single.subject, 'Hi Chris');
+
+        // Nobody signs in to it.
+        await expectLater(
+          _client(fake).login(email: chris.address, password: ''),
+          throwsA(
+            isA<ApiException>().having((e) => e.code, 'code', 'unauthorized'),
+          ),
+        );
+      },
+    );
+
+    test('403 without mailboxes:write, 409 for an address taken, 422 for a '
+        'domain not hosted', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+
+      await expectLater(
+        client.createAccount(address: FakeAccounts.email),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)),
+      );
+      await expectLater(
+        client.createAccount(address: 'someone@nowhere.test'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 422)
+              .having(
+                (e) => e.fields['address'],
+                'field',
+                'this server does not host nowhere.test',
+              ),
+        ),
+      );
+      await expectLater(
+        client.createAccount(
+          address: 'pat@${FakeAccounts.host}',
+          password: 'short',
+        ),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 422)),
+      );
+
+      final dana = await _signedIn(fake);
+      await expectLater(
+        dana.createAccount(address: 'pat@${FakeAccounts.host}'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+      );
+      expect(fake.hasMailbox('pat@${FakeAccounts.host}'), isFalse);
+    });
   });
 
   test('discovery finds it by domain; any other host is unreachable', () async {
@@ -292,22 +449,30 @@ void main() {
   group('first start of a fresh install', () {
     const chosen = 'a passphrase only I know';
 
-    test('the bootstrap admin owes a password and an authenticator', () async {
+    test('the bootstrap account owes a password and an authenticator, and '
+        'signs in by its address only', () async {
       final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
 
-      final admin = await client.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      final admin = await client.login(
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.bootstrapPassword,
       );
 
       expect(admin.setupRequired, [SetupStep.password, SetupStep.twoFactor]);
       expect(admin.isSetUp, isFalse);
+      expect(admin.tokens.capabilities.isEmpty, isTrue);
+      await expectLater(
+        client.accounts(),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'setup_required'),
+        ),
+      );
     });
 
     test('the admin API refuses a session still in setup', () async {
       final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
-      await client.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      await client.login(
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.bootstrapPassword,
       );
 
@@ -324,8 +489,8 @@ void main() {
     test('a wrong current password is reported, not taken for an expired '
         'session', () async {
       final client = _client(FakeRestmail(scenario: FakeScenario.freshInstall));
-      await client.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      await client.login(
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.bootstrapPassword,
       );
 
@@ -333,7 +498,8 @@ void main() {
         client.changePassword(current: 'not it at all', next: chosen),
         throwsA(
           isA<ApiException>()
-              .having((e) => e.statusCode, 'status', 401)
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'invalid_password')
               .having(
                 (e) => e.message,
                 'message',
@@ -346,12 +512,12 @@ void main() {
     });
 
     test(
-      'the whole setup, then a domain and a mailbox to sign in to',
+      'the whole setup, then the account is an administrator with mail',
       () async {
         final fake = FakeRestmail(scenario: FakeScenario.freshInstall);
         final client = _client(fake);
-        await client.signInAdmin(
-          username: FakeAccounts.adminUsername,
+        await client.login(
+          email: FakeAccounts.adminEmail,
           password: FakeAccounts.bootstrapPassword,
         );
 
@@ -366,46 +532,35 @@ void main() {
         );
         // The server ended every session; so did the client.
         expect(client.tokens, isNull);
-        expect(fake.adminPassword, chosen);
+        expect(fake.passwordOf(FakeAccounts.adminEmail), chosen);
 
         // Signing in now takes a code as well.
         await expectLater(
-          client.signInAdmin(
-            username: FakeAccounts.adminUsername,
-            password: chosen,
-          ),
+          client.login(email: FakeAccounts.adminEmail, password: chosen),
           throwsA(isA<TotpRequiredException>()),
         );
-        final done = await client.signInAdmin(
-          username: FakeAccounts.adminUsername,
+        final done = await client.login(
+          email: FakeAccounts.adminEmail,
           password: chosen,
           totpCode: FakeAccounts.totpCode,
         );
         expect(done.isSetUp, isTrue);
 
+        expect(
+          done.tokens.capabilities.allows(Capability.mailboxesWrite),
+          isTrue,
+        );
+        final accounts = await client.accounts();
+        expect(accounts.single.address, FakeAccounts.adminEmail);
         await client.createDomain('example.test');
-        await client.createMailbox(
-          address: 'me@example.test',
-          password: 'my mailbox password',
-          displayName: 'Me',
-        );
-        expect(fake.hasMailbox('me@example.test'), isTrue);
-
-        // And that mailbox is an ordinary account now.
-        final mail = _client(fake);
-        final result = await mail.login(
-          email: 'me@example.test',
-          password: 'my mailbox password',
-        );
-        expect(result.user.email, 'me@example.test');
       },
     );
 
     test('a domain already there is reported as such', () async {
       final fake = FakeRestmail(scenario: FakeScenario.freshInstall);
       final client = _client(fake);
-      await client.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      await client.login(
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.bootstrapPassword,
       );
       await client.enrollTwoFactor();
@@ -414,8 +569,8 @@ void main() {
         current: FakeAccounts.bootstrapPassword,
         next: chosen,
       );
-      await client.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      await client.login(
+        email: FakeAccounts.adminEmail,
         password: chosen,
         totpCode: FakeAccounts.totpCode,
       );
@@ -427,23 +582,17 @@ void main() {
           isA<ApiException>().having((e) => e.code, 'code', 'already_exists'),
         ),
       );
-      await expectLater(
-        client.createMailbox(address: 'me@elsewhere.test', password: 'x'),
-        throwsA(
-          isA<ApiException>().having((e) => e.code, 'code', 'domain_not_found'),
-        ),
-      );
     });
   });
 
   group('the admin API, by capability', () {
     Future<RestmailClient> admin(
       FakeRestmail fake, [
-      String username = FakeAccounts.adminUsername,
+      String email = FakeAccounts.adminEmail,
     ]) async {
       final client = _client(fake);
-      await client.signInAdmin(
-        username: username,
+      await client.login(
+        email: email,
         password: FakeAccounts.adminPassword,
         totpCode: FakeAccounts.totpCode,
       );
@@ -481,7 +630,7 @@ void main() {
         'hello@${FakeAccounts.host}',
         'sales@new.test',
       ]);
-      expect((await client.mailboxes()).total, 2);
+      expect((await client.mailboxes()).total, 4);
     });
 
     test('queue:read reads the queue and nothing else', () async {
@@ -503,11 +652,11 @@ void main() {
 
     test('write without delete edits but cannot delete', () async {
       final fake = FakeRestmail()
-        ..addAdmin(
-          'editor',
+        ..addAccount(
+          'editor@${FakeAccounts.host}',
           capabilities: {'mailboxes:read', 'mailboxes:write'},
         );
-      final client = await admin(fake, 'editor');
+      final client = await admin(fake, 'editor@${FakeAccounts.host}');
 
       final alias = (await client.aliases()).items.single;
       await client.updateAlias(alias.id, active: false);
@@ -521,56 +670,6 @@ void main() {
 
       expect(client.tokens!.capabilities.isEmpty, isTrue);
       await expectLater(client.queue(), refused('forbidden'));
-    });
-
-    test(
-      'a role changed on an admin ends its sessions, as on the server',
-      () async {
-        final fake = FakeRestmail();
-        final superadmin = await admin(fake);
-        final watcher = await admin(fake, FakeAccounts.queueWatcher);
-        final roles = await superadmin.roles();
-        final users = (await superadmin.adminUsers()).items;
-        final target = users.firstWhere(
-          (u) => u.username == FakeAccounts.queueWatcher,
-        );
-
-        await superadmin.updateAdminUser(
-          target.id,
-          roleIds: [roles.firstWhere((r) => r.name == 'readonly').id],
-        );
-
-        expect(fake.rolesOf(FakeAccounts.queueWatcher), ['readonly']);
-        fake.expireAccessTokens();
-        await expectLater(
-          watcher.queue(),
-          throwsA(isA<SessionExpiredException>()),
-        );
-      },
-    );
-
-    test('an admin made by another signs in with its password alone, and '
-        'may do what its roles say', () async {
-      final fake = FakeRestmail();
-      final superadmin = await admin(fake);
-      final readonly = (await superadmin.roles()).firstWhere(
-        (r) => r.name == 'readonly',
-      );
-      await superadmin.createAdminUser(
-        username: 'ops',
-        password: 'ops password',
-        roleIds: [readonly.id],
-      );
-
-      final ops = _client(fake);
-      final signedIn = await ops.signInAdmin(
-        username: 'ops',
-        password: 'ops password',
-      );
-      expect(signedIn.isSetUp, isTrue);
-      expect(signedIn.capabilities.allows(Capability.domainsRead), isTrue);
-      await ops.domains();
-      await expectLater(ops.createDomain('x.test'), refused('forbidden'));
     });
 
     test('bans need bans:*', () async {
@@ -594,7 +693,7 @@ void main() {
     test('a grant taken away goes at the next refresh', () async {
       final fake = FakeRestmail();
       final client = await admin(fake);
-      fake.grant(FakeAccounts.adminUsername, {'queue:read'});
+      fake.grant(FakeAccounts.adminEmail, {'queue:read'});
 
       // The access token keeps what it was minted with...
       await client.domains();
@@ -606,8 +705,11 @@ void main() {
 
     test('logs, traces and reports each need their own capability', () async {
       final fake = FakeRestmail()
-        ..addAdmin('postmaster', capabilities: {'messages:read'});
-      final client = await admin(fake, 'postmaster');
+        ..addAccount(
+          'postmaster@${FakeAccounts.host}',
+          capabilities: {'messages:read'},
+        );
+      final client = await admin(fake, 'postmaster@${FakeAccounts.host}');
 
       final log = await client.deliveryLog();
       expect(log.total, 4);
@@ -620,7 +722,6 @@ void main() {
       );
       final messageId = log.items.first.messageId!;
       await expectLater(client.messageTrace(messageId), refused('forbidden'));
-      await expectLater(client.activityLog(), refused('forbidden'));
       await expectLater(client.tlsReports(), refused('forbidden'));
       await expectLater(client.audit(), refused('forbidden'));
       await expectLater(client.verifyAudit(), refused('forbidden'));
@@ -638,10 +739,6 @@ void main() {
         superadmin.messageTrace(999999),
         throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
       );
-      expect(
-        (await superadmin.activityLog()).items.first.detail,
-        contains('203.0.113.7'),
-      );
       final reports = (await superadmin.tlsReports()).items;
       expect(reports.map((r) => r.failed), [0, 3]);
       expect(reports.last.failureDetails, isA<List<Object?>>());
@@ -657,7 +754,7 @@ void main() {
       expect(first.hasMore, isTrue);
       // The sign-in just made is the newest.
       expect(first.items.first.action, 'auth.sign_in');
-      expect(first.items.first.actorName, FakeAccounts.adminUsername);
+      expect(first.items.first.actorName, FakeAccounts.adminEmail);
       final seqs = first.items.map((e) => e.seq).toList();
       expect(seqs, [...seqs]..sort((a, b) => b.compareTo(a)));
 
@@ -704,9 +801,15 @@ void main() {
     test('DKIM keys and certificates are read with domains:read, and '
         'removed with domains:write, as the server asks', () async {
       final fake = FakeRestmail()
-        ..addAdmin('deleter', capabilities: {'domains:read', 'domains:delete'})
-        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
-      final deleter = await admin(fake, 'deleter');
+        ..addAccount(
+          'deleter@${FakeAccounts.host}',
+          capabilities: {'domains:read', 'domains:delete'},
+        )
+        ..addAccount(
+          'writer@${FakeAccounts.host}',
+          capabilities: {'domains:read', 'domains:write'},
+        );
+      final deleter = await admin(fake, 'deleter@${FakeAccounts.host}');
 
       final keys = await deleter.dkimKeys();
       expect(keys.map((k) => k.domain), contains(FakeAccounts.host));
@@ -723,7 +826,7 @@ void main() {
         refused('forbidden'),
       );
 
-      final writer = await admin(fake, 'writer');
+      final writer = await admin(fake, 'writer@${FakeAccounts.host}');
       await writer.deleteDkimKey(key.domainId);
       await writer.deleteCertificate(certificates.first.id);
       expect(
@@ -735,12 +838,15 @@ void main() {
 
     test('pipelines and custom filters need pipelines:*', () async {
       final fake = FakeRestmail()
-        ..addAdmin('reader', capabilities: {'pipelines:read'})
-        ..addAdmin(
-          'editor',
+        ..addAccount(
+          'reader@${FakeAccounts.host}',
+          capabilities: {'pipelines:read'},
+        )
+        ..addAccount(
+          'editor@${FakeAccounts.host}',
           capabilities: {'pipelines:read', 'pipelines:write'},
         );
-      final reader = await admin(fake, 'reader');
+      final reader = await admin(fake, 'reader@${FakeAccounts.host}');
       final pipelines = (await reader.pipelines()).items;
       expect(pipelines.map((p) => p.direction), ['inbound', 'outbound']);
       expect(pipelines.first.filters.first.name, 'size_check');
@@ -751,7 +857,7 @@ void main() {
         refused('forbidden'),
       );
 
-      final editor = await admin(fake, 'editor');
+      final editor = await admin(fake, 'editor@${FakeAccounts.host}');
       expect(
         (await editor.updatePipeline(pipelines.first.id, active: false)).active,
         isFalse,
@@ -777,9 +883,15 @@ void main() {
     test('the pipeline log needs pipelines:read, and its analytics '
         'observability:read', () async {
       final fake = FakeRestmail()
-        ..addAdmin('reader', capabilities: {'pipelines:read'})
-        ..addAdmin('watcher', capabilities: {'observability:read'});
-      final reader = await admin(fake, 'reader');
+        ..addAccount(
+          'reader@${FakeAccounts.host}',
+          capabilities: {'pipelines:read'},
+        )
+        ..addAccount(
+          'watcher@${FakeAccounts.host}',
+          capabilities: {'observability:read'},
+        );
+      final reader = await admin(fake, 'reader@${FakeAccounts.host}');
 
       final log = await reader.pipelineLog();
       final times = log.items.map((t) => t.createdAt).toList();
@@ -799,7 +911,7 @@ void main() {
       );
       await expectLater(reader.pipelineAnalytics(), refused('forbidden'));
 
-      final watcher = await admin(fake, 'watcher');
+      final watcher = await admin(fake, 'watcher@${FakeAccounts.host}');
       await expectLater(watcher.pipelineLog(), refused('forbidden'));
       final day = await watcher.pipelineAnalytics();
       expect(day.until.difference(day.since), const Duration(days: 1));
@@ -823,59 +935,18 @@ void main() {
       expect(week.received.map((r) => r.transport), ['plaintext', 'tls']);
     });
 
-    test('webmail accounts need mailboxes:*, and follow sign-ins and '
-        'links', () async {
-      final fake = FakeRestmail()
-        ..addAdmin('reader', capabilities: {'mailboxes:read'})
-        ..addAdmin(
-          'writer',
-          capabilities: {'mailboxes:read', 'mailboxes:write'},
-        );
-      final reader = await admin(fake, 'reader');
-
-      final dana = (await reader.webmailAccounts()).items.single;
-      expect(dana.address, FakeAccounts.email);
-      expect(dana.linked, isEmpty);
-
-      // Dana links her other mailbox in webmail.
-      await (await _signedIn(fake)).linkAccount(
-        address: FakeAccounts.otherEmail,
-        password: FakeAccounts.password,
-        displayName: 'Oakline',
-      );
-      final linked = (await reader.webmailAccount(dana.id)).linked.single;
-      expect(linked.address, FakeAccounts.otherEmail);
-      expect(linked.displayName, 'Oakline');
-
-      final other = (await reader.mailboxes()).items.firstWhere(
-        (b) => b.address == FakeAccounts.otherEmail,
-      );
-      await expectLater(
-        reader.createWebmailAccount(other.id),
-        refused('forbidden'),
-      );
-      final writer = await admin(fake, 'writer');
-      final made = await writer.createWebmailAccount(other.id);
-      expect(made.address, FakeAccounts.otherEmail);
-      await expectLater(
-        writer.createWebmailAccount(other.id),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)),
-      );
-      await expectLater(
-        writer.deleteWebmailAccount(made.id),
-        refused('forbidden'),
-      );
-
-      await (await admin(fake)).deleteWebmailAccount(made.id);
-      expect(fake.webmailAccounts.map((a) => a.id), [dana.id]);
-    });
-
     test('sender lists are read with domains:read, and changed with '
         'domains:write, as the server asks', () async {
       final fake = FakeRestmail()
-        ..addAdmin('deleter', capabilities: {'domains:read', 'domains:delete'})
-        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
-      final deleter = await admin(fake, 'deleter');
+        ..addAccount(
+          'deleter@${FakeAccounts.host}',
+          capabilities: {'domains:read', 'domains:delete'},
+        )
+        ..addAccount(
+          'writer@${FakeAccounts.host}',
+          capabilities: {'domains:read', 'domains:write'},
+        );
+      final deleter = await admin(fake, 'deleter@${FakeAccounts.host}');
       final domain = (await deleter.domains()).items.firstWhere(
         (d) => d.name == FakeAccounts.host,
       );
@@ -897,7 +968,7 @@ void main() {
         refused('forbidden'),
       );
 
-      final writer = await admin(fake, 'writer');
+      final writer = await admin(fake, 'writer@${FakeAccounts.host}');
       await writer.addSenderRule(
         domain.id,
         SenderList.block,
@@ -939,9 +1010,15 @@ void main() {
     test('an MTA-STS policy is read with domains:read, and set and deleted '
         'with domains:write', () async {
       final fake = FakeRestmail()
-        ..addAdmin('reader', capabilities: {'domains:read'})
-        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
-      final reader = await admin(fake, 'reader');
+        ..addAccount(
+          'reader@${FakeAccounts.host}',
+          capabilities: {'domains:read'},
+        )
+        ..addAccount(
+          'writer@${FakeAccounts.host}',
+          capabilities: {'domains:read', 'domains:write'},
+        );
+      final reader = await admin(fake, 'reader@${FakeAccounts.host}');
       final domains = (await reader.domains()).items;
       final host = domains.firstWhere((d) => d.name == FakeAccounts.host);
       final other = domains.firstWhere((d) => d.name != FakeAccounts.host);
@@ -961,7 +1038,7 @@ void main() {
         refused('forbidden'),
       );
 
-      final writer = await admin(fake, 'writer');
+      final writer = await admin(fake, 'writer@${FakeAccounts.host}');
       final made = await writer.setMtaStsPolicy(
         other.id,
         mode: MtaStsMode.enforce,
@@ -987,8 +1064,11 @@ void main() {
       'the DNS check needs domains:read, and says what is missing',
       () async {
         final fake = FakeRestmail()
-          ..addAdmin('reader', capabilities: {'domains:read'});
-        final reader = await admin(fake, 'reader');
+          ..addAccount(
+            'reader@${FakeAccounts.host}',
+            capabilities: {'domains:read'},
+          );
+        final reader = await admin(fake, 'reader@${FakeAccounts.host}');
         final domains = (await reader.domains()).items;
         final host = domains.firstWhere((d) => d.name == FakeAccounts.host);
         final other = domains.firstWhere((d) => d.name != FakeAccounts.host);
@@ -1074,11 +1154,11 @@ void main() {
 
       await expectLater(
         client.createAppPassword(account.id, name: 'Mail', password: ''),
-        refused(401, 'reauth_required'),
+        refused(403, 'reauth_required'),
       );
       await expectLater(
         client.createAppPassword(account.id, name: 'Mail', password: 'nope'),
-        refused(401, 'invalid_password'),
+        refused(403, 'invalid_password'),
       );
 
       expect(fake.appPasswordsOf(FakeAccounts.email), isEmpty);
@@ -1089,8 +1169,8 @@ void main() {
         (e) => e.action == 'credentials.create',
       );
       expect(refusals.map((e) => (e.outcome, e.status)), [
-        ('denied', 401),
-        ('denied', 401),
+        ('denied', 403),
+        ('denied', 403),
       ]);
       expect(refusals.map((e) => e.content).join(), isNot(contains('nope')));
     });
@@ -1127,7 +1207,8 @@ void main() {
       expect(created.secret, isNotNull);
     });
 
-    test('only for the session\'s own mailbox, never a linked one', () async {
+    test('for an account it owns too, with its own password; never for one '
+        'it does not', () async {
       final fake = FakeRestmail();
       final client = await _signedIn(fake);
       final linked = await client.linkAccount(
@@ -1135,16 +1216,24 @@ void main() {
         password: FakeAccounts.password,
       );
 
-      await expectLater(
-        client.appPasswords(linked.id),
-        refused(404, 'not_found'),
+      final made = await client.createAppPassword(
+        linked.id,
+        name: 'Mail',
+        password: FakeAccounts.password,
       );
+      expect(
+        fake.acceptsAppPassword(FakeAccounts.otherEmail, made.secret!),
+        isTrue,
+      );
+      expect(await client.appPasswords(linked.id), hasLength(1));
+
+      final adminId = (await _client(fake).login(
+        email: FakeAccounts.adminEmail,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      )).user.id;
       await expectLater(
-        client.createAppPassword(
-          linked.id,
-          name: 'Mail',
-          password: FakeAccounts.password,
-        ),
+        client.appPasswords(adminId),
         refused(404, 'not_found'),
       );
     });
@@ -1213,8 +1302,8 @@ void main() {
         password: FakeAccounts.password,
       );
       final admin = _client(fake);
-      await admin.signInAdmin(
-        username: FakeAccounts.adminUsername,
+      await admin.login(
+        email: FakeAccounts.adminEmail,
         password: FakeAccounts.adminPassword,
         totpCode: FakeAccounts.totpCode,
       );
@@ -1222,7 +1311,7 @@ void main() {
       final box = (await admin.mailboxes()).items.firstWhere(
         (b) => b.address == FakeAccounts.email,
       );
-      await admin.updateMailbox(box.id, password: 'a new password');
+      await admin.updateMailbox(box.id, password: 'a new password here');
 
       expect(
         fake.acceptsAppPassword(FakeAccounts.email, created.secret!),
@@ -1257,16 +1346,6 @@ void main() {
           fake,
         ).login(email: FakeAccounts.email, password: FakeAccounts.password),
         throwsA(isA<ApiException>().having((e) => e.statusCode, 's', 429)),
-      );
-    });
-
-    test('a server from before them answers 404 in plain text', () async {
-      final client = await _signedIn(FakeRestmail(appPasswords: false));
-      final account = await _account(client);
-
-      await expectLater(
-        client.appPasswords(account.id),
-        refused(404, 'http_404'),
       );
     });
   });

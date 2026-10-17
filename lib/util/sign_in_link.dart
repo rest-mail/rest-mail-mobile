@@ -5,14 +5,15 @@
 const setupLinkHost = 'rest-mail.com';
 const setupLinkPath = '/setup';
 
-/// What the installer's QR code holds: the server it installed, and the first
-/// admin's username and password, so that scanning it with a phone's camera
-/// opens the app with the sign-in filled in.
+/// What the installer's QR code holds: the server it installed, and the
+/// address and password of its first account (`admin@` its domain), so that
+/// scanning it with a phone's camera opens the app with the sign-in filled
+/// in.
 ///
 /// Two forms, the same thing:
 ///
-///   https://rest-mail.com/setup#server=URL&username=NAME&password=PASSWORD
-///   rest-mail://setup?server=URL&username=NAME&password=PASSWORD
+///   https://rest-mail.com/setup#server=URL&address=ADDRESS&password=PASSWORD
+///   rest-mail://setup?server=URL&address=ADDRESS&password=PASSWORD
 ///
 /// The installer draws the first, because a phone's own camera offers to open
 /// a web link and a chat app makes one tappable. It carries its parameters
@@ -21,14 +22,13 @@ const setupLinkPath = '/setup';
 /// stops working once the admin has chosen their own, and 72 hours after the
 /// server first took it.
 class SignInLink {
-  const SignInLink({
-    this.server,
-    this.username = 'admin',
-    required this.password,
-  });
+  const SignInLink({this.server, this.address, required this.password});
 
   final Uri? server;
-  final String username;
+
+  /// The account to sign in as; null when the link names none, and the
+  /// address is typed.
+  final String? address;
   final String password;
 
   /// Reads a scanned QR code, or a link the app was opened with. Anything
@@ -42,12 +42,12 @@ class SignInLink {
     final password = parameters?['password'] ?? '';
     if (parameters == null || password.isEmpty) return null;
     final server = Uri.tryParse(parameters['server'] ?? '');
-    final username = parameters['username']?.trim() ?? '';
+    final address = parameters['address']?.trim() ?? '';
     return SignInLink(
       server: server != null && server.hasScheme && server.host.isNotEmpty
           ? server
           : null,
-      username: username.isEmpty ? 'admin' : username,
+      address: address.contains('@') ? address : null,
       password: password,
     );
   }

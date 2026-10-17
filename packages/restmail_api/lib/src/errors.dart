@@ -39,7 +39,9 @@ class ApiException implements Exception {
     } on FormatException {
       // Not an envelope; the status line is all there is.
     }
-    if (code == 'totp_required') return TotpRequiredException(message);
+    if (code == 'totp_required') {
+      return TotpRequiredException(statusCode, message);
+    }
     return ApiException(
       statusCode,
       code,
@@ -67,10 +69,11 @@ class ApiException implements Exception {
 }
 
 /// The password was right but the account has two-factor authentication.
-/// Sign in again with a TOTP or recovery code.
+/// Send it again with a TOTP or recovery code. Signing in answers it as 401;
+/// linking another account answers 403, since this session is still good.
 class TotpRequiredException extends ApiException {
-  const TotpRequiredException(String message)
-    : super(401, 'totp_required', message);
+  const TotpRequiredException(int statusCode, String message)
+    : super(statusCode, 'totp_required', message);
 }
 
 /// The session is over and cannot be renewed; the user has to sign in again.

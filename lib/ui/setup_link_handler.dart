@@ -45,7 +45,7 @@ class _SetupLinkHandlerState extends State<SetupLinkHandler> {
       MaterialPageRoute<void>(
         builder: (_) => ServerSetupScreen(
           server: server,
-          username: scan.username,
+          address: scan.address,
           password: scan.password,
         ),
       ),

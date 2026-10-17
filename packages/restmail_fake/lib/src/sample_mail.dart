@@ -14,27 +14,30 @@ abstract final class FakeAccounts {
   static const otherEmail = 'dana@oakline.test';
 
   /// For [FakeScenario.twoFactor], and the code the authenticator shows once
-  /// an admin has enrolled.
+  /// an account has enrolled one.
   static const totpCode = '123456';
   static const recoveryCode = 'RECOVER-1234';
 
-  /// The bootstrap admin of a [FakeScenario.freshInstall] server: the account
-  /// and password a deploy made, which must be replaced at first sign-in.
-  static const adminUsername = 'admin';
+  /// The administrator of every scenario: an account like Dana's, which
+  /// holds every capability. In [FakeScenario.freshInstall] it is the
+  /// bootstrap account, with the password a deploy made, which must be
+  /// replaced at first sign-in, and no authenticator yet.
+  static const adminEmail = 'admin@restmail.test';
   static const bootstrapPassword = 'bootstrap-password-0123456789';
 
-  /// The password of the other scenarios' admin, [adminUsername], who is set
-  /// up already: signing in takes [totpCode] too. It may do everything.
+  /// The password of the other scenarios' [adminEmail], which is set up
+  /// already: signing in takes [totpCode] too.
   static const adminPassword = 'restmail-admin';
 
-  /// An admin of the other scenarios who may only look at the outbound
-  /// queue. Same password and code as [adminUsername].
-  static const queueWatcher = 'queue-watch';
+  /// An account of the other scenarios that may only look at the outbound
+  /// queue. Same password and code as [adminEmail].
+  static const queueWatcher = 'queue@restmail.test';
 
   /// What 2FA enrollment hands out: a base32 secret and its provisioning URI.
   static const totpSecret = 'JBSWY3DPEHPK3PXP';
   static const totpUri =
-      'otpauth://totp/rest-mail:admin?secret=$totpSecret&issuer=rest-mail';
+      'otpauth://totp/rest-mail:admin@restmail.test?secret=$totpSecret'
+      '&issuer=rest-mail';
 }
 
 const _dana = FakeRecipient(FakeAccounts.email, 'Dana Ruiz');

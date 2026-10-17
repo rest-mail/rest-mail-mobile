@@ -83,11 +83,15 @@ class RestmailClient {
 
   // ── Session ──────────────────────────────────────────────────────────
 
-  /// Signs in with a mailbox address and password.
+  /// Signs an account in by its address and password. There is no other
+  /// kind of sign-in: an administrator is an account like any other, and
+  /// what it may administer comes with the session's capabilities.
   ///
   /// Throws [TotpRequiredException] when the password was right but the
   /// account has two-factor authentication; call again with [totpCode] or
-  /// [recoveryCode].
+  /// [recoveryCode]. An account still in setup (a fresh install's bootstrap
+  /// one) is signed in all the same, and [LoginResult.setupRequired] says
+  /// what it owes; until then those steps are all its session can do.
   Future<LoginResult> login({
     required String email,
     required String password,
@@ -113,6 +117,7 @@ class RestmailClient {
     return LoginResult(
       user: User.fromJson(data['user'] as Map<String, dynamic>),
       tokens: tokens,
+      setupRequired: SetupStep.fromJson(data['setup_required']),
     );
   }
 
@@ -160,34 +165,7 @@ class RestmailClient {
     return tokens;
   }
 
-  // ── Admin: first start ───────────────────────────────────────────────
-
-  /// Signs in as an admin. On a fresh install the account is in setup, and
-  /// [AdminSignIn.setupRequired] says what it must do before the admin API
-  /// answers it; until then those steps are all this session can do.
-  ///
-  /// Throws [TotpRequiredException] once an authenticator is enrolled; call
-  /// again with [totpCode].
-  Future<AdminSignIn> signInAdmin({
-    required String username,
-    required String password,
-    String? totpCode,
-  }) async {
-    final response = await _send(
-      'POST',
-      _uri(['auth', 'login']),
-      body: {
-        'username': username,
-        'password': password,
-        'client': 'native',
-        if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
-      },
-    );
-    _throwIfError(response);
-    final data = _data(response);
-    _setTokens(_tokensFrom(response, data));
-    return AdminSignIn.fromJson(data);
-  }
+  // ── Setup ────────────────────────────────────────────────────────────
 
   /// Starts enrolling an authenticator. Show the result once, then
   /// [confirmTwoFactor] with a code the authenticator produces.
@@ -195,14 +173,20 @@ class RestmailClient {
     _data(await _authed('POST', ['auth', '2fa', 'enroll'])),
   );
 
-  /// Finishes enrolling: from now on signing in also takes a code.
+  /// Finishes enrolling: from now on signing in also takes a code. A wrong
+  /// code is 403 `invalid_totp`, never 401: the session is still good.
   Future<void> confirmTwoFactor(String code) async {
-    await _authed('POST', ['auth', '2fa', 'confirm'], body: {'code': code});
+    await _authed(
+      'POST',
+      ['auth', '2fa', 'confirm'],
+      body: {'totp_code': code},
+    );
   }
 
-  /// Replaces the signed-in admin's password. The server ends every session of
-  /// the account, this one included, so this client is signed out after it:
-  /// sign in again with [next].
+  /// Replaces the signed-in account's password. The server ends every
+  /// session of the account, this one included, so this client is signed out
+  /// after it: sign in again with [next]. A wrong [current] is 403
+  /// `invalid_password`, never 401: the session is still good.
   Future<void> changePassword({
     required String current,
     required String next,
@@ -319,24 +303,6 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
-  /// Creates a mailbox on a domain the server already has. Needs
-  /// `mailboxes:write`.
-  Future<void> createMailbox({
-    required String address,
-    required String password,
-    String? displayName,
-  }) async {
-    await _authed(
-      'POST',
-      ['admin', 'mailboxes'],
-      body: {
-        'address': address,
-        'password': password,
-        'display_name': ?displayName,
-      },
-    );
-  }
-
   /// Changes what is given; a new [password] ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
@@ -409,47 +375,6 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'aliases', '$id']);
   }
 
-  /// Needs `users:read`.
-  Future<OffsetPage<AdminUser>> adminUsers({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'admin-users'], AdminUser.fromJson, offset, limit);
-
-  /// Every role there is. Needs `users:read`.
-  Future<List<AdminRole>> roles() async =>
-      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
-
-  /// Needs `users:write`.
-  Future<void> createAdminUser({
-    required String username,
-    required String password,
-    List<int> roleIds = const [],
-  }) async {
-    await _authed(
-      'POST',
-      ['admin', 'admin-users'],
-      body: {'username': username, 'password': password, 'role_ids': roleIds},
-    );
-  }
-
-  /// Changes what is given. A new password, roles, or turning it off ends
-  /// the user's sessions. Needs `users:write`.
-  Future<void> updateAdminUser(
-    int id, {
-    bool? active,
-    String? password,
-    List<int>? roleIds,
-  }) async {
-    await _authed(
-      'PUT',
-      ['admin', 'admin-users', '$id'],
-      body: {'active': ?active, 'password': ?password, 'role_ids': ?roleIds},
-    );
-  }
-
-  /// Needs `users:delete`.
-  Future<void> deleteAdminUser(int id) async {
-    await _authed('DELETE', ['admin', 'admin-users', '$id']);
-  }
-
   /// The server at a glance. Any admin may read it today; the app shows it
   /// with `observability:read`, where the server's design puts it.
   Future<ServerStats> stats() async =>
@@ -499,17 +424,6 @@ class RestmailClient {
     offset,
     limit,
     {'status': ?status?.name, 'recipient': ?recipient},
-  );
-
-  /// What was done on the server, newest first. Needs `users:read`.
-  Future<OffsetPage<ActivityEntry>> activityLog({
-    int offset = 0,
-    int limit = 50,
-  }) => _offsetPage(
-    ['admin', 'logs', 'activity'],
-    ActivityEntry.fromJson,
-    offset,
-    limit,
   );
 
   /// How the message stored as [messageId] went through the filters. Throws
@@ -660,40 +574,6 @@ class RestmailClient {
     ),
   );
 
-  /// Needs `mailboxes:read`.
-  Future<OffsetPage<WebmailAccount>> webmailAccounts({
-    int offset = 0,
-    int limit = 100,
-  }) => _offsetPage(
-    ['admin', 'webmail-accounts'],
-    WebmailAccount.fromJson,
-    offset,
-    limit,
-  );
-
-  Future<WebmailAccount> webmailAccount(int id) async =>
-      WebmailAccount.fromJson(
-        _data(await _authed('GET', ['admin', 'webmail-accounts', '$id'])),
-      );
-
-  /// Makes the webmail account a mailbox would get at its first sign-in.
-  /// Throws [ApiException] 409 when it has one. Needs `mailboxes:write`.
-  Future<WebmailAccount> createWebmailAccount(int mailboxId) async =>
-      WebmailAccount.fromJson(
-        _data(
-          await _authed(
-            'POST',
-            ['admin', 'webmail-accounts'],
-            body: {'primary_mailbox_id': mailboxId},
-          ),
-        ),
-      );
-
-  /// Needs `mailboxes:delete`.
-  Future<void> deleteWebmailAccount(int id) async {
-    await _authed('DELETE', ['admin', 'webmail-accounts', '$id']);
-  }
-
   /// The senders on one of [domainId]'s lists, newest first. Needs
   /// `domains:read`.
   Future<List<SenderRule>> senderRules(int domainId, SenderList list) async =>
@@ -784,12 +664,19 @@ class RestmailClient {
   Future<List<Account>> accounts() async =>
       _list(await _authed('GET', ['accounts']), Account.fromJson);
 
-  /// Adds another mailbox on this server to the session, proving access to it
-  /// with its own password.
-  Future<Account> linkAccount({
+  /// Creates an account on a domain this server hosts, owned by this one:
+  /// the session gets the owner grant on it, so it is listed in [accounts]
+  /// at once, readable and sendable. Without [password] the new account has
+  /// no credentials, and is reached only through its owners.
+  ///
+  /// Needs `mailboxes:write` covering the address's domain; without it the
+  /// server answers 403. It answers 409 when the address is taken, and 422
+  /// for a bad address, a domain it doesn't host, or a password under 12
+  /// characters.
+  Future<Account> createAccount({
     required String address,
-    required String password,
     String? displayName,
+    String? password,
   }) async => Account.fromJson(
     _data(
       await _authed(
@@ -797,14 +684,50 @@ class RestmailClient {
         ['accounts'],
         body: {
           'address': address,
-          'password': password,
           'display_name': ?displayName,
+          'password': ?password,
         },
       ),
     ),
   );
 
-  /// Removes a linked mailbox from the session. The primary one cannot be.
+  /// Links an existing account on this server to this one, proving one of
+  /// its passwords, and its second factor when it has one: the same proof as
+  /// signing in to it.
+  ///
+  /// A refused link is 403, never 401: the secrets are the other account's,
+  /// so this session is neither renewed nor ended, and nothing is sent
+  /// twice. Throws [TotpRequiredException] when the password was right but
+  /// the account has two-factor authentication; call again with [totpCode]
+  /// or [recoveryCode]. `invalid_credentials` is a wrong address or
+  /// password, `invalid_totp` a wrong code, and `setup_required` an account
+  /// that has yet to choose its own password; 409 is one already linked, or
+  /// this session's own.
+  Future<Account> linkAccount({
+    required String address,
+    required String password,
+    String? displayName,
+    String? totpCode,
+    String? recoveryCode,
+  }) async => Account.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['accounts', 'link'],
+        body: {
+          'address': address,
+          'password': password,
+          'display_name': ?displayName,
+          if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+          if (recoveryCode != null && recoveryCode.isNotEmpty)
+            'recovery_code': recoveryCode,
+        },
+      ),
+    ),
+  );
+
+  /// Gives up this session's access to an account it created or linked. Its
+  /// own account cannot be unlinked.
   Future<void> unlinkAccount(int id) async {
     await _authed('DELETE', ['accounts', '$id']);
   }
@@ -820,9 +743,8 @@ class RestmailClient {
 
   // ── App passwords ────────────────────────────────────────────────────
   //
-  // Only for the session's own mailbox: [accountId] is its primary account,
-  // never one it has linked. A server from before app passwords (REST Mail
-  // 0.10.0) has none of these routes and answers 404.
+  // For the session's own account, or one it owns (created or linked):
+  // [accountId] is either. Any other is answered 404.
 
   /// The mailbox's app passwords, newest first. Revoked ones are gone;
   /// expired ones stay until they are revoked.
@@ -834,13 +756,14 @@ class RestmailClient {
   /// Makes an app password and returns it with its secret, which the server
   /// shows this once.
   ///
-  /// [password] is the mailbox's current password, entered again. Without it
-  /// the server answers 401 `reauth_required`, and with a wrong one 401
-  /// `invalid_password`: refusals of this request, not of the session, so
-  /// they are thrown as they are, never renewing or ending the session. It
-  /// also answers 403 `two_factor_required` when the mailbox has two-factor
-  /// authentication and this session's sign-in didn't take it, and 429 when
-  /// sign-in's budget, which it shares, is spent.
+  /// [password] is the session's own current password, entered again, even
+  /// for an account it owns. Without it the server answers 403
+  /// `reauth_required`, and with a wrong one 403 `invalid_password`:
+  /// refusals of this request, not of the session, so they never renew or
+  /// end the session. It also answers 403
+  /// `two_factor_required` when the session's account has two-factor
+  /// authentication and its sign-in didn't take it, and 429 when sign-in's
+  /// budget, which it shares, is spent.
   Future<NewAppPassword> createAppPassword(
     int accountId, {
     required String name,
@@ -856,7 +779,6 @@ class RestmailClient {
         if (expiresAt != null)
           'expires_at': expiresAt.toUtc().toIso8601String(),
       },
-      ownRefusals: const {'reauth_required', 'invalid_password'},
     );
     try {
       return NewAppPassword.fromJson(_data(response));
@@ -1112,13 +1034,8 @@ class RestmailClient {
   /// server says the access token is no longer good.
   ///
   /// Only a refused renewal ends the session. A 401 that comes back even with
-  /// a fresh token is the request's own refusal — linking a mailbox with the
-  /// wrong password answers 401 — and is reported like any other error.
-  ///
-  /// A 401 whose code is in [ownRefusals] is known to be the request's own
-  /// before any renewal, and is reported straight away: renewing would spend
-  /// a refresh token, and sending it again would count twice against a
-  /// throttle.
+  /// a fresh token is the request's own refusal, and is reported like any
+  /// other error.
   Future<http.Response> _authed(
     String method,
     List<String> path, {
@@ -1126,7 +1043,6 @@ class RestmailClient {
     Object? body,
     String accept = 'application/json',
     Duration? timeout,
-    Set<String> ownRefusals = const {},
   }) async {
     final uri = _uri(path, query);
     Future<http.Response> attempt(SessionTokens tokens) => _send(
@@ -1140,8 +1056,7 @@ class RestmailClient {
 
     final sentWith = await _currentTokens();
     var response = await attempt(sentWith);
-    if (response.statusCode == 401 &&
-        !ownRefusals.contains(_error(response).code)) {
+    if (response.statusCode == 401) {
       // Another request may already have renewed the session.
       final latest = _tokens;
       final renewed =

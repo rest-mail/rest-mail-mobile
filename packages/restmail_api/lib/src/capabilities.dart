@@ -8,7 +8,7 @@
 class Capabilities {
   const Capabilities(this.names);
 
-  /// What a mailbox session, or an admin still in setup, holds.
+  /// What an account holding no admin grant, or one still in setup, holds.
   static const none = Capabilities({});
 
   /// Reads the `capabilities` array of a sign-in or refresh. Missing means

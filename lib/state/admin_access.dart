@@ -3,9 +3,8 @@ import 'package:restmail_api/restmail_api.dart';
 /// A part of the server's administration, and the capabilities it takes: one
 /// to see it, one to change what is in it, one to delete. This table is the
 /// only place the app decides who sees what in Administration, by the
-/// server's capability names. The screens ask [AdminAccess]; where the
-/// capabilities come from (an admin user's sign-in today, a mailbox's grants
-/// after rest-mail-server#347) does not matter to them.
+/// server's capability names. The screens ask [AdminAccess]; the
+/// capabilities come with the account's session, from the grants it holds.
 ///
 /// Hiding is for comfort: the server checks every request, and the app shows
 /// its 403 for what it is.
@@ -39,21 +38,6 @@ enum AdminSection {
     delete: Capability.mailboxesDelete,
   ),
 
-  /// The server keeps webmail accounts with mailboxes, under `mailboxes:*`.
-  webmailAccounts(
-    'Webmail accounts',
-    'Webmail sign-ins and their linked mailboxes',
-    read: Capability.mailboxesRead,
-    write: Capability.mailboxesWrite,
-    delete: Capability.mailboxesDelete,
-  ),
-  users(
-    'Administrators',
-    'Who runs this server, and their roles',
-    read: Capability.usersRead,
-    write: Capability.usersWrite,
-    delete: Capability.usersDelete,
-  ),
   bans(
     'Bans',
     'Addresses kept out of SMTP, IMAP and POP3',
@@ -74,11 +58,11 @@ enum AdminSection {
     group: AdminGroup.logs,
   ),
 
-  /// The server gives its activity log to whoever may see its admins.
+  /// What went through, from the audit log, so under `audit:read` too.
   activity.readOnly(
     'Activity',
-    'What was changed on the server, and by whom',
-    read: Capability.usersRead,
+    'What was done on the server, and by whom',
+    read: Capability.auditRead,
     group: AdminGroup.logs,
   ),
   trace.readOnly(
@@ -212,7 +196,7 @@ enum AdminSection {
 
 /// Where a section sits in Administration, under its heading.
 enum AdminGroup {
-  /// Mail, the people who run the server, and bans: what a phone is for.
+  /// Mail, the people who have it, and bans: what a phone is for.
   manage(null),
   logs('Logs and reports'),
   setup('Signing and filtering'),

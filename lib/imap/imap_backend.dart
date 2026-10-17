@@ -1169,7 +1169,6 @@ class ImapBackend implements MailBackend {
   Future<List<Account>> accounts() async => [
     Account(
       id: accountId,
-      mailboxId: accountId,
       address: address,
       displayName: displayName,
       isPrimary: true,
@@ -1184,6 +1183,8 @@ class ImapBackend implements MailBackend {
     required String address,
     required String password,
     String? displayName,
+    String? totpCode,
+    String? recoveryCode,
   }) => throw const ApiException(
     400,
     'not_supported',
