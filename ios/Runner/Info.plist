@@ -67,6 +67,13 @@
 			</array>
 		</dict>
 	</dict>
+	<!-- A push from REST Mail says only that there is mail to fetch: iOS
+	     wakes the app to fetch it over the API and post the notification
+	     itself (lib/push). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Push, for new mail (rest-mail-mobile#8). A debug build from Xcode
+	     gets sandbox tokens. An App Store or TestFlight build takes
+	     "production" from its provisioning profile, and won't sign until
+	     that profile has Push Notifications on. -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<!-- https://rest-mail.com/setup#server=…&username=…&password=…, the
 	     installer's QR code, opens the app, not Safari. Apple
 	     checks https://rest-mail.com/.well-known/apple-app-site-association,

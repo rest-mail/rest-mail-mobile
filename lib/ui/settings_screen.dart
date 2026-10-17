@@ -3,16 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../push/push_service.dart';
 import '../state/admin_access.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
+import '../state/push_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import '../version.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'push_offer.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
@@ -157,6 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 22),
                     ],
+                    _NotificationsSection(app: app),
                     const SectionLabel('General'),
                     const SizedBox(height: 9),
                     RmGroup(
@@ -219,6 +223,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+/// New mail notifications, once this phone can have them and a server can
+/// send them; until then, not a word.
+class _NotificationsSection extends StatelessWidget {
+  const _NotificationsSection({required this.app});
+
+  final AppState app;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: app.push,
+    builder: (context, _) {
+      final c = context.rm;
+      final push = app.push;
+      if (!push.available) return const SizedBox.shrink();
+      final notes = [
+        for (final account in app.accounts)
+          if (account is RestAccount &&
+              push.statusOf(account) == PushStatus.unsupported)
+            "${account.address}: its server doesn't send notifications yet.",
+        if (app.accounts.any((a) => a is ImapAccount)) notificationsImapNote,
+      ];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('Notifications'),
+          const SizedBox(height: 9),
+          RmGroup(
+            children: [
+              RmRow(
+                label: 'New mail',
+                subtitle: push.permission == NotificationPermission.denied
+                    ? "Turned off for REST Mail in the iPhone's Settings, "
+                          'under Notifications.'
+                    : 'Only a signal goes through Apple. The app fetches '
+                          'the mail from your server itself.',
+                trailing: RmSwitch(
+                  label: 'New mail notifications',
+                  value: push.enabled,
+                  onChanged: (on) =>
+                      unawaited(on ? push.enable() : push.disable()),
+                ),
+              ),
+            ],
+          ),
+          for (final note in notes)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+              child: Text(note, style: rmText(12, color: c.ink3, height: 1.4)),
+            ),
+          const SizedBox(height: 22),
+        ],
+      );
+    },
+  );
 }
 
 class _AccountRow extends StatelessWidget {
