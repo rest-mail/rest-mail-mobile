@@ -12,6 +12,7 @@ import '../util/format.dart';
 import '../version.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
+import 'app_passwords_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
@@ -382,6 +383,15 @@ class _AccountScreenState extends State<AccountScreen> {
     final account = widget.account;
     final host = widget.mailbox.backend.host;
     final quota = _quota;
+    // App passwords are a REST Mail mailbox's, made by its own session: not
+    // a linked mailbox's, and not an IMAP account's.
+    final session = switch (AppScope.of(context).current) {
+      final RestAccount rest
+          when account.isPrimary &&
+              identical(rest.backend, widget.mailbox.backend) =>
+        rest,
+      _ => null,
+    };
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -444,6 +454,24 @@ class _AccountScreenState extends State<AccountScreen> {
                     ],
                   ),
                   const SizedBox(height: 22),
+                  if (session != null) ...[
+                    RmGroup(
+                      children: [
+                        RmRow(
+                          label: 'App passwords',
+                          subtitle: 'For mail apps and automations',
+                          onTap: () => _push(
+                            context,
+                            AppPasswordsScreen(
+                              account: session,
+                              mailbox: account,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                  ],
                   RmGroup(
                     children: [
                       RmRow(
