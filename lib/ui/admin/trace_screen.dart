@@ -11,7 +11,7 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _outcomeLabel(String outcome) => switch (outcome) {
+String traceOutcomeLabel(String outcome) => switch (outcome) {
   'delivered' => 'Delivered',
   'queued' => 'Sent on its way',
   'rejected' => 'Turned away',
@@ -21,7 +21,25 @@ String _outcomeLabel(String outcome) => switch (outcome) {
   _ => outcome,
 };
 
-String _actionLabel(String action) => switch (action) {
+/// Why mail was turned away, held or put off, from the server's reason
+/// code.
+String reasonLabel(String code) => switch (code) {
+  'spam_threshold' => 'Scored as spam',
+  'dmarc_reject' => 'Failed DMARC',
+  'dmarc_quarantine' => 'Failed DMARC, held',
+  'spf_fail' => 'Failed SPF',
+  'greylist_defer' => 'Greylisted',
+  'size_exceeded' => 'Too large',
+  'rate_limited' => 'Sent too fast',
+  'virus_detected' => 'Carried a virus',
+  'recipient_unknown' => 'No such recipient',
+  'header_invalid' => 'Broken headers',
+  'custom_reject' => 'Turned away by a filter',
+  'other' => 'Other',
+  _ => code,
+};
+
+String traceActionLabel(String action) => switch (action) {
   'continue' => 'Passed',
   'reject' => 'Turned away',
   'quarantine' => 'Quarantined',
@@ -161,7 +179,6 @@ class _MessageTraceScreenState extends State<MessageTraceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.rm;
     final trace = _trace, error = _error;
     return AdminPage(
       account: widget.account,
@@ -186,65 +203,77 @@ class _MessageTraceScreenState extends State<MessageTraceScreen> {
             ),
           );
         }
-        final score = trace.spamScore;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
-          children: [
-            RmGroup(
-              children: [
-                RmRow(label: 'Outcome', value: _outcomeLabel(trace.outcome)),
-                if (trace.reasonCode.isNotEmpty)
-                  RmRow(label: 'Why', value: trace.reasonCode),
-                RmRow(
-                  label: 'Direction',
-                  value: trace.direction == 'inbound'
-                      ? 'Coming in'
-                      : 'Going out',
-                ),
-                if (trace.mailFrom.isNotEmpty)
-                  RmRow(label: 'From', value: trace.mailFrom),
-                if (trace.rcptTo.isNotEmpty)
-                  RmRow(label: 'To', value: trace.rcptTo),
-                if (trace.clientIp.isNotEmpty)
-                  RmRow(label: 'Sent by', value: trace.clientIp),
-                if (trace.transport.isNotEmpty)
-                  RmRow(
-                    label: 'Over',
-                    value: trace.transport == 'tls' ? 'TLS' : 'No encryption',
-                  ),
-                if (score != null)
-                  RmRow(label: 'Spam score', value: score.toStringAsFixed(1)),
-                RmRow(label: 'Took', value: '${trace.durationMs} ms'),
-                RmRow(label: 'When', value: longDate(trace.createdAt)),
-              ],
-            ),
-            if (trace.stages.isNotEmpty) ...[
-              const SizedBox(height: 22),
-              const SectionLabel('Filters, in order'),
-              const SizedBox(height: 9),
-              RmGroup(
-                children: [
-                  for (final stage in trace.stages)
-                    RmRow(
-                      label: stage.filter,
-                      subtitle: _stageNote(stage),
-                      value: stage.skipped ? null : _actionLabel(stage.action),
-                    ),
-                ],
-              ),
-            ],
-            if (trace.rfcMessageId.isNotEmpty) ...[
-              const SizedBox(height: 22),
-              const SectionLabel('Message-ID'),
-              const SizedBox(height: 9),
-              SelectableText(
-                trace.rfcMessageId,
-                style: rmText(13, color: c.ink2, height: 1.45),
-              ),
-            ],
-          ],
-        );
+        return TraceDetails(trace: trace);
       },
+    );
+  }
+}
+
+/// How one message went through the filters: where it came from, how it
+/// ended, and each step on the way.
+class TraceDetails extends StatelessWidget {
+  const TraceDetails({super.key, required this.trace});
+
+  final MessageTrace trace;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final score = trace.spamScore;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+      children: [
+        RmGroup(
+          children: [
+            RmRow(label: 'Outcome', value: traceOutcomeLabel(trace.outcome)),
+            if (trace.reasonCode.isNotEmpty)
+              RmRow(label: 'Why', value: reasonLabel(trace.reasonCode)),
+            RmRow(
+              label: 'Direction',
+              value: trace.direction == 'inbound' ? 'Coming in' : 'Going out',
+            ),
+            if (trace.mailFrom.isNotEmpty)
+              RmRow(label: 'From', value: trace.mailFrom),
+            if (trace.rcptTo.isNotEmpty)
+              RmRow(label: 'To', value: trace.rcptTo),
+            if (trace.clientIp.isNotEmpty)
+              RmRow(label: 'Sent by', value: trace.clientIp),
+            if (trace.transport.isNotEmpty)
+              RmRow(
+                label: 'Over',
+                value: trace.transport == 'tls' ? 'TLS' : 'No encryption',
+              ),
+            if (score != null)
+              RmRow(label: 'Spam score', value: score.toStringAsFixed(1)),
+            RmRow(label: 'Took', value: '${trace.durationMs} ms'),
+            RmRow(label: 'When', value: longDate(trace.createdAt)),
+          ],
+        ),
+        if (trace.stages.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          const SectionLabel('Filters, in order'),
+          const SizedBox(height: 9),
+          RmGroup(
+            children: [
+              for (final stage in trace.stages)
+                RmRow(
+                  label: stage.filter,
+                  subtitle: _stageNote(stage),
+                  value: stage.skipped ? null : traceActionLabel(stage.action),
+                ),
+            ],
+          ),
+        ],
+        if (trace.rfcMessageId.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          const SectionLabel('Message-ID'),
+          const SizedBox(height: 9),
+          SelectableText(
+            trace.rfcMessageId,
+            style: rmText(13, color: c.ink2, height: 1.45),
+          ),
+        ],
+      ],
     );
   }
 }

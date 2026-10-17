@@ -84,13 +84,17 @@ class FakeRestmail {
   final _certificates = <int, FakeCertificate>{};
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
+  final _senderRules = <int, FakeSenderRule>{};
+  final _webmailAccounts = <int, FakeWebmailAccount>{};
   final _audit = <FakeAuditEntry>[];
 
   /// Read-only records, kept as the server answers them: newest first, and
-  /// traces by the message they are for.
+  /// traces by the message they are for. [_traceLog] has every trace, those
+  /// of mail that never became a message too.
   final _activity = <Map<String, Object?>>[];
   final _tlsReports = <Map<String, Object?>>[];
   final _traces = <int, Map<String, Object?>>{};
+  final _traceLog = <Map<String, Object?>>[];
   final _admins = <String, _FakeAdmin>{};
   final _adminAccessTokens = <String, _AdminGrant>{};
   final _adminRefreshTokens = <String, _FakeAdmin>{};
@@ -98,7 +102,8 @@ class FakeRestmail {
   var _nextId = 1;
   var _nextMailboxId = 1;
 
-  /// For domains, aliases, queue entries and admins.
+  /// For domains, aliases, queue entries, admins and the other admin
+  /// records.
   var _nextRowId = 1;
   var _nextEventId = 0;
   var _nextToken = 0;
@@ -275,6 +280,8 @@ class FakeRestmail {
   List<FakeCertificate> get certificates => [..._certificates.values];
   List<FakePipeline> get pipelines => [..._pipelines.values];
   List<FakeCustomFilter> get customFilters => [..._customFilters.values];
+  List<FakeSenderRule> get senderRules => [..._senderRules.values];
+  List<FakeWebmailAccount> get webmailAccounts => [..._webmailAccounts.values];
 
   /// The audit log, oldest first.
   List<FakeAuditEntry> get auditLog => [..._audit];
@@ -548,6 +555,8 @@ class FakeRestmail {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
     }
+    // As on the server, a mailbox's first sign-in makes its webmail account.
+    _webmailAccountOf(box);
     // The real server marks a session that took the second factor, and a
     // refresh keeps the mark; making an app password asks for it.
     return _issue(
@@ -670,6 +679,14 @@ class FakeRestmail {
       _fail(409, 'conflict', 'Account already linked');
     }
     session.linked.add(box.id);
+    _webmailAccountOf(_mailboxes[session.primary]!).linked.putIfAbsent(
+      box.id,
+      () => (
+        id: _nextRowId++,
+        displayName: body['display_name'] as String? ?? '',
+        at: _clock(),
+      ),
+    );
     return _json({'data': _account(box.id, session)}, status: 201);
   }
 
@@ -678,8 +695,17 @@ class FakeRestmail {
       _fail(400, 'bad_request', 'The primary account cannot be unlinked');
     }
     session.linked.remove(box.id);
+    _webmailAccountOf(_mailboxes[session.primary]!).linked.remove(box.id);
     return _noContent();
   }
+
+  FakeWebmailAccount _webmailAccountOf(FakeMailbox box) =>
+      _webmailAccounts.values.where((a) => a.mailboxId == box.id).firstOrNull ??
+      (_webmailAccounts[_nextRowId] = FakeWebmailAccount(
+        id: _nextRowId++,
+        mailboxId: box.id,
+        createdAt: _clock(),
+      ));
 
   http.StreamedResponse _folders(FakeMailbox box) {
     final mine = _messages.values.where((m) => m.mailboxId == box.id).toList();
@@ -1182,8 +1208,8 @@ class FakeRestmail {
         lastError: error,
         createdAt: now.subtract(age),
       );
-      _traces[entry.messageId!] = _traceJson(
-        messageId: entry.messageId!,
+      _addTrace(
+        messageId: entry.messageId,
         direction: 'outbound',
         outcome: 'queued',
         from: entry.sender,
@@ -1213,7 +1239,7 @@ class FakeRestmail {
     final latest = messagesIn(dana.address, 'INBOX')
       ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
     if (latest.firstOrNull case final message?) {
-      _traces[message.id] = _traceJson(
+      _addTrace(
         messageId: message.id,
         direction: 'inbound',
         outcome: 'delivered',
@@ -1228,6 +1254,69 @@ class FakeRestmail {
           ('dmarc_check', 'continue', 'pass'),
           ('rspamd', 'continue', 'score 1.2'),
         ],
+      );
+    }
+    // Mail turned away or held, which never became a message: in the
+    // pipeline log, and in its analytics.
+    for (final (from, outcome, reason, stages, transport, age) in [
+      (
+        'promo@deals.test',
+        'rejected',
+        'spam_threshold',
+        [
+          ('size_check', 'continue', 'pass'),
+          ('spf_check', 'continue', 'pass'),
+          ('dmarc_check', 'continue', 'pass'),
+          ('rspamd', 'reject', 'score 14.2'),
+        ],
+        'tls',
+        const Duration(hours: 3),
+      ),
+      (
+        'billing@paypa1.test',
+        'rejected',
+        'dmarc_reject',
+        [
+          ('size_check', 'continue', 'pass'),
+          ('spf_check', 'continue', 'fail'),
+          ('dmarc_check', 'reject', 'fail'),
+        ],
+        'plaintext',
+        const Duration(days: 1, hours: 2),
+      ),
+      (
+        'invoices@unknown.test',
+        'quarantined',
+        'other',
+        [
+          ('spf_check', 'continue', 'pass'),
+          ('dmarc_check', 'continue', 'pass'),
+          ('hold_invoices', 'quarantine', 'matched'),
+        ],
+        'tls',
+        const Duration(days: 2),
+      ),
+      (
+        'news@deals.test',
+        'rejected',
+        'custom_reject',
+        [
+          ('size_check', 'continue', 'pass'),
+          ('domain_allowlist', 'reject', 'blocked'),
+        ],
+        'tls',
+        const Duration(days: 4),
+      ),
+    ]) {
+      _addTrace(
+        direction: 'inbound',
+        outcome: outcome,
+        reasonCode: reason,
+        transport: transport,
+        from: from,
+        to: dana.address,
+        at: now.subtract(age),
+        stages: stages,
       );
     }
 
@@ -1346,6 +1435,35 @@ class FakeRestmail {
       },
     );
 
+    for (final (pattern, list, reason, age) in [
+      (
+        'ana@harbor.test',
+        'allow',
+        'A customer: never hold her mail',
+        const Duration(days: 5),
+      ),
+      ('@deals.test', 'block', 'Sends spam', const Duration(days: 2)),
+    ]) {
+      _senderRules[_nextRowId] = FakeSenderRule(
+        id: _nextRowId++,
+        domain: host,
+        pattern: pattern,
+        list: list,
+        reason: reason,
+        createdAt: now.subtract(age),
+      );
+    }
+    _domains[host]!.mtaSts = FakeMtaStsPolicy(
+      id: _nextRowId++,
+      mxHosts: 'mx.$host',
+    );
+    // Dana has signed in to webmail before; her other mailbox has not.
+    _webmailAccounts[_nextRowId] = FakeWebmailAccount(
+      id: _nextRowId++,
+      mailboxId: dana.id,
+      createdAt: now.subtract(const Duration(days: 6)),
+    );
+
     // A week of the audit log, oldest first: sign-ins, a few changes, and
     // someone guessing passwords.
     final start = now.subtract(const Duration(days: 7));
@@ -1423,45 +1541,55 @@ class FakeRestmail {
     }
   }
 
-  Map<String, Object?> _traceJson({
-    required int messageId,
+  /// Records how a message went through the filters, in the pipeline log
+  /// and, when it became one, by its message.
+  void _addTrace({
     required String direction,
     required String outcome,
     required String from,
     required String to,
     required DateTime at,
     required List<(String, String, String)> stages,
+    int? messageId,
     String transport = '',
-  }) => {
-    'id': _nextRowId++,
-    'message_id': messageId,
-    'rfc_message_id': '<$messageId@fake.restmail.test>',
-    'direction': direction,
-    'transport': transport,
-    'mail_from': from,
-    'rcpt_to': to,
-    'client_ip': direction == 'inbound' ? '198.51.100.20' : '',
-    'pipeline_id': 0,
-    'final_action': 'continue',
-    'outcome': outcome,
-    'reason_code': '',
-    'spam_score': direction == 'inbound' ? 1.2 : null,
-    'duration_ms': 18 * stages.length,
-    'stages': [
-      for (final (filter, action, result) in stages)
-        {
-          'filter_name': filter,
-          'filter_type': 'action',
-          'action': action,
-          'log': {'filter': filter, 'result': result},
-          // Go writes a time.Duration as nanoseconds, whatever the name.
-          'duration_ms': 18000000,
-        },
-    ],
-    'sampled': true,
-    'created_at': _time(at),
-    'expires_at': null,
-  };
+    String reasonCode = '',
+  }) {
+    final id = _nextRowId++;
+    final trace = {
+      'id': id,
+      'message_id': messageId,
+      'rfc_message_id': '<${messageId ?? 'trace-$id'}@fake.restmail.test>',
+      'direction': direction,
+      'transport': transport,
+      'mail_from': from,
+      'rcpt_to': to,
+      'client_ip': direction == 'inbound' ? '198.51.100.20' : '',
+      'pipeline_id': 0,
+      'final_action': stages.lastOrNull?.$2 ?? 'continue',
+      'outcome': outcome,
+      'reason_code': reasonCode,
+      'spam_score': direction == 'inbound'
+          ? (reasonCode == 'spam_threshold' ? 14.2 : 1.2)
+          : null,
+      'duration_ms': 18 * stages.length,
+      'stages': [
+        for (final (filter, action, result) in stages)
+          {
+            'filter_name': filter,
+            'filter_type': 'action',
+            'action': action,
+            'log': {'filter': filter, 'result': result},
+            // Go writes a time.Duration as nanoseconds, whatever the name.
+            'duration_ms': 18000000,
+          },
+      ],
+      'sampled': true,
+      'created_at': _time(at),
+      'expires_at': null,
+    };
+    _traceLog.add(trace);
+    if (messageId != null) _traces[messageId] = trace;
+  }
 
   FakeMailbox _addMailbox(
     String address,
@@ -1963,6 +2091,68 @@ class FakeRestmail {
         }
         _domains.remove(domain.name);
         return _noContent();
+      case ('GET', ['domains', final id, 'dns']):
+        need('domains:read');
+        return _json({'data': _dnsCheck(_domain(id))});
+
+      case ('GET', ['domains', final id, final list])
+          when list == 'allowlist' || list == 'blocklist':
+        need('domains:read');
+        final domainId = int.tryParse(id);
+        return _json({
+          'data': [
+            for (final rule
+                in _senderRules.values.toList()
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
+              if (rule.list == _listType(list) &&
+                  _domains[rule.domain]?.id == domainId)
+                _senderRuleJson(rule),
+          ],
+        });
+      case ('POST', ['domains', final id, final list])
+          when list == 'allowlist' || list == 'blocklist':
+        need('domains:write');
+        return _addSenderRule(id, _listType(list), _object(bytes));
+      case ('DELETE', ['domains', final id, final list, final ruleId])
+          when list == 'allowlist' || list == 'blocklist':
+        need('domains:write');
+        final type = _listType(list);
+        final rule = _senderRules[int.tryParse(ruleId)];
+        if (rule == null ||
+            rule.list != type ||
+            _domains[rule.domain]?.id != int.tryParse(id)) {
+          _fail(
+            404,
+            'not_found',
+            '${type == 'allow' ? 'Allowlist' : 'Blocklist'} rule not found',
+          );
+        }
+        _senderRules.remove(rule.id);
+        return _noContent();
+
+      case ('GET', ['domains', final id, 'mta-sts']):
+        need('domains:read');
+        final domain = _domains.values
+            .where((d) => d.id == int.tryParse(id))
+            .firstOrNull;
+        if (domain == null) _fail(404, 'not_found', 'Domain not found');
+        final policy =
+            domain.mtaSts ??
+            _fail(404, 'not_found', 'No MTA-STS policy found for this domain');
+        return _json({'data': _mtaStsJson(domain, policy)});
+      case ('PUT', ['domains', final id, 'mta-sts']):
+        need('domains:write');
+        return _setMtaSts(id, _object(bytes));
+      case ('DELETE', ['domains', final id, 'mta-sts']):
+        need('domains:write');
+        final domain = _domains.values
+            .where((d) => d.id == int.tryParse(id))
+            .firstOrNull;
+        if (domain?.mtaSts == null) {
+          _fail(404, 'not_found', 'No MTA-STS policy found for this domain');
+        }
+        domain!.mtaSts = null;
+        return _noContent();
 
       case ('GET', ['mailboxes']):
         need('mailboxes:read');
@@ -2019,6 +2209,48 @@ class FakeRestmail {
       case ('DELETE', ['aliases', final id]):
         need('mailboxes:delete');
         _aliases.remove(_alias(id).id);
+        return _noContent();
+
+      case ('GET', ['webmail-accounts']):
+        need('mailboxes:read');
+        return _listPage(
+          _webmailAccounts.values.toList()
+            ..sort((a, b) => a.id.compareTo(b.id)),
+          query,
+          _webmailAccountJson,
+        );
+      case ('POST', ['webmail-accounts']):
+        need('mailboxes:write');
+        final mailboxId = _object(bytes)['primary_mailbox_id'];
+        if (mailboxId is! int || mailboxId == 0) {
+          _fail(
+            422,
+            'validation_failed',
+            'Request body failed validation',
+            fields: {'primary_mailbox_id': 'required'},
+          );
+        }
+        final box =
+            _mailboxes[mailboxId] ??
+            _fail(404, 'mailbox_not_found', 'Mailbox not found');
+        if (_webmailAccounts.values.any((a) => a.mailboxId == box.id)) {
+          _fail(
+            409,
+            'already_exists',
+            'Webmail account already exists for this mailbox',
+          );
+        }
+        // Go leaves out the links of a new one: they are not loaded.
+        return _json({
+          'data': _webmailAccountJson(_webmailAccountOf(box))
+            ..remove('linked_accounts'),
+        }, status: 201);
+      case ('GET', ['webmail-accounts', final id]):
+        need('mailboxes:read');
+        return _json({'data': _webmailAccountJson(_webmailAccount(id))});
+      case ('DELETE', ['webmail-accounts', final id]):
+        need('mailboxes:delete');
+        _webmailAccounts.remove(_webmailAccount(id).id);
         return _noContent();
 
       case ('GET', ['admin-users']):
@@ -2139,6 +2371,25 @@ class FakeRestmail {
           _fail(404, 'not_found', 'Certificate not found');
         }
         return _noContent();
+
+      case ('GET', ['pipelines', 'logs']):
+        need('pipelines:read');
+        final direction = query['direction'], outcome = query['outcome'];
+        return _listPage(
+          _traceLog
+              .where(
+                (t) =>
+                    (direction == null || t['direction'] == direction) &&
+                    (outcome == null || t['outcome'] == outcome),
+              )
+              .toList()
+            ..sort((a, b) => _createdAt(b).compareTo(_createdAt(a))),
+          query,
+          (t) => t,
+        );
+      case ('GET', ['pipelines', 'analytics']):
+        need('observability:read');
+        return _json({'data': _pipelineAnalytics(query['window'])});
 
       case ('GET', ['pipelines']):
         need('pipelines:read');
@@ -2328,6 +2579,279 @@ class FakeRestmail {
     'domain': _noDomain,
   };
 
+  Map<String, Object?> _senderRuleJson(FakeSenderRule r) => {
+    'id': r.id,
+    'domain_id': _domains[r.domain]?.id ?? 0,
+    'pattern': r.pattern,
+    'list_type': r.list,
+    if (r.reason.isNotEmpty) 'reason': r.reason,
+    'created_at': _time(r.createdAt),
+  };
+
+  Map<String, Object?> _mtaStsJson(FakeDomain d, FakeMtaStsPolicy p) => {
+    'id': p.id,
+    'domain_id': d.id,
+    'mode': p.mode,
+    'mx_hosts': p.mxHosts,
+    'max_age': p.maxAge,
+    'active': p.active,
+    'created_at': _time(_clock()),
+    'updated_at': _time(_clock()),
+    'domain': _noDomain,
+  };
+
+  Map<String, Object?> _webmailAccountJson(FakeWebmailAccount a) => {
+    'id': a.id,
+    'primary_mailbox_id': a.mailboxId,
+    'created_at': _time(a.createdAt),
+    'updated_at': _time(a.createdAt),
+    'primary_mailbox': {
+      ..._mailboxJson(_mailboxes[a.mailboxId]!),
+      'domain': _noDomain,
+    },
+    // Go leaves out an empty list here.
+    if (a.linked.isNotEmpty)
+      'linked_accounts': [
+        for (final MapEntry(key: mailboxId, value: link) in a.linked.entries)
+          {
+            'id': link.id,
+            'webmail_account_id': a.id,
+            'mailbox_id': mailboxId,
+            'display_name': link.displayName,
+            'created_at': _time(link.at),
+            'webmail_account': {'id': 0, 'primary_mailbox_id': 0},
+            'mailbox': {
+              ..._mailboxJson(_mailboxes[mailboxId]!),
+              'domain': _noDomain,
+            },
+          },
+      ],
+  };
+
+  DateTime _createdAt(Map<String, Object?> record) =>
+      DateTime.parse(record['created_at']! as String);
+
+  /// `allow` or `block`, from the route's `allowlist` or `blocklist`.
+  static String _listType(String route) =>
+      route == 'allowlist' ? 'allow' : 'block';
+
+  FakeWebmailAccount _webmailAccount(String id) =>
+      _webmailAccounts[int.tryParse(id)] ??
+      _fail(404, 'not_found', 'Webmail account not found');
+
+  http.StreamedResponse _addSenderRule(
+    String id,
+    String list,
+    Map<String, dynamic> body,
+  ) {
+    final pattern = body['pattern'] as String? ?? '';
+    if (pattern.isEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'pattern': 'required'},
+      );
+    }
+    final domain = _domain(id);
+    final name = list == 'allow' ? 'allowlist' : 'blocklist';
+    // The server's unique index refuses the same sender twice, and its
+    // handler reports that as a failure of its own.
+    if (_senderRules.values.any(
+      (r) => r.domain == domain.name && r.list == list && r.pattern == pattern,
+    )) {
+      _fail(500, 'internal_error', 'Failed to create $name rule');
+    }
+    final rule = _senderRules[_nextRowId] = FakeSenderRule(
+      id: _nextRowId++,
+      domain: domain.name,
+      pattern: pattern,
+      list: list,
+      reason: body['reason'] as String? ?? '',
+      createdAt: _clock(),
+    );
+    return _json({'data': _senderRuleJson(rule)}, status: 201);
+  }
+
+  /// The server's upsert: what is left out or empty stays as it was, and a
+  /// new policy starts in testing, for a week.
+  http.StreamedResponse _setMtaSts(String id, Map<String, dynamic> body) {
+    final domain =
+        _domains.values.where((d) => d.id == int.tryParse(id)).firstOrNull ??
+        _fail(404, 'not_found', 'Domain not found');
+    final mode = body['mode'] as String? ?? '';
+    if (mode.isNotEmpty &&
+        !const {'none', 'testing', 'enforce'}.contains(mode)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'mode': 'Must be one of: none, testing, enforce'},
+      );
+    }
+    final maxAge = body['max_age'] as int?;
+    if (maxAge != null && maxAge < 0) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'max_age': 'Must be a non-negative integer (seconds)'},
+      );
+    }
+    final created = domain.mtaSts == null;
+    final policy = domain.mtaSts ??= FakeMtaStsPolicy(id: _nextRowId++);
+    if (mode.isNotEmpty) policy.mode = mode;
+    if (body['mx_hosts'] case final String hosts when hosts.isNotEmpty) {
+      policy.mxHosts = hosts;
+    }
+    if (maxAge != null) policy.maxAge = maxAge;
+    if (body['active'] case final bool active) policy.active = active;
+    return _json({
+      'data': _mtaStsJson(domain, policy),
+    }, status: created ? 201 : 200);
+  }
+
+  /// What the fake's DNS holds: the sample host is set up, Oakline only
+  /// half, and a domain added since not at all.
+  static Map<String, String> _publishedDns(String domain) {
+    if (domain == FakeAccounts.host) {
+      return {
+        'MX': 'mx.$domain. (pri 10)',
+        'SPF': 'v=spf1 mx -all',
+        'DMARC': 'v=DMARC1; p=quarantine; rua=mailto:dmarc@$domain',
+        'DKIM':
+            'v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA',
+        'MTA-STS': 'v=STSv1; id=20261001',
+        'TLS-RPT': 'v=TLSRPTv1; rua=mailto:tls-reports@$domain',
+      };
+    }
+    if (domain == FakeAccounts.otherEmail.split('@').last) {
+      return {
+        'MX': 'mx.${FakeAccounts.host}. (pri 10)',
+        'SPF': 'v=spf1 mx ~all',
+      };
+    }
+    return const {};
+  }
+
+  /// The server's DNS check, record by record, with its own wording.
+  Map<String, Object?> _dnsCheck(FakeDomain domain) {
+    final name = domain.name;
+    final published = _publishedDns(name);
+    final records = [
+      for (final (type, at, missing) in [
+        ('MX', name, 'No MX records found'),
+        ('SPF', name, 'No SPF record (v=spf1...) found in TXT records'),
+        ('DMARC', '_dmarc.$name', 'No DMARC record found'),
+        (
+          'DKIM',
+          'default._domainkey.$name',
+          'No DKIM record found for default selector',
+        ),
+        ('MTA-STS', '_mta-sts.$name', 'No MTA-STS TXT record found'),
+        ('TLS-RPT', '_smtp._tls.$name', 'No TLS-RPT TXT record found'),
+      ])
+        if (published[type] case final value?)
+          {'type': type, 'name': at, 'status': 'ok', 'value': value}
+        else
+          {'type': type, 'name': at, 'status': 'missing', 'message': missing},
+    ];
+    return {
+      'domain': name,
+      'records': records,
+      'summary': '${published.length}/${records.length} records verified',
+    };
+  }
+
+  /// The server's funnel over [window] (a Go duration in hours, a day by
+  /// default), counted here from the traces rather than from rollups. Go
+  /// writes the counts as floats, and an empty list as null.
+  Map<String, Object?> _pipelineAnalytics(String? window) {
+    final hours =
+        int.tryParse(RegExp(r'^(\d+)h$').firstMatch(window ?? '')?[1] ?? '') ??
+        24;
+    final until = _clock(), since = until.subtract(Duration(hours: hours));
+    final traces = _traceLog.where((t) => !_createdAt(t).isBefore(since));
+    final received = <String, double>{},
+        verdicts = <(String, String), double>{},
+        decisions = <(String, String), double>{},
+        outcomes = <(String, String), double>{},
+        reasons = <String, double>{};
+    void bump<K>(Map<K, double> counts, K key) =>
+        counts.update(key, (n) => n + 1, ifAbsent: () => 1);
+    for (final trace in traces) {
+      final direction = trace['direction']! as String;
+      if (direction == 'inbound') bump(received, trace['transport']! as String);
+      bump(outcomes, (direction, trace['outcome']! as String));
+      if (trace['outcome'] == 'rejected') {
+        bump(reasons, trace['reason_code']! as String);
+      }
+      for (final stage in trace['stages']! as List<Map<String, Object?>>) {
+        final filter = stage['filter_name']! as String;
+        bump(decisions, (filter, stage['action']! as String));
+        final mechanism = switch (filter) {
+          'spf_check' => 'spf',
+          'dkim_verify' => 'dkim',
+          'dmarc_check' => 'dmarc',
+          _ => null,
+        };
+        if (mechanism != null) {
+          final log = stage['log']! as Map<String, Object?>;
+          bump(verdicts, (mechanism, log['result']! as String));
+        }
+      }
+    }
+    List<Map<String, Object?>>? rows<K>(
+      Map<K, double> counts,
+      Map<String, Object?> Function(K key, double count) row,
+    ) => counts.isEmpty
+        ? null
+        : [
+            for (final MapEntry(:key, :value) in counts.entries)
+              row(key, value),
+          ];
+    int byPair((String, String) a, (String, String) b) =>
+        a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2);
+    Map<K, double> sorted<K>(Map<K, double> m, int Function(K, K) by) =>
+        Map.fromEntries(m.entries.toList()..sort((a, b) => by(a.key, b.key)));
+    return {
+      'window': {
+        'since': _time(since),
+        'until': _time(until),
+        'label': '${hours}h0m0s',
+      },
+      'funnel': {
+        'received': rows(
+          sorted(received, (a, b) => a.compareTo(b)),
+          (transport, n) => {'transport': transport, 'count': n},
+        ),
+        'auth_verdicts': rows(
+          sorted(verdicts, byPair),
+          (k, n) => {'mechanism': k.$1, 'result': k.$2, 'count': n},
+        ),
+        'stage_decisions': rows(
+          sorted(decisions, byPair),
+          (k, n) => {'filter': k.$1, 'action': k.$2, 'count': n},
+        ),
+        'terminal_outcomes': rows(
+          sorted(outcomes, byPair),
+          (k, n) => {'direction': k.$1, 'outcome': k.$2, 'count': n},
+        ),
+        // Most often first.
+        'top_reject_reasons': rows(
+          Map.fromEntries(
+            reasons.entries.toList()..sort(
+              (a, b) => a.value != b.value
+                  ? b.value.compareTo(a.value)
+                  : a.key.compareTo(b.key),
+            ),
+          ),
+          (reason, n) => {'reason_code': reason, 'count': n},
+        ),
+      },
+    };
+  }
+
   FakeQueueEntry _queueEntry(String id) =>
       _queue[int.tryParse(id)] ??
       _fail(404, 'not_found', 'Queue entry not found');
@@ -2445,6 +2969,10 @@ class FakeRestmail {
     }
     _messages.removeWhere((_, m) => m.mailboxId == box.id);
     _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
+    _webmailAccounts.removeWhere((_, a) => a.mailboxId == box.id);
+    for (final account in _webmailAccounts.values) {
+      account.linked.remove(box.id);
+    }
     _mailboxes.remove(box.id);
   }
 

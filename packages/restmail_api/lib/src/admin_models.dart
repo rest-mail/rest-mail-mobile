@@ -841,6 +841,336 @@ class CustomFilter {
   final DateTime? updatedAt;
 }
 
+/// What the filters did with the mail over a window of time: how it
+/// arrived, how senders fared on SPF, DKIM and DMARC, what each filter
+/// decided, how each message ended, and why mail was turned away.
+class PipelineAnalytics {
+  const PipelineAnalytics({
+    required this.since,
+    required this.until,
+    this.received = const [],
+    this.senderChecks = const [],
+    this.decisions = const [],
+    this.outcomes = const [],
+    this.rejectReasons = const [],
+  });
+
+  factory PipelineAnalytics.fromJson(Map<String, dynamic> json) {
+    final window = json['window'] as Map<String, dynamic>? ?? const {};
+    final funnel = json['funnel'] as Map<String, dynamic>? ?? const {};
+    // Go writes an empty list as null.
+    List<Map<String, dynamic>> rows(String key) => [
+      for (final row in funnel[key] as List? ?? const [])
+        if (row is Map<String, dynamic>) row,
+    ];
+    int count(Map<String, dynamic> row) => (row['count'] as num? ?? 0).round();
+    String text(Map<String, dynamic> row, String key) =>
+        row[key] as String? ?? '';
+    return PipelineAnalytics(
+      since: _time(window['since']) ?? DateTime.now(),
+      until: _time(window['until']) ?? DateTime.now(),
+      received: [
+        for (final row in rows('received'))
+          (transport: text(row, 'transport'), count: count(row)),
+      ],
+      senderChecks: [
+        for (final row in rows('auth_verdicts'))
+          (
+            mechanism: text(row, 'mechanism'),
+            result: text(row, 'result'),
+            count: count(row),
+          ),
+      ],
+      decisions: [
+        for (final row in rows('stage_decisions'))
+          (
+            filter: text(row, 'filter'),
+            action: text(row, 'action'),
+            count: count(row),
+          ),
+      ],
+      outcomes: [
+        for (final row in rows('terminal_outcomes'))
+          (
+            direction: text(row, 'direction'),
+            outcome: text(row, 'outcome'),
+            count: count(row),
+          ),
+      ],
+      rejectReasons: [
+        for (final row in rows('top_reject_reasons'))
+          (reason: text(row, 'reason_code'), count: count(row)),
+      ],
+    );
+  }
+
+  final DateTime since;
+  final DateTime until;
+
+  /// Mail other servers handed over, by `tls` or `plaintext`.
+  final List<({String transport, int count})> received;
+
+  /// `spf`, `dkim` or `dmarc`, and how the check came out.
+  final List<({String mechanism, String result, int count})> senderChecks;
+
+  /// What each filter did: `continue`, `reject` and so on.
+  final List<({String filter, String action, int count})> decisions;
+
+  /// How messages ended, each way.
+  final List<({String direction, String outcome, int count})> outcomes;
+
+  /// Why mail was turned away, most often first.
+  final List<({String reason, int count})> rejectReasons;
+
+  bool get isEmpty =>
+      received.isEmpty &&
+      senderChecks.isEmpty &&
+      decisions.isEmpty &&
+      outcomes.isEmpty &&
+      rejectReasons.isEmpty;
+}
+
+/// A mailbox linked to a webmail account, so its mail shows beside the
+/// account's own.
+class LinkedMailbox {
+  const LinkedMailbox({
+    required this.id,
+    required this.mailboxId,
+    required this.address,
+    this.displayName = '',
+    this.linkedAt,
+  });
+
+  factory LinkedMailbox.fromJson(Map<String, dynamic> json) => LinkedMailbox(
+    id: _int(json['id']),
+    mailboxId: _int(json['mailbox_id'] ?? 0),
+    address: switch (json['mailbox']) {
+      {'address': final String address} => address,
+      _ => '',
+    },
+    displayName: json['display_name'] as String? ?? '',
+    linkedAt: _time(json['created_at']),
+  );
+
+  final int id;
+  final int mailboxId;
+
+  /// Empty when the server did not send the mailbox along.
+  final String address;
+
+  /// The name its owner gave it in webmail.
+  final String displayName;
+  final DateTime? linkedAt;
+}
+
+/// What a mailbox signs in to webmail as: the mailbox itself, and the
+/// others its owner linked to it. The server makes one at a mailbox's first
+/// sign-in.
+class WebmailAccount {
+  const WebmailAccount({
+    required this.id,
+    required this.mailboxId,
+    required this.address,
+    this.displayName = '',
+    this.linked = const [],
+    this.createdAt,
+  });
+
+  factory WebmailAccount.fromJson(Map<String, dynamic> json) {
+    final mailbox = json['primary_mailbox'];
+    return WebmailAccount(
+      id: _int(json['id']),
+      mailboxId: _int(json['primary_mailbox_id'] ?? 0),
+      address: switch (mailbox) {
+        {'address': final String address} => address,
+        _ => '',
+      },
+      displayName: switch (mailbox) {
+        {'display_name': final String name} => name,
+        _ => '',
+      },
+      linked: [
+        for (final link in json['linked_accounts'] as List? ?? const [])
+          if (link is Map<String, dynamic>) LinkedMailbox.fromJson(link),
+      ],
+      createdAt: _time(json['created_at']),
+    );
+  }
+
+  final int id;
+
+  /// The mailbox that signs in.
+  final int mailboxId;
+
+  /// Its address; empty when the server did not send the mailbox along.
+  final String address;
+  final String displayName;
+  final List<LinkedMailbox> linked;
+  final DateTime? createdAt;
+}
+
+/// A domain's two lists of senders: the one let past the spam checks, and
+/// the one turned away.
+enum SenderList {
+  allow('allowlist'),
+  block('blocklist');
+
+  const SenderList(this.path);
+
+  /// Its name in the server's routes.
+  final String path;
+}
+
+/// A sender on one of a domain's lists: an address, or `@` and a domain
+/// for everyone there.
+class SenderRule {
+  const SenderRule({
+    required this.id,
+    required this.domainId,
+    required this.pattern,
+    required this.list,
+    this.reason = '',
+    this.createdAt,
+  });
+
+  factory SenderRule.fromJson(Map<String, dynamic> json) => SenderRule(
+    id: _int(json['id']),
+    domainId: _int(json['domain_id'] ?? 0),
+    pattern: json['pattern'] as String? ?? '',
+    list: json['list_type'] == 'allow' ? SenderList.allow : SenderList.block,
+    reason: json['reason'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+  );
+
+  final int id;
+  final int domainId;
+
+  /// `someone@example.com`, or `@example.com`.
+  final String pattern;
+  final SenderList list;
+  final String reason;
+  final DateTime? createdAt;
+}
+
+/// How strictly other servers are told to use TLS when they send to a
+/// domain (RFC 8461).
+enum MtaStsMode {
+  /// They must, to a host on the list with a valid certificate, or not
+  /// deliver at all.
+  enforce,
+
+  /// They deliver anyway, and report what failed.
+  testing,
+
+  /// The policy is withdrawn.
+  none;
+
+  static MtaStsMode parse(Object? value) => switch (value) {
+    'enforce' => enforce,
+    'none' => none,
+    _ => testing,
+  };
+}
+
+/// A domain's MTA-STS policy, as the server publishes it at
+/// `https://mta-sts.<domain>/.well-known/mta-sts.txt`.
+class MtaStsPolicy {
+  const MtaStsPolicy({
+    required this.domainId,
+    required this.mode,
+    required this.mxHosts,
+    required this.maxAge,
+    required this.active,
+    this.updatedAt,
+  });
+
+  factory MtaStsPolicy.fromJson(Map<String, dynamic> json) => MtaStsPolicy(
+    domainId: _int(json['domain_id'] ?? 0),
+    mode: MtaStsMode.parse(json['mode']),
+    mxHosts: [
+      for (final host in (json['mx_hosts'] as String? ?? '').split(','))
+        if (host.trim().isNotEmpty) host.trim(),
+    ],
+    maxAge: Duration(seconds: _int(json['max_age'] ?? 0)),
+    active: json['active'] as bool? ?? false,
+    updatedAt: _time(json['updated_at']),
+  );
+
+  final int domainId;
+  final MtaStsMode mode;
+
+  /// The hosts mail may be handed to; `*.example.com` covers a level.
+  final List<String> mxHosts;
+
+  /// How long other servers may keep the policy before fetching it again.
+  final Duration maxAge;
+
+  /// Whether the server publishes it. One that is not is as good as none.
+  final bool active;
+  final DateTime? updatedAt;
+}
+
+/// One DNS record the server looked up for a domain, and whether it is
+/// there.
+class DnsRecordCheck {
+  const DnsRecordCheck({
+    required this.type,
+    required this.name,
+    required this.status,
+    this.value = '',
+    this.message = '',
+  });
+
+  factory DnsRecordCheck.fromJson(Map<String, dynamic> json) => DnsRecordCheck(
+    type: json['type'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    status: json['status'] as String? ?? '',
+    value: json['value'] as String? ?? '',
+    message: json['message'] as String? ?? '',
+  );
+
+  /// `MX`, `SPF`, `DMARC`, `DKIM`, `MTA-STS` or `TLS-RPT`.
+  final String type;
+
+  /// Where it was looked up.
+  final String name;
+
+  /// `ok`, `missing` or `error`.
+  final String status;
+
+  /// What was found, when it was.
+  final String value;
+
+  /// What was wrong, when something was.
+  final String message;
+
+  bool get ok => status == 'ok';
+}
+
+/// What looking up a domain's DNS records found.
+class DnsCheck {
+  const DnsCheck({
+    required this.domain,
+    required this.records,
+    this.summary = '',
+  });
+
+  factory DnsCheck.fromJson(Map<String, dynamic> json) => DnsCheck(
+    domain: json['domain'] as String? ?? '',
+    summary: json['summary'] as String? ?? '',
+    records: [
+      for (final record in json['records'] as List? ?? const [])
+        if (record is Map<String, dynamic>) DnsRecordCheck.fromJson(record),
+    ],
+  );
+
+  final String domain;
+
+  /// The server's own line: `4/6 records verified`.
+  final String summary;
+  final List<DnsRecordCheck> records;
+}
+
 int _int(Object? value) => (value as num).toInt();
 
 /// A timestamp, or null for none. Go writes an unset time as year 1.

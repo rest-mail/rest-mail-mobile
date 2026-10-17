@@ -44,7 +44,73 @@ class FakeDomain {
   /// Where its DKIM key is published; empty once the key is gone.
   String dkimSelector = 'mail';
 
+  /// What it tells other servers about sending to it over TLS.
+  FakeMtaStsPolicy? mtaSts;
+
   bool get signs => dkimSelector.isNotEmpty;
+}
+
+/// A domain's MTA-STS policy.
+class FakeMtaStsPolicy {
+  FakeMtaStsPolicy({
+    required this.id,
+    this.mode = 'testing',
+    this.mxHosts = '',
+    this.maxAge = 604800,
+    this.active = true,
+  });
+
+  final int id;
+
+  /// `none`, `testing` or `enforce`.
+  String mode;
+
+  /// Comma-separated, as the server keeps them.
+  String mxHosts;
+
+  /// In seconds.
+  int maxAge;
+  bool active;
+}
+
+/// A sender on one of a domain's lists.
+class FakeSenderRule {
+  FakeSenderRule({
+    required this.id,
+    required this.domain,
+    required this.pattern,
+    required this.list,
+    required this.createdAt,
+    this.reason = '',
+  });
+
+  final int id;
+  final String domain;
+
+  /// `someone@example.com`, or `@example.com`.
+  final String pattern;
+
+  /// `allow` or `block`.
+  final String list;
+  final String reason;
+  final DateTime createdAt;
+}
+
+/// What a mailbox signs in to webmail as, and the mailboxes linked to it.
+class FakeWebmailAccount {
+  FakeWebmailAccount({
+    required this.id,
+    required this.mailboxId,
+    required this.createdAt,
+  });
+
+  final int id;
+  final int mailboxId;
+  final DateTime createdAt;
+
+  /// By mailbox id: the link's own id, the name its owner gave the
+  /// mailbox, and when it was linked.
+  final linked = <int, ({int id, String displayName, DateTime at})>{};
 }
 
 /// Mail to [source] goes to [destination].

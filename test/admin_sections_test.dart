@@ -10,9 +10,10 @@ import 'package:restmail_fake/restmail_fake.dart';
 
 final _server = Uri.parse('https://${FakeAccounts.host}');
 
-/// The logs and reports, the audit log, keys and certificates, and
-/// pipelines in Administration: what each shows, what each capability
-/// allows of it, and that the fake refuses the rest.
+/// The logs and reports, the audit log, keys and certificates, pipelines,
+/// webmail accounts, and each domain's DNS check, sender lists and MTA-STS
+/// policy in Administration: what each shows, what each capability allows
+/// of it, and that the fake refuses the rest.
 void main() {
   setUpAll(() => EditableText.debugDeterministicCursor = true);
 
@@ -89,12 +90,15 @@ void main() {
     'Domains',
     'Mailboxes',
     'Aliases',
+    'Webmail accounts',
     'Administrators',
     'Bans',
     'Overview',
     'Delivery log',
     'Activity',
     'Message trace',
+    'Pipeline log',
+    'Pipeline analytics',
     'TLS reports',
     'Audit log',
     'DKIM keys',
@@ -125,8 +129,8 @@ void main() {
     final (fake, state) = await open(tester);
 
     expect(await shown(tester), sections);
+    await reveal(tester, 'LOGS AND REPORTS');
     await reveal(tester, 'SIGNING AND FILTERING');
-    expect(find.text('LOGS AND REPORTS'), findsOneWidget);
 
     await close(tester, fake, state);
   });
@@ -335,7 +339,11 @@ void main() {
       capabilities: {Capability.pipelinesRead},
     );
 
-    expect(await shown(tester), ['Pipelines', 'Custom filters']);
+    expect(await shown(tester), [
+      'Pipeline log',
+      'Pipelines',
+      'Custom filters',
+    ]);
     await tap(tester, 'Pipelines');
     await tap(tester, 'Going out · 3 filters');
     expect(find.text('dkim_sign'), findsOneWidget);
@@ -407,6 +415,337 @@ void main() {
       ('audit.read', 'denied'),
       ('audit.read', 'denied'),
     ]);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('the pipeline log shows mail turned away, and opens its '
+      'trace', (tester) async {
+    final (fake, state) = await open(tester);
+
+    await tap(tester, 'Pipeline log');
+    expect(find.text('lee@harbor.test'), findsOneWidget);
+    await tap(tester, 'Turned away');
+    expect(find.text('lee@harbor.test'), findsNothing);
+    expect(find.textContaining('Scored as spam'), findsOneWidget);
+    // Mail turned away never became a message; its trace is in the log.
+    await tap(tester, 'promo@deals.test');
+    expect(find.text('Trace'), findsOneWidget);
+    // How it ended, and what rspamd did.
+    expect(find.text('Turned away'), findsNWidgets(2));
+    expect(find.text('Scored as spam'), findsOneWidget);
+    expect(find.text('rspamd'), findsOneWidget);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('pipeline analytics for a day, and for a week', (tester) async {
+    final (fake, state) = await open(tester);
+
+    await tap(tester, 'Pipeline analytics');
+    expect(find.text('HOW IT ENDED'), findsOneWidget);
+    expect(find.text('Scored as spam'), findsOneWidget);
+    expect(find.text('Failed DMARC'), findsNothing);
+    await tap(tester, 'A week');
+    expect(find.text('Scored as spam'), findsOneWidget);
+    await reveal(tester, 'Failed DMARC');
+    expect(find.text('Turned away by a filter'), findsOneWidget);
+    await reveal(tester, 'WHAT EACH FILTER DID');
+    expect(find.text('rspamd'), findsWidgets);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('webmail accounts: what each links, one made for a mailbox, '
+      'and one deleted', (tester) async {
+    final (fake, state) = await open(tester);
+    // Dana links her other mailbox in webmail.
+    final dana = RestmailClient(server: _server, httpClient: fake.client);
+    await dana.login(
+      email: FakeAccounts.email,
+      password: FakeAccounts.password,
+    );
+    await dana.linkAccount(
+      address: FakeAccounts.otherEmail,
+      password: FakeAccounts.password,
+      displayName: 'Oakline',
+    );
+
+    await tap(tester, 'Webmail accounts');
+    expect(find.text(FakeAccounts.email), findsOneWidget);
+    expect(find.text('With ${FakeAccounts.otherEmail}'), findsOneWidget);
+    await tap(tester, FakeAccounts.email);
+    expect(find.text('LINKED MAILBOXES'), findsOneWidget);
+    expect(find.text(FakeAccounts.otherEmail), findsOneWidget);
+    expect(find.textContaining('Oakline'), findsOneWidget);
+    await back(tester);
+
+    // Her other mailbox has never signed in, so it has none of its own.
+    await tap(tester, 'Make one for a mailbox');
+    expect(find.text('Has one already'), findsOneWidget);
+    await tap(tester, FakeAccounts.otherEmail);
+    expect(
+      find.text('Made a webmail account for ${FakeAccounts.otherEmail}'),
+      findsOneWidget,
+    );
+    expect(fake.webmailAccounts, hasLength(2));
+
+    await tap(tester, FakeAccounts.otherEmail);
+    await tap(tester, 'Delete webmail account');
+    await tap(tester, 'Delete');
+    expect(
+      find.text('Deleted the webmail account for ${FakeAccounts.otherEmail}'),
+      findsOneWidget,
+    );
+    expect(fake.webmailAccounts, hasLength(1));
+
+    dana.close();
+    await close(tester, fake, state);
+  });
+
+  testWidgets("a domain's DNS check, and what it says is missing", (
+    tester,
+  ) async {
+    final (fake, state) = await open(tester);
+    // Each is about one domain, so not in Administration's list.
+    for (final title in ['DNS check', 'Sender lists', 'MTA-STS']) {
+      expect(find.text(title), findsNothing, reason: title);
+    }
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    await tap(tester, 'DNS check');
+    expect(
+      find.text('All 6 records ${FakeAccounts.host} needs are right.'),
+      findsOneWidget,
+    );
+    expect(find.text('Right'), findsNWidgets(6));
+    // The check looks under "default", and the domain signs with "mail".
+    expect(find.textContaining('selector "default"'), findsNothing);
+    await back(tester);
+    await back(tester);
+
+    final other = FakeAccounts.otherEmail.split('@').last;
+    await tap(tester, other);
+    await tap(tester, 'DNS check');
+    expect(find.text('2 of 6 records $other needs are right.'), findsOneWidget);
+    expect(find.text('Missing'), findsNWidgets(4));
+    expect(find.textContaining('No DMARC record found'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('selector "default"'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tap(tester, 'Check again');
+    expect(find.text('Missing'), findsNWidgets(4));
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets("a domain's sender lists: a sender turned away, one taken "
+      'off, and one that is not a sender', (tester) async {
+    final (fake, state) = await open(tester);
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    await tap(tester, 'Sender lists');
+    expect(find.text('@deals.test'), findsOneWidget);
+    expect(find.text('ana@harbor.test'), findsNothing);
+
+    await tap(tester, 'Turn a sender away');
+    await tester.enterText(find.byType(TextField).at(0), 'deals.test');
+    await tester.pump();
+    await tap(tester, 'Turn away');
+    expect(
+      find.text('Sender must be an address, or @ and a domain.'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).at(0), 'Spam@X.test');
+    await tester.enterText(find.byType(TextField).at(1), 'Phishing');
+    await tester.pump();
+    await tap(tester, 'Turn away');
+    expect(find.text('spam@x.test'), findsOneWidget);
+    expect(
+      fake.senderRules.map((r) => (r.pattern, r.list, r.reason)),
+      contains(('spam@x.test', 'block', 'Phishing')),
+    );
+
+    await tester.tap(find.byTooltip('Remove @deals.test'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Remove');
+    expect(find.text('Removed @deals.test'), findsOneWidget);
+    expect(
+      fake.senderRules.map((r) => r.pattern),
+      isNot(contains('@deals.test')),
+    );
+
+    await tap(tester, 'Let in');
+    expect(find.text('ana@harbor.test'), findsOneWidget);
+    expect(find.text('spam@x.test'), findsNothing);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets("a domain's MTA-STS policy: unpublished, enforced, deleted, "
+      'and set up again', (tester) async {
+    final (fake, state) = await open(tester);
+    FakeMtaStsPolicy? policy() =>
+        fake.domains.firstWhere((d) => d.name == FakeAccounts.host).mtaSts;
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    await tap(tester, 'MTA-STS');
+    expect(find.text('Testing'), findsOneWidget);
+    expect(find.text('mx.${FakeAccounts.host}'), findsOneWidget);
+    expect(find.text('A week'), findsOneWidget);
+
+    await tester.tap(find.byType(RmSwitch));
+    await tester.pumpAndSettle();
+    expect(policy()!.active, isFalse);
+
+    await tap(tester, 'Change the policy');
+    await tap(tester, 'Enforce');
+    await tap(tester, 'A day');
+    await tap(tester, 'Save');
+    expect(
+      find.text('Saved the policy for ${FakeAccounts.host}'),
+      findsOneWidget,
+    );
+    expect(find.text('Enforce'), findsOneWidget);
+    expect((policy()!.mode, policy()!.maxAge), ('enforce', 86400));
+    // Let the toast go before reaching below it.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+
+    await tap(tester, 'Delete policy');
+    await tap(tester, 'Delete');
+    expect(policy(), isNull);
+    expect(
+      find.textContaining('${FakeAccounts.host} has no MTA-STS policy'),
+      findsOneWidget,
+    );
+
+    await tap(tester, 'Set up a policy');
+    await tester.enterText(
+      find.byType(TextField),
+      'MX.restmail.test *.restmail.test',
+    );
+    await tester.pump();
+    await tap(tester, 'Save');
+    expect(policy()!.mxHosts, 'mx.restmail.test,*.restmail.test');
+    expect(policy()!.mode, 'testing');
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('with domains:read alone, a domain\'s DNS check, sender lists '
+      'and MTA-STS to look at, and nothing to change', (tester) async {
+    final (fake, state) = await open(
+      tester,
+      username: 'viewer',
+      capabilities: {Capability.domainsRead},
+    );
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    for (final title in ['DNS check', 'Sender lists', 'MTA-STS']) {
+      expect(find.text(title), findsOneWidget, reason: title);
+    }
+    await tap(tester, 'Sender lists');
+    expect(find.text('@deals.test'), findsOneWidget);
+    expect(find.text('Turn a sender away'), findsNothing);
+    expect(find.byType(RmIconButton), findsNWidgets(1)); // Back only.
+    await back(tester);
+
+    await tap(tester, 'MTA-STS');
+    expect(find.text('Testing'), findsOneWidget);
+    expect(find.byType(RmSwitch), findsNothing);
+    expect(find.text('On'), findsOneWidget);
+    expect(find.text('Change the policy'), findsNothing);
+    expect(find.text('Delete policy'), findsNothing);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('without domains:read, no domain, so none of its sections; '
+      'with mailboxes:read alone, webmail accounts to look at', (tester) async {
+    final (fake, state) = await open(
+      tester,
+      username: 'helpdesk',
+      capabilities: {Capability.mailboxesRead},
+    );
+
+    expect(await shown(tester), ['Mailboxes', 'Aliases', 'Webmail accounts']);
+    await tap(tester, 'Webmail accounts');
+    expect(find.text(FakeAccounts.email), findsOneWidget);
+    expect(find.text('Make one for a mailbox'), findsNothing);
+    await tap(tester, FakeAccounts.email);
+    expect(find.text('Delete webmail account'), findsNothing);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('with observability:read alone, the overview, traces and '
+      'pipeline analytics, and no pipeline log', (tester) async {
+    final (fake, state) = await open(
+      tester,
+      username: 'watcher',
+      capabilities: {Capability.observabilityRead},
+    );
+
+    expect(await shown(tester), [
+      'Overview',
+      'Message trace',
+      'Pipeline analytics',
+    ]);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('an app that shows changes the readonly role may not make is '
+      'refused by the server, and says only that', (tester) async {
+    final (fake, state) = await open(
+      tester,
+      username: 'reader',
+      capabilities: readonly,
+      modified: const Capabilities({'*'}),
+    );
+    final rules = fake.senderRules.length;
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    await tap(tester, 'Sender lists');
+    await tap(tester, 'Turn a sender away');
+    await tester.enterText(find.byType(TextField).at(0), '@spam.test');
+    await tester.pump();
+    await tap(tester, 'Turn away');
+    expect(find.text(noPermission), findsOneWidget);
+    await back(tester);
+    await tester.tap(find.byTooltip('Remove @deals.test'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Remove');
+    expect(find.text(noPermission), findsOneWidget);
+    expect(fake.senderRules, hasLength(rules));
+    await back(tester);
+
+    await tap(tester, 'MTA-STS');
+    await tester.tap(find.byType(RmSwitch));
+    await tester.pumpAndSettle();
+    expect(find.text(noPermission), findsOneWidget);
+    expect(
+      fake.domains.firstWhere((d) => d.name == FakeAccounts.host).mtaSts,
+      isNotNull,
+    );
+    await back(tester);
+    await back(tester);
+    await back(tester);
+
+    await tap(tester, 'Webmail accounts');
+    await tap(tester, FakeAccounts.email);
+    await tap(tester, 'Delete webmail account');
+    await tap(tester, 'Delete');
+    expect(find.text(noPermission), findsOneWidget);
+    expect(fake.webmailAccounts, hasLength(1));
 
     await close(tester, fake, state);
   });
