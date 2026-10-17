@@ -62,6 +62,7 @@ void main() {
     'Aliases',
     'Administrators',
     'Bans',
+    'Overview',
   ];
 
   testWidgets('an administrator signs in with a code and opens on every '
@@ -151,6 +152,13 @@ void main() {
     await tap(tester, 'Lift ban');
     expect(fake.bans.map((b) => b.ip), ['198.51.100.4']);
     expect(fake.bans.single.createdBy, FakeAccounts.adminUsername);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    // And the server at a glance.
+    await tap(tester, 'Overview');
+    expect(find.text('MESSAGES A DAY'), findsOneWidget);
+    expect(find.text('Bounced: nobody@ryeworks.test'), findsOneWidget);
 
     await close(tester, fake, state);
   });

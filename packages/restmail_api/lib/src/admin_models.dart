@@ -292,6 +292,62 @@ class Ban {
   final DateTime? expiresAt;
 }
 
+/// The server at a glance, as its admin dashboard shows it.
+class ServerStats {
+  const ServerStats({
+    required this.domains,
+    required this.mailboxes,
+    required this.queuePending,
+    required this.queueFailed,
+    required this.volume,
+    required this.recent,
+    required this.inboundMx,
+    required this.inboundOverTls,
+  });
+
+  factory ServerStats.fromJson(Map<String, dynamic> json) {
+    final queue = json['queueStats'] as Map<String, dynamic>? ?? const {};
+    final tls =
+        json['inboundTransportSecurity'] as Map<String, dynamic>? ?? const {};
+    return ServerStats(
+      domains: _int(json['domainCount'] ?? 0),
+      mailboxes: _int(json['mailboxCount'] ?? 0),
+      queuePending: _int(queue['pending'] ?? 0),
+      queueFailed: _int(queue['failed'] ?? 0),
+      volume: [
+        for (final day in json['messageVolume'] as List? ?? const [])
+          if (day case {'date': final String date, 'count': final num count})
+            (date: date, count: count.toInt()),
+      ],
+      recent: [
+        for (final item in json['recentActivity'] as List? ?? const [])
+          if (item case {
+            'description': final String description,
+            'timestamp': final String timestamp,
+          })
+            (description: description, at: _time(timestamp)),
+      ],
+      inboundMx: _int(tls['totalInboundMX'] ?? 0),
+      inboundOverTls: _int(tls['overTLS'] ?? 0),
+    );
+  }
+
+  final int domains;
+  final int mailboxes;
+
+  /// Waiting to go out, and given up on.
+  final int queuePending;
+  final int queueFailed;
+
+  /// Messages a day, oldest first, labelled as the server labels them.
+  final List<({String date, int count})> volume;
+  final List<({String description, DateTime? at})> recent;
+
+  /// Mail other servers handed over, and how much of it came over TLS.
+  final int inboundMx;
+  final int inboundOverTls;
+}
+
 int _int(Object? value) => (value as num).toInt();
 
 /// A timestamp, or null for none. Go writes an unset time as year 1.

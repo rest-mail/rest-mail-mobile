@@ -208,6 +208,10 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Bans'));
   await _shot(tester, '20-bans$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Overview'));
+  await _shot(tester, '21-overview$suffix');
 
   await tester.pumpWidget(const SizedBox());
   state.dispose();

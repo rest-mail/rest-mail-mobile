@@ -13,6 +13,7 @@ import 'aliases_screen.dart';
 import 'bans_screen.dart';
 import 'domains_screen.dart';
 import 'mailboxes_screen.dart';
+import 'overview_screen.dart';
 import 'queue_screen.dart';
 import 'users_screen.dart';
 
@@ -38,6 +39,7 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.aliases => AliasesScreen(account: account),
     AdminSection.users => UsersScreen(account: account),
     AdminSection.bans => BansScreen(account: account),
+    AdminSection.overview => OverviewScreen(account: account),
   };
 
   Future<void> _signOut(BuildContext context) async {

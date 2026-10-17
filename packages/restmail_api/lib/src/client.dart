@@ -450,6 +450,11 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'admin-users', '$id']);
   }
 
+  /// The server at a glance. Any admin may read it today; the app shows it
+  /// with `observability:read`, where the server's design puts it.
+  Future<ServerStats> stats() async =>
+      ServerStats.fromJson(_data(await _authed('GET', ['admin', 'stats'])));
+
   /// The bans in force. Needs `bans:read`.
   Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
       _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);

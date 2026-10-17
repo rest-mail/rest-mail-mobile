@@ -1306,6 +1306,10 @@ class FakeRestmail {
           'data': [for (final role in _roles.values) _roleJson(role)],
         });
 
+      case ('GET', ['stats']):
+        // The real server asks no capability of this one, only an admin.
+        return _stats();
+
       case ('GET', ['bans']):
         need('bans:read');
         return _listPage(
@@ -1534,6 +1538,58 @@ class FakeRestmail {
     _messages.removeWhere((_, m) => m.mailboxId == box.id);
     _mailboxes.remove(box.id);
   }
+
+  http.StreamedResponse _stats() {
+    final today = _clock();
+    int count(String status) =>
+        _queue.values.where((e) => e.status == status).length;
+    return _json({
+      'data': {
+        'domainCount': _domains.length,
+        'mailboxCount': _mailboxes.length,
+        'queueStats': {
+          'pending': count('pending') + count('deferred'),
+          'processing': count('delivering'),
+          'failed': count('bounced') + count('expired'),
+        },
+        'messageVolume': [
+          for (var back = 6; back >= 0; back--)
+            {
+              'date': _dayLabel(today.subtract(Duration(days: back))),
+              'count': _messages.values.where((m) {
+                final day = today.subtract(Duration(days: back));
+                return m.receivedAt.year == day.year &&
+                    m.receivedAt.month == day.month &&
+                    m.receivedAt.day == day.day;
+              }).length,
+            },
+        ],
+        'recentActivity': [
+          for (final e in _queue.values.where((e) => e.status == 'bounced'))
+            {
+              'id': '${e.id}',
+              'type': 'bounce',
+              'description': 'Bounced: ${e.recipient}',
+              'timestamp': _time(e.createdAt),
+            },
+        ],
+        'inboundTransportSecurity': {
+          'totalInboundMX': 120,
+          'overTLS': 114,
+          'plaintext': 6,
+          'tlsPercent': 95.0,
+          'plaintextPercent': 5.0,
+          'plaintextAuthPass': 0,
+          'plaintextAuthFail': 0,
+        },
+      },
+    });
+  }
+
+  /// `Oct 17`, as the server labels a day.
+  static String _dayLabel(DateTime day) =>
+      '${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][day.month - 1]} '
+      '${day.day}';
 
   Map<String, Object?> _roleJson(_FakeRole role) => {
     'id': role.id,

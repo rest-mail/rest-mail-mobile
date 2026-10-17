@@ -51,6 +51,15 @@ enum AdminSection {
     read: Capability.bansRead,
     write: Capability.bansWrite,
     delete: Capability.bansDelete,
+  ),
+
+  /// Only to look at: nothing in it changes.
+  overview(
+    'Overview',
+    'Mail volume, the queue and TLS at a glance',
+    read: Capability.observabilityRead,
+    write: Capability.observabilityRead,
+    delete: Capability.observabilityRead,
   );
 
   const AdminSection(
