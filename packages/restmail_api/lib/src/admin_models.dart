@@ -194,6 +194,104 @@ class AdminAlias {
   final bool active;
 }
 
+/// A role: a named set of capabilities an admin user is given.
+class AdminRole {
+  const AdminRole({
+    required this.id,
+    required this.name,
+    this.description = '',
+    this.systemRole = false,
+  });
+
+  factory AdminRole.fromJson(Map<String, dynamic> json) => AdminRole(
+    id: _int(json['id']),
+    name: json['name'] as String,
+    description: json['description'] as String? ?? '',
+    systemRole: json['system_role'] as bool? ?? false,
+  );
+
+  final int id;
+  final String name;
+  final String description;
+
+  /// One the server made, which cannot be changed.
+  final bool systemRole;
+}
+
+/// An admin user: someone who signs in to run the server, with a username
+/// rather than a mailbox, and the roles that say what they may do.
+class AdminUser {
+  const AdminUser({
+    required this.id,
+    required this.username,
+    required this.active,
+    required this.passwordChangeRequired,
+    this.email,
+    this.roles = const [],
+  });
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
+    id: _int(json['id']),
+    username: json['username'] as String,
+    email: switch (json['email']) {
+      final String email when email.isNotEmpty => email,
+      _ => null,
+    },
+    active: json['active'] as bool? ?? false,
+    passwordChangeRequired: json['password_change_required'] as bool? ?? false,
+    roles: [
+      for (final role in json['roles'] as List? ?? const [])
+        AdminRole.fromJson(role as Map<String, dynamic>),
+    ],
+  );
+
+  final int id;
+  final String username;
+  final String? email;
+  final bool active;
+
+  /// Has to choose a password of its own at its next sign-in.
+  final bool passwordChangeRequired;
+  final List<AdminRole> roles;
+}
+
+/// An IP address kept out of the server's mail protocols.
+class Ban {
+  const Ban({
+    required this.id,
+    required this.ip,
+    required this.protocol,
+    required this.createdAt,
+    this.reason = '',
+    this.createdBy = '',
+    this.expiresAt,
+  });
+
+  factory Ban.fromJson(Map<String, dynamic> json) => Ban(
+    id: _int(json['id']),
+    ip: json['ip'] as String,
+    protocol: json['protocol'] as String? ?? 'all',
+    reason: json['reason'] as String? ?? '',
+    createdBy: json['created_by'] as String? ?? '',
+    createdAt: _time(json['created_at']) ?? DateTime.now(),
+    expiresAt: _time(json['expires_at']),
+  );
+
+  final int id;
+  final String ip;
+
+  /// `smtp`, `imap`, `pop3`, or `all` of them.
+  final String protocol;
+  final String reason;
+
+  /// The admin who made it, or `auto` for one the server made itself.
+  final String createdBy;
+  final DateTime createdAt;
+
+  /// When it lifts; never if null.
+  final DateTime? expiresAt;
+}
+
 int _int(Object? value) => (value as num).toInt();
 
 /// A timestamp, or null for none. Go writes an unset time as year 1.

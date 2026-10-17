@@ -55,7 +55,14 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   }
 
-  const sections = ['Outbound queue', 'Domains', 'Mailboxes', 'Aliases'];
+  const sections = [
+    'Outbound queue',
+    'Domains',
+    'Mailboxes',
+    'Aliases',
+    'Administrators',
+    'Bans',
+  ];
 
   testWidgets('an administrator signs in with a code and opens on every '
       'section, and runs the server from there', (tester) async {
@@ -119,6 +126,31 @@ void main() {
     await tap(tester, 'Delete');
     expect(find.text('Deleted hello@${FakeAccounts.host}'), findsOneWidget);
     expect(fake.aliases, isEmpty);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    // Another administrator given a role.
+    await tap(tester, 'Administrators');
+    await tap(tester, FakeAccounts.queueWatcher);
+    await tap(tester, 'readonly');
+    expect(fake.rolesOf(FakeAccounts.queueWatcher), contains('readonly'));
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    // An address banned, and the server's own ban lifted.
+    await tap(tester, 'Bans');
+    await tap(tester, 'Ban an address');
+    await tester.enterText(find.byType(TextField).first, '198.51.100.4');
+    await tester.pump();
+    await tap(tester, 'Ban');
+    expect(find.text('198.51.100.4'), findsOneWidget);
+    await tester.tap(find.byTooltip('Lift the ban on 203.0.113.7'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Lift ban');
+    expect(fake.bans.map((b) => b.ip), ['198.51.100.4']);
+    expect(fake.bans.single.createdBy, FakeAccounts.adminUsername);
 
     await close(tester, fake, state);
   });

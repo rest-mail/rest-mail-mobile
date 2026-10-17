@@ -75,6 +75,7 @@ class FakeRestmail {
   final _domains = <String, FakeDomain>{};
   final _aliases = <int, FakeAlias>{};
   final _queue = <int, FakeQueueEntry>{};
+  final _bans = <int, FakeBan>{};
   final _admins = <String, _FakeAdmin>{};
   final _adminAccessTokens = <String, _AdminGrant>{};
   final _adminRefreshTokens = <String, _FakeAdmin>{};
@@ -165,18 +166,69 @@ class FakeRestmail {
   String? get adminUsername => _admins.values.firstOrNull?.username;
 
   /// Adds an admin user who is set up already, with an authenticator that
-  /// shows [FakeAccounts.totpCode].
+  /// shows [FakeAccounts.totpCode]. Its role is the one that grants exactly
+  /// [capabilities], made for it if there is none.
   void addAdmin(
     String username, {
     String password = FakeAccounts.adminPassword,
     Set<String> capabilities = const {'*'},
   }) {
-    _admins[username] = _FakeAdmin(
-      _nextRowId++,
-      username,
-      password,
-      capabilities: {...capabilities},
-    )..setUp();
+    final role = _roleGranting(capabilities);
+    _admins[username] =
+        _FakeAdmin(
+            _nextRowId++,
+            username,
+            password,
+            capabilities: {...capabilities},
+          )
+          ..roles = {role.id}
+          ..setUp();
+  }
+
+  /// The roles the real server seeds, and any [addAdmin] made.
+  static const _seededRoles = [
+    (1, 'superadmin', 'Everything', {'*'}),
+    (
+      2,
+      'admin',
+      'Runs the mail: domains, mailboxes, queue, bans and pipelines',
+      {
+        'domains:read', 'domains:write', 'domains:delete', //
+        'mailboxes:read', 'mailboxes:write', 'mailboxes:delete',
+        'queue:read', 'queue:manage', 'bans:read', 'bans:write',
+        'bans:delete', 'pipelines:read', 'pipelines:write',
+        'pipelines:delete', 'messages:read', 'observability:read',
+        'audit:read',
+      },
+    ),
+    (
+      3,
+      'readonly',
+      'Sees everything, changes nothing',
+      {
+        'domains:read', 'mailboxes:read', 'users:read', 'queue:read', //
+        'bans:read', 'pipelines:read', 'messages:read',
+        'observability:read',
+      },
+    ),
+  ];
+  final _roles = <int, _FakeRole>{
+    for (final (id, name, description, capabilities) in _seededRoles)
+      id: _FakeRole(id, name, description, capabilities, system: true),
+  };
+
+  /// The role that grants exactly [capabilities], named after them if it has
+  /// to be made.
+  _FakeRole _roleGranting(Set<String> capabilities) {
+    for (final role in _roles.values) {
+      if (role.capabilities.length == capabilities.length &&
+          role.capabilities.containsAll(capabilities)) {
+        return role;
+      }
+    }
+    final id = _roles.keys.reduce(max) + 1;
+    final names = [...capabilities]..sort();
+    return _roles[id] = _FakeRole(id, names.join(' '), '', {...capabilities});
   }
 
   /// Changes what [who], an admin's username or a mailbox's address, may do
@@ -200,6 +252,13 @@ class FakeRestmail {
   List<FakeDomain> get domains => [..._domains.values];
   List<FakeAlias> get aliases => [..._aliases.values];
   List<FakeQueueEntry> get queue => [..._queue.values];
+  List<FakeBan> get bans => [..._bans.values];
+
+  /// The names of an admin's roles, for a test to check a change.
+  List<String> rolesOf(String username) => [
+    for (final id in _admins[username]?.roles ?? const <int>{})
+      ?_roles[id]?.name,
+  ];
 
   /// Ends every open event stream.
   void close() {
@@ -746,7 +805,7 @@ class FakeRestmail {
         _nextRowId++,
         FakeAccounts.adminUsername,
         FakeAccounts.bootstrapPassword,
-      );
+      )..roles = {1};
       return;
     }
     final now = _clock();
@@ -802,6 +861,14 @@ class FakeRestmail {
         createdAt: now.subtract(age),
       );
     }
+    _bans[_nextRowId] = FakeBan(
+      id: _nextRowId++,
+      ip: '203.0.113.7',
+      protocol: 'smtp',
+      reason: 'Too many failed sign-ins',
+      createdAt: now.subtract(const Duration(hours: 2)),
+      expiresAt: now.add(const Duration(hours: 22)),
+    );
   }
 
   FakeMailbox _addMailbox(
@@ -891,6 +958,7 @@ class FakeRestmail {
     if (admin == null || body['password'] != admin.password) {
       _fail(401, 'unauthorized', 'Invalid username or password');
     }
+    if (!admin.active) _fail(401, 'unauthorized', 'Account is disabled');
     if (admin.totpEnrolled) {
       final code = body['totp_code'] as String? ?? '';
       if (code.isEmpty) {
@@ -1211,6 +1279,48 @@ class FakeRestmail {
         need('mailboxes:delete');
         _aliases.remove(_alias(id).id);
         return _noContent();
+
+      case ('GET', ['admin-users']):
+        need('users:read');
+        return _listPage(
+          _admins.values.toList()
+            ..sort((a, b) => a.username.compareTo(b.username)),
+          query,
+          _adminUserJson,
+        );
+      case ('POST', ['admin-users']):
+        need('users:write');
+        return _createAdminUser(_object(bytes));
+      case ('PUT', ['admin-users', final id]):
+        need('users:write');
+        return _updateAdminUser(_adminUser(id), _object(bytes));
+      case ('DELETE', ['admin-users', final id]):
+        need('users:delete');
+        final admin = _adminUser(id);
+        _endAdminSessions(admin);
+        _admins.remove(admin.username);
+        return _noContent();
+      case ('GET', ['roles']):
+        need('users:read');
+        return _json({
+          'data': [for (final role in _roles.values) _roleJson(role)],
+        });
+
+      case ('GET', ['bans']):
+        need('bans:read');
+        return _listPage(
+          _bans.values.toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+          query,
+          _banJson,
+        );
+      case ('POST', ['bans']):
+        need('bans:write');
+        return _createBan(_object(bytes));
+      case ('DELETE', ['bans', final id]):
+        need('bans:delete');
+        _bans.remove(int.tryParse(id));
+        return _noContent();
     }
     _fail(404, 'not_found', 'No route for $method ${request.url.path}');
   }
@@ -1425,6 +1535,153 @@ class FakeRestmail {
     _mailboxes.remove(box.id);
   }
 
+  Map<String, Object?> _roleJson(_FakeRole role) => {
+    'id': role.id,
+    'name': role.name,
+    'description': role.description,
+    'system_role': role.system,
+  };
+
+  Map<String, Object?> _adminUserJson(_FakeAdmin admin) => {
+    'id': admin.id,
+    'username': admin.username,
+    'email': null,
+    'active': admin.active,
+    'password_change_required': admin.mustChangePassword,
+    'last_password_change': null,
+    'created_at': _time(_clock()),
+    'updated_at': _time(_clock()),
+    'roles': [
+      for (final id in admin.roles)
+        if (_roles[id] case final role?) _roleJson(role),
+    ],
+  };
+
+  Map<String, Object?> _banJson(FakeBan ban) => {
+    'id': ban.id,
+    'ip': ban.ip,
+    'reason': ban.reason,
+    'protocol': ban.protocol,
+    'created_by': ban.createdBy,
+    if (ban.expiresAt case final expires?) 'expires_at': _time(expires),
+    'created_at': _time(ban.createdAt),
+  };
+
+  _FakeAdmin _adminUser(String id) =>
+      _admins.values.where((a) => a.id == int.tryParse(id)).firstOrNull ??
+      _fail(404, 'not_found', 'Admin user not found');
+
+  /// The real server ends an admin's sessions when its password, roles or
+  /// standing change, or it goes.
+  void _endAdminSessions(_FakeAdmin admin) {
+    _adminAccessTokens.removeWhere((_, g) => g.admin == admin);
+    _adminRefreshTokens.removeWhere((_, a) => a == admin);
+  }
+
+  Set<int> _roleIds(Object? raw) {
+    final ids = {
+      if (raw is List)
+        for (final id in raw)
+          if (id is num) id.toInt(),
+    };
+    if (!_roles.keys.toSet().containsAll(ids)) {
+      _fail(500, 'internal_error', 'Failed to assign roles');
+    }
+    return ids;
+  }
+
+  Set<String> _capabilitiesOf(Set<int> roles) => {
+    for (final id in roles) ...?_roles[id]?.capabilities,
+  };
+
+  http.StreamedResponse _createAdminUser(Map<String, dynamic> body) {
+    final username = (body['username'] as String? ?? '').trim();
+    final password = body['password'] as String? ?? '';
+    if (username.isEmpty || password.isEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'username': 'required', 'password': 'required'},
+      );
+    }
+    if (_admins.containsKey(username)) {
+      _fail(500, 'internal_error', 'Failed to create admin user');
+    }
+    final roles = _roleIds(body['role_ids']);
+    // As on the real server, it chooses its own password and enrolls an
+    // authenticator at its first sign-in.
+    final admin = _admins[username] = _FakeAdmin(
+      _nextRowId++,
+      username,
+      password,
+      capabilities: _capabilitiesOf(roles),
+    )..roles = roles;
+    return _json({'data': _adminUserJson(admin)}, status: 201);
+  }
+
+  http.StreamedResponse _updateAdminUser(
+    _FakeAdmin admin,
+    Map<String, dynamic> body,
+  ) {
+    var revoke = false;
+    if (body['password'] case final String password when password.isNotEmpty) {
+      admin.password = password;
+      revoke = true;
+    }
+    if (body['active'] case final bool active) {
+      admin.active = active;
+      revoke |= !active;
+    }
+    if (body.containsKey('role_ids') && body['role_ids'] != null) {
+      admin
+        ..roles = _roleIds(body['role_ids'])
+        ..capabilities = _capabilitiesOf(admin.roles);
+      revoke = true;
+    }
+    if (revoke) _endAdminSessions(admin);
+    return _json({
+      'data': {'message': 'Admin user updated successfully'},
+    });
+  }
+
+  http.StreamedResponse _createBan(Map<String, dynamic> body) {
+    final ip = (body['ip'] as String? ?? '').trim();
+    if (ip.isEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'ip': 'IP address is required'},
+      );
+    }
+    Duration? lasts;
+    if (body['duration'] case final String raw) {
+      final minutes = RegExp(r'^(\d+)m$').firstMatch(raw)?.group(1);
+      final hours = RegExp(r'^(\d+)h$').firstMatch(raw)?.group(1);
+      lasts = minutes != null
+          ? Duration(minutes: int.parse(minutes))
+          : hours != null
+          ? Duration(hours: int.parse(hours))
+          : _fail(
+              422,
+              'validation_failed',
+              'Request body failed validation',
+              fields: {'duration': 'invalid duration format (e.g. 24h, 168h)'},
+            );
+    }
+    final ban = _bans[_nextRowId] = FakeBan(
+      id: _nextRowId++,
+      ip: ip,
+      protocol: body['protocol'] as String? ?? 'all',
+      reason: body['reason'] as String? ?? '',
+      createdBy: body['created_by'] as String? ?? '',
+      createdAt: _clock(),
+      expiresAt: lasts == null ? null : _clock().add(lasts),
+    );
+    return _json({'data': _banJson(ban)}, status: 201);
+  }
+
   http.StreamedResponse _createAlias(Map<String, dynamic> body) {
     final source = (body['source_address'] as String? ?? '')
         .trim()
@@ -1496,6 +1753,8 @@ class _FakeAdmin {
 
   /// What its roles grant, once it is set up.
   Set<String> capabilities;
+  Set<int> roles = {};
+  bool active = true;
   bool mustChangePassword = true;
   bool totpPending = false;
   bool totpEnrolled = false;
@@ -1529,6 +1788,22 @@ class _AdminGrant {
   /// What the admin's roles granted when the token was minted.
   final Set<String> capabilities;
   final DateTime expiresAt;
+}
+
+class _FakeRole {
+  const _FakeRole(
+    this.id,
+    this.name,
+    this.description,
+    this.capabilities, {
+    this.system = false,
+  });
+
+  final int id;
+  final String name;
+  final String description;
+  final Set<String> capabilities;
+  final bool system;
 }
 
 /// An error answer, thrown from deep in a handler and returned as is.

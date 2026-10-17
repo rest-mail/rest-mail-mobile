@@ -10,9 +10,11 @@ import '../add_account_screen.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'aliases_screen.dart';
+import 'bans_screen.dart';
 import 'domains_screen.dart';
 import 'mailboxes_screen.dart';
 import 'queue_screen.dart';
+import 'users_screen.dart';
 
 /// The server's administration: a row for each section this session may
 /// see. An administrator, which has no mailbox, opens on it; a mailbox
@@ -34,6 +36,8 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.domains => DomainsScreen(account: account),
     AdminSection.mailboxes => MailboxesScreen(account: account),
     AdminSection.aliases => AliasesScreen(account: account),
+    AdminSection.users => UsersScreen(account: account),
+    AdminSection.bans => BansScreen(account: account),
   };
 
   Future<void> _signOut(BuildContext context) async {

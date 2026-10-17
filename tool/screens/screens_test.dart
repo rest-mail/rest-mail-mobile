@@ -194,6 +194,20 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await _shot(tester, '17-mailboxes$suffix');
   await tester.tap(find.text(FakeAccounts.email));
   await _shot(tester, '18-mailbox$suffix');
+  for (var i = 0; i < 4; i++) {
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+  }
+  await tester.tap(find.text('Administrators'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(FakeAccounts.queueWatcher));
+  await _shot(tester, '19-administrator$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Bans'));
+  await _shot(tester, '20-bans$suffix');
 
   await tester.pumpWidget(const SizedBox());
   state.dispose();

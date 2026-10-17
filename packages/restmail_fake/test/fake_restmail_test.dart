@@ -523,6 +523,50 @@ void main() {
       await expectLater(client.queue(), refused('forbidden'));
     });
 
+    test(
+      'a role changed on an admin ends its sessions, as on the server',
+      () async {
+        final fake = FakeRestmail();
+        final superadmin = await admin(fake);
+        final watcher = await admin(fake, FakeAccounts.queueWatcher);
+        final roles = await superadmin.roles();
+        final users = (await superadmin.adminUsers()).items;
+        final target = users.firstWhere(
+          (u) => u.username == FakeAccounts.queueWatcher,
+        );
+
+        await superadmin.updateAdminUser(
+          target.id,
+          roleIds: [roles.firstWhere((r) => r.name == 'readonly').id],
+        );
+
+        expect(fake.rolesOf(FakeAccounts.queueWatcher), ['readonly']);
+        fake.expireAccessTokens();
+        await expectLater(
+          watcher.queue(),
+          throwsA(isA<SessionExpiredException>()),
+        );
+      },
+    );
+
+    test('bans need bans:*', () async {
+      final fake = FakeRestmail();
+      final watcher = await admin(fake, FakeAccounts.queueWatcher);
+      await expectLater(watcher.bans(), refused('forbidden'));
+
+      final superadmin = await admin(fake);
+      await superadmin.createBan(
+        ip: '198.51.100.4',
+        createdBy: 'admin',
+        duration: const Duration(days: 1),
+      );
+      final bans = (await superadmin.bans()).items;
+      expect(bans.map((b) => b.ip), ['198.51.100.4', '203.0.113.7']);
+      expect(bans.first.expiresAt, isNotNull);
+      await superadmin.deleteBan(bans.first.id);
+      expect(fake.bans.single.ip, '203.0.113.7');
+    });
+
     test('a grant taken away goes at the next refresh', () async {
       final fake = FakeRestmail();
       final client = await admin(fake);

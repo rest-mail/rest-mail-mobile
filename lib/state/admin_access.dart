@@ -37,6 +37,20 @@ enum AdminSection {
     read: Capability.mailboxesRead,
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
+  ),
+  users(
+    'Administrators',
+    'Who runs this server, and their roles',
+    read: Capability.usersRead,
+    write: Capability.usersWrite,
+    delete: Capability.usersDelete,
+  ),
+  bans(
+    'Bans',
+    'Addresses kept out of SMTP, IMAP and POP3',
+    read: Capability.bansRead,
+    write: Capability.bansWrite,
+    delete: Capability.bansDelete,
   );
 
   const AdminSection(

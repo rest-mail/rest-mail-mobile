@@ -188,3 +188,24 @@ class FakeMessage {
     };
   }
 }
+
+/// An IP address kept out of the mail protocols.
+class FakeBan {
+  FakeBan({
+    required this.id,
+    required this.ip,
+    required this.createdAt,
+    this.protocol = 'all',
+    this.reason = '',
+    this.createdBy = 'auto',
+    this.expiresAt,
+  });
+
+  final int id;
+  final String ip;
+  final String protocol;
+  final String reason;
+  final String createdBy;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+}

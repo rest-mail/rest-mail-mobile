@@ -409,6 +409,78 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'aliases', '$id']);
   }
 
+  /// Needs `users:read`.
+  Future<OffsetPage<AdminUser>> adminUsers({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'admin-users'], AdminUser.fromJson, offset, limit);
+
+  /// Every role there is. Needs `users:read`.
+  Future<List<AdminRole>> roles() async =>
+      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
+
+  /// Needs `users:write`.
+  Future<void> createAdminUser({
+    required String username,
+    required String password,
+    List<int> roleIds = const [],
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'admin-users'],
+      body: {'username': username, 'password': password, 'role_ids': roleIds},
+    );
+  }
+
+  /// Changes what is given. A new password, roles, or turning it off ends
+  /// the user's sessions. Needs `users:write`.
+  Future<void> updateAdminUser(
+    int id, {
+    bool? active,
+    String? password,
+    List<int>? roleIds,
+  }) async {
+    await _authed(
+      'PUT',
+      ['admin', 'admin-users', '$id'],
+      body: {'active': ?active, 'password': ?password, 'role_ids': ?roleIds},
+    );
+  }
+
+  /// Needs `users:delete`.
+  Future<void> deleteAdminUser(int id) async {
+    await _authed('DELETE', ['admin', 'admin-users', '$id']);
+  }
+
+  /// The bans in force. Needs `bans:read`.
+  Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);
+
+  /// Keeps [ip] out of [protocol] (`all` of them unless named) for
+  /// [duration], or for good. Needs `bans:write`.
+  Future<void> createBan({
+    required String ip,
+    required String createdBy,
+    String reason = '',
+    String protocol = 'all',
+    Duration? duration,
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'bans'],
+      body: {
+        'ip': ip,
+        'reason': reason,
+        'protocol': protocol,
+        'created_by': createdBy,
+        if (duration != null) 'duration': '${duration.inMinutes}m',
+      },
+    );
+  }
+
+  /// Lifts a ban. Needs `bans:delete`.
+  Future<void> deleteBan(int id) async {
+    await _authed('DELETE', ['admin', 'bans', '$id']);
+  }
+
   // ── Accounts and folders ─────────────────────────────────────────────
 
   Future<List<Account>> accounts() async =>
