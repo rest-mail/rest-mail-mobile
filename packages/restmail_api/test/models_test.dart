@@ -249,5 +249,161 @@ void main() {
         ('arc_seal', false, true),
       ]);
     });
+
+    test('pipeline analytics: counts as Go floats, empty lists as null', () {
+      final analytics = PipelineAnalytics.fromJson({
+        'window': {
+          'since': '2026-10-16T06:00:00Z',
+          'until': '2026-10-17T06:00:00Z',
+          'label': '24h0m0s',
+        },
+        'funnel': {
+          'received': [
+            {'transport': 'plaintext', 'count': 2.0},
+            {'transport': 'tls', 'count': 40.0},
+          ],
+          'auth_verdicts': [
+            {'mechanism': 'spf', 'result': 'pass', 'count': 38.0},
+          ],
+          'stage_decisions': null,
+          'terminal_outcomes': [
+            {'direction': 'inbound', 'outcome': 'rejected', 'count': 3.0},
+          ],
+          'top_reject_reasons': [
+            {'reason_code': 'spam', 'count': 3.0},
+          ],
+        },
+        'live_totals': {'received': null},
+      });
+      expect(analytics.until.difference(analytics.since).inHours, 24);
+      expect(analytics.received.map((r) => (r.transport, r.count)), [
+        ('plaintext', 2),
+        ('tls', 40),
+      ]);
+      expect(analytics.senderChecks.single.result, 'pass');
+      expect(analytics.decisions, isEmpty);
+      expect(analytics.outcomes.single.outcome, 'rejected');
+      expect(analytics.rejectReasons.single, (reason: 'spam', count: 3));
+      expect(analytics.isEmpty, isFalse);
+
+      final quiet = PipelineAnalytics.fromJson({
+        'window': {'since': '2026-10-16T06:00:00Z'},
+        'funnel': {
+          'received': null,
+          'auth_verdicts': null,
+          'stage_decisions': null,
+          'terminal_outcomes': null,
+          'top_reject_reasons': null,
+        },
+      });
+      expect(quiet.isEmpty, isTrue);
+    });
+
+    test('a webmail account, its mailbox and the ones linked to it', () {
+      final account = WebmailAccount.fromJson({
+        'id': 3,
+        'primary_mailbox_id': 1,
+        'created_at': '2026-10-10T08:00:00Z',
+        'updated_at': '2026-10-10T08:00:00Z',
+        'primary_mailbox': {
+          'id': 1,
+          'address': 'dana@a.test',
+          'display_name': 'Dana',
+          // Not loaded, so a zero struct.
+          'domain': {'id': 0, 'name': ''},
+        },
+        'linked_accounts': [
+          {
+            'id': 9,
+            'webmail_account_id': 3,
+            'mailbox_id': 2,
+            'display_name': 'Work',
+            'created_at': '2026-10-11T08:00:00Z',
+            'webmail_account': {'id': 0, 'primary_mailbox_id': 0},
+            'mailbox': {'id': 2, 'address': 'dana@b.test'},
+          },
+        ],
+      });
+      expect(account.address, 'dana@a.test');
+      expect(account.displayName, 'Dana');
+      expect(account.linked.single.address, 'dana@b.test');
+      expect(account.linked.single.displayName, 'Work');
+
+      // A new one comes back without its links: Go leaves them out.
+      final created = WebmailAccount.fromJson({
+        'id': 4,
+        'primary_mailbox_id': 2,
+        'created_at': '2026-10-17T08:00:00Z',
+        'primary_mailbox': {'id': 2, 'address': 'dana@b.test'},
+      });
+      expect(created.linked, isEmpty);
+    });
+
+    test('a sender rule says which list it is on', () {
+      final rule = SenderRule.fromJson({
+        'id': 5,
+        'domain_id': 7,
+        'pattern': '@deals.test',
+        'list_type': 'block',
+        'reason': 'Sends spam',
+        'created_at': '2026-10-16T21:04:05Z',
+      });
+      expect(rule.list, SenderList.block);
+      expect(rule.pattern, '@deals.test');
+      expect(
+        SenderRule.fromJson({
+          'id': 6,
+          'domain_id': 7,
+          'pattern': 'ana@harbor.test',
+          'list_type': 'allow',
+          'created_at': '2026-10-16T21:04:05Z',
+        }).reason,
+        '',
+      );
+    });
+
+    test('an MTA-STS policy splits its hosts and counts its age in '
+        'seconds', () {
+      final policy = MtaStsPolicy.fromJson({
+        'id': 1,
+        'domain_id': 7,
+        'mode': 'enforce',
+        'mx_hosts': 'mx1.a.test, *.a.test,',
+        'max_age': 604800,
+        'active': true,
+        'created_at': '2026-10-16T21:04:05Z',
+        'updated_at': '2026-10-16T21:04:05Z',
+        'domain': {'id': 0, 'name': ''},
+      });
+      expect(policy.mode, MtaStsMode.enforce);
+      expect(policy.mxHosts, ['mx1.a.test', '*.a.test']);
+      expect(policy.maxAge, const Duration(days: 7));
+    });
+
+    test('a DNS check, record by record', () {
+      final check = DnsCheck.fromJson({
+        'domain': 'a.test',
+        'summary': '1/2 records verified',
+        'records': [
+          {
+            'type': 'MX',
+            'name': 'a.test',
+            'status': 'ok',
+            'value': 'mx.a.test. (pri 10)',
+          },
+          {
+            'type': 'DMARC',
+            'name': '_dmarc.a.test',
+            'status': 'missing',
+            'message': 'No DMARC record found',
+          },
+        ],
+      });
+      expect(check.records.map((r) => (r.type, r.ok)), [
+        ('MX', true),
+        ('DMARC', false),
+      ]);
+      expect(check.records.last.message, 'No DMARC record found');
+    });
   });
 }
