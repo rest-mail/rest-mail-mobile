@@ -1609,14 +1609,18 @@ class FakeRestmail {
       _fail(500, 'internal_error', 'Failed to create admin user');
     }
     final roles = _roleIds(body['role_ids']);
-    // As on the real server, it chooses its own password and enrolls an
-    // authenticator at its first sign-in.
-    final admin = _admins[username] = _FakeAdmin(
-      _nextRowId++,
-      username,
-      password,
-      capabilities: _capabilitiesOf(roles),
-    )..roles = roles;
+    // As on the real server, it owes no setup: it signs in with the password
+    // it was given, and no second factor unless it enrolls one.
+    final admin = _admins[username] =
+        _FakeAdmin(
+            _nextRowId++,
+            username,
+            password,
+            capabilities: _capabilitiesOf(roles),
+          )
+          ..roles = roles
+          ..mustChangePassword = false
+          ..twoFactorRequired = false;
     return _json({'data': _adminUserJson(admin)}, status: 201);
   }
 
@@ -1756,6 +1760,10 @@ class _FakeAdmin {
   Set<int> roles = {};
   bool active = true;
   bool mustChangePassword = true;
+
+  /// Kept in setup until an authenticator is enrolled, as a bootstrap admin
+  /// is.
+  bool twoFactorRequired = true;
   bool totpPending = false;
   bool totpEnrolled = false;
 
@@ -1768,7 +1776,7 @@ class _FakeAdmin {
   /// What the real server reports in `setup_required`, in its order.
   List<String> get setupRequired => [
     if (mustChangePassword) 'password',
-    if (!totpEnrolled) 'two_factor',
+    if (twoFactorRequired && !totpEnrolled) 'two_factor',
   ];
 }
 

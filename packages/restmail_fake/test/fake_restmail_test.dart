@@ -549,6 +549,30 @@ void main() {
       },
     );
 
+    test('an admin made by another signs in with its password alone, and '
+        'may do what its roles say', () async {
+      final fake = FakeRestmail();
+      final superadmin = await admin(fake);
+      final readonly = (await superadmin.roles()).firstWhere(
+        (r) => r.name == 'readonly',
+      );
+      await superadmin.createAdminUser(
+        username: 'ops',
+        password: 'ops password',
+        roleIds: [readonly.id],
+      );
+
+      final ops = _client(fake);
+      final signedIn = await ops.signInAdmin(
+        username: 'ops',
+        password: 'ops password',
+      );
+      expect(signedIn.isSetUp, isTrue);
+      expect(signedIn.capabilities.allows(Capability.domainsRead), isTrue);
+      await ops.domains();
+      await expectLater(ops.createDomain('x.test'), refused('forbidden'));
+    });
+
     test('bans need bans:*', () async {
       final fake = FakeRestmail();
       final watcher = await admin(fake, FakeAccounts.queueWatcher);

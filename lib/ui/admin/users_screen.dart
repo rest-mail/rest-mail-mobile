@@ -47,11 +47,12 @@ class _UsersScreenState extends State<UsersScreen> {
       AdminFormScreen(
         title: 'Add an administrator',
         intro:
-            'At their first sign-in they choose a password of their own and '
-            'set up two-factor sign-in. Give them a role once they are added.',
+            'They sign in with this username and password. They can do '
+            'nothing until they have a role: give them one once they are '
+            'added.',
         fields: const [
           AdminField('Username', email: true),
-          AdminField('First password', obscure: true),
+          AdminField('Password', obscure: true),
         ],
         action: 'Add administrator',
         host: _host,
