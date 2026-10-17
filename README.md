@@ -19,7 +19,9 @@ webmail uses, not IMAP.
   the REST Mail ones, signed in with a password or an app password. Gmail is
   added with an app password, guided step by step.
 - Administration of a REST Mail server: the outbound queue, domains,
-  mailboxes, aliases, administrators and their roles, bans, and an overview.
+  mailboxes, aliases, administrators and their roles, bans, an overview, the
+  delivery and activity logs, message traces, TLS reports, the audit log and
+  its chain check, DKIM keys, certificates, pipelines and custom filters.
   Each part shows only to a session whose capabilities allow it, and its
   changes only with the capability to make them.
 - Live updates over the server's event stream while the app is open.
@@ -252,6 +254,16 @@ refresh, so one taken away on the server goes from the app at the next
 refresh. Hiding is only for comfort: the server checks every request, and
 when it refuses one the app says "You don't have permission for this".
 
+The **Audit log** (`audit:read`) lists every sign-in and change, newest
+first. **Verify chain** has the server check that each entry follows the
+one before and matches its hash, and says where the chain breaks if it
+does. A message in the **Delivery log** opens its **Message trace**: each
+filter it went through and what that filter found.
+
+A phone can remove a DKIM key or a certificate, and turn a pipeline or a
+custom filter on or off, but setting a key, adding a certificate and
+editing filters are left to the admin webmail.
+
 </td>
 </tr>
 </table>
@@ -380,6 +392,4 @@ under Apple Developer team `43UMKXZ8P4`.
   app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
-- The rest of administration: the delivery and activity logs, message trace,
-  TLS reports, the audit log, DKIM and certificates, and pipelines and custom
-  filters.
+- Editing a pipeline's filters or a custom filter, and making new ones.

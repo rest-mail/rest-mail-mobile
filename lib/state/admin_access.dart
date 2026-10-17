@@ -53,13 +53,78 @@ enum AdminSection {
     delete: Capability.bansDelete,
   ),
 
-  /// Only to look at: nothing in it changes.
-  overview(
+  overview.readOnly(
     'Overview',
     'Mail volume, the queue and TLS at a glance',
     read: Capability.observabilityRead,
-    write: Capability.observabilityRead,
-    delete: Capability.observabilityRead,
+  ),
+  deliveryLog.readOnly(
+    'Delivery log',
+    'What went out to other servers, and how it went',
+    read: Capability.messagesRead,
+    group: AdminGroup.logs,
+  ),
+
+  /// The server gives its activity log to whoever may see its admins.
+  activity.readOnly(
+    'Activity',
+    'What was changed on the server, and by whom',
+    read: Capability.usersRead,
+    group: AdminGroup.logs,
+  ),
+  trace.readOnly(
+    'Message trace',
+    'Each filter a message went through',
+    read: Capability.observabilityRead,
+    group: AdminGroup.logs,
+  ),
+  tlsReports.readOnly(
+    'TLS reports',
+    'How other servers fare reaching this one over TLS',
+    read: Capability.domainsRead,
+    group: AdminGroup.logs,
+  ),
+  audit.readOnly(
+    'Audit log',
+    'Every sign-in and change, chained so tampering shows',
+    read: Capability.auditRead,
+    group: AdminGroup.logs,
+  ),
+
+  /// The server removes a key with `domains:write`, not `domains:delete`.
+  dkim(
+    'DKIM keys',
+    'The keys mail from each domain is signed with',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.setup,
+  ),
+
+  /// As with DKIM keys, a certificate goes with `domains:write`.
+  certificates(
+    'Certificates',
+    'The TLS certificates each domain is served with',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.setup,
+  ),
+  pipelines(
+    'Pipelines',
+    'The filters mail goes through, in order',
+    read: Capability.pipelinesRead,
+    write: Capability.pipelinesWrite,
+    delete: Capability.pipelinesDelete,
+    group: AdminGroup.setup,
+  ),
+  customFilters(
+    'Custom filters',
+    'Filters written for this server',
+    read: Capability.pipelinesRead,
+    write: Capability.pipelinesWrite,
+    delete: Capability.pipelinesDelete,
+    group: AdminGroup.setup,
   );
 
   const AdminSection(
@@ -68,10 +133,21 @@ enum AdminSection {
     required this.read,
     required this.write,
     required this.delete,
+    this.group = AdminGroup.manage,
   });
+
+  /// Only to look at: nothing in it changes.
+  const AdminSection.readOnly(
+    this.title,
+    this.subtitle, {
+    required this.read,
+    this.group = AdminGroup.manage,
+  }) : write = read,
+       delete = read;
 
   final String title;
   final String subtitle;
+  final AdminGroup group;
 
   /// To see the section at all.
   final String read;
@@ -81,6 +157,19 @@ enum AdminSection {
 
   /// To delete what is in it.
   final String delete;
+}
+
+/// Where a section sits in Administration, under its heading.
+enum AdminGroup {
+  /// Mail, the people who run the server, and bans: what a phone is for.
+  manage(null),
+  logs('Logs and reports'),
+  setup('Signing and filtering');
+
+  const AdminGroup(this.title);
+
+  /// None for the first, which needs none.
+  final String? title;
 }
 
 /// What a session's capabilities let it see and do in Administration.
