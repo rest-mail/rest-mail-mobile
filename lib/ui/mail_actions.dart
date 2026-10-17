@@ -10,7 +10,8 @@ import 'compose_sheet.dart';
 import 'widgets/common.dart';
 
 /// Runs [action], which takes [message] out of the folder on screen, then
-/// says so with an Undo that puts it back where it was.
+/// says so with an Undo that puts it back where it was. [others] are the
+/// rest of its conversation, taken out with it and put back with it.
 Future<void> removeWithUndo({
   required ScaffoldMessengerState messenger,
   required MailboxState mailbox,
@@ -18,6 +19,7 @@ Future<void> removeWithUndo({
   required Future<void> Function() action,
   required String done,
   bool undoable = true,
+  List<Message> others = const [],
 }) async {
   try {
     await action();
@@ -30,8 +32,9 @@ Future<void> removeWithUndo({
           action: undoable
               ? SnackBarAction(
                   label: 'Undo',
-                  onPressed: () =>
-                      unawaited(_undo(messenger, mailbox, message)),
+                  onPressed: () => unawaited(
+                    _undo(messenger, mailbox, [message, ...others]),
+                  ),
                 )
               : null,
         ),
@@ -46,10 +49,12 @@ Future<void> removeWithUndo({
 Future<void> _undo(
   ScaffoldMessengerState messenger,
   MailboxState mailbox,
-  Message message,
+  List<Message> messages,
 ) async {
   try {
-    await mailbox.undoRemoval(message);
+    for (final message in messages) {
+      await mailbox.undoRemoval(message);
+    }
   } on ApiException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(describeError(e))));
   }

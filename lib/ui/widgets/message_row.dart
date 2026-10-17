@@ -13,6 +13,7 @@ class MessageRow extends StatelessWidget {
     required this.message,
     required this.onTap,
     this.dense = false,
+    this.count = 1,
   });
 
   final Message message;
@@ -20,6 +21,9 @@ class MessageRow extends StatelessWidget {
 
   /// One line of preview and no badges, for search results.
   final bool dense;
+
+  /// How many messages the row's conversation has, shown when more than one.
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +35,7 @@ class MessageRow extends StatelessWidget {
       label: [
         if (unread) 'Unread',
         'From ${message.senderLabel}',
+        if (count > 1) '$count messages',
         subject,
         timeLabel(message.date),
         if (message.hasAttachments) 'Has attachments',
@@ -60,18 +65,38 @@ class MessageRow extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Expanded(
-                          child: Text(
-                            message.senderLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: rmText(
-                              dense ? 14.5 : 15,
-                              color: c.ink,
-                              weight: unread
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              tracking: -0.015,
-                            ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  message.senderLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: rmText(
+                                    dense ? 14.5 : 15,
+                                    color: c.ink,
+                                    weight: unread
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    tracking: -0.015,
+                                  ),
+                                ),
+                              ),
+                              if (count > 1)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: Text(
+                                    '$count',
+                                    style: rmText(
+                                      12.5,
+                                      color: c.ink3,
+                                      weight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),

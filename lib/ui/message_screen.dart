@@ -9,26 +9,35 @@ import '../util/compose_seed.dart';
 import '../util/format.dart';
 import 'attachments.dart';
 import 'compose_sheet.dart';
+import 'labels_sheet.dart';
 import 'mail_actions.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/message_body.dart';
+import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, spam, notSpam }
+enum _More { markUnread, flag, labels, spam, notSpam }
 
 /// One message, read in full, with reply, reply all and forward along the
-/// bottom.
+/// bottom. On Gmail, with its labels, and the rest of its conversation
+/// below.
 class MessageScreen extends StatefulWidget {
   const MessageScreen({
     super.key,
     required this.mailbox,
     required this.message,
+    this.others = const [],
   });
 
   final MailboxState mailbox;
 
   /// The message as the list had it; the full one is fetched on open.
   final Message message;
+
+  /// The rest of its conversation in the folder on screen, which opening
+  /// marks read and archive, delete, spam and labels act on too, as the
+  /// list showed them as one row.
+  final List<Message> others;
 
   @override
   State<MessageScreen> createState() => _MessageScreenState();
@@ -41,7 +50,13 @@ class _MessageScreenState extends State<MessageScreen> {
   List<Attachment> _attachments = const [];
   bool _allRecipients = false;
 
+  /// Every message in its conversation, wherever filed, oldest first.
+  List<Message> _conversation = const [];
+
   MailboxState get _mailbox => widget.mailbox;
+
+  /// Gmail: labels rather than folders, and a star rather than a flag.
+  bool get _labels => _mailbox.backend.hasLabels;
 
   @override
   void initState() {
@@ -58,6 +73,10 @@ class _MessageScreenState extends State<MessageScreen> {
         _loaded = true;
       });
       if (!full.isRead) unawaited(_markRead(full));
+      for (final other in widget.others) {
+        if (!other.isRead) unawaited(_markRead(other, shown: false));
+      }
+      if (_mailbox.backend.groupsThreads) unawaited(_loadConversation());
       if (full.hasAttachments) {
         final attachments = await _mailbox.backend.attachments(full.id);
         if (mounted) setState(() => _attachments = attachments);
@@ -72,30 +91,44 @@ class _MessageScreenState extends State<MessageScreen> {
     }
   }
 
-  Future<void> _markRead(Message message) async {
+  Future<void> _markRead(Message message, {bool shown = true}) async {
     try {
       await _mailbox.setRead(message, true);
-      if (mounted) setState(() => _message = _message.copyWith(isRead: true));
+      if (mounted && shown) {
+        setState(() => _message = _message.copyWith(isRead: true));
+      }
     } on ApiException {
       // Left unread; opening it again tries again.
     }
   }
 
-  /// Leaves the screen, then takes the message out of its folder with an
-  /// Undo on the screen underneath.
+  Future<void> _loadConversation() async {
+    try {
+      final all = await _mailbox.backend.conversation(widget.message.id);
+      if (mounted) setState(() => _conversation = all);
+    } on ApiException {
+      // The message alone, then.
+    }
+  }
+
+  /// Leaves the screen, then takes the message, and the rest of its
+  /// conversation here, out of the folder with an Undo on the screen
+  /// underneath.
   Future<void> _removeAndLeave(
-    Future<void> Function() action,
+    Future<void> Function(Message message, List<Message> others) action,
     String done, {
     bool undoable = true,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final message = _message;
+    final others = widget.others;
     Navigator.pop(context);
     await removeWithUndo(
       messenger: messenger,
       mailbox: _mailbox,
       message: message,
-      action: action,
+      others: others,
+      action: () => action(message, others),
       done: done,
       undoable: undoable,
     );
@@ -105,10 +138,56 @@ class _MessageScreenState extends State<MessageScreen> {
     if (!await confirmPermanentDelete(context, _message) || !mounted) return;
     final permanent = _message.folder == StandardFolder.trash;
     await _removeAndLeave(
-      () => _mailbox.delete(_message),
+      (message, others) => _mailbox.delete(message, others: others),
       permanent ? 'Deleted' : 'Moved to Trash',
       undoable: !permanent,
     );
+  }
+
+  /// Gmail: picks the labels it carries. Taking off the one for the folder
+  /// it's in takes it out of that folder, with an Undo.
+  Future<void> _editLabels() async {
+    final current = _message.labels.toSet();
+    final chosen = await pickLabels(
+      context,
+      labels: [
+        for (final f in _mailbox.folders)
+          if (f.isLabel) f.name,
+      ],
+      selected: current,
+    );
+    if (chosen == null || !mounted) return;
+    final add = chosen.difference(current);
+    final remove = current.difference(chosen);
+    if (add.isEmpty && remove.isEmpty) return;
+    if (remove.contains(_message.folder)) {
+      await _removeAndLeave(
+        (message, others) => _mailbox.setLabels(
+          message,
+          add: add,
+          remove: remove,
+          others: others,
+        ),
+        'Removed from ${folderLabel(_message.folder)}',
+      );
+      return;
+    }
+    await _mailbox.setLabels(
+      _message,
+      add: add,
+      remove: remove,
+      others: widget.others,
+    );
+    if (mounted) {
+      setState(
+        () => _message = _message.copyWith(
+          labels: [
+            for (final f in _mailbox.folders)
+              if (chosen.contains(f.name)) f.name,
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _more(_More action) async {
@@ -123,14 +202,18 @@ class _MessageScreenState extends State<MessageScreen> {
           if (mounted) {
             setState(() => _message = _message.copyWith(isFlagged: flagged));
           }
+        case _More.labels:
+          await _editLabels();
         case _More.spam:
           await _removeAndLeave(
-            () => _mailbox.move(_message, StandardFolder.spam),
+            (message, others) =>
+                _mailbox.move(message, StandardFolder.spam, others: others),
             'Moved to Spam',
           );
         case _More.notSpam:
           await _removeAndLeave(
-            () => _mailbox.move(_message, StandardFolder.inbox),
+            (message, others) =>
+                _mailbox.move(message, StandardFolder.inbox, others: others),
             'Moved to Inbox',
           );
       }
@@ -189,13 +272,20 @@ class _MessageScreenState extends State<MessageScreen> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Spacer(),
-                  if (m.folder != StandardFolder.archive)
+                  // On Gmail, archiving is taking a message out of the inbox.
+                  if (_labels
+                      ? m.folder == StandardFolder.inbox
+                      : m.folder != StandardFolder.archive)
                     RmIconButton(
                       icon: Icons.archive_outlined,
                       tooltip: 'Archive',
                       onPressed: () => unawaited(
                         _removeAndLeave(
-                          () => _mailbox.move(_message, StandardFolder.archive),
+                          (message, others) => _mailbox.move(
+                            message,
+                            StandardFolder.archive,
+                            others: others,
+                          ),
                           'Archived',
                         ),
                       ),
@@ -216,8 +306,18 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                       PopupMenuItem(
                         value: _More.flag,
-                        child: Text(m.isFlagged ? 'Remove flag' : 'Flag'),
+                        child: Text(switch ((_labels, m.isFlagged)) {
+                          (true, true) => 'Remove star',
+                          (true, false) => 'Star',
+                          (false, true) => 'Remove flag',
+                          (false, false) => 'Flag',
+                        }),
                       ),
+                      if (_labels)
+                        const PopupMenuItem(
+                          value: _More.labels,
+                          child: Text('Labels…'),
+                        ),
                       if (m.folder == StandardFolder.spam)
                         const PopupMenuItem(
                           value: _More.notSpam,
@@ -247,6 +347,17 @@ class _MessageScreenState extends State<MessageScreen> {
                       tracking: -0.035,
                     ),
                   ),
+                  if (m.labels.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final label in m.labels) _LabelChip(label),
+                        ],
+                      ),
+                    ),
                   Container(
                     padding: const EdgeInsets.fromLTRB(0, 18, 0, 16),
                     decoration: BoxDecoration(
@@ -322,6 +433,28 @@ class _MessageScreenState extends State<MessageScreen> {
                       attachments: _attachments,
                     ),
                   ],
+                  if (_conversation.length > 1) ...[
+                    const SizedBox(height: 26),
+                    SectionLabel(
+                      '${_conversation.length} messages in this conversation',
+                    ),
+                    const SizedBox(height: 8),
+                    for (final other in _conversation)
+                      if (other.id != m.id)
+                        MessageRow(
+                          message: other,
+                          dense: true,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => MessageScreen(
+                                mailbox: _mailbox,
+                                message: other,
+                              ),
+                            ),
+                          ),
+                        ),
+                  ],
                   const SizedBox(height: 40),
                 ],
               ),
@@ -378,6 +511,30 @@ class _MessageScreenState extends State<MessageScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One of a Gmail message's labels, under its subject.
+class _LabelChip extends StatelessWidget {
+  const _LabelChip(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        folderLabel(name),
+        style: rmText(12, color: c.ink2, weight: FontWeight.w600),
       ),
     );
   }
