@@ -384,7 +384,10 @@ flutter run \
 ```
 
 They are public clients, so an ID is not a secret and there is no client
-secret anywhere: the app proves each sign-in with PKCE. The redirects the
+secret anywhere: the app proves each sign-in with PKCE. TestFlight builds
+take `MS_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID` from variables in the
+`release` environment (`gh variable set MS_CLIENT_ID --env release`); while
+they are unset, the build has no sign-in buttons. The redirects the
 registrations must list are:
 
 | Provider | Redirect URI |
@@ -472,8 +475,8 @@ under Apple Developer team `43UMKXZ8P4`.
 - Notifications while the app is closed. The server needs to push through
   APNs and FCM first. For IMAP accounts they need something server-side too.
 - Sign in with Microsoft and Google in the TestFlight builds: they wait for
-  the app's registrations at Microsoft and Google (#37). Creating a Gmail
-  label from the app.
+  the app's registrations at Microsoft and Google, and their client IDs in
+  the `release` environment (#37). Creating a Gmail label from the app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
 - Editing a pipeline's filters or a custom filter, and making new ones.
