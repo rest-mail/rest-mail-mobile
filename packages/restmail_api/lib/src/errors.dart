@@ -13,6 +13,7 @@ class ApiException implements Exception {
     this.code,
     this.message, {
     this.fields = const {},
+    this.retryAfter,
   });
 
   /// Reads rest-mail's error envelope, falling back to the status line when
@@ -21,6 +22,7 @@ class ApiException implements Exception {
     int statusCode,
     String body, {
     String? reason,
+    Duration? retryAfter,
   }) {
     var code = 'http_$statusCode';
     var message = reason ?? 'The server answered $statusCode';
@@ -38,7 +40,13 @@ class ApiException implements Exception {
       // Not an envelope; the status line is all there is.
     }
     if (code == 'totp_required') return TotpRequiredException(message);
-    return ApiException(statusCode, code, message, fields: fields);
+    return ApiException(
+      statusCode,
+      code,
+      message,
+      fields: fields,
+      retryAfter: retryAfter,
+    );
   }
 
   /// The HTTP status, or 0 when there was no response.
@@ -48,6 +56,9 @@ class ApiException implements Exception {
 
   /// Per-field messages from a `validation_failed` response.
   final Map<String, String> fields;
+
+  /// How long a 429 says to wait, from its `Retry-After`.
+  final Duration? retryAfter;
 
   bool get isNetworkError => statusCode == 0;
 

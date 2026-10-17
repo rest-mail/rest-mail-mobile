@@ -26,8 +26,8 @@ class FakeMailbox {
   Set<String> capabilities = {};
 
   /// When set, signing in also needs this code or [recoveryCode].
-  final String? totpCode;
-  final String? recoveryCode;
+  String? totpCode;
+  String? recoveryCode;
   final int quotaBytes;
 
   String get domain => address.substring(address.indexOf('@') + 1);
@@ -331,4 +331,35 @@ class FakeAuditEntry {
     userAgent,
     prevHash,
   ]);
+}
+
+/// One of a mailbox's app passwords, as the fake stores it.
+class FakeAppPassword {
+  FakeAppPassword({
+    required this.id,
+    required this.mailboxId,
+    required this.name,
+    required this.publicId,
+    required this.secret,
+    required this.createdAt,
+    this.expiresAt,
+  });
+
+  final int id;
+  final int mailboxId;
+  final String name;
+  final String publicId;
+
+  /// The whole app password. The real server keeps only a SHA-256 of it; the
+  /// fake keeps it to check a use, and never answers with it after making it.
+  final String secret;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+  DateTime? lastUsedAt;
+
+  /// When it was revoked. A revoked one stays, as the real server keeps the
+  /// row for its audit trail, but leaves the list and stops working.
+  DateTime? revokedAt;
+
+  bool get isRevoked => revokedAt != null;
 }

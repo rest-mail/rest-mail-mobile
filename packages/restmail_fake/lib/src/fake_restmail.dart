@@ -44,6 +44,7 @@ class FakeRestmail {
     this.host = FakeAccounts.host,
     this.accessTokenLifetime = const Duration(minutes: 15),
     this.latency = Duration.zero,
+    this.appPasswords = true,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     _load();
@@ -61,6 +62,10 @@ class FakeRestmail {
 
   /// A pause before every answer, for a slow network.
   final Duration latency;
+
+  /// False to act like a server from before app passwords (REST Mail
+  /// 0.10.0), which has no route for them.
+  final bool appPasswords;
   final DateTime Function() _clock;
 
   /// False to act like a server that cannot be reached.
@@ -89,6 +94,7 @@ class FakeRestmail {
   final _admins = <String, _FakeAdmin>{};
   final _adminAccessTokens = <String, _AdminGrant>{};
   final _adminRefreshTokens = <String, _FakeAdmin>{};
+  final _appPasswords = <int, FakeAppPassword>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
 
@@ -96,6 +102,9 @@ class FakeRestmail {
   var _nextRowId = 1;
   var _nextEventId = 0;
   var _nextToken = 0;
+
+  /// Until when sign-in's budget is spent; see [throttleSignIns].
+  DateTime? _throttledUntil;
 
   /// A client that talks to this fake; hand it to a `RestmailClient`.
   http.Client get client => MockClient.streaming(_handle);
@@ -281,6 +290,53 @@ class FakeRestmail {
       ?_roles[id]?.name,
   ];
 
+  /// A mailbox's app passwords, revoked ones included, for a test to check.
+  List<FakeAppPassword> appPasswordsOf(String address) {
+    final box = _mailboxAt(address);
+    return [
+      for (final p in _appPasswords.values)
+        if (p.mailboxId == box?.id) p,
+    ];
+  }
+
+  /// Whether a mail client signing in to [address] with [password] would be
+  /// let in now, as the gateways ask the real server: an app password of
+  /// that mailbox, not revoked or expired, on a mailbox that is active. A
+  /// use is recorded as its last.
+  bool acceptsAppPassword(String address, String password) {
+    final box = _mailboxAt(address);
+    if (box == null || !box.active) return false;
+    final now = _clock();
+    for (final p in _appPasswords.values) {
+      if (p.mailboxId != box.id || p.secret != password || p.isRevoked) {
+        continue;
+      }
+      if (p.expiresAt case final expires? when !expires.isAfter(now)) {
+        return false;
+      }
+      p.lastUsedAt = now;
+      return true;
+    }
+    return false;
+  }
+
+  /// Turns on two-factor authentication for [address] after the fact, as
+  /// the webmail does: a session signed in before it took no code.
+  void enableTwoFactor(String address) {
+    final box = _mailboxAt(address);
+    if (box == null) {
+      throw ArgumentError.value(address, 'address', 'No such mailbox');
+    }
+    box
+      ..totpCode = FakeAccounts.totpCode
+      ..recoveryCode = FakeAccounts.recoveryCode;
+  }
+
+  /// Spends sign-in's budget for [wait]: until then signing in, and making
+  /// an app password, which shares the budget, answer 429 with the time
+  /// left in Retry-After.
+  void throttleSignIns(Duration wait) => _throttledUntil = _clock().add(wait);
+
   /// Ends every open event stream.
   void close() {
     final open = [for (final list in _streams.values) ...list];
@@ -364,6 +420,22 @@ class FakeRestmail {
     if (_adminSelf(request, method, path, bytes) case final response?) {
       return response;
     }
+    // A server from before app passwords: its router has no such route,
+    // and says so in plain text, before any check of the session.
+    if (path case [
+      'api',
+      'v1',
+      'accounts',
+      _,
+      'credentials',
+      ...,
+    ] when !appPasswords) {
+      return http.StreamedResponse(
+        Stream.value(utf8.encode('404 page not found\n')),
+        404,
+        headers: {'content-type': 'text/plain; charset=utf-8'},
+      );
+    }
 
     final session = _authenticate(request);
     final query = request.url.queryParameters;
@@ -403,6 +475,15 @@ class FakeRestmail {
       ('GET', ['api', 'v1', 'accounts', final id, 'events']) => _events(
         _own(session, id),
       ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'credentials']) =>
+        _listAppPasswords(_primary(session, id)),
+      ('POST', ['api', 'v1', 'accounts', final id, 'credentials']) =>
+        _createAppPassword(session, id, bytes),
+      (
+        'DELETE',
+        ['api', 'v1', 'accounts', final id, 'credentials', final credential],
+      ) =>
+        _revokeAppPassword(_primary(session, id), credential),
       ('POST', ['api', 'v1', 'messages', 'send']) => _send(
         session,
         _object(bytes),
@@ -440,6 +521,7 @@ class FakeRestmail {
   // ── Sessions ──────────────────────────────────────────────────────────
 
   http.StreamedResponse _login(Map<String, dynamic> body) {
+    _spendSignInBudget();
     final box = _mailboxAt(body['email'] as String? ?? '');
     if (box == null || body['password'] != box.password) {
       _fail(401, 'unauthorized', 'Invalid email or password');
@@ -455,7 +537,35 @@ class FakeRestmail {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
     }
-    return _issue(_Session(box.id), native: body['client'] == 'native');
+    // The real server marks a session that took the second factor, and a
+    // refresh keeps the mark; making an app password asks for it.
+    return _issue(
+      _Session(box.id, twoFactor: box.totpCode != null),
+      native: body['client'] == 'native',
+    );
+  }
+
+  /// Answers 429 while sign-in's budget is spent, as login's throttle does.
+  void _spendSignInBudget() {
+    final until = _throttledUntil;
+    if (until == null) return;
+    final left = until.difference(_clock());
+    if (left <= Duration.zero) {
+      _throttledUntil = null;
+      return;
+    }
+    throw _Reply(
+      _json(
+        {
+          'error': {
+            'code': 'rate_limited',
+            'message': 'Too many requests; please slow down',
+          },
+        },
+        status: 429,
+        headers: {'retry-after': '${(left.inMilliseconds / 1000).ceil()}'},
+      ),
+    );
   }
 
   /// The server retires a refresh token when it is used; so does this. A
@@ -572,6 +682,141 @@ class FakeRestmail {
       },
     });
   }
+
+  // ── App passwords ─────────────────────────────────────────────────────
+  //
+  // The real server's rules (rest-mail-server#344): only the session's own
+  // mailbox, never one it has linked; making one needs the mailbox's current
+  // password entered again, and the second factor when the mailbox has one;
+  // the secret is answered once; a revoked one stops working at once.
+
+  /// `/accounts/{id}` for the app password routes: the session's own
+  /// mailbox only.
+  FakeMailbox _primary(_Session session, String id) {
+    if (int.tryParse(id) != session.primary) {
+      _fail(404, 'not_found', 'Account not found');
+    }
+    return _mailboxes[session.primary]!;
+  }
+
+  http.StreamedResponse _listAppPasswords(FakeMailbox box) {
+    final listed =
+        [
+          for (final p in _appPasswords.values)
+            if (p.mailboxId == box.id && !p.isRevoked) p,
+        ]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt) != 0
+              ? b.createdAt.compareTo(a.createdAt)
+              : b.id.compareTo(a.id),
+        );
+    return _json({
+      'data': [for (final p in listed) _appPasswordJson(p)],
+    });
+  }
+
+  http.StreamedResponse _createAppPassword(
+    _Session session,
+    String id,
+    List<int> bytes,
+  ) {
+    // Login's throttle sits in front of the route, before anything else.
+    _spendSignInBudget();
+    final box = _primary(session, id);
+    final body = _object(bytes);
+    final name = (body['name'] as String? ?? '').trim();
+    final rawExpiry = body['expires_at'];
+    final expiresAt = rawExpiry is String ? DateTime.tryParse(rawExpiry) : null;
+    if (rawExpiry != null && expiresAt == null) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    final now = _clock();
+    final invalid = switch (name) {
+      '' => {'name': 'required'},
+      _ when name.runes.length > 100 => {
+        'name': 'must be at most 100 characters',
+      },
+      _ when name.runes.any((r) => r < 0x20 || (r >= 0x7f && r < 0xa0)) => {
+        'name': 'must not contain control characters',
+      },
+      _ when expiresAt != null && !expiresAt.isAfter(now) => {
+        'expires_at': 'must be in the future',
+      },
+      _ => null,
+    };
+    if (invalid != null) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: invalid,
+      );
+    }
+    final password = body['password'] as String? ?? '';
+    if (password.isEmpty) {
+      _fail(
+        401,
+        'reauth_required',
+        "Enter the mailbox's current password to create an app password",
+      );
+    }
+    if (password != box.password || !box.active) {
+      _fail(401, 'invalid_password', 'The password is incorrect');
+    }
+    if (box.totpCode != null && !session.twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'This mailbox has two-factor authentication: sign in again with '
+            'your code to create an app password',
+      );
+    }
+    final publicId = _base62(12);
+    final created = _appPasswords[_nextRowId] = FakeAppPassword(
+      id: _nextRowId++,
+      mailboxId: box.id,
+      name: name,
+      publicId: publicId,
+      secret: 'rm_${publicId}_${_base62(43)}',
+      createdAt: now,
+      expiresAt: expiresAt,
+    );
+    return _json({
+      'data': {..._appPasswordJson(created), 'password': created.secret},
+    }, status: 201);
+  }
+
+  http.StreamedResponse _revokeAppPassword(FakeMailbox box, String id) {
+    final credentialId = int.tryParse(id);
+    if (credentialId == null) {
+      _fail(400, 'bad_request', 'Invalid credential ID');
+    }
+    final found = _appPasswords[credentialId];
+    if (found == null || found.mailboxId != box.id || found.isRevoked) {
+      _fail(404, 'not_found', 'Credential not found');
+    }
+    found.revokedAt = _clock();
+    return _noContent();
+  }
+
+  /// Never the secret.
+  Map<String, Object?> _appPasswordJson(FakeAppPassword p) => {
+    'id': p.id,
+    'name': p.name,
+    'kind': 'app_password',
+    'public_id': p.publicId,
+    'created_at': _time(p.createdAt),
+    'last_used_at': p.lastUsedAt == null ? null : _time(p.lastUsedAt!),
+    'expires_at': p.expiresAt == null ? null : _time(p.expiresAt!),
+  };
+
+  static final _secureRandom = Random.secure();
+  static const _base62Alphabet =
+      '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+  static String _base62(int length) => String.fromCharCodes([
+    for (var i = 0; i < length; i++)
+      _base62Alphabet.codeUnitAt(_secureRandom.nextInt(62)),
+  ]);
 
   // ── Messages ──────────────────────────────────────────────────────────
 
@@ -2147,8 +2392,13 @@ class FakeRestmail {
         );
       }
       box.password = password;
-      // A new password ends the mailbox's sessions.
+      // A new password ends the mailbox's sessions, and revokes its app
+      // passwords: whoever knew the old one could have made one.
       revokeSessionsOf(box.address);
+      final now = _clock();
+      for (final p in _appPasswords.values) {
+        if (p.mailboxId == box.id && !p.isRevoked) p.revokedAt = now;
+      }
     }
     if (body['display_name'] case final String name) box.displayName = name;
     if (body['active'] case final bool active) {
@@ -2168,6 +2418,7 @@ class FakeRestmail {
       session.linked.remove(box.id);
     }
     _messages.removeWhere((_, m) => m.mailboxId == box.id);
+    _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
     _mailboxes.remove(box.id);
   }
 
@@ -2412,9 +2663,12 @@ class FakeRestmail {
 }
 
 class _Session {
-  _Session(this.primary);
+  _Session(this.primary, {this.twoFactor = false});
 
   final int primary;
+
+  /// Its sign-in took the mailbox's second factor.
+  final bool twoFactor;
   final linked = <int>{};
 
   Set<int> get mailboxes => {primary, ...linked};

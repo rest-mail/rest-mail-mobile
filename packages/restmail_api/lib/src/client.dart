@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show HandshakeException;
+import 'dart:io' show HandshakeException, HttpDate, HttpException;
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -669,6 +669,59 @@ class RestmailClient {
     _data(await _authed('GET', ['accounts', '$accountId', 'quota'])),
   );
 
+  // ── App passwords ────────────────────────────────────────────────────
+  //
+  // Only for the session's own mailbox: [accountId] is its primary account,
+  // never one it has linked. A server from before app passwords (REST Mail
+  // 0.10.0) has none of these routes and answers 404.
+
+  /// The mailbox's app passwords, newest first. Revoked ones are gone;
+  /// expired ones stay until they are revoked.
+  Future<List<AppPassword>> appPasswords(int accountId) async => _list(
+    await _authed('GET', ['accounts', '$accountId', 'credentials']),
+    AppPassword.fromJson,
+  );
+
+  /// Makes an app password and returns it with its secret, which the server
+  /// shows this once.
+  ///
+  /// [password] is the mailbox's current password, entered again. Without it
+  /// the server answers 401 `reauth_required`, and with a wrong one 401
+  /// `invalid_password`: refusals of this request, not of the session, so
+  /// they are thrown as they are, never renewing or ending the session. It
+  /// also answers 403 `two_factor_required` when the mailbox has two-factor
+  /// authentication and this session's sign-in didn't take it, and 429 when
+  /// sign-in's budget, which it shares, is spent.
+  Future<NewAppPassword> createAppPassword(
+    int accountId, {
+    required String name,
+    required String password,
+    DateTime? expiresAt,
+  }) async {
+    final response = await _authed(
+      'POST',
+      ['accounts', '$accountId', 'credentials'],
+      body: {
+        'name': name,
+        'password': password,
+        if (expiresAt != null)
+          'expires_at': expiresAt.toUtc().toIso8601String(),
+      },
+      ownRefusals: const {'reauth_required', 'invalid_password'},
+    );
+    try {
+      return NewAppPassword.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
+  /// Revokes an app password. It stops working at once, on open IMAP
+  /// sessions too.
+  Future<void> revokeAppPassword(int accountId, int id) async {
+    await _authed('DELETE', ['accounts', '$accountId', 'credentials', '$id']);
+  }
+
   // ── Messages ─────────────────────────────────────────────────────────
 
   /// One page of a folder, newest first. Pass the previous page's cursor to
@@ -912,6 +965,11 @@ class RestmailClient {
   /// Only a refused renewal ends the session. A 401 that comes back even with
   /// a fresh token is the request's own refusal — linking a mailbox with the
   /// wrong password answers 401 — and is reported like any other error.
+  ///
+  /// A 401 whose code is in [ownRefusals] is known to be the request's own
+  /// before any renewal, and is reported straight away: renewing would spend
+  /// a refresh token, and sending it again would count twice against a
+  /// throttle.
   Future<http.Response> _authed(
     String method,
     List<String> path, {
@@ -919,6 +977,7 @@ class RestmailClient {
     Object? body,
     String accept = 'application/json',
     Duration? timeout,
+    Set<String> ownRefusals = const {},
   }) async {
     final uri = _uri(path, query);
     Future<http.Response> attempt(SessionTokens tokens) => _send(
@@ -932,7 +991,8 @@ class RestmailClient {
 
     final sentWith = await _currentTokens();
     var response = await attempt(sentWith);
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 &&
+        !ownRefusals.contains(_error(response).code)) {
       // Another request may already have renewed the session.
       final latest = _tokens;
       final renewed =
@@ -982,11 +1042,30 @@ class RestmailClient {
 
   void _throwIfError(http.Response response) {
     if (response.statusCode < 400) return;
-    throw ApiException.fromResponse(
-      response.statusCode,
-      utf8.decode(response.bodyBytes, allowMalformed: true),
-      reason: response.reasonPhrase,
-    );
+    throw _error(response);
+  }
+
+  ApiException _error(http.Response response) => ApiException.fromResponse(
+    response.statusCode,
+    utf8.decode(response.bodyBytes, allowMalformed: true),
+    reason: response.reasonPhrase,
+    retryAfter: _retryAfter(response.headers['retry-after']),
+  );
+
+  /// `Retry-After` in seconds, as rest-mail sends it, or as an HTTP date.
+  static Duration? _retryAfter(String? value) {
+    if (value == null) return null;
+    if (int.tryParse(value.trim()) case final seconds?) {
+      return seconds < 0 ? null : Duration(seconds: seconds);
+    }
+    try {
+      final wait = HttpDate.parse(value).difference(DateTime.now());
+      return wait.isNegative ? Duration.zero : wait;
+    } on FormatException {
+      return null;
+    } on HttpException {
+      return null;
+    }
   }
 
   /// The whole JSON body, decoded as UTF-8 whatever the Content-Type says:

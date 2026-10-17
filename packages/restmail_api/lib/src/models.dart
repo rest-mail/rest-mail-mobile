@@ -135,6 +135,75 @@ class Account {
   String get label => displayName.isNotEmpty ? displayName : address;
 }
 
+/// An app password, as its owner sees it: what a mail client or an
+/// automation signs in to the mailbox with instead of the mailbox's own
+/// password. The server never hands its secret back after making it.
+class AppPassword {
+  const AppPassword({
+    required this.id,
+    required this.name,
+    required this.publicId,
+    required this.createdAt,
+    this.lastUsedAt,
+    this.expiresAt,
+  });
+
+  factory AppPassword.fromJson(Map<String, dynamic> json) => AppPassword(
+    id: _int(json['id']),
+    name: json['name'] as String? ?? '',
+    publicId: json['public_id'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    lastUsedAt: _optionalTime(json['last_used_at']),
+    expiresAt: _optionalTime(json['expires_at']),
+  );
+
+  final int id;
+  final String name;
+
+  /// The part after `rm_` and before the secret, which names it in the
+  /// server's audit log.
+  final String publicId;
+  final DateTime createdAt;
+
+  /// To within a minute; null if it has never been used.
+  final DateTime? lastUsedAt;
+
+  /// Null if it never expires.
+  final DateTime? expiresAt;
+
+  bool isExpiredAt(DateTime now) => switch (expiresAt) {
+    final expires? => !expires.isAfter(now),
+    null => false,
+  };
+}
+
+/// An app password just made, with its secret, which the server shows this
+/// once. Show it, then [forget] it.
+class NewAppPassword {
+  NewAppPassword(this.appPassword, String secret) : _secret = secret;
+
+  factory NewAppPassword.fromJson(Map<String, dynamic> json) {
+    final secret = json['password'];
+    if (secret is! String || secret.isEmpty) {
+      throw const FormatException('The new app password has no secret');
+    }
+    return NewAppPassword(AppPassword.fromJson(json), secret);
+  }
+
+  final AppPassword appPassword;
+  String? _secret;
+
+  /// The app password itself, `rm_…`, until [forget].
+  String? get secret => _secret;
+
+  /// Lets go of the secret, so nothing that still holds this can reach it.
+  void forget() => _secret = null;
+
+  /// Never the secret, so it can't reach a log by accident.
+  @override
+  String toString() => 'NewAppPassword(${appPassword.publicId})';
+}
+
 /// The folders rest-mail creates for every mailbox.
 abstract final class StandardFolder {
   static const inbox = 'INBOX';
