@@ -246,6 +246,74 @@ void main() {
         expect(index['order'], [_key(FakeAccounts.email)]);
       });
     }
+
+    test('an administrator is kept beside the mail accounts, with no mailbox '
+        'and the capabilities the server last sent', () async {
+      final state = newState();
+      await state.start();
+      await state.signIn(
+        server: _server,
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+      );
+      await _settle();
+      requests.clear();
+      await state.signInAdmin(
+        server: _server,
+        username: FakeAccounts.adminUsername,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      );
+      await _settle();
+
+      final admin = state.current! as RestAccount;
+      expect(_addresses(state), [
+        FakeAccounts.email,
+        FakeAccounts.adminUsername,
+      ]);
+      expect(admin.hasMailbox, isFalse);
+      expect(state.mailbox, isNull);
+      expect(admin.capabilities.names, {'*'});
+      expect(requests, isNot(contains('/api/v1/accounts')));
+
+      // A refresh brings the server's grants as they are now, and they are
+      // what the next launch starts from.
+      fake.grant(FakeAccounts.adminUsername, {'queue:read'});
+      await admin.client.refresh();
+      await _settle();
+      expect(admin.capabilities.names, {'queue:read'});
+
+      final again = newState();
+      await again.start();
+      final restored = again.current! as RestAccount;
+      expect(restored.isAdministrator, isTrue);
+      expect(restored.capabilities.names, {'queue:read'});
+      expect(again.mailbox, isNull);
+    });
+
+    test('an administrator still in setup is not kept', () async {
+      final fresh = FakeRestmail(scenario: FakeScenario.freshInstall);
+      addTearDown(fresh.close);
+      final state = AppState(
+        store: store,
+        httpClientFactory: () => fresh.client,
+      );
+      addTearDown(state.dispose);
+      await state.start();
+
+      await expectLater(
+        state.signInAdmin(
+          server: _server,
+          username: FakeAccounts.adminUsername,
+          password: FakeAccounts.bootstrapPassword,
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'setup_required'),
+        ),
+      );
+      expect(state.accounts, isEmpty);
+      expect(state.phase, AppPhase.signedOut);
+    });
   });
 }
 
