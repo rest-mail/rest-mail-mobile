@@ -11,17 +11,17 @@ void main() {
   setUpAll(() => EditableText.debugDeterministicCursor = true);
 
   const password = FakeAccounts.bootstrapPassword;
-  const username = FakeAccounts.adminUsername;
+  const address = FakeAccounts.adminEmail;
   final withServer = Uri.parse(
     'rest-mail://setup?server=https%3A%2F%2F${FakeAccounts.host}'
-    '&username=$username&password=$password',
+    '&address=$address&password=$password',
   );
   final withoutServer = Uri.parse(
-    'rest-mail://setup?username=$username&password=$password',
+    'rest-mail://setup?address=$address&password=$password',
   );
   final webLink = Uri.parse(
     'https://rest-mail.com/setup#server=https%3A%2F%2F${FakeAccounts.host}'
-    '&username=$username&password=$password',
+    '&address=$address&password=$password',
   );
 
   group('AppState.openLink', () {
@@ -34,7 +34,7 @@ void main() {
       final state = newState();
       state.openLink(withServer);
       expect(state.pendingSetup?.password, password);
-      expect(state.pendingSetup?.username, username);
+      expect(state.pendingSetup?.address, address);
       expect(state.pendingSetup?.server?.host, FakeAccounts.host);
       expect(state.takePendingSetup()?.password, password);
       expect(state.pendingSetup, isNull);
@@ -96,11 +96,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Set up ${FakeAccounts.host}'), findsWidgets);
+    expect(find.text(address), findsOneWidget);
     expect(find.text(password), findsOneWidget);
 
-    // Nothing to type: the bootstrap admin is signed in, and owes the rest.
+    // Nothing to type: the bootstrap account is signed in, and owes the rest.
     await tapButton(tester, 'Continue');
-    expect(find.text('Step 2 of 4'), findsOneWidget);
+    expect(find.text('Step 2 of 3'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     fake.close();

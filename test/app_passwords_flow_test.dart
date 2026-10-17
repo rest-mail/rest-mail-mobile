@@ -297,29 +297,8 @@ void main() {
     await close(tester, fake, state);
   });
 
-  testWidgets('a server from before app passwords says it has none', (
-    tester,
-  ) async {
-    final (fake, state) = await open(
-      tester,
-      fake: FakeRestmail(appPasswords: false),
-    );
-
-    await openAppPasswords(tester);
-
-    expect(
-      find.text("This server doesn't support app passwords yet."),
-      findsOneWidget,
-    );
-    expect(find.text('Create an app password'), findsNothing);
-    expect(state.accounts, hasLength(1));
-
-    await close(tester, fake, state);
-  });
-
-  testWidgets('a linked mailbox has no app passwords of its own here', (
-    tester,
-  ) async {
+  testWidgets('a mailbox this account owns gets its app passwords here, made '
+      'with this account\'s own password', (tester) async {
     final (fake, state) = await open(tester);
     await state.mailbox!.backend.linkAccount(
       address: FakeAccounts.otherEmail,
@@ -331,8 +310,27 @@ void main() {
     await tap(tester, find.byTooltip('Folders and accounts'));
     await tapText(tester, 'Settings');
     await tapText(tester, FakeAccounts.otherEmail);
-    expect(find.text('Linked mailbox · ${FakeAccounts.host}'), findsOneWidget);
-    expect(find.text('App passwords'), findsNothing);
+    expect(
+      find.text('Mailbox of this account · ${FakeAccounts.host}'),
+      findsOneWidget,
+    );
+    await tapText(tester, 'App passwords');
+    expect(
+      find.textContaining('must use one over IMAP and SMTP'),
+      findsOneWidget,
+    );
+    await tapText(tester, 'Create an app password');
+    expect(
+      find.textContaining('the password of ${FakeAccounts.email} again'),
+      findsOneWidget,
+    );
+    await fillIn(tester);
+    await tapText(tester, 'Create app password');
+
+    final secret = shownSecret(tester);
+    expect(secret, isNotNull);
+    expect(fake.acceptsAppPassword(FakeAccounts.otherEmail, secret!), isTrue);
+    expect(fake.appPasswordsOf(FakeAccounts.email), isEmpty);
 
     await close(tester, fake, state);
   });

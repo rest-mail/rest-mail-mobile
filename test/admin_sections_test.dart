@@ -11,15 +11,17 @@ import 'package:restmail_fake/restmail_fake.dart';
 final _server = Uri.parse('https://${FakeAccounts.host}');
 
 /// The logs and reports, the audit log, keys and certificates, pipelines,
-/// webmail accounts, and each domain's DNS check, sender lists and MTA-STS
-/// policy in Administration: what each shows, what each capability allows
+/// and each domain's DNS check, sender lists and MTA-STS policy in
+/// Administration: what each shows, what each capability allows
 /// of it, and that the fake refuses the rest.
 void main() {
   setUpAll(() => EditableText.debugDeterministicCursor = true);
 
+  /// Signs in as the administrator, or as [name] at the fake's domain
+  /// holding [capabilities], and opens Administration from the drawer.
   Future<(FakeRestmail, AppState)> open(
     WidgetTester tester, {
-    String username = FakeAccounts.adminUsername,
+    String? name,
     Set<String>? capabilities,
     Capabilities? modified,
   }) async {
@@ -27,17 +29,20 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final fake = FakeRestmail();
+    final email = name == null
+        ? FakeAccounts.adminEmail
+        : '$name@${FakeAccounts.host}';
     if (capabilities != null) {
-      fake.addAdmin(username, capabilities: capabilities);
+      fake.addAccount(email, capabilities: capabilities);
     }
     final state = AppState(
       store: MemoryKeyValueStore(),
       httpClientFactory: () => fake.client,
     );
     await state.start();
-    await state.signInAdmin(
+    await state.signIn(
       server: _server,
-      username: username,
+      email: email,
       password: FakeAccounts.adminPassword,
       totpCode: FakeAccounts.totpCode,
     );
@@ -46,6 +51,10 @@ void main() {
       (state.current! as RestAccount).capabilities = modified;
     }
     await tester.pumpWidget(RestmailApp(state: state));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Administration'));
     await tester.pumpAndSettle();
     return (fake, state);
   }
@@ -90,8 +99,6 @@ void main() {
     'Domains',
     'Mailboxes',
     'Aliases',
-    'Webmail accounts',
-    'Administrators',
     'Bans',
     'Overview',
     'Delivery log',
@@ -182,11 +189,23 @@ void main() {
     await close(tester, fake, state);
   });
 
-  testWidgets('activity and TLS reports', (tester) async {
+  testWidgets('activity, from the audit log, and TLS reports', (tester) async {
     final (fake, state) = await open(tester);
 
     await tap(tester, 'Activity');
-    expect(find.text('Banned 203.0.113.7'), findsOneWidget);
+    // What went through, newest first: this session's sign-in on top, and
+    // nothing refused.
+    expect(
+      find.textContaining('By ${FakeAccounts.adminEmail}').first,
+      findsOneWidget,
+    );
+    expect(find.text('auth.sign_in'), findsWidgets);
+    expect(find.textContaining('root@'), findsNothing);
+    await tester.tap(find.text('auth.sign_in').first);
+    await tester.pumpAndSettle();
+    expect(find.text('ITS HASH, AND THE ONE BEFORE'), findsOneWidget);
+    expect(find.text('Allowed · 200'), findsOneWidget);
+    await back(tester);
     await back(tester);
 
     await tap(tester, 'TLS reports');
@@ -227,7 +246,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tap(tester, FakeAccounts.adminUsername);
+    await tap(tester, FakeAccounts.adminEmail);
     expect(find.text('ITS HASH, AND THE ONE BEFORE'), findsOneWidget);
 
     await close(tester, fake, state);
@@ -294,7 +313,7 @@ void main() {
       'traces', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'postmaster',
+      name: 'postmaster',
       capabilities: {Capability.messagesRead},
     );
 
@@ -310,7 +329,7 @@ void main() {
       'and nothing to remove', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'viewer',
+      name: 'viewer',
       capabilities: {Capability.domainsRead},
     );
 
@@ -335,7 +354,7 @@ void main() {
       'switch or delete', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'reader',
+      name: 'reader',
       capabilities: {Capability.pipelinesRead},
     );
 
@@ -372,24 +391,26 @@ void main() {
     Capability.observabilityRead,
   };
 
-  testWidgets('audit:read alone shows the audit log, and the readonly role, '
-      'which lacks it, sees everything else', (tester) async {
+  testWidgets('audit:read alone shows the audit log and the activity read '
+      'from it, and the readonly role, which lacks it, sees everything else', (
+    tester,
+  ) async {
     final (fake, state) = await open(
       tester,
-      username: 'auditor',
+      name: 'auditor',
       capabilities: {Capability.auditRead},
     );
-    expect(await shown(tester), ['Audit log']);
+    expect(await shown(tester), ['Activity', 'Audit log']);
     await close(tester, fake, state);
 
     final (fake2, state2) = await open(
       tester,
-      username: 'reader',
+      name: 'reader',
       capabilities: readonly,
     );
     expect(await shown(tester), [
       for (final section in sections)
-        if (section != 'Audit log') section,
+        if (section != 'Audit log' && section != 'Activity') section,
     ]);
     await close(tester, fake2, state2);
   });
@@ -398,7 +419,7 @@ void main() {
       'refused by the server, and says only that', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'reader',
+      name: 'reader',
       capabilities: readonly,
       modified: const Capabilities({'*'}),
     );
@@ -453,53 +474,6 @@ void main() {
     await reveal(tester, 'WHAT EACH FILTER DID');
     expect(find.text('rspamd'), findsWidgets);
 
-    await close(tester, fake, state);
-  });
-
-  testWidgets('webmail accounts: what each links, one made for a mailbox, '
-      'and one deleted', (tester) async {
-    final (fake, state) = await open(tester);
-    // Dana links her other mailbox in webmail.
-    final dana = RestmailClient(server: _server, httpClient: fake.client);
-    await dana.login(
-      email: FakeAccounts.email,
-      password: FakeAccounts.password,
-    );
-    await dana.linkAccount(
-      address: FakeAccounts.otherEmail,
-      password: FakeAccounts.password,
-      displayName: 'Oakline',
-    );
-
-    await tap(tester, 'Webmail accounts');
-    expect(find.text(FakeAccounts.email), findsOneWidget);
-    expect(find.text('With ${FakeAccounts.otherEmail}'), findsOneWidget);
-    await tap(tester, FakeAccounts.email);
-    expect(find.text('LINKED MAILBOXES'), findsOneWidget);
-    expect(find.text(FakeAccounts.otherEmail), findsOneWidget);
-    expect(find.textContaining('Oakline'), findsOneWidget);
-    await back(tester);
-
-    // Her other mailbox has never signed in, so it has none of its own.
-    await tap(tester, 'Make one for a mailbox');
-    expect(find.text('Has one already'), findsOneWidget);
-    await tap(tester, FakeAccounts.otherEmail);
-    expect(
-      find.text('Made a webmail account for ${FakeAccounts.otherEmail}'),
-      findsOneWidget,
-    );
-    expect(fake.webmailAccounts, hasLength(2));
-
-    await tap(tester, FakeAccounts.otherEmail);
-    await tap(tester, 'Delete webmail account');
-    await tap(tester, 'Delete');
-    expect(
-      find.text('Deleted the webmail account for ${FakeAccounts.otherEmail}'),
-      findsOneWidget,
-    );
-    expect(fake.webmailAccounts, hasLength(1));
-
-    dana.close();
     await close(tester, fake, state);
   });
 
@@ -642,7 +616,7 @@ void main() {
       'and MTA-STS to look at, and nothing to change', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'viewer',
+      name: 'viewer',
       capabilities: {Capability.domainsRead},
     );
 
@@ -668,19 +642,17 @@ void main() {
   });
 
   testWidgets('without domains:read, no domain, so none of its sections; '
-      'with mailboxes:read alone, webmail accounts to look at', (tester) async {
+      'with mailboxes:read alone, mailboxes to look at', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'helpdesk',
+      name: 'helpdesk',
       capabilities: {Capability.mailboxesRead},
     );
 
-    expect(await shown(tester), ['Mailboxes', 'Aliases', 'Webmail accounts']);
-    await tap(tester, 'Webmail accounts');
+    expect(await shown(tester), ['Mailboxes', 'Aliases']);
+    await tap(tester, 'Mailboxes');
     expect(find.text(FakeAccounts.email), findsOneWidget);
-    expect(find.text('Make one for a mailbox'), findsNothing);
-    await tap(tester, FakeAccounts.email);
-    expect(find.text('Delete webmail account'), findsNothing);
+    expect(find.text('Add a mailbox'), findsNothing);
 
     await close(tester, fake, state);
   });
@@ -689,7 +661,7 @@ void main() {
       'pipeline analytics, and no pipeline log', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'watcher',
+      name: 'watcher',
       capabilities: {Capability.observabilityRead},
     );
 
@@ -706,7 +678,7 @@ void main() {
       'refused by the server, and says only that', (tester) async {
     final (fake, state) = await open(
       tester,
-      username: 'reader',
+      name: 'reader',
       capabilities: readonly,
       modified: const Capabilities({'*'}),
     );
@@ -736,16 +708,6 @@ void main() {
       fake.domains.firstWhere((d) => d.name == FakeAccounts.host).mtaSts,
       isNotNull,
     );
-    await back(tester);
-    await back(tester);
-    await back(tester);
-
-    await tap(tester, 'Webmail accounts');
-    await tap(tester, FakeAccounts.email);
-    await tap(tester, 'Delete webmail account');
-    await tap(tester, 'Delete');
-    expect(find.text(noPermission), findsOneWidget);
-    expect(fake.webmailAccounts, hasLength(1));
 
     await close(tester, fake, state);
   });

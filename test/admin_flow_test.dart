@@ -28,13 +28,14 @@ void main() {
     return (fake, state);
   }
 
-  Future<void> signInAdmin(AppState state, String username) =>
-      state.signInAdmin(
-        server: _server,
-        username: username,
-        password: FakeAccounts.adminPassword,
-        totpCode: FakeAccounts.totpCode,
-      );
+  /// An administrator is an account: it signs in by its address, and opens
+  /// on its mail.
+  Future<void> signInAdmin(AppState state, String email) => state.signIn(
+    server: _server,
+    email: email,
+    password: FakeAccounts.adminPassword,
+    totpCode: FakeAccounts.totpCode,
+  );
 
   Future<void> tap(WidgetTester tester, String text) async {
     final target = find.text(text).last;
@@ -42,6 +43,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(target);
     await tester.pumpAndSettle();
+  }
+
+  /// Administration, from the drawer.
+  Future<void> administer(WidgetTester tester) async {
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Administration');
   }
 
   Future<void> close(
@@ -60,38 +69,38 @@ void main() {
     'Domains',
     'Mailboxes',
     'Aliases',
-    'Administrators',
     'Bans',
     'Overview',
   ];
 
-  testWidgets('an administrator signs in with a code and opens on every '
-      'section, and runs the server from there', (tester) async {
+  testWidgets('an administrator signs in as its account, with a code, and '
+      'runs the server from Administration', (tester) async {
     final (fake, state) = await open(tester);
     await tester.pumpWidget(RestmailApp(state: state));
 
+    // The ordinary sign-in: there is no other.
     await tap(tester, 'Add an account');
-    await tap(tester, 'Sign in as an administrator');
-    await tester.enterText(find.byType(TextField).at(0), FakeAccounts.host);
+    expect(find.text('Sign in as an administrator'), findsNothing);
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      FakeAccounts.adminEmail,
+    );
+    await tester.pump(const Duration(milliseconds: 600)); // past the debounce
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byType(TextField).at(1),
-      FakeAccounts.adminUsername,
-    );
-    await tester.enterText(
-      find.byType(TextField).at(2),
       FakeAccounts.adminPassword,
     );
     await tester.pump();
-    await tap(tester, 'Sign in');
+    await tap(tester, 'Continue');
     expect(find.text('TWO-FACTOR CODE'), findsOneWidget);
-    await tester.enterText(find.byType(TextField).at(3), FakeAccounts.totpCode);
+    await tester.enterText(find.byType(TextField).at(2), FakeAccounts.totpCode);
     await tester.pump();
-    await tap(tester, 'Sign in');
+    await tap(tester, 'Continue');
 
-    // No mailbox, and no complaint about it: Administration, all of it.
-    expect(state.mailbox, isNull);
-    expect(find.text('This session has no mailbox'), findsNothing);
-    expect(find.text('Administration'), findsOneWidget);
+    // Its own mail, and Administration, all of it, by capability.
+    expect(find.text('Live · ${FakeAccounts.adminEmail}'), findsOneWidget);
+    await administer(tester);
     for (final section in sections) {
       expect(find.text(section), findsOneWidget, reason: section);
     }
@@ -130,16 +139,6 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
-    // Another administrator given a role.
-    await tap(tester, 'Administrators');
-    await tap(tester, FakeAccounts.queueWatcher);
-    await tap(tester, 'readonly');
-    expect(fake.rolesOf(FakeAccounts.queueWatcher), contains('readonly'));
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
-
     // An address banned, and the server's own ban lifted.
     await tap(tester, 'Bans');
     await tap(tester, 'Ban an address');
@@ -151,7 +150,7 @@ void main() {
     await tester.pumpAndSettle();
     await tap(tester, 'Lift ban');
     expect(fake.bans.map((b) => b.ip), ['198.51.100.4']);
-    expect(fake.bans.single.createdBy, FakeAccounts.adminUsername);
+    expect(fake.bans.single.createdBy, FakeAccounts.adminEmail);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
@@ -173,6 +172,7 @@ void main() {
     final (fake, state) = await open(tester);
     await signInAdmin(state, FakeAccounts.queueWatcher);
     await tester.pumpWidget(RestmailApp(state: state));
+    await administer(tester);
 
     expect(find.text('Outbound queue'), findsOneWidget);
     for (final section in sections.skip(1)) {
@@ -192,12 +192,13 @@ void main() {
   testWidgets('a capability taken away on the server goes from the app at '
       'the next refresh', (tester) async {
     final (fake, state) = await open(tester);
-    await signInAdmin(state, FakeAccounts.adminUsername);
+    await signInAdmin(state, FakeAccounts.adminEmail);
     await tester.pumpWidget(RestmailApp(state: state));
+    await administer(tester);
     await tap(tester, 'Domains');
     expect(find.text(FakeAccounts.host), findsOneWidget);
 
-    fake.grant(FakeAccounts.adminUsername, {'queue:read'});
+    fake.grant(FakeAccounts.adminEmail, {'queue:read'});
     await (state.current! as RestAccount).client.refresh();
     await tester.pumpAndSettle();
 
@@ -219,6 +220,7 @@ void main() {
     // A modified app, which believes it may do everything.
     (state.current! as RestAccount).capabilities = const Capabilities({'*'});
     await tester.pumpWidget(RestmailApp(state: state));
+    await administer(tester);
 
     await tap(tester, 'Mailboxes');
     expect(find.text(noPermission), findsOneWidget);
@@ -241,7 +243,7 @@ void main() {
   testWidgets('a mailbox session reaches Administration from the drawer only '
       'when it holds a capability', (tester) async {
     final (fake, state) = await open(tester);
-    // Grants on a mailbox, as rest-mail-server#347 has them.
+    // An account's grants give its session capabilities.
     fake.grant(FakeAccounts.otherEmail, {'queue:read'});
     await state.signIn(
       server: _server,

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-/// A mailbox the fake hosts.
+/// An account the fake hosts, which is a mailbox.
 class FakeMailbox {
   FakeMailbox({
     required this.id,
@@ -15,20 +15,31 @@ class FakeMailbox {
   final int id;
   final String address;
 
-  /// An admin may change these.
+  /// An admin may change these. With no [password], nothing signs in to the
+  /// account: it is reached only through its owners.
   String displayName;
-  String password;
+  String? password;
   bool active = true;
 
-  /// What its sessions may do on the admin API. None, as on today's server,
-  /// where only admin users hold capabilities; rest-mail-server#347 has
-  /// mailboxes hold grants instead.
+  /// What its sessions may do on the admin API, from the grants it holds.
   Set<String> capabilities = {};
 
   /// When set, signing in also needs this code or [recoveryCode].
   String? totpCode;
   String? recoveryCode;
   final int quotaBytes;
+
+  /// In setup, as a fresh install's bootstrap account is: it must choose its
+  /// own password, and enroll an authenticator.
+  bool mustChangePassword = false;
+  bool owesTwoFactor = false;
+  bool totpPending = false;
+
+  /// What the real server reports in `setup_required`, in its order.
+  List<String> get setupRequired => [
+    if (mustChangePassword) 'password',
+    if (owesTwoFactor && totpCode == null) 'two_factor',
+  ];
 
   String get domain => address.substring(address.indexOf('@') + 1);
 }
@@ -94,23 +105,6 @@ class FakeSenderRule {
   final String list;
   final String reason;
   final DateTime createdAt;
-}
-
-/// What a mailbox signs in to webmail as, and the mailboxes linked to it.
-class FakeWebmailAccount {
-  FakeWebmailAccount({
-    required this.id,
-    required this.mailboxId,
-    required this.createdAt,
-  });
-
-  final int id;
-  final int mailboxId;
-  final DateTime createdAt;
-
-  /// By mailbox id: the link's own id, the name its owner gave the
-  /// mailbox, and when it was linked.
-  final linked = <int, ({int id, String displayName, DateTime at})>{};
 }
 
 /// Mail to [source] goes to [destination].

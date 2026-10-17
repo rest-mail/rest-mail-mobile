@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'capabilities.dart';
 import 'session.dart';
 
 /// The person a session belongs to.
@@ -30,14 +29,24 @@ class User {
 
 /// What a successful sign-in hands back.
 class LoginResult {
-  const LoginResult({required this.user, required this.tokens});
+  const LoginResult({
+    required this.user,
+    required this.tokens,
+    this.setupRequired = const [],
+  });
 
   final User user;
   final SessionTokens tokens;
+
+  /// What the account must still do before its session reaches anything
+  /// else. A fresh install's bootstrap account starts with both steps.
+  final List<SetupStep> setupRequired;
+
+  bool get isSetUp => setupRequired.isEmpty;
 }
 
-/// The steps an admin account still owes before the admin API will answer it.
-/// A fresh install's bootstrap admin starts with both.
+/// The steps an account still owes before the server answers its session
+/// anything else. While one is owed the session holds no capabilities.
 enum SetupStep {
   /// Replace a password someone else chose: [RestmailClient.changePassword].
   password,
@@ -46,38 +55,14 @@ enum SetupStep {
   /// [RestmailClient.confirmTwoFactor].
   twoFactor;
 
-  static SetupStep? _parse(Object? value) => switch (value) {
-    'password' => SetupStep.password,
-    'two_factor' => SetupStep.twoFactor,
-    _ => null,
-  };
-}
-
-/// An admin signed in. While [setupRequired] is not empty the session can do
-/// nothing but those steps, and holds no capabilities.
-class AdminSignIn {
-  const AdminSignIn({
-    required this.user,
-    required this.setupRequired,
-    this.capabilities = Capabilities.none,
-  });
-
-  factory AdminSignIn.fromJson(Map<String, dynamic> json) => AdminSignIn(
-    user: User.fromJson(json['user'] as Map<String, dynamic>),
-    setupRequired: [
-      for (final raw in json['setup_required'] as List? ?? const [])
-        ?SetupStep._parse(raw),
-    ],
-    capabilities: Capabilities.fromJson(json['capabilities']),
-  );
-
-  /// The admin user. Its `email` is the username: an admin user has no
-  /// mailbox.
-  final User user;
-  final List<SetupStep> setupRequired;
-  final Capabilities capabilities;
-
-  bool get isSetUp => setupRequired.isEmpty;
+  static List<SetupStep> fromJson(Object? json) => [
+    for (final raw in json is List ? json : const [])
+      ?switch (raw) {
+        'password' => SetupStep.password,
+        'two_factor' => SetupStep.twoFactor,
+        _ => null,
+      },
+  ];
 }
 
 /// A started authenticator enrollment, to show once and then confirm.
@@ -107,12 +92,12 @@ class TotpEnrollment {
   final List<String> recoveryCodes;
 }
 
-/// A mailbox the signed-in user can read: the one they signed in with, plus
-/// any linked to it.
+/// An account the session reaches: its own, which it signed in with, and
+/// every account it holds a mail grant on, the ones it created or linked. An
+/// account is a mailbox, and [id] is the mailbox's id everywhere.
 class Account {
   const Account({
     required this.id,
-    required this.mailboxId,
     required this.address,
     required this.displayName,
     required this.isPrimary,
@@ -120,14 +105,12 @@ class Account {
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
     id: _int(json['id']),
-    mailboxId: _int(json['mailbox_id']),
     address: json['address'] as String,
     displayName: json['display_name'] as String? ?? '',
     isPrimary: json['is_primary'] as bool? ?? false,
   );
 
   final int id;
-  final int mailboxId;
   final String address;
   final String displayName;
   final bool isPrimary;

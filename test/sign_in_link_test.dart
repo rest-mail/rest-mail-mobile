@@ -9,10 +9,10 @@ void main() {
     test('its parameters ride after the #, where no web server sees them', () {
       final link = SignInLink.parse(
         'https://rest-mail.com/setup#server=https%3A%2F%2Fmail.example.com'
-        '&username=admin&password=$encoded',
+        '&address=admin%40example.com&password=$encoded',
       );
       expect(link?.server, Uri.parse('https://mail.example.com'));
-      expect(link?.username, 'admin');
+      expect(link?.address, 'admin@example.com');
       expect(link?.password, password);
     });
 
@@ -25,9 +25,10 @@ void main() {
 
     test('written with ordinary query parameters, it is still read', () {
       final link = SignInLink.parse(
-        'https://rest-mail.com/setup?username=owner&password=$encoded',
+        'https://rest-mail.com/setup?address=owner@example.com'
+        '&password=$encoded',
       );
-      expect(link?.username, 'owner');
+      expect(link?.address, 'owner@example.com');
       expect(link?.password, password);
     });
 
@@ -47,9 +48,10 @@ void main() {
   test("the app's own scheme", () {
     final link = SignInLink.parse(
       'rest-mail://setup?server=https%3A%2F%2Fmail.example.com'
-      '&username=admin&password=$encoded',
+      '&address=admin@example.com&password=$encoded',
     );
     expect(link?.server, Uri.parse('https://mail.example.com'));
+    expect(link?.address, 'admin@example.com');
     expect(link?.password, password);
   });
 
@@ -59,8 +61,20 @@ void main() {
     expect(SignInLink.parse('restmail://setup?password=x'), isNull);
   });
 
-  test('no username means admin, the one an install makes', () {
-    expect(SignInLink.parse('rest-mail://setup?password=x')?.username, 'admin');
+  test('a link naming no account leaves the address to be typed', () {
+    expect(SignInLink.parse('rest-mail://setup?password=x')?.address, isNull);
+  });
+
+  // The account is named by its address; there is no username any more.
+  test('a username is not an address', () {
+    final link = SignInLink.parse(
+      'rest-mail://setup?username=admin&password=x',
+    );
+    expect(link?.address, isNull);
+    expect(
+      SignInLink.parse('rest-mail://setup?address=admin&password=x')?.address,
+      isNull,
+    );
   });
 
   test('a link naming no server leaves the app to ask which', () {
@@ -86,7 +100,7 @@ void main() {
       'https://example.com',
       'rest-mail://reset?token=abc&password=x',
       'rest-mail://setup',
-      'rest-mail://setup?username=admin',
+      'rest-mail://setup?address=admin@example.com',
       'not a link at all, really not',
     ]) {
       expect(SignInLink.parse(raw), isNull, reason: raw);

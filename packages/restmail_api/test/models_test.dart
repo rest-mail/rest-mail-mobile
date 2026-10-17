@@ -299,44 +299,16 @@ void main() {
       expect(quiet.isEmpty, isTrue);
     });
 
-    test('a webmail account, its mailbox and the ones linked to it', () {
-      final account = WebmailAccount.fromJson({
-        'id': 3,
-        'primary_mailbox_id': 1,
-        'created_at': '2026-10-10T08:00:00Z',
-        'updated_at': '2026-10-10T08:00:00Z',
-        'primary_mailbox': {
-          'id': 1,
-          'address': 'dana@a.test',
-          'display_name': 'Dana',
-          // Not loaded, so a zero struct.
-          'domain': {'id': 0, 'name': ''},
-        },
-        'linked_accounts': [
-          {
-            'id': 9,
-            'webmail_account_id': 3,
-            'mailbox_id': 2,
-            'display_name': 'Work',
-            'created_at': '2026-10-11T08:00:00Z',
-            'webmail_account': {'id': 0, 'primary_mailbox_id': 0},
-            'mailbox': {'id': 2, 'address': 'dana@b.test'},
-          },
-        ],
+    test('an account is its mailbox: one id, no mailbox_id', () {
+      final account = Account.fromJson({
+        'id': 7,
+        'address': 'chris@example.test',
+        'display_name': '',
+        'is_primary': false,
       });
-      expect(account.address, 'dana@a.test');
-      expect(account.displayName, 'Dana');
-      expect(account.linked.single.address, 'dana@b.test');
-      expect(account.linked.single.displayName, 'Work');
-
-      // A new one comes back without its links: Go leaves them out.
-      final created = WebmailAccount.fromJson({
-        'id': 4,
-        'primary_mailbox_id': 2,
-        'created_at': '2026-10-17T08:00:00Z',
-        'primary_mailbox': {'id': 2, 'address': 'dana@b.test'},
-      });
-      expect(created.linked, isEmpty);
+      expect(account.id, 7);
+      expect(account.label, 'chris@example.test');
+      expect(account.isPrimary, isFalse);
     });
 
     test('a sender rule says which list it is on', () {

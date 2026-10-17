@@ -1,15 +1,11 @@
 name: Release on merge
 
 # Every commit that lands on main is tagged as a release, so every merge
-# reaches TestFlight without anyone running anything. The tag is the one
-# `chore release` makes, by the same rule: vMAJOR.MINOR.<build count>, from
-# pubspec.yaml's MAJOR.MINOR and the number of commits behind the commit.
-# testflight.yml builds and uploads on that tag, and its gate
-# (tool/ci/release_gate.sh) judges it the same whichever of the two made it.
-#
-# `chore release` still works by hand, for a commit this did not release.
-# Whichever of the two tags a commit first wins, and the other finds the tag
-# already there and stops: this quietly, the chore with "released already".
+# reaches TestFlight without anyone running anything; this is the only way a
+# release is made. The tag is vMAJOR.MINOR.<build count>, from pubspec.yaml's
+# MAJOR.MINOR and the number of commits behind the commit. testflight.yml
+# builds and uploads on that tag, and its gate (tool/ci/release_gate.sh)
+# judges it.
 #
 # The tag is pushed with PIPELINE_RESTMAIL_TOKEN, the personal access token
 # auto-merge.yml arms merges with, for the same reason: GitHub starts no
@@ -41,14 +37,14 @@ jobs:
     # A push Dependabot made itself (`@dependabot merge`) runs with Dependabot's
     # secrets, not this repository's, so the token is not there to push with.
     # Dependabot only moves the action pins CI runs, which change nothing in
-    # the app; the next merge releases them, or `chore release` does. A person
-    # merging a Dependabot pull request is an ordinary push, and releases.
+    # the app; the next merge releases them. A person merging a Dependabot
+    # pull request is an ordinary push, and releases.
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     environment: automerge
     timeout-minutes: 5
     steps:
-      - name: Work out the tag, as chore release does
+      - name: Work out the tag
         id: tag
         env:
           SHA: ${{ github.sha }}
@@ -61,9 +57,8 @@ jobs:
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" repo
           cd repo
 
-          # Only the tip of main, as `chore release` wants HEAD to be
-          # origin/main. If main has moved on, the run for the newer commit
-          # tags that one, and its release has this commit in it.
+          # Only the tip of main. If main has moved on, the run for the newer
+          # commit tags that one, and its release has this commit in it.
           tip=$(git rev-parse origin/main)
           if [ "$tip" != "$SHA" ]; then
             echo "::notice::main has moved on to ${tip:0:7}, whose own run releases it, ${SHA:0:7} included"
@@ -99,7 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$TOKEN" ]; then
-            echo "::error::PIPELINE_RESTMAIL_TOKEN is not set in the automerge environment (see auto-merge.yml), so $TAG was not pushed. Release it with chore release." >&2
+            echo "::error::PIPELINE_RESTMAIL_TOKEN is not set in the automerge environment (see auto-merge.yml), so $TAG was not pushed. Set it, then re-run this job." >&2
             exit 1
           fi
 
@@ -115,7 +110,7 @@ jobs:
             exit 0
           fi
 
-          # Refused. If `chore release` pushed the same tag since this run
+          # Refused. If a re-run of this job pushed the same tag since this run
           # looked, that is the release and there is nothing left to do. The
           # last line is the commit, whether or not the tag is annotated.
           there=$(git ls-remote origin "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
@@ -123,5 +118,5 @@ jobs:
             echo "::notice::$TAG is released already, at ${there:0:7}"
             exit 0
           fi
-          echo "::error::$TAG was not pushed. If the push failed to authenticate, PIPELINE_RESTMAIL_TOKEN has most likely expired (auto-merge.yml says when): re-issue it. Until then, release with chore release." >&2
+          echo "::error::$TAG was not pushed. If the push failed to authenticate, PIPELINE_RESTMAIL_TOKEN has most likely expired (auto-merge.yml says when): re-issue it, then re-run this job." >&2
           exit 1

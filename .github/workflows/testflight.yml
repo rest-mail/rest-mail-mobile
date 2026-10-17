@@ -3,13 +3,9 @@ name: TestFlight
 # Builds go to internal testers the moment App Store Connect finishes
 # processing them: internal testing skips review.
 #
-# A release is a tag, and nothing else makes one. release-on-merge.yml tags
-# each commit that lands on main, so every merge reaches testers by itself. For
-# a commit that did not get its tag, the same one can be made by hand, on main:
-#
-#   chore release
-#
-# Either way the tag is vMAJOR.MINOR.<build count>: pubspec.yaml's MAJOR.MINOR,
+# A release is a tag, and only a merge makes one: release-on-merge.yml tags
+# each commit that lands on main, so every merge reaches testers by itself.
+# The tag is vMAJOR.MINOR.<build count>: pubspec.yaml's MAJOR.MINOR,
 # and the number of commits behind it as the patch. The tag is the version
 # testers see, and the build count only goes up, so no version comes round
 # twice.

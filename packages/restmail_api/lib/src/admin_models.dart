@@ -200,67 +200,6 @@ class AdminAlias {
   final bool active;
 }
 
-/// A role: a named set of capabilities an admin user is given.
-class AdminRole {
-  const AdminRole({
-    required this.id,
-    required this.name,
-    this.description = '',
-    this.systemRole = false,
-  });
-
-  factory AdminRole.fromJson(Map<String, dynamic> json) => AdminRole(
-    id: _int(json['id']),
-    name: json['name'] as String,
-    description: json['description'] as String? ?? '',
-    systemRole: json['system_role'] as bool? ?? false,
-  );
-
-  final int id;
-  final String name;
-  final String description;
-
-  /// One the server made, which cannot be changed.
-  final bool systemRole;
-}
-
-/// An admin user: someone who signs in to run the server, with a username
-/// rather than a mailbox, and the roles that say what they may do.
-class AdminUser {
-  const AdminUser({
-    required this.id,
-    required this.username,
-    required this.active,
-    required this.passwordChangeRequired,
-    this.email,
-    this.roles = const [],
-  });
-
-  factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
-    id: _int(json['id']),
-    username: json['username'] as String,
-    email: switch (json['email']) {
-      final String email when email.isNotEmpty => email,
-      _ => null,
-    },
-    active: json['active'] as bool? ?? false,
-    passwordChangeRequired: json['password_change_required'] as bool? ?? false,
-    roles: [
-      for (final role in json['roles'] as List? ?? const [])
-        AdminRole.fromJson(role as Map<String, dynamic>),
-    ],
-  );
-
-  final int id;
-  final String username;
-  final String? email;
-  final bool active;
-
-  /// Has to choose a password of its own at its next sign-in.
-  final bool passwordChangeRequired;
-  final List<AdminRole> roles;
-}
-
 /// An IP address kept out of the server's mail protocols.
 class Ban {
   const Ban({
@@ -352,44 +291,6 @@ class ServerStats {
   /// Mail other servers handed over, and how much of it came over TLS.
   final int inboundMx;
   final int inboundOverTls;
-}
-
-/// Something done on the server, as its activity log has it.
-class ActivityEntry {
-  const ActivityEntry({
-    required this.id,
-    required this.actor,
-    required this.action,
-    required this.resourceType,
-    required this.createdAt,
-    this.resourceId,
-    this.detail = '',
-    this.ip = '',
-  });
-
-  factory ActivityEntry.fromJson(Map<String, dynamic> json) => ActivityEntry(
-    id: _int(json['id']),
-    actor: json['actor'] as String? ?? '',
-    action: json['action'] as String? ?? '',
-    resourceType: json['resource_type'] as String? ?? '',
-    resourceId: (json['resource_id'] as num?)?.toInt(),
-    detail: json['detail'] as String? ?? '',
-    ip: json['ip'] as String? ?? '',
-    createdAt: _time(json['created_at']) ?? DateTime.now(),
-  );
-
-  final int id;
-
-  /// Who did it: an admin's username, a mailbox's address, or `system`.
-  final String actor;
-  final String action;
-
-  /// What it was done to, `domain` or `mailbox` say, and which one.
-  final String resourceType;
-  final int? resourceId;
-  final String detail;
-  final String ip;
-  final DateTime createdAt;
 }
 
 /// One step of a message's way through a pipeline.
@@ -605,11 +506,13 @@ class AuditEntry {
   final int seq;
   final DateTime occurredAt;
 
-  /// `mailbox`, `admin`, `system` or `anonymous`.
+  /// `account`, `system` or `anonymous`.
   final String actorKind;
+
+  /// The account's id, set once the request proved it.
   final int? actorId;
 
-  /// The address or username at the time.
+  /// The account's address at the time.
   final String actorName;
   final String sessionId;
 
@@ -928,85 +831,6 @@ class PipelineAnalytics {
       decisions.isEmpty &&
       outcomes.isEmpty &&
       rejectReasons.isEmpty;
-}
-
-/// A mailbox linked to a webmail account, so its mail shows beside the
-/// account's own.
-class LinkedMailbox {
-  const LinkedMailbox({
-    required this.id,
-    required this.mailboxId,
-    required this.address,
-    this.displayName = '',
-    this.linkedAt,
-  });
-
-  factory LinkedMailbox.fromJson(Map<String, dynamic> json) => LinkedMailbox(
-    id: _int(json['id']),
-    mailboxId: _int(json['mailbox_id'] ?? 0),
-    address: switch (json['mailbox']) {
-      {'address': final String address} => address,
-      _ => '',
-    },
-    displayName: json['display_name'] as String? ?? '',
-    linkedAt: _time(json['created_at']),
-  );
-
-  final int id;
-  final int mailboxId;
-
-  /// Empty when the server did not send the mailbox along.
-  final String address;
-
-  /// The name its owner gave it in webmail.
-  final String displayName;
-  final DateTime? linkedAt;
-}
-
-/// What a mailbox signs in to webmail as: the mailbox itself, and the
-/// others its owner linked to it. The server makes one at a mailbox's first
-/// sign-in.
-class WebmailAccount {
-  const WebmailAccount({
-    required this.id,
-    required this.mailboxId,
-    required this.address,
-    this.displayName = '',
-    this.linked = const [],
-    this.createdAt,
-  });
-
-  factory WebmailAccount.fromJson(Map<String, dynamic> json) {
-    final mailbox = json['primary_mailbox'];
-    return WebmailAccount(
-      id: _int(json['id']),
-      mailboxId: _int(json['primary_mailbox_id'] ?? 0),
-      address: switch (mailbox) {
-        {'address': final String address} => address,
-        _ => '',
-      },
-      displayName: switch (mailbox) {
-        {'display_name': final String name} => name,
-        _ => '',
-      },
-      linked: [
-        for (final link in json['linked_accounts'] as List? ?? const [])
-          if (link is Map<String, dynamic>) LinkedMailbox.fromJson(link),
-      ],
-      createdAt: _time(json['created_at']),
-    );
-  }
-
-  final int id;
-
-  /// The mailbox that signs in.
-  final int mailboxId;
-
-  /// Its address; empty when the server did not send the mailbox along.
-  final String address;
-  final String displayName;
-  final List<LinkedMailbox> linked;
-  final DateTime? createdAt;
 }
 
 /// A domain's two lists of senders: the one let past the spam checks, and

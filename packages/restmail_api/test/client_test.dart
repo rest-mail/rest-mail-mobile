@@ -437,6 +437,119 @@ void main() {
     });
   });
 
+  group('accounts', () {
+    test('lists accounts by id, the mailbox id, own first', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json({
+            'data': [
+              {
+                'id': 4,
+                'address': 'admin@example.test',
+                'display_name': 'Admin',
+                'is_primary': true,
+              },
+              {
+                'id': 9,
+                'address': 'chris@example.test',
+                'display_name': '',
+                'is_primary': false,
+              },
+            ],
+          }),
+        ),
+      );
+      final accounts = await client.accounts();
+      expect([for (final a in accounts) a.id], [4, 9]);
+      expect(accounts.first.isPrimary, isTrue);
+      expect(accounts.last.label, 'chris@example.test');
+    });
+
+    test('creates an account with no password, owned by this one', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {
+              'id': 9,
+              'address': 'chris@example.test',
+              'display_name': 'Chris',
+              'is_primary': false,
+            },
+          }, status: 201);
+        }),
+      );
+      final created = await client.createAccount(
+        address: 'chris@example.test',
+        displayName: 'Chris',
+      );
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/v1/accounts');
+      expect(jsonDecode(sent.body), {
+        'address': 'chris@example.test',
+        'display_name': 'Chris',
+      });
+      expect(created.id, 9);
+      expect(created.isPrimary, isFalse);
+    });
+
+    test('links by password, at /accounts/link, asking for the code when the '
+        'account has two-factor authentication', () async {
+      final bodies = <Map<String, dynamic>>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/accounts/link');
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          bodies.add(body);
+          if (body['totp_code'] == null) {
+            return _json({
+              'error': {
+                'code': 'totp_required',
+                'message': 'That account has two-factor authentication',
+              },
+            }, status: 401);
+          }
+          return _json({
+            'data': {
+              'id': 5,
+              'address': 'other@example.test',
+              'display_name': '',
+              'is_primary': false,
+            },
+          }, status: 201);
+        }),
+      );
+
+      await expectLater(
+        client.linkAccount(address: 'other@example.test', password: 'pw'),
+        throwsA(isA<TotpRequiredException>()),
+      );
+      // Its own refusal: the session is not renewed for it.
+      expect(client.tokens?.accessToken, 'access-1');
+      final linked = await client.linkAccount(
+        address: 'other@example.test',
+        password: 'pw',
+        totpCode: '123456',
+      );
+      expect(linked.id, 5);
+      expect(bodies, [
+        {'address': 'other@example.test', 'password': 'pw'},
+        {
+          'address': 'other@example.test',
+          'password': 'pw',
+          'totp_code': '123456',
+        },
+      ]);
+    });
+  });
+
   group('app passwords', () {
     const secret =
         'rm_7Kq2xT9bLm4P_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
@@ -709,7 +822,11 @@ void main() {
             return _json({
               'data': {
                 'expires_in': 900,
-                'user': {'id': 1, 'email': 'ops', 'display_name': 'ops'},
+                'user': {
+                  'id': 1,
+                  'email': 'ops@mail.example.test',
+                  'display_name': 'Ops',
+                },
                 'capabilities': ['queue:read', 'queue:manage'],
                 'access_token': 'access-1',
                 'refresh_token': 'refresh-1',
@@ -720,16 +837,45 @@ void main() {
         }),
       );
 
-      final admin = await client.signInAdmin(
-        username: 'ops',
+      final admin = await client.login(
+        email: 'ops@mail.example.test',
         password: 'pw',
         totpCode: '123456',
       );
-      expect(admin.capabilities.names, {'queue:read', 'queue:manage'});
-      expect(client.tokens!.capabilities, admin.capabilities);
+      expect(admin.isSetUp, isTrue);
+      expect(admin.tokens.capabilities.names, {'queue:read', 'queue:manage'});
+      expect(client.tokens!.capabilities, admin.tokens.capabilities);
 
       await client.refresh();
       expect(changes.last!.capabilities.names, {'queue:read'});
+    });
+
+    test('an account in setup is signed in, and says what it owes', () async {
+      final client = RestmailClient(
+        server: _server,
+        httpClient: MockClient(
+          (_) async => _json({
+            'data': {
+              'expires_in': 900,
+              'user': {
+                'id': 1,
+                'email': 'admin@mail.example.test',
+                'display_name': '',
+              },
+              'setup_required': ['password', 'two_factor'],
+              'access_token': 'access-1',
+              'refresh_token': 'refresh-1',
+            },
+          }),
+        ),
+      );
+      final result = await client.login(
+        email: 'admin@mail.example.test',
+        password: 'from-the-deploy',
+      );
+      expect(result.isSetUp, isFalse);
+      expect(result.setupRequired, [SetupStep.password, SetupStep.twoFactor]);
+      expect(result.tokens.capabilities.isEmpty, isTrue);
     });
 
     test('reads the queue page and the domain list as the server sends '
