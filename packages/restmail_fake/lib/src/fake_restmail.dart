@@ -1935,8 +1935,14 @@ class FakeRestmail {
         box
           ..password = next
           ..mustChangePassword = false;
-        // Every session of the account ends, this one included.
+        // Every session of the account ends, this one included, and every
+        // app password goes: whoever knew the old password could have made
+        // one.
         revokeSessionsOf(box.address);
+        final now = _clock();
+        for (final p in _appPasswords.values) {
+          if (p.mailboxId == box.id && !p.isRevoked) p.revokedAt = now;
+        }
         return _json({
           'data': {
             'message': 'Password changed. Sign in again with the new password.',

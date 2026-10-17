@@ -167,6 +167,40 @@ void main() {
     await close(tester, fake, state);
   });
 
+  testWidgets('a mailbox added in Administration is made through the one '
+      'account route, owned by the administrator, with no password unless '
+      'given one', (tester) async {
+    final (fake, state) = await open(tester);
+    await signInAdmin(state, FakeAccounts.adminEmail);
+    await tester.pumpWidget(RestmailApp(state: state));
+    await administer(tester);
+
+    await tap(tester, 'Mailboxes');
+    await tap(tester, 'Add a mailbox');
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'hello@${FakeAccounts.host}',
+    );
+    await tester.enterText(find.byType(TextField).at(1), 'Hello');
+    await tester.pump();
+    await tap(tester, 'Add mailbox');
+
+    expect(find.text('hello@${FakeAccounts.host}'), findsOneWidget);
+    expect(fake.passwordOf('hello@${FakeAccounts.host}'), isNull);
+    expect(fake.ownedBy(FakeAccounts.adminEmail), [
+      'hello@${FakeAccounts.host}',
+    ]);
+    expect(fake.auditLog.last.action, 'accounts.create');
+    // It is among the administrator's own mailboxes at once.
+    await tester.pumpAndSettle();
+    expect(
+      state.mailbox!.accounts.map((a) => a.address),
+      contains('hello@${FakeAccounts.host}'),
+    );
+
+    await close(tester, fake, state);
+  });
+
   testWidgets('an administrator with only queue:read sees only the queue, '
       'and nothing to change in it', (tester) async {
     final (fake, state) = await open(tester);

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../../state/admin_access.dart';
+import '../../state/app_scope.dart';
 import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
@@ -79,7 +80,13 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
         ),
       ),
     );
-    if (added) unawaited(_list.reload());
+    if (!added || !mounted) return;
+    unawaited(_list.reload());
+    // The creator owns it: it joins the account's mailboxes at once.
+    final app = AppScope.read(context);
+    if (identical(app.current, widget.account)) {
+      unawaited(app.mailbox?.reloadAccounts());
+    }
   }
 
   Future<void> _open(AdminMailbox mailbox) async {
