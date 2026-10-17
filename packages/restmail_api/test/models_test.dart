@@ -20,31 +20,26 @@ Map<String, dynamic> _message([Map<String, dynamic> overrides = const {}]) => {
 
 void main() {
   group('Recipient.listFromJson', () {
-    test('reads address objects', () {
+    test('reads address strings', () {
       final list = Recipient.listFromJson([
-        {'address': 'ada@example.test', 'name': 'Ada'},
-        {'address': 'bob@example.test', 'name': ''},
+        'ada@example.test',
+        'bob@example.test',
       ]);
       expect(list.map((r) => (r.address, r.name)), [
-        ('ada@example.test', 'Ada'),
+        ('ada@example.test', null),
         ('bob@example.test', null),
       ]);
     });
 
-    test('reads bare address strings', () {
+    test('reads nothing but address strings', () {
       expect(
-        Recipient.listFromJson(['ada@example.test']).single.address,
-        'ada@example.test',
+        Recipient.listFromJson([
+          {'address': 'ada@example.test'},
+          '',
+        ]),
+        isEmpty,
       );
-    });
-
-    test('reads an array JSON-encoded inside a string', () {
-      expect(
-        Recipient.listFromJson(
-          '[{"address":"ada@example.test"}]',
-        ).single.address,
-        'ada@example.test',
-      );
+      expect(Recipient.listFromJson('["ada@example.test"]'), isEmpty);
     });
 
     test('treats null as nobody', () {
@@ -57,9 +52,7 @@ void main() {
       final message = Message.fromJson(
         _message({
           'sender_name': 'Bob',
-          'recipients_to': [
-            {'address': 'ada@example.test'},
-          ],
+          'recipients_to': ['ada@example.test'],
           'body_text': 'Line one\n\n  line two',
           'date_header': null,
         }),

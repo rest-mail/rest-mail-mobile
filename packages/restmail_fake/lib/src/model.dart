@@ -159,8 +159,6 @@ class FakeRecipient {
 
   final String address;
   final String? name;
-
-  Map<String, Object> toJson() => {'address': address, 'name': name ?? ''};
 }
 
 class FakeAttachment {
@@ -237,8 +235,9 @@ class FakeMessage {
       'thread_id': '',
       'sender': sender,
       'sender_name': senderName ?? '',
-      'recipients_to': [for (final r in to) r.toJson()],
-      'recipients_cc': [for (final r in cc) r.toJson()],
+      // Address strings, as the server sends them: it keeps no names.
+      'recipients_to': [for (final r in to) r.address],
+      'recipients_cc': [for (final r in cc) r.address],
       'subject': subject,
       'body_text': bodyText,
       'body_html': bodyHtml ?? '',

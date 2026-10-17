@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'session.dart';
 
 /// The person a session belongs to.
@@ -232,29 +230,13 @@ class Recipient {
 
   String get displayName => name ?? address;
 
-  /// The schema says an array of `{"address", "name"}` objects. The webmail
-  /// also tolerates bare address strings and the array arriving JSON-encoded
-  /// inside a string, so this does the same.
-  static List<Recipient> listFromJson(Object? raw) {
-    var value = raw;
-    if (value is String) {
-      final text = value.trim();
-      if (text.isEmpty) return const [];
-      try {
-        value = jsonDecode(text);
-      } on FormatException {
-        return [Recipient(text)];
-      }
-    }
-    if (value is! List) return const [];
-    return [
-      for (final item in value)
-        if (item is String && item.isNotEmpty)
-          Recipient(item)
-        else if (item is Map<String, dynamic> && item['address'] is String)
-          Recipient(item['address'] as String, _optionalString(item['name'])),
-    ];
-  }
+  /// The schema says an array of address strings: the server keeps no
+  /// names for a message's recipients.
+  static List<Recipient> listFromJson(Object? raw) => [
+    if (raw is List)
+      for (final item in raw)
+        if (item is String && item.isNotEmpty) Recipient(item),
+  ];
 }
 
 class Message {
