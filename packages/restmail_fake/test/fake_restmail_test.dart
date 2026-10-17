@@ -236,13 +236,18 @@ void main() {
   test('linking another mailbox needs its password, once, and unlinking '
       'gives it up', () async {
     final client = await _signedIn(FakeRestmail());
+    final session = client.tokens?.accessToken;
 
+    // A wrong password is 403: this session is not renewed for it.
     await expectLater(
       client.linkAccount(address: FakeAccounts.otherEmail, password: 'nope'),
       throwsA(
-        isA<ApiException>().having((e) => e.code, 'code', 'unauthorized'),
+        isA<ApiException>()
+            .having((e) => e.statusCode, 'status', 403)
+            .having((e) => e.code, 'code', 'invalid_credentials'),
       ),
     );
+    expect(client.tokens?.accessToken, session);
     await client.linkAccount(
       address: FakeAccounts.otherEmail,
       password: FakeAccounts.password,
@@ -273,13 +278,21 @@ void main() {
     () async {
       final fake = FakeRestmail()..enableTwoFactor(FakeAccounts.otherEmail);
       final client = await _signedIn(fake);
+      final session = client.tokens?.accessToken;
 
+      // A missing or wrong code is 403: this session is not renewed for it.
       await expectLater(
         client.linkAccount(
           address: FakeAccounts.otherEmail,
           password: FakeAccounts.password,
         ),
-        throwsA(isA<TotpRequiredException>()),
+        throwsA(
+          isA<TotpRequiredException>().having(
+            (e) => e.statusCode,
+            'status',
+            403,
+          ),
+        ),
       );
       await expectLater(
         client.linkAccount(
@@ -288,9 +301,12 @@ void main() {
           totpCode: '000000',
         ),
         throwsA(
-          isA<ApiException>().having((e) => e.code, 'code', 'unauthorized'),
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'invalid_totp'),
         ),
       );
+      expect(client.tokens?.accessToken, session);
       await client.linkAccount(
         address: FakeAccounts.otherEmail,
         password: FakeAccounts.password,

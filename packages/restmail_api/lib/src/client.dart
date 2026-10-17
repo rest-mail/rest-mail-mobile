@@ -689,12 +689,14 @@ class RestmailClient {
   /// its passwords, and its second factor when it has one: the same proof as
   /// signing in to it.
   ///
-  /// Throws [TotpRequiredException] when the password was right but the
-  /// account has two-factor authentication; call again with [totpCode] or
-  /// [recoveryCode]. A wrong password is 401 `unauthorized`, which comes
-  /// back even with a renewed session, and is reported as the request's own
-  /// refusal. 403 `setup_required` is an account that has yet to choose its
-  /// own password, and 409 one already linked, or this session's own.
+  /// A refused link is 403, never 401: the secrets are the other account's,
+  /// so this session is neither renewed nor ended, and nothing is sent
+  /// twice. Throws [TotpRequiredException] when the password was right but
+  /// the account has two-factor authentication; call again with [totpCode]
+  /// or [recoveryCode]. `invalid_credentials` is a wrong address or
+  /// password, `invalid_totp` a wrong code, and `setup_required` an account
+  /// that has yet to choose its own password; 409 is one already linked, or
+  /// this session's own.
   Future<Account> linkAccount({
     required String address,
     required String password,
@@ -714,7 +716,6 @@ class RestmailClient {
           if (recoveryCode != null && recoveryCode.isNotEmpty)
             'recovery_code': recoveryCode,
         },
-        ownRefusals: const {'totp_required'},
       ),
     ),
   );
@@ -1028,8 +1029,8 @@ class RestmailClient {
   /// server says the access token is no longer good.
   ///
   /// Only a refused renewal ends the session. A 401 that comes back even with
-  /// a fresh token is the request's own refusal — linking a mailbox with the
-  /// wrong password answers 401 — and is reported like any other error.
+  /// a fresh token is the request's own refusal, and is reported like any
+  /// other error.
   ///
   /// A 401 whose code is in [ownRefusals] is known to be the request's own
   /// before any renewal, and is reported straight away: renewing would spend

@@ -277,24 +277,21 @@ void main() {
     test(
       'a 401 that survives a fresh token is the request’s own refusal',
       () async {
-        // Linking a mailbox with the wrong password answers 401 as well; that
-        // must not be taken for the end of the session.
+        // The renewal worked, so the session goes on: the 401 is reported
+        // like any other error, not taken for the end of the session.
         final client = RestmailClient(
           server: _server,
           tokens: _tokens('1'),
           httpClient: MockClient((request) async {
             if (_isRefresh(request)) return _signedIn('2');
             return _json({
-              'error': {
-                'code': 'unauthorized',
-                'message': 'Invalid email or password',
-              },
+              'error': {'code': 'unauthorized', 'message': 'Not for you'},
             }, status: 401);
           }),
         );
 
         await expectLater(
-          client.linkAccount(address: 'other@example.test', password: 'wrong'),
+          client.accounts(),
           throwsA(
             isA<ApiException>()
                 .having(
@@ -302,11 +299,7 @@ void main() {
                   'ends the session',
                   isFalse,
                 )
-                .having(
-                  (e) => e.message,
-                  'message',
-                  'Invalid email or password',
-                ),
+                .having((e) => e.message, 'message', 'Not for you'),
           ),
         );
         expect(client.tokens?.accessToken, 'access-2');
@@ -514,7 +507,7 @@ void main() {
                 'code': 'totp_required',
                 'message': 'That account has two-factor authentication',
               },
-            }, status: 401);
+            }, status: 403);
           }
           return _json({
             'data': {
@@ -529,7 +522,13 @@ void main() {
 
       await expectLater(
         client.linkAccount(address: 'other@example.test', password: 'pw'),
-        throwsA(isA<TotpRequiredException>()),
+        throwsA(
+          isA<TotpRequiredException>().having(
+            (e) => e.statusCode,
+            'status',
+            403,
+          ),
+        ),
       );
       // Its own refusal: the session is not renewed for it.
       expect(client.tokens?.accessToken, 'access-1');
@@ -548,6 +547,46 @@ void main() {
         },
       ]);
     });
+
+    for (final (code, message) in [
+      ('invalid_credentials', 'Invalid email or password'),
+      ('totp_required', 'That account has two-factor authentication'),
+      ('invalid_totp', 'Invalid two-factor authentication code'),
+    ]) {
+      test('a refused link, $code, is sent once and leaves the session as it '
+          'was', () async {
+        // 403, not 401: the secrets were the other account's. Renewing the
+        // session and sending them again would spend a refresh token and
+        // count twice against the sign-in throttle.
+        var sent = 0;
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          httpClient: MockClient((request) async {
+            if (_isRefresh(request)) fail('renewed the session');
+            sent++;
+            return _json({
+              'error': {'code': code, 'message': message},
+            }, status: 403);
+          }),
+        );
+
+        await expectLater(
+          client.linkAccount(
+            address: 'other@example.test',
+            password: 'pw',
+            totpCode: code == 'invalid_totp' ? '000000' : null,
+          ),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'status', 403)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+        expect(sent, 1);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
   });
 
   group('app passwords', () {

@@ -705,12 +705,14 @@ class FakeRestmail {
         fields: {'address': 'required', 'password': 'required'},
       );
     }
+    // As on the real server, a refused link is 403, never 401: the secrets
+    // are the other account's, and this session is still good.
     final box = _mailboxAt(address);
     if (box == null ||
         box.password == null ||
         box.password != password ||
         !box.active) {
-      _fail(401, 'unauthorized', 'Invalid email or password');
+      _fail(403, 'invalid_credentials', 'Invalid email or password');
     }
     if (box.mustChangePassword) {
       _fail(
@@ -724,13 +726,13 @@ class FakeRestmail {
       final recovery = body['recovery_code'] as String? ?? '';
       if (code.isEmpty && recovery.isEmpty) {
         _fail(
-          401,
+          403,
           'totp_required',
           'That account has two-factor authentication: send its code too',
         );
       }
       if (code != box.totpCode && recovery != box.recoveryCode) {
-        _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
+        _fail(403, 'invalid_totp', 'Invalid two-factor authentication code');
       }
     }
     if (box.id == session.primary) {

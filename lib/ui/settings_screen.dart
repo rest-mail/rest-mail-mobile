@@ -697,13 +697,17 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       _codeFocus.requestFocus();
     } on ApiException catch (e) {
       if (!mounted) return;
+      // A refused link is 403 with its reason; this session is still good.
+      if (e.code == 'invalid_totp') {
+        _code.clear();
+        _codeFocus.requestFocus();
+      }
       setState(() {
         _busy = false;
         _error = switch (e) {
-          ApiException(code: 'unauthorized') =>
-            _needsCode
-                ? "That code didn't work."
-                : 'Wrong address or password.',
+          ApiException(code: 'invalid_credentials') =>
+            'Wrong address or password.',
+          ApiException(code: 'invalid_totp') => "That code didn't work.",
           ApiException(code: 'setup_required') =>
             'That account has to sign in and choose its own password first.',
           ApiException(statusCode: 409) =>

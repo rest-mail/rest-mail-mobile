@@ -205,13 +205,16 @@ void main() {
     await close(tester, fake, state);
   });
 
-  testWidgets('linking a mailbox with two-factor authentication asks for its '
-      'code', (tester) async {
+  testWidgets('linking a mailbox with two-factor authentication says why a '
+      'link is refused, asks for its code, and never renews the session for '
+      'a refusal', (tester) async {
+    final sent = <String>[];
     final (fake, state) = await open(
       tester,
       email: FakeAccounts.email,
       password: FakeAccounts.password,
       totpCode: null,
+      client: (fake) => _Noting(fake.client, sent),
     );
     fake.enableTwoFactor(FakeAccounts.otherEmail);
 
@@ -221,21 +224,37 @@ void main() {
       find.byType(TextField).at(0),
       FakeAccounts.otherEmail,
     );
+    await tester.enterText(find.byType(TextField).at(1), 'not its password');
+    await tester.pump();
+    await tapText(tester, 'Link mailbox');
+    expect(find.text('Wrong address or password.'), findsOneWidget);
+    expect(find.text('TWO-FACTOR CODE'), findsNothing);
+
     await tester.enterText(find.byType(TextField).at(1), FakeAccounts.password);
     await tester.pump();
     await tapText(tester, 'Link mailbox');
     expect(find.text('TWO-FACTOR CODE'), findsOneWidget);
+    expect(find.text('Wrong address or password.'), findsNothing);
 
     await tester.enterText(find.byType(TextField).at(2), '000000');
     await tester.pump();
     await tapText(tester, 'Link mailbox');
     expect(find.text("That code didn't work."), findsOneWidget);
+    // The wrong code is cleared for the next one.
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(2)).controller!.text,
+      isEmpty,
+    );
 
     await tester.enterText(find.byType(TextField).at(2), FakeAccounts.totpCode);
     await tester.pump();
     await tapText(tester, 'Link mailbox');
     expect(find.text('Linked ${FakeAccounts.otherEmail}'), findsOneWidget);
     expect(fake.ownedBy(FakeAccounts.email), [FakeAccounts.otherEmail]);
+    // Each try was sent once: a refused link is 403, so the session was
+    // neither renewed nor the guess sent again.
+    expect(sent.where((r) => r == 'POST /api/v1/accounts/link'), hasLength(4));
+    expect(sent.where((r) => r.endsWith('/auth/refresh')), isEmpty);
     expect(state.mailbox!.accounts.map((a) => a.address), [
       FakeAccounts.email,
       FakeAccounts.otherEmail,
@@ -251,6 +270,23 @@ void main() {
 
     await close(tester, fake, state);
   });
+}
+
+/// The fake as it is, with every request noted.
+class _Noting extends http.BaseClient {
+  _Noting(this._inner, this._sent);
+
+  final http.Client _inner;
+  final List<String> _sent;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    _sent.add('${request.method} ${request.url.path}');
+    return _inner.send(request);
+  }
+
+  @override
+  void close() => _inner.close();
 }
 
 /// A server from before accounts were made this way: no route for creating
