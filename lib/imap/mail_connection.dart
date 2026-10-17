@@ -47,6 +47,11 @@ OpenMailSocket defaultMailSockets(SecurityContext Function() context) =>
       ).timeout(const Duration(seconds: 30));
     };
 
+/// Where an account signed in with Microsoft or Google gets the access token
+/// IMAP and SMTP sign in with (XOAUTH2). [rejected] is one a server just
+/// turned down, to be replaced.
+typedef AccessToken = Future<String> Function({String? rejected});
+
 const _greetingTimeout = Duration(seconds: 30);
 const _smtpTimeout = Duration(seconds: 60);
 
@@ -252,13 +257,17 @@ class ImapConnection {
   /// A future that fails when the connection drops.
   Future<Never> get lost => _client.lost.future;
 
-  /// Connects over TLS and signs in. Failures come back as [ApiException]s.
+  /// Connects over TLS and signs in, with [password] or, for an account
+  /// signed in with Microsoft or Google, an [accessToken]. Failures come
+  /// back as [ApiException]s.
   static Future<ImapConnection> open(
     MailServerSettings settings, {
     required String address,
-    required String password,
+    String? password,
+    AccessToken? accessToken,
     required OpenMailSocket openSocket,
   }) async {
+    assert((password == null) != (accessToken == null));
     final host = settings.imapHost;
     final client = _Imap();
     try {
@@ -284,11 +293,16 @@ class ImapConnection {
         ),
       );
       await client.greeted.future.timeout(_greetingTimeout);
+      final user = settings.usernameFor(address);
       try {
-        await client.login(
-          quoted(settings.usernameFor(address)),
-          quoted(password),
-        );
+        if (accessToken == null) {
+          await client.login(quoted(user), quoted(password!));
+        } else {
+          await _withToken(
+            accessToken,
+            (token) => client.authenticateWithOAuth2(user, token),
+          );
+        }
       } on ImapException catch (e) {
         throw signInRefused(e.message, host: host);
       }
@@ -330,9 +344,11 @@ class ImapConnection {
 Future<SmtpClient> openSmtp(
   MailServerSettings settings, {
   required String address,
-  required String password,
+  String? password,
+  AccessToken? accessToken,
   required OpenMailSocket openSocket,
 }) async {
+  assert((password == null) != (accessToken == null));
   final host = settings.smtpHost, port = settings.smtpPort;
   final tls = settings.smtpSecurity == SmtpSecurity.tls;
   final client = _Smtp();
@@ -357,16 +373,26 @@ Future<SmtpClient> openSmtp(
       }
       await client.startTls().timeout(_smtpTimeout);
     }
-    final mechanisms = client.serverInfo.authMechanisms;
-    final mechanism =
-        mechanisms.contains(AuthMechanism.login) &&
-            !mechanisms.contains(AuthMechanism.plain)
-        ? AuthMechanism.login
-        : AuthMechanism.plain;
+    final user = settings.usernameFor(address);
     try {
-      await client
-          .authenticate(settings.usernameFor(address), password, mechanism)
-          .timeout(_smtpTimeout);
+      if (accessToken == null) {
+        final mechanisms = client.serverInfo.authMechanisms;
+        final mechanism =
+            mechanisms.contains(AuthMechanism.login) &&
+                !mechanisms.contains(AuthMechanism.plain)
+            ? AuthMechanism.login
+            : AuthMechanism.plain;
+        await client
+            .authenticate(user, password!, mechanism)
+            .timeout(_smtpTimeout);
+      } else {
+        await _withToken(
+          accessToken,
+          (token) => client
+              .authenticate(user, token, AuthMechanism.xoauth2)
+              .timeout(_smtpTimeout),
+        );
+      }
     } on SmtpException catch (e) {
       throw signInRefused(e.message, host: host);
     }
@@ -374,6 +400,24 @@ Future<SmtpClient> openSmtp(
   } on Object catch (e) {
     unawaited(client.disconnect().catchError((Object _) {}));
     throw mailException(e, host: host);
+  }
+}
+
+/// Signs in with an access token, and if the server turns it down, once
+/// more with a new one: a token can be revoked, or run out early, while the
+/// app still holds it. A refresh token that no longer works fails here with
+/// `invalid_grant`, which ends the account.
+Future<void> _withToken(
+  AccessToken accessToken,
+  Future<Object?> Function(String token) signIn,
+) async {
+  final token = await accessToken();
+  try {
+    await signIn(token);
+  } on ImapException {
+    await signIn(await accessToken(rejected: token));
+  } on SmtpException {
+    await signIn(await accessToken(rejected: token));
   }
 }
 

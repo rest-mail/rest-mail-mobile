@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 import 'app.dart';
+import 'imap/oauth.dart';
 import 'net/http_client.dart';
 import 'sample_mode.dart';
 import 'state/app_state.dart';
@@ -17,6 +19,11 @@ Future<void> main() async {
       : AppState(
           store: SecureKeyValueStore(),
           httpClientFactory: createHttpClient,
+          // Sign in with Microsoft and Google, if this build was given their
+          // client ids; see OAuthClients.
+          oauth: OAuthClients.fromEnvironment(
+            android: defaultTargetPlatform == TargetPlatform.android,
+          ),
         );
   runApp(RestmailApp(state: state));
   await state.start();

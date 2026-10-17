@@ -8,6 +8,8 @@ import 'package:restmail_api/restmail_api.dart';
 import '../imap/imap_backend.dart';
 import '../imap/mail_connection.dart';
 import '../imap/mail_settings.dart';
+import '../imap/oauth.dart';
+import '../imap/oauth_browser.dart';
 import '../net/http_client.dart';
 import '../util/sign_in_link.dart';
 import '../version.dart';
@@ -89,16 +91,20 @@ class RestAccount extends SignedInAccount {
 }
 
 /// A mailbox read over IMAP and sent through SMTP, signed in with its
-/// password or an app password. Both are kept in the Keychain or Keystore,
-/// as IMAP and SMTP want them each time they connect.
+/// password or an app password, kept in the Keychain or Keystore as IMAP
+/// and SMTP want it each time they connect; or signed in with Microsoft or
+/// Google, when the Keychain or Keystore holds the refresh token instead.
 class ImapAccount extends SignedInAccount {
-  ImapAccount._(this.backend, {this.provider});
+  ImapAccount._(this.backend, {this.provider, this.oauth});
 
   @override
   final ImapBackend backend;
 
   /// The provider whose preset it was set up from, if it was.
   final MailProvider? provider;
+
+  /// Its sign-in with Microsoft or Google, if it has no password.
+  final OAuthSession? oauth;
 
   MailServerSettings get settings => backend.settings;
 
@@ -131,6 +137,8 @@ class AppState extends ChangeNotifier {
     required this.store,
     required this.httpClientFactory,
     OpenMailSocket? mailSockets,
+    this.oauth = OAuthClients.none,
+    this.oauthBrowser = systemOAuthBrowser,
   }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext);
 
   final KeyValueStore store;
@@ -141,6 +149,13 @@ class AppState extends ChangeNotifier {
 
   /// Opens the IMAP and SMTP sockets: TLS with the same trust as HTTPS.
   final OpenMailSocket mailSockets;
+
+  /// The Microsoft and Google clients this build has. A provider without
+  /// one has no sign-in button.
+  final OAuthClients oauth;
+
+  /// Shows a provider's sign-in page in the system browser.
+  final OAuthBrowser oauthBrowser;
 
   /// Which accounts there are, in order, and which one is on screen. Each
   /// account's session is stored under its own key, so one that can't be
@@ -314,6 +329,64 @@ class AppState extends ChangeNotifier {
     await _add(account);
   }
 
+  /// Adds an account by signing in with Microsoft or Google ([kind]) in
+  /// the system browser, rather than with a password, or renews it if it is
+  /// already here, and puts it on screen. [address] is a hint: the account
+  /// is the one that signed in. Its refresh token is kept in the Keychain
+  /// or Keystore; the access token, in memory only.
+  ///
+  /// Throws [ApiException]: `cancelled` if the browser was closed,
+  /// `access_denied` if permission was refused, `oauth_state` for an answer
+  /// to some other request, and what IMAP and SMTP throw.
+  Future<void> addOAuthAccount({
+    required OAuthKind kind,
+    required String address,
+    required MailServerSettings settings,
+    String displayName = '',
+    MailProvider? provider,
+  }) async {
+    final client = oauth[kind];
+    if (client == null) {
+      throw ApiException(
+        0,
+        'oauth_unavailable',
+        "This build of REST Mail can't sign in with ${kind.label}.",
+      );
+    }
+    final http = httpClientFactory();
+    final OAuthGrant grant;
+    try {
+      grant = await signInWithOAuth(
+        client,
+        httpClient: http,
+        browser: oauthBrowser,
+        loginHint: address,
+      );
+    } finally {
+      http.close();
+    }
+    final name = displayName.trim();
+    final saved = _SavedImap(
+      address: grant.email ?? address.trim(),
+      displayName: name.isNotEmpty ? name : grant.name ?? '',
+      oauth: _SavedOAuth(kind, grant.refreshToken),
+      settings: settings,
+      provider: provider?.id,
+    );
+    final account = _openImap(saved, access: grant.access);
+    try {
+      await account.backend.verify();
+    } on Object {
+      account.close();
+      rethrow;
+    }
+    // The refresh token as it is now: one that came while checking the
+    // servers replaced the first.
+    final kept = saved.withRefreshToken(account.oauth!.refreshToken);
+    await store.write(_accountKey(kept.key), kept.encode());
+    await _add(account);
+  }
+
   /// Puts [account] in the list, in place of one with the same key, and on
   /// screen.
   Future<void> _add(SignedInAccount account) async {
@@ -353,8 +426,15 @@ class AppState extends ChangeNotifier {
     _signingOut.add(account);
     try {
       // An IMAP account has no session on the server to end; forgetting
-      // its password here is signing out.
-      if (account is RestAccount) await account.client.logout();
+      // its password here is signing out. One signed in with Google gives
+      // its refresh token back, so it stops working there too.
+      switch (account) {
+        case RestAccount(:final client):
+          await client.logout();
+        case ImapAccount(:final oauth?):
+          await _revoke(oauth);
+        case ImapAccount():
+      }
     } finally {
       _signingOut.remove(account);
     }
@@ -390,16 +470,83 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  ImapAccount _openImap(_SavedImap saved) => ImapAccount._(
-    ImapBackend(
-      address: saved.address,
-      displayName: saved.displayName,
-      password: saved.password,
-      settings: saved.settings,
-      openSocket: mailSockets,
-    ),
-    provider: MailProviders.byId(saved.provider),
-  );
+  ImapAccount _openImap(_SavedImap saved, {AccessGrant? access}) {
+    late final ImapAccount account;
+    final signIn = saved.oauth;
+    final session = signIn == null
+        ? null
+        : OAuthSession(
+            kind: signIn.kind,
+            provider: oauth[signIn.kind],
+            refreshToken: signIn.refreshToken,
+            httpClient: httpClientFactory,
+            access: access,
+            onRefreshTokenChanged: (token) =>
+                _refreshTokenChanged(account, saved, token),
+            onEnded: () => _oauthEnded(account),
+          );
+    return account = ImapAccount._(
+      ImapBackend(
+        address: saved.address,
+        displayName: saved.displayName,
+        password: saved.password,
+        accessToken: session?.accessToken,
+        settings: saved.settings,
+        openSocket: mailSockets,
+      ),
+      provider: MailProviders.byId(saved.provider),
+      oauth: session,
+    );
+  }
+
+  /// Keeps the refresh token Microsoft sends with each new access token:
+  /// the one before it may soon stop working.
+  void _refreshTokenChanged(
+    ImapAccount account,
+    _SavedImap saved,
+    String token,
+  ) {
+    // An account already ended or replaced is never saved, so it can't
+    // overwrite the one that took its place.
+    if (!accounts.contains(account)) return;
+    final next = saved.withRefreshToken(token);
+    unawaited(store.write(_accountKey(next.key), next.encode()));
+  }
+
+  /// The provider no longer takes the account's refresh token: its owner
+  /// took REST Mail's access away, or changed their password. The account
+  /// ends, and has to be signed in again.
+  void _oauthEnded(ImapAccount account) {
+    if (_signingOut.contains(account)) return;
+    final who = account.oauth?.kind.label ?? 'The provider';
+    unawaited(
+      _end(
+        account,
+        reason: accounts.length > 1
+            ? '$who no longer lets REST Mail into ${account.address}. Add '
+                  'the account again to carry on.'
+            : '$who no longer lets REST Mail into ${account.address}. Sign '
+                  'in again to carry on.',
+      ),
+    );
+  }
+
+  /// Gives a refresh token back, where the provider takes them back
+  /// (Google). Best effort: signing out goes ahead whatever it answers.
+  Future<void> _revoke(OAuthSession session) async {
+    final endpoint = session.provider?.revocationEndpoint;
+    if (endpoint == null || session.hasEnded) return;
+    final http = httpClientFactory();
+    try {
+      await http
+          .post(endpoint, body: {'token': session.refreshToken})
+          .timeout(const Duration(seconds: 10));
+    } on Object {
+      // Signed out on the phone all the same.
+    } finally {
+      http.close();
+    }
+  }
 
   /// Starts [account]'s mail and stops the previous account's.
   void _show(SignedInAccount account) {
@@ -591,22 +738,54 @@ class _SavedSession extends _Saved {
   });
 }
 
+/// An IMAP account's sign-in with Microsoft or Google: who, and the
+/// refresh token.
+class _SavedOAuth {
+  const _SavedOAuth(this.kind, this.refreshToken);
+
+  static _SavedOAuth? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final kind = OAuthKind.values
+        .where((k) => k.name == json['provider'])
+        .firstOrNull;
+    final token = json['refresh_token'];
+    if (kind == null || token is! String || token.isEmpty) return null;
+    return _SavedOAuth(kind, token);
+  }
+
+  final OAuthKind kind;
+  final String refreshToken;
+
+  Map<String, String> toJson() => {
+    'provider': kind.name,
+    'refresh_token': refreshToken,
+  };
+}
+
+/// An IMAP account with its password, or with its sign-in with Microsoft
+/// or Google; never both.
 class _SavedImap extends _Saved {
   const _SavedImap({
     required this.address,
     required this.displayName,
-    required this.password,
+    this.password,
+    this.oauth,
     required this.settings,
     this.provider,
-  });
+  }) : assert((password == null) != (oauth == null));
 
   static _SavedImap? fromJson(Map<String, dynamic> json) {
     final settings = MailServerSettings.fromJson(json['settings']);
-    if (settings == null) return null;
+    final password = json['password'] as String?;
+    final oauth = _SavedOAuth.fromJson(json['oauth']);
+    if (settings == null || (password == null) == (oauth == null)) {
+      return null;
+    }
     return _SavedImap(
       address: json['address'] as String,
       displayName: json['display_name'] as String? ?? '',
-      password: json['password'] as String,
+      password: password,
+      oauth: oauth,
       settings: settings,
       provider: json['provider'] as String?,
     );
@@ -614,9 +793,18 @@ class _SavedImap extends _Saved {
 
   final String address;
   final String displayName;
-  final String password;
+  final String? password;
+  final _SavedOAuth? oauth;
   final MailServerSettings settings;
   final String? provider;
+
+  _SavedImap withRefreshToken(String token) => _SavedImap(
+    address: address,
+    displayName: displayName,
+    oauth: _SavedOAuth(oauth!.kind, token),
+    settings: settings,
+    provider: provider,
+  );
 
   @override
   String get key =>
@@ -627,7 +815,8 @@ class _SavedImap extends _Saved {
     'kind': AccountKind.imap.name,
     'address': address,
     'display_name': displayName,
-    'password': password,
+    'password': ?password,
+    'oauth': ?oauth?.toJson(),
     'settings': settings.toJson(),
     'provider': ?provider,
   });

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../imap/discovery.dart';
 import '../imap/mail_settings.dart';
+import '../imap/oauth.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
@@ -17,7 +18,9 @@ final _twoStepVerification = Uri.parse(
 
 /// Adds Gmail or any other mail account over IMAP and SMTP: the address,
 /// the password (an app password, for the providers that want one), and the
-/// servers, found from the address or typed in.
+/// servers, found from the address or typed in. Outlook.com, and work
+/// accounts on Microsoft 365, sign in with Microsoft instead, and Gmail can
+/// sign in with Google for personal use, when the build has their clients.
 class ImapAccountScreen extends StatefulWidget {
   const ImapAccountScreen({super.key, this.email = '', this.password = ''});
 
@@ -104,6 +107,17 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       _password.text.isNotEmpty &&
       _settings != null &&
       !(_provider?.needsMicrosoftSignIn ?? false);
+
+  /// Who could sign this address in instead of a password, if the build
+  /// has a client for them.
+  OAuthKind? get _oauthKind {
+    final kind = oauthKindFor(_provider, _found?.settings);
+    if (kind == null || AppScope.read(context).oauth[kind] == null) return null;
+    return kind;
+  }
+
+  bool get _canSignIn =>
+      !_busy && domainOf(_email.text) != null && _settings != null;
 
   void _emailChanged() {
     setState(() => _error = null);
@@ -196,6 +210,40 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     }
   }
 
+  /// Signs in with Microsoft or Google in the system browser, then checks
+  /// the servers as [_continue] does.
+  Future<void> _signIn(OAuthKind kind) async {
+    final settings = _settings;
+    if (settings == null || !_canSignIn) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AppScope.read(context).addOAuthAccount(
+        kind: kind,
+        address: _email.text.trim(),
+        displayName: _name.text,
+        settings: settings,
+        provider: _provider,
+      );
+      // Added: the app replaces this screen with the new account's mail.
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = switch (e.code) {
+          // Closing the sign-in page is an answer, not a failure.
+          'cancelled' => null,
+          'unauthorized' || 'app_password_required' || 'web_login_required' =>
+            '${kind.label} signed you in, but ${settings.imapHost} turned '
+                'REST Mail away: ${e.message}',
+          _ => describeError(e),
+        };
+      });
+    }
+  }
+
   String _describe(ApiException e, MailProvider? provider) {
     final gmail = provider?.isGmail ?? false;
     return switch (e.code) {
@@ -232,6 +280,8 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     final provider = _provider;
     final error = _error;
     final appPassword = provider?.usesAppPassword ?? false;
+    final oauth = _oauthKind;
+    final microsoft = oauth == OAuthKind.microsoft;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -268,7 +318,23 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                         hintText: 'you@example.com',
                       ),
                     ),
-                    if (provider?.needsMicrosoftSignIn ?? false) ...[
+                    if (microsoft) ...[
+                      const SizedBox(height: 22),
+                      _Guide(
+                        title:
+                            '${provider?.name ?? 'This account'} signs in '
+                            'with Microsoft',
+                        lines: const [
+                          "Microsoft's own page asks for your password, and "
+                              'whether REST Mail may read and send your mail. '
+                              'REST Mail never sees the password.',
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      _nameField(c),
+                      const SizedBox(height: 22),
+                      _servers(c),
+                    ] else if (provider?.needsMicrosoftSignIn ?? false) ...[
                       const SizedBox(height: 22),
                       _Guide(
                         title: '${provider!.name} needs Microsoft sign-in',
@@ -331,17 +397,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                         ),
                       ),
                       const SizedBox(height: 22),
-                      const SectionLabel('Your name (optional)'),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _name,
-                        textCapitalization: TextCapitalization.words,
-                        autofillHints: const [AutofillHints.name],
-                        style: rmText(16, color: c.ink),
-                        decoration: const InputDecoration(
-                          hintText: 'Shown to the people you write to',
-                        ),
-                      ),
+                      _nameField(c),
                       const SizedBox(height: 22),
                       _servers(c),
                       const SizedBox(height: 10),
@@ -356,13 +412,41 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                       ErrorText(error),
                     ],
                     const SizedBox(height: 26),
-                    RmPrimaryButton(
-                      label: 'Add account',
-                      busy: _busy,
-                      onPressed: _canContinue
-                          ? () => unawaited(_continue())
-                          : null,
-                    ),
+                    if (microsoft)
+                      RmPrimaryButton(
+                        label: 'Sign in with Microsoft',
+                        busy: _busy,
+                        onPressed: _canSignIn
+                            ? () => unawaited(_signIn(OAuthKind.microsoft))
+                            : null,
+                      )
+                    else
+                      RmPrimaryButton(
+                        label: 'Add account',
+                        busy: _busy,
+                        onPressed: _canContinue
+                            ? () => unawaited(_continue())
+                            : null,
+                      ),
+                    // An app password stays the way into Gmail: REST Mail's
+                    // Google client is unverified, so it is for the owner
+                    // and family, at most 100 people (#37).
+                    if (oauth == OAuthKind.google) ...[
+                      const SizedBox(height: 12),
+                      RmOutlineButton(
+                        label: 'Sign in with Google (personal use)',
+                        onPressed: _canSignIn
+                            ? () => unawaited(_signIn(OAuthKind.google))
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "For personal use only. Google warns that it hasn't "
+                        'verified REST Mail, and lets at most 100 people sign '
+                        'in this way. An app password works for everyone.',
+                        style: rmText(12.5, color: c.ink3, height: 1.4),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -372,6 +456,23 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       ),
     );
   }
+
+  Widget _nameField(RmColors c) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const SectionLabel('Your name (optional)'),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _name,
+        textCapitalization: TextCapitalization.words,
+        autofillHints: const [AutofillHints.name],
+        style: rmText(16, color: c.ink),
+        decoration: const InputDecoration(
+          hintText: 'Shown to the people you write to',
+        ),
+      ),
+    ],
+  );
 
   Widget _servers(RmColors c) {
     final found = _found;

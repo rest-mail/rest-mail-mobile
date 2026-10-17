@@ -180,9 +180,20 @@ jobs:
       - run: flutter pub get
 
       - name: Compile the app, leaving the signing to the archive
+        # The OAuth client IDs are public (they ship inside every copy of the
+        # app), so they are variables, not secrets. Unset, a define is empty
+        # and the build has no Sign in with Microsoft or Google button. The
+        # defines land in ios/Flutter/Generated.xcconfig, which the archive
+        # below reads.
         env:
           VERSION: ${{ needs.gate.outputs.version }}
-        run: flutter build ios --release --no-codesign --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+          MS_CLIENT_ID: ${{ vars.MS_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: >-
+          flutter build ios --release --no-codesign
+          --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+          --dart-define=MS_CLIENT_ID="$MS_CLIENT_ID"
+          --dart-define=GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID"
 
       - name: Point the app's own target at the profile
         # Settings passed to xcodebuild on the command line reach every target in
