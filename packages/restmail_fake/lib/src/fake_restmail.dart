@@ -477,13 +477,24 @@ class FakeRestmail {
       ),
       ('GET', ['api', 'v1', 'accounts', final id, 'credentials']) =>
         _listAppPasswords(_primary(session, id)),
+      // Recorded in the audit log, refused ones too, as the server does.
       ('POST', ['api', 'v1', 'accounts', final id, 'credentials']) =>
-        _createAppPassword(session, id, bytes),
+        _auditedBy(
+          request,
+          session,
+          'credentials.create',
+          () => _createAppPassword(session, id, bytes),
+        ),
       (
         'DELETE',
         ['api', 'v1', 'accounts', final id, 'credentials', final credential],
       ) =>
-        _revokeAppPassword(_primary(session, id), credential),
+        _auditedBy(
+          request,
+          session,
+          'credentials.revoke',
+          () => _revokeAppPassword(_primary(session, id), credential),
+        ),
       ('POST', ['api', 'v1', 'messages', 'send']) => _send(
         session,
         _object(bytes),
@@ -544,6 +555,21 @@ class FakeRestmail {
       native: body['client'] == 'native',
     );
   }
+
+  /// [_audited], for a request made by a mailbox's session.
+  http.StreamedResponse _auditedBy(
+    http.BaseRequest request,
+    _Session session,
+    String action,
+    http.StreamedResponse Function() answer,
+  ) => _audited(
+    request,
+    action,
+    answer,
+    actorKind: 'mailbox',
+    actorName: _mailboxes[session.primary]!.address,
+    actorId: session.primary,
+  );
 
   /// Answers 429 while sign-in's budget is spent, as login's throttle does.
   void _spendSignInBudget() {

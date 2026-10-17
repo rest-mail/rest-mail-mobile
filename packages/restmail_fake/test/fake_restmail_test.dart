@@ -839,6 +839,15 @@ void main() {
       expect(fake.appPasswordsOf(FakeAccounts.email), isEmpty);
       expect(client.tokens, same(tokens));
       expect(await client.appPasswords(account.id), isEmpty);
+      // Both recorded as refused, and neither holds the password.
+      final refusals = fake.auditLog.where(
+        (e) => e.action == 'credentials.create',
+      );
+      expect(refusals.map((e) => (e.outcome, e.status)), [
+        ('denied', 401),
+        ('denied', 401),
+      ]);
+      expect(refusals.map((e) => e.content).join(), isNot(contains('nope')));
     });
 
     test('a mailbox with two-factor authentication needs a session that '
