@@ -8,6 +8,7 @@ import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import '../version.dart';
+import 'add_account_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
@@ -58,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final host = m.backend.host;
     final quota = _quota;
     final signature = settings.signature.trim();
+    final others = app.accounts.where((a) => a != app.current);
     return ListenableBuilder(
       listenable: m,
       builder: (context, _) => Scaffold(
@@ -75,18 +77,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         for (final account in m.accounts)
                           _AccountRow(
-                            account: account,
+                            label: account.label,
+                            address: account.address,
                             subtitle: account.isPrimary
                                 ? 'Signed in · $host'
                                 : 'Linked mailbox · $host',
+                            primary: account.isPrimary,
                             onTap: () => _push(
                               context,
                               AccountScreen(mailbox: m, account: account),
                             ),
                           ),
-                        _LinkRow(
+                        _AddRow(
+                          label: 'Link another mailbox',
                           onTap: () =>
                               _push(context, LinkAccountScreen(mailbox: m)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    // Accounts of their own, each with its own session,
+                    // perhaps on another server. Tapping one puts it on
+                    // screen.
+                    const SectionLabel('Other accounts'),
+                    const SizedBox(height: 9),
+                    RmGroup(
+                      children: [
+                        for (final other in others)
+                          _AccountRow(
+                            label: other.label,
+                            address: other.address,
+                            subtitle: 'Signed in · ${other.host}',
+                            icon: Icons.swap_horiz_rounded,
+                            onTap: () => unawaited(app.switchTo(other)),
+                          ),
+                        _AddRow(
+                          label: 'Add an account',
+                          onTap: () => _push(context, const AddAccountScreen()),
                         ),
                       ],
                     ),
@@ -157,14 +184,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _AccountRow extends StatelessWidget {
   const _AccountRow({
-    required this.account,
+    required this.label,
+    required this.address,
     required this.subtitle,
     required this.onTap,
+    this.primary = false,
+    this.icon = Icons.chevron_right_rounded,
   });
 
-  final Account account;
+  final String label;
+  final String address;
   final String subtitle;
   final VoidCallback onTap;
+  final bool primary;
+
+  /// What tapping does: open the account, or switch to it.
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -176,10 +211,10 @@ class _AccountRow extends StatelessWidget {
         child: Row(
           children: [
             RmAvatar(
-              name: account.label,
-              seed: account.address,
+              name: label,
+              seed: address,
               size: 32,
-              color: account.isPrimary ? c.accent : null,
+              color: primary ? c.accent : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -187,7 +222,7 @@ class _AccountRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    account.address,
+                    address,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
@@ -196,7 +231,7 @@ class _AccountRow extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+            Icon(icon, size: 20, color: c.ink3),
           ],
         ),
       ),
@@ -204,9 +239,10 @@ class _AccountRow extends StatelessWidget {
   }
 }
 
-class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.onTap});
+class _AddRow extends StatelessWidget {
+  const _AddRow({required this.label, required this.onTap});
 
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -226,7 +262,7 @@ class _LinkRow extends StatelessWidget {
             const SizedBox(width: 12),
             Flexible(
               child: Text(
-                'Link another mailbox',
+                label,
                 style: rmText(14.5, color: c.accent, weight: FontWeight.w600),
               ),
             ),
@@ -275,14 +311,19 @@ class _AccountScreenState extends State<AccountScreen> {
     final host = widget.mailbox.backend.host;
     final app = AppScope.read(context);
     if (account.isPrimary) {
+      // This account only: any others on the phone stay signed in.
+      final signedIn = app.current;
       final sure = await confirmAction(
         context,
         title: 'Sign out?',
-        message:
-            'The session is removed from this device. Your mail stays on $host.',
+        message: [
+          'The session for ${account.address} is removed from this device. '
+              'Your mail stays on $host.',
+          if (app.accounts.length > 1) 'Your other accounts stay signed in.',
+        ].join(' '),
         action: 'Sign out',
       );
-      if (sure) await app.signOut();
+      if (sure && signedIn != null) await app.signOut(signedIn);
       return;
     }
     final sure = await confirmAction(
