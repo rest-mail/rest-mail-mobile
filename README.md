@@ -32,6 +32,10 @@ webmail uses, not IMAP.
   session whose capabilities allow it, and its changes only with the
   capability to make them.
 - Live updates over the server's event stream while the app is open.
+- New mail notifications on iPhone, from a REST Mail server that sends
+  them. The server pushes only a signal to fetch; the app fetches the mail
+  over the API and posts the notification itself, so no message passes
+  through Apple. Gmail and other IMAP accounts get none.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
   until you tap Load.
@@ -274,6 +278,15 @@ searches. Recent searches are kept only until the app closes.
 - **Signature** edits the signature, with a preview and the **Append on
   replies** switch.
 - **Appearance** is **System**, **Light** or **Dark**.
+- **Notifications** turns new mail notifications on and off. It is there
+  only on an iPhone, and only once the server of a signed-in account can
+  send them; the first time, after sign-in, the app explains them and asks
+  before iOS does. The phone is registered with each REST Mail session's
+  server, and taken off it at sign-out. A push says which account has mail
+  and nothing else: the app fetches it over the API, notifies of each new
+  message, leaving out the inbox on screen, and sets the badge to the
+  unread mail in those inboxes. Gmail and other IMAP accounts get no
+  notifications, and the section says so.
 
 Settings are stored only on the device.
 
@@ -472,8 +485,9 @@ under Apple Developer team `43UMKXZ8P4`.
 
 ## Not yet
 
-- Notifications while the app is closed. The server needs to push through
-  APNs and FCM first. For IMAP accounts they need something server-side too.
+- Notifications on Android, which needs FCM, and for IMAP accounts, which
+  need something server-side. On iPhone they need a server that pushes
+  through APNs (rest-mail-mobile#8).
 - Sign in with Microsoft and Google in the TestFlight builds: they wait for
   the app's registrations at Microsoft and Google, and their client IDs in
   the `release` environment (#37). Creating a Gmail label from the app.

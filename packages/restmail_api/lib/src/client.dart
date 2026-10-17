@@ -11,6 +11,7 @@ import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
 import 'models.dart';
+import 'push.dart';
 import 'session.dart';
 
 /// Called whenever the session's tokens change: after sign-in, after every
@@ -791,6 +792,48 @@ class RestmailClient {
   /// sessions too.
   Future<void> revokeAppPassword(int accountId, int id) async {
     await _authed('DELETE', ['accounts', '$accountId', 'credentials', '$id']);
+  }
+
+  // ── Push devices ─────────────────────────────────────────────────────
+  //
+  // A device registered here belongs to this session: the server pushes to
+  // it when mail reaches any mailbox the session lists, and forgets it when
+  // the session ends. The push says only that there is mail to fetch, never
+  // what it is. A server without push, from before it or with no APNs or FCM
+  // credentials set, has none of these routes and answers 404.
+
+  /// Which services the server pushes through, and this session's devices.
+  Future<PushRegistrations> pushDevices() async =>
+      PushRegistrations.fromJson(_data(await _authed('GET', ['devices'])));
+
+  /// Registers this phone's push [token] with the session. Registering the
+  /// same token again answers with the device it already made.
+  ///
+  /// [environment] says which APNs the token came from; [appId] is the
+  /// bundle id the push has to be addressed to.
+  Future<PushDevice> registerPushDevice({
+    required String platform,
+    required String token,
+    String? environment,
+    String? appId,
+  }) async => PushDevice.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['devices'],
+        body: {
+          'platform': platform,
+          'token': token,
+          'environment': ?environment,
+          'app_id': ?appId,
+        },
+      ),
+    ),
+  );
+
+  /// Stops pushes to a device this session registered.
+  Future<void> removePushDevice(String id) async {
+    await _authed('DELETE', ['devices', id]);
   }
 
   // ── Messages ─────────────────────────────────────────────────────────

@@ -11,10 +11,12 @@ import '../imap/mail_settings.dart';
 import '../imap/oauth.dart';
 import '../imap/oauth_browser.dart';
 import '../net/http_client.dart';
+import '../push/push_service.dart';
 import '../util/sign_in_link.dart';
 import '../version.dart';
 import 'mail_backend.dart';
 import 'mailbox_state.dart';
+import 'push_state.dart';
 import 'settings.dart';
 import 'storage.dart';
 
@@ -139,7 +141,10 @@ class AppState extends ChangeNotifier {
     OpenMailSocket? mailSockets,
     this.oauth = OAuthClients.none,
     this.oauthBrowser = systemOAuthBrowser,
-  }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext);
+    PushService pushService = const NoPushService(),
+  }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext) {
+    push = PushNotifications(this, pushService);
+  }
 
   final KeyValueStore store;
 
@@ -156,6 +161,10 @@ class AppState extends ChangeNotifier {
 
   /// Shows a provider's sign-in page in the system browser.
   final OAuthBrowser oauthBrowser;
+
+  /// New mail notifications, for the REST Mail accounts whose server can
+  /// send them.
+  late final PushNotifications push;
 
   /// Which accounts there are, in order, and which one is on screen. Each
   /// account's session is stored under its own key, so one that can't be
@@ -238,6 +247,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     if (dropped) await _writeIndex();
+    unawaited(push.start());
   }
 
   /// A client for [server] with no session, for discovery and health checks.
@@ -400,14 +410,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     switch (replaced) {
       // The session this one replaces is ended on the server too, rather
-      // than left valid until it expires.
+      // than left valid until it expires, and its push registration goes
+      // first: the new session registers its own.
       case RestAccount(:final client):
-        unawaited(client.logout().whenComplete(client.close));
+        final device = await push.detach(replaced);
+        unawaited(
+          () async {
+            if (device != null) {
+              try {
+                await client.removePushDevice(device);
+              } on ApiException {
+                // It goes with the session regardless.
+              }
+            }
+            await client.logout();
+          }().whenComplete(client.close),
+        );
       case ImapAccount():
         replaced.close();
       case null:
     }
     await _writeIndex();
+    unawaited(push.sync());
   }
 
   /// Puts [account] on screen.
@@ -427,9 +451,12 @@ class AppState extends ChangeNotifier {
     try {
       // An IMAP account has no session on the server to end; forgetting
       // its password here is signing out. One signed in with Google gives
-      // its refresh token back, so it stops working there too.
+      // its refresh token back, so it stops working there too. A REST Mail
+      // one takes this phone off its server's push list first, while its
+      // session still can.
       switch (account) {
         case RestAccount(:final client):
+          await push.unregister(account);
           await client.logout();
         case ImapAccount(:final oauth?):
           await _revoke(oauth);
@@ -615,6 +642,7 @@ class AppState extends ChangeNotifier {
     if (reason != null && accounts.isNotEmpty) _notices.add(reason);
     account.close();
     await store.delete(_accountKey(account.key));
+    await push.forget(account);
     await _writeIndex();
   }
 
@@ -680,6 +708,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    push.dispose();
     mailbox?.dispose();
     for (final account in accounts) {
       account.close();
