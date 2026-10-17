@@ -5,6 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 
+import '../imap/imap_backend.dart';
+import '../imap/mail_connection.dart';
+import '../imap/mail_settings.dart';
+import '../net/http_client.dart';
 import '../util/sign_in_link.dart';
 import '../version.dart';
 import 'mail_backend.dart';
@@ -14,38 +18,117 @@ import 'storage.dart';
 
 enum AppPhase { starting, signedOut, signedIn }
 
-/// One account signed in on this phone: a session on a REST Mail server.
-/// Its linked mailboxes, if it has any, belong to it.
-class SignedInAccount {
-  SignedInAccount._(this.server, this.user, this.client);
+/// What an account is, as its saved entry says.
+enum AccountKind { rest, imap }
+
+/// One account signed in on this phone: a session on a REST Mail server
+/// ([RestAccount]), or a mailbox at an IMAP provider such as Gmail
+/// ([ImapAccount]).
+sealed class SignedInAccount {
+  AccountKind get kind;
+
+  /// Names the account in storage: one per address per server.
+  String get key;
+
+  String get address;
+  String get displayName;
+  String get label => displayName.isNotEmpty ? displayName : address;
+
+  /// Where its mail comes from.
+  String get host;
+
+  /// Its mail. The account keeps it for as long as it is signed in.
+  MailBackend get backend;
+
+  /// Lets go of its connections, for good.
+  void close();
+}
+
+/// A session on a REST Mail server. Its linked mailboxes, if it has any,
+/// belong to it.
+class RestAccount extends SignedInAccount {
+  RestAccount._(this.server, this.user, this.client)
+    : backend = RestBackend(client);
 
   final Uri server;
   final User user;
   final RestmailClient client;
 
-  /// Names the account in storage: one per address per server.
-  String get key => _keyOf(server, user);
+  @override
+  final MailBackend backend;
 
+  @override
+  AccountKind get kind => AccountKind.rest;
+
+  @override
+  String get key => _keyOf(server, user.email);
+
+  @override
   String get address => user.email;
 
-  String get label =>
-      user.displayName.isNotEmpty ? user.displayName : user.email;
+  @override
+  String get displayName => user.displayName;
 
+  @override
   String get host => server.host;
+
+  @override
+  void close() => client.close();
 }
 
-String _keyOf(Uri server, User user) => '$server|${user.email.toLowerCase()}';
+/// A mailbox read over IMAP and sent through SMTP, signed in with its
+/// password or an app password. Both are kept in the Keychain or Keystore,
+/// as IMAP and SMTP want them each time they connect.
+class ImapAccount extends SignedInAccount {
+  ImapAccount._(this.backend, {this.provider});
+
+  @override
+  final ImapBackend backend;
+
+  /// The provider whose preset it was set up from, if it was.
+  final MailProvider? provider;
+
+  MailServerSettings get settings => backend.settings;
+
+  @override
+  AccountKind get kind => AccountKind.imap;
+
+  @override
+  String get key =>
+      _keyOf(Uri(scheme: 'imaps', host: settings.imapHost), address);
+
+  @override
+  String get address => backend.address;
+
+  @override
+  String get displayName => backend.displayName;
+
+  @override
+  String get host => settings.imapHost;
+
+  @override
+  void close() => unawaited(backend.close());
+}
+
+String _keyOf(Uri server, String email) => '$server|${email.toLowerCase()}';
 
 /// Who is signed in to which servers, and the settings — everything that
 /// outlives a single screen.
 class AppState extends ChangeNotifier {
-  AppState({required this.store, required this.httpClientFactory});
+  AppState({
+    required this.store,
+    required this.httpClientFactory,
+    OpenMailSocket? mailSockets,
+  }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext);
 
   final KeyValueStore store;
 
   /// Makes the HTTP client each server connection uses, so TLS trust is set
   /// in one place (and tests can hand in a fake).
   final http.Client Function() httpClientFactory;
+
+  /// Opens the IMAP and SMTP sockets: TLS with the same trust as HTTPS.
+  final OpenMailSocket mailSockets;
 
   /// Before there could be more than one account, its session lived here.
   static const _legacySessionKey = 'session';
@@ -163,24 +246,66 @@ class AppState extends ChangeNotifier {
       );
       final saved = _SavedSession(server, result.user, result.tokens);
       await store.write(_accountKey(saved.key), saved.encode());
-      final account = _open(saved);
-      final index = accounts.indexWhere((a) => a.key == account.key);
-      final replaced = index < 0 ? null : accounts[index];
-      accounts = index < 0
-          ? [...accounts, account]
-          : ([...accounts]..[index] = account);
-      signedOutReason = null;
-      _show(account);
-      notifyListeners();
-      // The session this one replaces is ended on the server too, rather
-      // than left valid until it expires.
-      if (replaced != null) {
-        unawaited(replaced.client.logout().whenComplete(replaced.client.close));
-      }
-      await _writeIndex();
+      await _add(_openRest(saved));
     } finally {
       candidate.close();
     }
+  }
+
+  /// Adds a Gmail or other IMAP account, or renews it if it is already
+  /// here, and puts it on screen. The address and password are tried on
+  /// both the IMAP and the SMTP server first, so a wrong setting shows now
+  /// rather than at the first send.
+  ///
+  /// Throws [ApiException]: `unauthorized` for a wrong password,
+  /// `app_password_required` when Gmail wants an app password, `no_tls` for
+  /// a server that won't talk TLS, and the network codes.
+  Future<void> addImapAccount({
+    required String address,
+    required String password,
+    required MailServerSettings settings,
+    String displayName = '',
+    MailProvider? provider,
+  }) async {
+    final saved = _SavedImap(
+      address: address.trim(),
+      displayName: displayName.trim(),
+      password: password,
+      settings: settings,
+      provider: provider?.id,
+    );
+    final account = _openImap(saved);
+    try {
+      await account.backend.verify();
+    } on Object {
+      account.close();
+      rethrow;
+    }
+    await store.write(_accountKey(saved.key), saved.encode());
+    await _add(account);
+  }
+
+  /// Puts [account] in the list, in place of one with the same key, and on
+  /// screen.
+  Future<void> _add(SignedInAccount account) async {
+    final index = accounts.indexWhere((a) => a.key == account.key);
+    final replaced = index < 0 ? null : accounts[index];
+    accounts = index < 0
+        ? [...accounts, account]
+        : ([...accounts]..[index] = account);
+    signedOutReason = null;
+    _show(account);
+    notifyListeners();
+    switch (replaced) {
+      // The session this one replaces is ended on the server too, rather
+      // than left valid until it expires.
+      case RestAccount(:final client):
+        unawaited(client.logout().whenComplete(client.close));
+      case ImapAccount():
+        replaced.close();
+      case null:
+    }
+    await _writeIndex();
   }
 
   /// Puts [account] on screen.
@@ -198,7 +323,9 @@ class AppState extends ChangeNotifier {
     if (account == null) return;
     _signingOut.add(account);
     try {
-      await account.client.logout();
+      // An IMAP account has no session on the server to end; forgetting
+      // its password here is signing out.
+      if (account is RestAccount) await account.client.logout();
     } finally {
       _signingOut.remove(account);
     }
@@ -212,8 +339,13 @@ class AppState extends ChangeNotifier {
     await store.write(_settingsKey, next.encode());
   }
 
-  SignedInAccount _open(_SavedSession saved) {
-    late final SignedInAccount account;
+  SignedInAccount _open(_Saved saved) => switch (saved) {
+    _SavedSession() => _openRest(saved),
+    _SavedImap() => _openImap(saved),
+  };
+
+  RestAccount _openRest(_SavedSession saved) {
+    late final RestAccount account;
     final client = RestmailClient(
       server: saved.server,
       httpClient: httpClientFactory(),
@@ -221,20 +353,37 @@ class AppState extends ChangeNotifier {
       onTokensChanged: (tokens) => _tokensChanged(account, tokens),
       userAgent: userAgent,
     );
-    return account = SignedInAccount._(saved.server, saved.user, client);
+    return account = RestAccount._(saved.server, saved.user, client);
   }
+
+  ImapAccount _openImap(_SavedImap saved) => ImapAccount._(
+    ImapBackend(
+      address: saved.address,
+      displayName: saved.displayName,
+      password: saved.password,
+      settings: saved.settings,
+      openSocket: mailSockets,
+    ),
+    provider: MailProviders.byId(saved.provider),
+  );
 
   /// Starts [account]'s mail and stops the previous account's.
   void _show(SignedInAccount account) {
     final previous = mailbox;
+    final previousAccount = current;
     current = account;
-    mailbox = MailboxState(RestBackend(account.client))..start();
+    mailbox = MailboxState(account.backend)..start();
     phase = AppPhase.signedIn;
     _sessions++;
     previous?.dispose();
+    // An IMAP account off screen keeps no connection open; it reconnects
+    // when it is shown again.
+    if (previousAccount is ImapAccount && previousAccount != account) {
+      unawaited(previousAccount.backend.disconnect());
+    }
   }
 
-  void _tokensChanged(SignedInAccount account, SessionTokens? tokens) {
+  void _tokensChanged(RestAccount account, SessionTokens? tokens) {
     // A session already ended or replaced by signing in again is never
     // saved, so it can't overwrite the one that took its place.
     if (!accounts.contains(account)) return;
@@ -277,7 +426,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     if (reason != null && accounts.isNotEmpty) _notices.add(reason);
-    account.client.close();
+    account.close();
     await store.delete(_accountKey(account.key));
     await _writeIndex();
   }
@@ -317,12 +466,12 @@ class AppState extends ChangeNotifier {
   /// The saved accounts in order, which one was on screen, and whether any
   /// had to be dropped. An entry that can't be read is deleted: that account
   /// signs in again, and the others are kept.
-  Future<(List<_SavedSession>, String?, bool)> _readSaved() async {
+  Future<(List<_Saved>, String?, bool)> _readSaved() async {
     final (order, currentKey) = _decodeIndex(await _read(_accountsKey));
-    final saved = <_SavedSession>[];
+    final saved = <_Saved>[];
     var dropped = false;
     for (final key in order) {
-      final session = _SavedSession.decode(await _read(_accountKey(key)));
+      final session = _Saved.decode(await _read(_accountKey(key)));
       if (session == null) {
         await store.delete(_accountKey(key));
         dropped = true;
@@ -366,39 +515,106 @@ class AppState extends ChangeNotifier {
   void dispose() {
     mailbox?.dispose();
     for (final account in accounts) {
-      account.client.close();
+      account.close();
     }
     unawaited(_notices.close());
     super.dispose();
   }
 }
 
-class _SavedSession {
-  const _SavedSession(this.server, this.user, this.tokens);
+/// One account's entry in the Keychain or Keystore. `kind` says which sort
+/// it is; entries written before there were IMAP accounts have none and are
+/// REST Mail sessions.
+sealed class _Saved {
+  const _Saved();
 
-  static _SavedSession? decode(String? raw) {
+  static _Saved? decode(String? raw) {
     if (raw == null) return null;
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      return _SavedSession(
-        Uri.parse(json['server'] as String),
-        User.fromJson(json['user'] as Map<String, dynamic>),
-        SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
-      );
+      return switch (json['kind'] ?? AccountKind.rest.name) {
+        'rest' => _SavedSession.fromJson(json),
+        'imap' => _SavedImap.fromJson(json),
+        _ => null,
+      };
     } on Object {
       return null; // Unreadable: sign in again rather than crash.
     }
   }
 
+  String get key;
+
+  String encode();
+}
+
+class _SavedSession extends _Saved {
+  const _SavedSession(this.server, this.user, this.tokens);
+
+  static _SavedSession? decode(String? raw) => switch (_Saved.decode(raw)) {
+    final _SavedSession session => session,
+    _ => null,
+  };
+
+  factory _SavedSession.fromJson(Map<String, dynamic> json) => _SavedSession(
+    Uri.parse(json['server'] as String),
+    User.fromJson(json['user'] as Map<String, dynamic>),
+    SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
+  );
+
   final Uri server;
   final User user;
   final SessionTokens tokens;
 
-  String get key => _keyOf(server, user);
+  @override
+  String get key => _keyOf(server, user.email);
 
+  @override
   String encode() => jsonEncode({
+    'kind': AccountKind.rest.name,
     'server': server.toString(),
     'user': user.toJson(),
     'tokens': tokens.toJson(),
+  });
+}
+
+class _SavedImap extends _Saved {
+  const _SavedImap({
+    required this.address,
+    required this.displayName,
+    required this.password,
+    required this.settings,
+    this.provider,
+  });
+
+  static _SavedImap? fromJson(Map<String, dynamic> json) {
+    final settings = MailServerSettings.fromJson(json['settings']);
+    if (settings == null) return null;
+    return _SavedImap(
+      address: json['address'] as String,
+      displayName: json['display_name'] as String? ?? '',
+      password: json['password'] as String,
+      settings: settings,
+      provider: json['provider'] as String?,
+    );
+  }
+
+  final String address;
+  final String displayName;
+  final String password;
+  final MailServerSettings settings;
+  final String? provider;
+
+  @override
+  String get key =>
+      _keyOf(Uri(scheme: 'imaps', host: settings.imapHost), address);
+
+  @override
+  String encode() => jsonEncode({
+    'kind': AccountKind.imap.name,
+    'address': address,
+    'display_name': displayName,
+    'password': password,
+    'settings': settings.toJson(),
+    'provider': ?provider,
   });
 }

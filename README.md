@@ -15,6 +15,9 @@ webmail uses, not IMAP.
   switch between them.
 - Several accounts at once, on one server or on several, each with its own
   session. Signing out of one leaves the others signed in.
+- Gmail, iCloud, Yahoo, Fastmail or any other IMAP and SMTP account beside
+  the REST Mail ones, signed in with a password or an app password. Gmail is
+  added with an app password, guided step by step.
 - Live updates over the server's event stream while the app is open.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
@@ -56,6 +59,30 @@ only the session, in the system keychain, one entry per account.
 
 If the account has two-factor authentication, a **Two-factor code** field
 appears. **Use a recovery code instead** switches it to take a recovery code.
+
+### Gmail and other mail (IMAP)
+
+An address at Gmail, iCloud, Yahoo, Fastmail or Outlook.com is recognised as
+you type it, and **Continue** opens its setup; **Other mail (IMAP)** opens the
+same setup for any other address. The servers come from, in order: the app's
+own presets for those providers, Thunderbird's autoconfig database, the
+domain's own autoconfig file, then DNS SRV records, all fetched over HTTPS. If
+none of them knows the domain, you type the servers in.
+
+- **Gmail** needs an app password. The setup explains the two steps (turn on
+  2-Step Verification, then make an app password) with a link to each, and
+  says so plainly if Gmail answers that it wants one.
+- **iCloud, Yahoo and Fastmail** link to their own instructions for making an
+  app password.
+- **Outlook.com** says it needs Microsoft sign-in, which the app doesn't have
+  yet: Microsoft turned off passwords for other mail apps in September 2024.
+
+IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
+that doesn't offer STARTTLS is refused before the password is sent. Nothing
+goes in plaintext, and certificate checks can't be turned off. The password
+is kept in the system keychain with the account, since IMAP and SMTP want it
+each time they connect. While the app is open, IDLE brings new mail in as it
+arrives.
 
 </td>
 </tr>
@@ -172,10 +199,10 @@ searches. Recent searches are kept only until the app closes.
   account only: its session is removed from the phone, its mail stays on the
   server, and any other accounts stay signed in.
 - **Link another mailbox** adds another mailbox on the same server to this
-  session.
+  session. An IMAP account is one mailbox, so it has no such row.
 - **Other accounts** lists the other accounts signed in on the phone; tap one
   to switch to it. **Add an account** signs in to another, on this server or
-  any other.
+  any other, or adds Gmail or other mail over IMAP.
 - **Signature** edits the signature, with a preview and the **Append on
   replies** switch.
 - **Appearance** is **System**, **Light** or **Dark**.
@@ -303,6 +330,8 @@ under Apple Developer team `43UMKXZ8P4`.
 ## Not yet
 
 - Notifications while the app is closed. The server needs to push through
-  APNs and FCM first.
+  APNs and FCM first. For IMAP accounts they need something server-side too.
+- Gmail's own ways: labels, archive, threads and its search syntax (#42), and
+  Sign in with Google or Microsoft (#37).
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters, quarantine and administration.

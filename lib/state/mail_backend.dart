@@ -4,7 +4,7 @@ import 'package:restmail_api/restmail_api.dart';
 
 /// Where one signed-in account's mail comes from. [MailboxState] and the
 /// screens see only this, so one app can show a rest-mail server's mail and,
-/// next, an IMAP provider's (rest-mail-mobile#36).
+/// an IMAP provider's ([ImapBackend], rest-mail-mobile#36).
 ///
 /// The shapes are rest-mail's own models. A backend that is not rest-mail
 /// maps its mail onto them, ids included, and reports failures as
@@ -16,6 +16,10 @@ abstract interface class MailBackend {
   /// The mailboxes this session can show. [Account.isPrimary] marks the one
   /// it signed in with.
   Future<List<Account>> accounts();
+
+  /// Whether [linkAccount] can add more mailboxes to this session. A REST
+  /// Mail session can; an IMAP account is one mailbox.
+  bool get canLinkMailboxes;
 
   /// Adds another mailbox on the same server, proving access to it with its
   /// own password.
@@ -92,6 +96,9 @@ class RestBackend implements MailBackend {
 
   @override
   Future<List<Account>> accounts() => client.accounts();
+
+  @override
+  bool get canLinkMailboxes => true;
 
   @override
   Future<Account> linkAccount({

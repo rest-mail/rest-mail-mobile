@@ -15,12 +15,19 @@ import 'package:http/io_client.dart';
 /// skip certificate checks.
 const _devCertificateAuthority = String.fromEnvironment('RESTMAIL_DEV_CA');
 
-http.Client createHttpClient() {
+/// What every TLS connection the app makes trusts: the device's roots, plus
+/// the testbed's CA in a debug build. HTTPS and the IMAP and SMTP sockets
+/// both use it, and neither has a way to turn certificate checks off.
+SecurityContext createSecurityContext() {
   final context = SecurityContext(withTrustedRoots: true);
   if (kDebugMode && _devCertificateAuthority.isNotEmpty) {
     context.setTrustedCertificatesBytes(utf8.encode(_devCertificateAuthority));
   }
-  final client = HttpClient(context: context)
+  return context;
+}
+
+http.Client createHttpClient() {
+  final client = HttpClient(context: createSecurityContext())
     ..connectionTimeout = const Duration(seconds: 15)
     ..idleTimeout = const Duration(seconds: 30);
   return IOClient(client);

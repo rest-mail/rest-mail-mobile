@@ -1,0 +1,87 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:restmail/app.dart';
+import 'package:restmail/state/app_state.dart';
+import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/imap_account_screen.dart';
+
+/// The setup screen's own list, not the screen under it or a text field.
+final _setupList = find
+    .descendant(
+      of: find.byType(ImapAccountScreen),
+      matching: find.byType(Scrollable),
+    )
+    .first;
+
+Future<AppState> _app(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  final state = AppState(
+    store: MemoryKeyValueStore(),
+    httpClientFactory: () => MockClient((_) async => http.Response('', 404)),
+  );
+  await state.start();
+  await tester.pumpWidget(RestmailApp(state: state));
+  await tester.pumpAndSettle();
+  return state;
+}
+
+void main() {
+  setUpAll(() => EditableText.debugDeterministicCursor = true);
+
+  testWidgets('a Gmail address is recognised and set up with an app '
+      'password, step by step', (tester) async {
+    await _app(tester);
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'ada@gmail.com');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    // No REST Mail server is looked for, and no Google password asked for.
+    expect(find.text('Gmail'), findsOneWidget);
+    expect(find.text('Password'), findsNothing);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail needs an app password'), findsOneWidget);
+    expect(find.text('Turn on 2-Step Verification'), findsOneWidget);
+    expect(find.text('Make an app password'), findsOneWidget);
+    expect(find.text('APP PASSWORD'), findsOneWidget);
+    final servers = find.text('imap.gmail.com · smtp.gmail.com');
+    await tester.scrollUntilVisible(servers, 200, scrollable: _setupList);
+    expect(servers, findsOneWidget);
+  });
+
+  testWidgets('Other mail (IMAP): Outlook.com says it needs Microsoft '
+      'sign-in, and anything unknown asks for its servers', (tester) async {
+    await _app(tester);
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Other mail (IMAP)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Other mail'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'ada@outlook.com');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Outlook.com needs Microsoft sign-in'), findsOneWidget);
+    expect(find.text('APP PASSWORD'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'ada@nowhere.example');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    final notFound = find.textContaining("Couldn't find the servers");
+    await tester.scrollUntilVisible(notFound, 200, scrollable: _setupList);
+    expect(find.text('IMAP SERVER (TLS)'), findsOneWidget);
+    expect(find.text('imap.nowhere.example'), findsOneWidget);
+  });
+}

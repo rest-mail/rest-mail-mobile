@@ -88,11 +88,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               AccountScreen(mailbox: m, account: account),
                             ),
                           ),
-                        _AddRow(
-                          label: 'Link another mailbox',
-                          onTap: () =>
-                              _push(context, LinkAccountScreen(mailbox: m)),
-                        ),
+                        if (m.backend.canLinkMailboxes)
+                          _AddRow(
+                            label: 'Link another mailbox',
+                            onTap: () =>
+                                _push(context, LinkAccountScreen(mailbox: m)),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 22),
@@ -409,9 +410,11 @@ class _AccountScreenState extends State<AccountScreen> {
                       RmRow(label: 'Server', value: host),
                       if (quota != null)
                         RmRow(label: 'Storage', value: _storage(quota)),
-                      const RmRow(
+                      RmRow(
                         label: 'Updates',
-                        value: 'Pushed live by the server',
+                        value: widget.mailbox.backend.canLinkMailboxes
+                            ? 'Pushed live by the server'
+                            : 'Live while the app is open',
                       ),
                     ],
                   ),
