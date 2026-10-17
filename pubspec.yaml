@@ -57,6 +57,13 @@ dependencies:
   mobile_scanner: ^7.4.2
   # Opens the app from rest-mail://setup?… sign-in links. Apache-2.0.
   app_links: ^7.2.2
+  # IMAP (with IDLE), SMTP and MIME for Gmail and other mail accounts. Pure
+  # Dart. MPL-2.0, which applies file by file: used unmodified, so the app
+  # stays MIT. If it stops being maintained it is forked into packages/.
+  enough_mail: ^2.1.7
+  # Reads the autoconfig files that say where a domain's IMAP and SMTP
+  # servers are. MIT.
+  xml: ^6.6.1
 
 dev_dependencies:
   flutter_test:

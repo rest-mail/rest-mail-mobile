@@ -194,7 +194,7 @@ void main() {
       // Something that account's client had in flight when it left the
       // screen.
       await expectLater(
-        state.accounts.first.client.accounts(),
+        state.accounts.first.backend.accounts(),
         throwsA(isA<SessionExpiredException>()),
       );
       await _settle();

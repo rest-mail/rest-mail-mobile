@@ -5,16 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart' show FakeAccounts;
 
+import '../imap/mail_settings.dart';
 import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
+import 'imap_account_screen.dart';
 import 'server_screen.dart';
 import 'widgets/common.dart';
 
 enum _Discovery { idle, searching, found, notFound }
 
 /// Sign-in: an address, a password, and the second factor if the account
-/// has one. The server is found from the address's domain.
+/// has one. The server is found from the address's domain. An address at a
+/// provider the app knows (Gmail, iCloud, …) goes on to [ImapAccountScreen],
+/// as does Other mail (IMAP).
 class AddAccountScreen extends StatefulWidget {
   const AddAccountScreen({super.key, this.server});
 
@@ -77,19 +81,25 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     return domain.contains('.') && !domain.endsWith('.') ? domain : null;
   }
 
+  /// A provider the address belongs to, which is added over IMAP rather
+  /// than looked for as a REST Mail server.
+  MailProvider? get _provider =>
+      _serverChosen ? null : MailProviders.forAddress(_email.text);
+
   bool get _canContinue =>
+      _provider != null && !_busy ||
       !_busy &&
-      _server != null &&
-      _domain != null &&
-      _password.text.isNotEmpty &&
-      (!_needsCode || _code.text.trim().isNotEmpty);
+          _server != null &&
+          _domain != null &&
+          _password.text.isNotEmpty &&
+          (!_needsCode || _code.text.trim().isNotEmpty);
 
   void _emailChanged() {
     setState(() => _error = null);
     if (_serverChosen) return;
     _debounce?.cancel();
     final domain = _domain;
-    if (domain == null) {
+    if (domain == null || _provider != null) {
       _discoveryRun++;
       setState(() {
         _discovery = _Discovery.idle;
@@ -146,7 +156,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     });
   }
 
+  void _otherMail() => unawaited(
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ImapAccountScreen(
+          email: _email.text.trim(),
+          password: _password.text,
+        ),
+      ),
+    ),
+  );
+
   Future<void> _continue() async {
+    if (_provider != null) return _otherMail();
     final server = _server;
     if (server == null || !_canContinue) return;
     setState(() {
@@ -242,26 +265,28 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       const SizedBox(height: 22),
                       serverCard,
                     ],
-                    const SizedBox(height: 22),
-                    const SectionLabel('Password'),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _password,
-                      obscureText: true,
-                      autofillHints: const [AutofillHints.password],
-                      textInputAction: _needsCode
-                          ? TextInputAction.next
-                          : TextInputAction.done,
-                      onChanged: (_) => setState(() => _error = null),
-                      onSubmitted: (_) => unawaited(_continue()),
-                      style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(hintText: 'Password'),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Sent once, over TLS, to sign in. Only the session is kept, in the system keychain.',
-                      style: rmText(12.5, color: c.ink3, height: 1.4),
-                    ),
+                    if (_provider == null) ...[
+                      const SizedBox(height: 22),
+                      const SectionLabel('Password'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _password,
+                        obscureText: true,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: _needsCode
+                            ? TextInputAction.next
+                            : TextInputAction.done,
+                        onChanged: (_) => setState(() => _error = null),
+                        onSubmitted: (_) => unawaited(_continue()),
+                        style: rmText(16, color: c.ink),
+                        decoration: const InputDecoration(hintText: 'Password'),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sent once, over TLS, to sign in. Only the session is kept, in the system keychain.',
+                        style: rmText(12.5, color: c.ink3, height: 1.4),
+                      ),
+                    ],
                     if (_needsCode) ...[
                       const SizedBox(height: 22),
                       SectionLabel(
@@ -335,6 +360,19 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         ),
                       ),
                     ),
+                    Center(
+                      child: TextButton(
+                        onPressed: _otherMail,
+                        child: Text(
+                          'Other mail (IMAP)',
+                          style: rmText(
+                            14,
+                            color: c.accent,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -346,6 +384,19 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   Widget? _serverCard(RmColors c) {
+    final provider = _provider;
+    if (provider != null) {
+      return _Card(
+        tone: provider.needsMicrosoftSignIn ? _Tone.missing : _Tone.good,
+        title: provider.name,
+        detail: provider.needsMicrosoftSignIn
+            ? "Needs Sign in with Microsoft, which REST Mail doesn't have yet."
+            : provider.usesAppPassword
+            ? 'Added over IMAP and SMTP, with an app password. Continue to '
+                  'set it up.'
+            : 'Added over IMAP and SMTP. Continue to set it up.',
+      );
+    }
     final server = _server;
     if (_serverChosen && server != null) {
       return _Card(
@@ -369,7 +420,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       _Discovery.notFound => _Card(
         tone: _Tone.missing,
         title: 'No rest-mail server at $_searchedDomain',
-        detail: 'Enter its address with Configure manually.',
+        detail:
+            'Add it as Other mail (IMAP), or enter a server with Configure '
+            'manually.',
       ),
     };
   }

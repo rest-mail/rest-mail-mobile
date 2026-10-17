@@ -79,6 +79,43 @@ jobs:
           path: build/screens/
           retention-days: 14
 
+  # IMAP and SMTP accounts against a real mail server: GreenMail, over
+  # IMAPS and SMTPS. The rest of the IMAP tests replay recorded responses.
+  imap:
+    name: IMAP against GreenMail
+    runs-on: ubuntu-latest
+    services:
+      greenmail:
+        image: greenmail/standalone:2.1.3
+        env:
+          GREENMAIL_OPTS: >-
+            -Dgreenmail.setup.test.all
+            -Dgreenmail.hostname=0.0.0.0
+            -Dgreenmail.users=ada:secret@example.test
+            -Dgreenmail.users.login=email
+        ports:
+          - 3993:3993
+          - 3465:3465
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Wait for GreenMail
+        run: |
+          for _ in $(seq 1 60); do
+            (exec 3<>/dev/tcp/127.0.0.1/3993) 2>/dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::GreenMail did not start" >&2
+          exit 1
+      - run: flutter test test/imap/greenmail_test.dart
+        env:
+          GREENMAIL_HOST: 127.0.0.1
+
   android:
     name: Android build
     runs-on: ubuntu-latest
@@ -134,7 +171,7 @@ jobs:
   # above did, so adding or renaming a job never strands a required check.
   ci:
     name: CI
-    needs: [api-client, fake-server, app, android, ios]
+    needs: [api-client, fake-server, app, imap, android, ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -144,6 +181,7 @@ jobs:
             api-client=${{ needs.api-client.result }}
             fake-server=${{ needs.fake-server.result }}
             app=${{ needs.app.result }}
+            imap=${{ needs.imap.result }}
             android=${{ needs.android.result }}
             ios=${{ needs.ios.result }}
         run: |
