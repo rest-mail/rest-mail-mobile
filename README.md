@@ -20,7 +20,9 @@ webmail uses, not IMAP.
   session. Signing out of one leaves the others signed in.
 - Gmail, iCloud, Yahoo, Fastmail or any other IMAP and SMTP account beside
   the REST Mail ones, signed in with a password or an app password. Gmail is
-  added with an app password, guided step by step.
+  added with an app password, guided step by step. Outlook.com, and work or
+  school accounts on Microsoft 365, sign in with Microsoft, in builds given a
+  Microsoft client ID.
 - Administration of a REST Mail server: the outbound queue, domains and
   each one's DNS check, sender lists and MTA-STS policy, mailboxes, aliases,
   bans, an overview, the delivery log, the activity and audit logs, message
@@ -85,8 +87,20 @@ none of them knows the domain, you type the servers in.
   says so plainly if Gmail answers that it wants one.
 - **iCloud, Yahoo and Fastmail** link to their own instructions for making an
   app password.
-- **Outlook.com** says it needs Microsoft sign-in, which the app doesn't have
-  yet: Microsoft turned off passwords for other mail apps in September 2024.
+- **Outlook.com** signs in with Microsoft, since Microsoft turned off
+  passwords for other mail apps in September 2024. So do work and school
+  accounts whose servers are Microsoft 365's. **Sign in with Microsoft**
+  opens Microsoft's own page in the system browser, which asks for the
+  password and whether REST Mail may read and send the mail; the app never
+  sees the password. A build without a Microsoft client ID (see
+  [Development](#sign-in-with-microsoft-and-google)) shows no button and
+  says Outlook.com needs Microsoft sign-in.
+- **Sign in with Google** sits under Gmail's app-password setup, marked
+  *personal use*. REST Mail's Google client is unverified, so Google warns
+  about it and lets at most 100 people use it: enough for the owner and
+  family. REST Mail won't pay for the security audit Google wants before it
+  lifts that cap (#37), so an app password stays the way in for everyone
+  else. A build without a Google client ID shows only the app password.
 
 **Gmail behaves like Gmail.** The app knows it by its IMAP extensions
 (`X-GM-EXT-1`), not its domain, so Google Workspace addresses count too:
@@ -109,8 +123,14 @@ IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
 that doesn't offer STARTTLS is refused before the password is sent. Nothing
 goes in plaintext, and certificate checks can't be turned off. The password
 is kept in the system keychain with the account, since IMAP and SMTP want it
-each time they connect. While the app is open, IDLE brings new mail in as it
-arrives.
+each time they connect. An account signed in with Microsoft or Google keeps
+no password, only the refresh token they gave it, in the keychain. The
+access token it signs IMAP and SMTP in with (XOAUTH2) is kept in memory and
+renewed before it runs out. If you take REST Mail's access away at Microsoft
+or Google, or change your password there, that account signs out and the
+app asks you to sign in again; the other accounts carry on. Signing out of a
+Google account gives its token back to Google. While the app is open, IDLE
+brings new mail in as it arrives.
 
 </td>
 </tr>
@@ -351,6 +371,35 @@ against the same fake, and saves a picture of each in `build/screens/`.
 The pictures in `media/` are copies of these, used in the walkthrough above.
 Copy them over again when a screen changes.
 
+### Sign in with Microsoft and Google
+
+The OAuth client IDs come from the build, never from the source. Without
+them the app builds and runs as before, with no sign-in buttons:
+
+```sh
+flutter run \
+  --dart-define=MS_CLIENT_ID=<Entra application (client) ID> \
+  --dart-define=GOOGLE_IOS_CLIENT_ID=<id>.apps.googleusercontent.com \
+  --dart-define=GOOGLE_ANDROID_CLIENT_ID=<id>.apps.googleusercontent.com
+```
+
+They are public clients, so an ID is not a secret and there is no client
+secret anywhere: the app proves each sign-in with PKCE. The redirects the
+registrations must list are:
+
+| Provider | Redirect URI |
+|---|---|
+| Microsoft (iOS and Android) | `rest-mail://oauth/microsoft` |
+| Google, iOS client | `com.googleusercontent.apps.<id>:/oauth2redirect`, the iOS client ID reversed |
+| Google, Android client | `com.antimatterstudios.restmail:/oauth2redirect`, with *custom URI scheme* turned on in the client's advanced settings |
+
+`lib/imap/oauth.dart` holds the flow: the PKCE pair, the state check, the
+code exchange and the refresh, over the app's own HTTPS client.
+`flutter_web_auth_2` only shows the provider's page, in
+ASWebAuthenticationSession on iOS and a Custom Tab on Android, and hands
+back the URL it returns to. `test/imap/fake_auth_server.dart` plays the
+provider in the tests.
+
 ### Against a local testbed
 
 The testbed signs its certificates with its own CA. You can tell a debug build
@@ -422,8 +471,9 @@ under Apple Developer team `43UMKXZ8P4`.
 
 - Notifications while the app is closed. The server needs to push through
   APNs and FCM first. For IMAP accounts they need something server-side too.
-- Sign in with Google or Microsoft (#37). Creating a Gmail label from the
-  app.
+- Sign in with Microsoft and Google in the TestFlight builds: they wait for
+  the app's registrations at Microsoft and Google (#37). Creating a Gmail
+  label from the app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
 - Editing a pipeline's filters or a custom filter, and making new ones.

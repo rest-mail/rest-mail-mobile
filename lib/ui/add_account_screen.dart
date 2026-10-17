@@ -404,11 +404,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   Widget? _serverCard(RmColors c) {
     final provider = _provider;
     if (provider != null) {
+      final microsoft = AppScope.read(context).oauth.microsoft != null;
+      final blocked = provider.needsMicrosoftSignIn && !microsoft;
       return _Card(
-        tone: provider.needsMicrosoftSignIn ? _Tone.missing : _Tone.good,
+        tone: blocked ? _Tone.missing : _Tone.good,
         title: provider.name,
-        detail: provider.needsMicrosoftSignIn
+        detail: blocked
             ? "Needs Sign in with Microsoft, which REST Mail doesn't have yet."
+            : provider.needsMicrosoftSignIn
+            ? 'Added over IMAP and SMTP, signed in with Microsoft. Continue to '
+                  'set it up.'
             : provider.usesAppPassword
             ? 'Added over IMAP and SMTP, with an app password. Continue to '
                   'set it up.'
