@@ -1,4 +1,7 @@
-/// The two tokens behind one signed-in session.
+import 'capabilities.dart';
+
+/// The two tokens behind one signed-in session, and the capabilities the
+/// access token was minted with.
 ///
 /// rest-mail gives tokens to browsers as httpOnly cookies, but this client
 /// signs in as `"client": "native"`, so both come back in the JSON body. The
@@ -10,26 +13,34 @@ class SessionTokens {
     required this.accessToken,
     required this.refreshToken,
     required this.accessExpiresAt,
+    this.capabilities = Capabilities.none,
   });
 
   factory SessionTokens.fromJson(Map<String, dynamic> json) => SessionTokens(
     accessToken: json['access_token'] as String,
     refreshToken: json['refresh_token'] as String,
     accessExpiresAt: DateTime.parse(json['access_expires_at'] as String),
+    capabilities: Capabilities.fromJson(json['capabilities']),
   );
 
   final String accessToken;
   final String refreshToken;
   final DateTime accessExpiresAt;
 
+  /// What the admin API lets this access token do. They come with every
+  /// sign-in and refresh, so a grant the server takes away is gone from here
+  /// at the next refresh.
+  final Capabilities capabilities;
+
   /// Whether the access token runs out within [margin] from [now].
   bool expiresWithin(Duration margin, {DateTime? now}) =>
       !(now ?? DateTime.now()).add(margin).isBefore(accessExpiresAt);
 
-  Map<String, String> toJson() => {
+  Map<String, Object> toJson() => {
     'access_token': accessToken,
     'refresh_token': refreshToken,
     'access_expires_at': accessExpiresAt.toUtc().toIso8601String(),
+    if (!capabilities.isEmpty) 'capabilities': capabilities.toJson(),
   };
 }
 

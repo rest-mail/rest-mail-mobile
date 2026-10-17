@@ -486,4 +486,121 @@ void main() {
       expect(client.tokens, isNull);
     });
   });
+
+  group('admin', () {
+    test('sign-in and every refresh carry the capabilities', () async {
+      final changes = <SessionTokens?>[];
+      var refreshed = false;
+      final client = RestmailClient(
+        server: _server,
+        onTokensChanged: changes.add,
+        httpClient: MockClient((request) async {
+          if (_isRefresh(request)) {
+            refreshed = true;
+            // A role taken away: the refresh says so.
+            return _json({
+              'data': {
+                'expires_in': 900,
+                'user': _user,
+                'capabilities': ['queue:read'],
+                'access_token': 'access-2',
+                'refresh_token': 'refresh-2',
+              },
+            });
+          }
+          if (!refreshed && request.url.path.endsWith('/auth/login')) {
+            return _json({
+              'data': {
+                'expires_in': 900,
+                'user': {'id': 1, 'email': 'ops', 'display_name': 'ops'},
+                'capabilities': ['queue:read', 'queue:manage'],
+                'access_token': 'access-1',
+                'refresh_token': 'refresh-1',
+              },
+            });
+          }
+          return _json(_expired, status: 401);
+        }),
+      );
+
+      final admin = await client.signInAdmin(
+        username: 'ops',
+        password: 'pw',
+        totpCode: '123456',
+      );
+      expect(admin.capabilities.names, {'queue:read', 'queue:manage'});
+      expect(client.tokens!.capabilities, admin.capabilities);
+
+      await client.refresh();
+      expect(changes.last!.capabilities.names, {'queue:read'});
+    });
+
+    test('reads the queue page and the domain list as the server sends '
+        'them', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/admin/queue')) {
+            expect(request.url.queryParameters, {
+              'status': 'deferred',
+              'limit': '50',
+              'offset': '0',
+            });
+            return _json({
+              'data': {
+                'items': [
+                  {
+                    'id': 3,
+                    'message_id': null,
+                    'sender': 'ada@mail.example.test',
+                    'recipient': 'bob@far.test',
+                    'domain': 'far.test',
+                    'status': 'deferred',
+                    'attempts': 2,
+                    'last_attempt': '2026-10-17T03:00:00Z',
+                    'next_attempt': '2026-10-17T03:15:00Z',
+                    'last_error': '451 try later',
+                    'last_error_code': 451,
+                    'max_retries': 30,
+                    'created_at': '2026-10-17T02:00:00Z',
+                    'expires_at': '2026-10-22T02:00:00Z',
+                  },
+                ],
+                'total': 51,
+                'limit': 50,
+                'offset': 0,
+              },
+            });
+          }
+          return _json({
+            'data': [
+              {
+                'id': 1,
+                'name': 'example.test',
+                'server_type': 'restmail',
+                'active': true,
+                'default_quota_bytes': 1073741824,
+                'dkim_selector': 'mail',
+                'created_at': '2026-10-01T00:00:00Z',
+                'updated_at': '2026-10-01T00:00:00Z',
+              },
+            ],
+            'pagination': {'total': 1, 'has_more': false},
+          });
+        }),
+      );
+
+      final queue = await client.queue(status: QueueStatus.deferred);
+      expect(queue.items.single.recipient, 'bob@far.test');
+      expect(queue.items.single.status.canRetry, isTrue);
+      expect(queue.items.single.lastErrorCode, 451);
+      expect(queue.hasMore, isTrue);
+      expect(queue.next, 1);
+
+      final domains = await client.domains();
+      expect(domains.items.single.name, 'example.test');
+      expect(domains.hasMore, isFalse);
+    });
+  });
 }

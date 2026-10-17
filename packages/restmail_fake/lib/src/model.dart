@@ -14,13 +14,75 @@ class FakeMailbox {
 
   final int id;
   final String address;
-  final String displayName;
-  final String password;
+
+  /// An admin may change these.
+  String displayName;
+  String password;
+  bool active = true;
+
+  /// What its sessions may do on the admin API. None, as on today's server,
+  /// where only admin users hold capabilities; rest-mail-server#347 has
+  /// mailboxes hold grants instead.
+  Set<String> capabilities = {};
 
   /// When set, signing in also needs this code or [recoveryCode].
   final String? totpCode;
   final String? recoveryCode;
   final int quotaBytes;
+
+  String get domain => address.substring(address.indexOf('@') + 1);
+}
+
+/// A domain the fake serves.
+class FakeDomain {
+  FakeDomain({required this.id, required this.name, this.active = true});
+
+  final int id;
+  final String name;
+  bool active;
+}
+
+/// Mail to [source] goes to [destination].
+class FakeAlias {
+  FakeAlias({
+    required this.id,
+    required this.source,
+    required this.destination,
+  });
+
+  final int id;
+  final String source;
+  String destination;
+  bool active = true;
+
+  String get domain => source.substring(source.indexOf('@') + 1);
+}
+
+/// A message waiting in the outbound queue for another server to take it.
+class FakeQueueEntry {
+  FakeQueueEntry({
+    required this.id,
+    required this.sender,
+    required this.recipient,
+    required this.status,
+    required this.createdAt,
+    this.attempts = 0,
+    this.lastError = '',
+    this.lastErrorCode = 0,
+  });
+
+  final int id;
+  final String sender;
+  final String recipient;
+
+  /// `pending`, `deferred`, `delivered`, `bounced` or `expired`.
+  String status;
+  int attempts;
+  String lastError;
+  int lastErrorCode;
+  final DateTime createdAt;
+
+  String get domain => recipient.substring(recipient.indexOf('@') + 1);
 }
 
 class FakeRecipient {

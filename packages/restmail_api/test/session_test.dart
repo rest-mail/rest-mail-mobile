@@ -53,5 +53,26 @@ void main() {
     expect(restored.accessToken, 'a');
     expect(restored.refreshToken, 'r');
     expect(restored.accessExpiresAt, tokens.accessExpiresAt);
+    expect(restored.capabilities, Capabilities.none);
+  });
+
+  test('and keep their capabilities', () {
+    final tokens = SessionTokens(
+      accessToken: 'a',
+      refreshToken: 'r',
+      accessExpiresAt: DateTime.utc(2026, 9, 10, 22),
+      capabilities: const Capabilities({'queue:read', 'domains:read'}),
+    );
+    final restored = SessionTokens.fromJson(tokens.toJson());
+    expect(restored.capabilities, tokens.capabilities);
+    expect(restored.capabilities.allows(Capability.queueRead), isTrue);
+    expect(restored.capabilities.allows(Capability.queueManage), isFalse);
+  });
+
+  test('* allows every capability; none allows nothing', () {
+    expect(const Capabilities({'*'}).allows(Capability.bansDelete), isTrue);
+    expect(Capabilities.none.allows(Capability.queueRead), isFalse);
+    expect(Capabilities.fromJson(null), Capabilities.none);
+    expect(Capabilities.fromJson(['users:read', 7]).names, {'users:read'});
   });
 }
