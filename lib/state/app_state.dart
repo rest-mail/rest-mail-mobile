@@ -483,15 +483,16 @@ class AppState extends ChangeNotifier {
   }
 
   /// The saved accounts in order, which one was on screen, and whether any
-  /// had to be dropped. An entry that can't be read is deleted: that account
-  /// signs in again, and the others are kept.
+  /// had to be dropped. An entry that can't be read, or isn't the account its
+  /// key names, is deleted: that account signs in again, and the others are
+  /// kept.
   Future<(List<_Saved>, String?, bool)> _readSaved() async {
     final (order, currentKey) = _decodeIndex(await _read(_accountsKey));
     final saved = <_Saved>[];
     var dropped = false;
     for (final key in order) {
       final session = _Saved.decode(await _read(_accountKey(key)));
-      if (session == null) {
+      if (session == null || session.key != key) {
         await store.delete(_accountKey(key));
         dropped = true;
       } else if (saved.any((s) => s.key == session.key)) {

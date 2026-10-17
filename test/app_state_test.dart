@@ -126,6 +126,52 @@ void main() {
       return state;
     }
 
+    test('a saved entry that is not the account its key names, such as an '
+        'administrator session from before accounts were mailboxes, is '
+        'dropped, and deleted', () async {
+      final client = RestmailClient(server: _server, httpClient: fake.client);
+      final login = await client.login(
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+      );
+      final key = '$_server|admin:admin';
+      await store.write(
+        'accounts',
+        jsonEncode({
+          'order': [key, _key(FakeAccounts.email)],
+          'current': key,
+        }),
+      );
+      await store.write(
+        'account:$key',
+        jsonEncode({
+          'kind': 'rest',
+          'server': _server.toString(),
+          'user': {'id': 1, 'email': 'admin', 'display_name': 'admin'},
+          'tokens': login.tokens.toJson(),
+          'administrator': true,
+        }),
+      );
+      await store.write(
+        _entry(FakeAccounts.email),
+        jsonEncode({
+          'kind': 'rest',
+          'server': _server.toString(),
+          'user': login.user.toJson(),
+          'tokens': login.tokens.toJson(),
+        }),
+      );
+
+      final state = newState();
+      await state.start();
+
+      expect(_addresses(state), [FakeAccounts.email]);
+      expect(store.values.containsKey('account:$key'), isFalse);
+      final index =
+          jsonDecode(store.values['accounts']!) as Map<String, dynamic>;
+      expect(index['order'], [_key(FakeAccounts.email)]);
+    });
+
     test('a saved entry must say what kind it is; one that does not is '
         'dropped', () async {
       final client = RestmailClient(server: _server, httpClient: fake.client);
