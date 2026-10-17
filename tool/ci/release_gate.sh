@@ -2,7 +2,8 @@
 # Whether the tag that started testflight.yml may become a TestFlight release.
 # Runs before anything is built and before any secret is read.
 #
-# A release is a tag, made by `chore release`: vMAJOR.MINOR.PATCH, where
+# A release is a tag, made after each merge into main by release-on-merge.yml,
+# or by hand with `chore release`: vMAJOR.MINOR.PATCH, where
 # MAJOR.MINOR is pubspec.yaml's and PATCH is the build count, the number of
 # commits behind the tagged one. The tag is the version testers see, and the
 # build count only goes up, so no version can come round twice. A tag must

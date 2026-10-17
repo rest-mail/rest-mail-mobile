@@ -355,16 +355,21 @@ certificate against it.
 
 ### A TestFlight build
 
-A release is a tag. Merging into `main` runs CI and nothing else; when what is
-on `main` should reach testers, on an up-to-date `main`:
+A release is a tag, and every merge into `main` makes one:
+`.github/workflows/release-on-merge.yml` tags each commit that lands on `main`
+as `vMAJOR.MINOR.<build count>`: `pubspec.yaml`'s MAJOR.MINOR, with the number
+of commits behind it as the patch, so 0.2 at 28 commits is v0.2.28. It pushes
+the tag with the token `auto-merge.yml` uses, because a tag pushed with the
+workflow's own token would start no build. For a commit that did not get its
+tag, make the same one by hand, on an up-to-date `main`:
 
 ```sh
 chore release
 ```
 
-That tags it `vMAJOR.MINOR.<build count>`: `pubspec.yaml`'s MAJOR.MINOR, with
-the number of commits behind it as the patch, so 0.2 at 28 commits is v0.2.28.
-`.github/workflows/testflight.yml` builds it as 0.2.28 (28), signs it, hands
+If the commit is tagged already, it says so and stops.
+
+`.github/workflows/testflight.yml` builds the tag as 0.2.28 (28), signs it, hands
 it to App Store Connect — internal testers have it as soon as processing
 finishes — and publishes it on the Releases page. The build count only goes
 up, so no version comes round twice; raise MINOR in `pubspec.yaml` for a

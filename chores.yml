@@ -70,8 +70,11 @@ tasks:
       - flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-name={{.VERSION}} --build-number={{.BUILD_NUMBER}}
       - echo "{{.VERSION}} ({{.BUILD_NUMBER}}) in build/ios/ipa. Upload it with Transporter, or xcrun altool."
 
+  # release-on-merge.yml makes this same tag after every merge into main, so
+  # this is for a commit that did not get one. Should both run, whichever is
+  # second finds the tag there and stops.
   release:
-    desc: "Release main to TestFlight: tags it vMAJOR.MINOR.<build count>, from pubspec.yaml's MAJOR.MINOR"
+    desc: "Release main to TestFlight by hand (merges release themselves): tags it vMAJOR.MINOR.<build count>, from pubspec.yaml's MAJOR.MINOR"
     vars:
       SERIES:
         sh: awk '/^version:/ { split($2, v, "."); print v[1] "." v[2]; exit }' pubspec.yaml
