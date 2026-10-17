@@ -9,7 +9,10 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'aliases_screen.dart';
+import 'dns_check_screen.dart';
 import 'mailboxes_screen.dart';
+import 'mta_sts_screen.dart';
+import 'sender_lists_screen.dart';
 
 /// The domains the server holds mail for.
 class DomainsScreen extends StatefulWidget {
@@ -96,7 +99,7 @@ class _DomainsScreenState extends State<DomainsScreen> {
 }
 
 /// One domain: whether it takes mail, and the way to its mailboxes and
-/// aliases.
+/// aliases, its DNS check, sender lists and MTA-STS policy.
 class DomainScreen extends StatefulWidget {
   const DomainScreen({super.key, required this.account, required this.domain});
 
@@ -112,6 +115,23 @@ class _DomainScreenState extends State<DomainScreen> {
   var _busy = false;
 
   String get _host => widget.account.server.host;
+
+  /// The screen for one of [AdminAccess.domainSections].
+  Widget? _screenFor(AdminSection section) => switch (section) {
+    AdminSection.dnsCheck => DnsCheckScreen(
+      account: widget.account,
+      domain: _domain,
+    ),
+    AdminSection.senderLists => SenderListsScreen(
+      account: widget.account,
+      domain: _domain,
+    ),
+    AdminSection.mtaSts => MtaStsScreen(
+      account: widget.account,
+      domain: _domain,
+    ),
+    _ => null,
+  };
 
   Future<void> _setActive(bool active) async {
     setState(() => _busy = true);
@@ -211,6 +231,20 @@ class _DomainScreenState extends State<DomainScreen> {
                       AliasesScreen(account: widget.account, domain: domain),
                     ),
                   ),
+              ],
+            ),
+          ],
+          if (access.domainSections.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            RmGroup(
+              children: [
+                for (final section in access.domainSections)
+                  if (_screenFor(section) case final screen?)
+                    RmRow(
+                      label: section.title,
+                      subtitle: section.subtitle,
+                      onTap: () => pushScreen(context, screen),
+                    ),
               ],
             ),
           ],

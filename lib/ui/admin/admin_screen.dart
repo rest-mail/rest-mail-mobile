@@ -17,11 +17,13 @@ import 'keys_screen.dart';
 import 'logs_screen.dart';
 import 'mailboxes_screen.dart';
 import 'overview_screen.dart';
+import 'pipeline_log_screen.dart';
 import 'pipelines_screen.dart';
 import 'queue_screen.dart';
 import 'tls_reports_screen.dart';
 import 'trace_screen.dart';
 import 'users_screen.dart';
+import 'webmail_accounts_screen.dart';
 
 /// The server's administration: a row for each section this session may
 /// see. An administrator, which has no mailbox, opens on it; a mailbox
@@ -43,18 +45,25 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.domains => DomainsScreen(account: account),
     AdminSection.mailboxes => MailboxesScreen(account: account),
     AdminSection.aliases => AliasesScreen(account: account),
+    AdminSection.webmailAccounts => WebmailAccountsScreen(account: account),
     AdminSection.users => UsersScreen(account: account),
     AdminSection.bans => BansScreen(account: account),
     AdminSection.overview => OverviewScreen(account: account),
     AdminSection.deliveryLog => DeliveryLogScreen(account: account),
     AdminSection.activity => ActivityScreen(account: account),
     AdminSection.trace => TraceLookupScreen(account: account),
+    AdminSection.pipelineLog => PipelineLogScreen(account: account),
+    AdminSection.pipelineAnalytics => PipelineAnalyticsScreen(account: account),
     AdminSection.tlsReports => TlsReportsScreen(account: account),
     AdminSection.audit => AuditScreen(account: account),
     AdminSection.dkim => DkimScreen(account: account),
     AdminSection.certificates => CertificatesScreen(account: account),
     AdminSection.pipelines => PipelinesScreen(account: account),
     AdminSection.customFilters => CustomFiltersScreen(account: account),
+    // Each about one domain, so opened from it, and never listed here.
+    AdminSection.dnsCheck ||
+    AdminSection.senderLists ||
+    AdminSection.mtaSts => DomainsScreen(account: account),
   };
 
   Future<void> _signOut(BuildContext context) async {

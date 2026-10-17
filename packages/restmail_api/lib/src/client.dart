@@ -630,6 +630,155 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'custom-filters', '$id']);
   }
 
+  /// Each message the filters handled, newest first, delivered or not: the
+  /// pipeline log. Only those that went [direction] or ended in [outcome],
+  /// when given. Needs `pipelines:read`.
+  Future<OffsetPage<MessageTrace>> pipelineLog({
+    String? direction,
+    String? outcome,
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['admin', 'pipelines', 'logs'],
+    MessageTrace.fromJson,
+    offset,
+    limit,
+    {'direction': ?direction, 'outcome': ?outcome},
+  );
+
+  /// What the filters did over the last [window]. Needs
+  /// `observability:read`.
+  Future<PipelineAnalytics> pipelineAnalytics({
+    Duration window = const Duration(days: 1),
+  }) async => PipelineAnalytics.fromJson(
+    _data(
+      await _authed(
+        'GET',
+        ['admin', 'pipelines', 'analytics'],
+        query: {'window': '${window.inHours}h'},
+      ),
+    ),
+  );
+
+  /// Needs `mailboxes:read`.
+  Future<OffsetPage<WebmailAccount>> webmailAccounts({
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'webmail-accounts'],
+    WebmailAccount.fromJson,
+    offset,
+    limit,
+  );
+
+  Future<WebmailAccount> webmailAccount(int id) async =>
+      WebmailAccount.fromJson(
+        _data(await _authed('GET', ['admin', 'webmail-accounts', '$id'])),
+      );
+
+  /// Makes the webmail account a mailbox would get at its first sign-in.
+  /// Throws [ApiException] 409 when it has one. Needs `mailboxes:write`.
+  Future<WebmailAccount> createWebmailAccount(int mailboxId) async =>
+      WebmailAccount.fromJson(
+        _data(
+          await _authed(
+            'POST',
+            ['admin', 'webmail-accounts'],
+            body: {'primary_mailbox_id': mailboxId},
+          ),
+        ),
+      );
+
+  /// Needs `mailboxes:delete`.
+  Future<void> deleteWebmailAccount(int id) async {
+    await _authed('DELETE', ['admin', 'webmail-accounts', '$id']);
+  }
+
+  /// The senders on one of [domainId]'s lists, newest first. Needs
+  /// `domains:read`.
+  Future<List<SenderRule>> senderRules(int domainId, SenderList list) async =>
+      _list(
+        await _authed('GET', ['admin', 'domains', '$domainId', list.path]),
+        SenderRule.fromJson,
+      );
+
+  /// Puts [pattern], an address or `@` and a domain, on one of [domainId]'s
+  /// lists. Needs `domains:write`.
+  Future<SenderRule> addSenderRule(
+    int domainId,
+    SenderList list, {
+    required String pattern,
+    String reason = '',
+  }) async => SenderRule.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'domains', '$domainId', list.path],
+        body: {'pattern': pattern, 'reason': reason},
+      ),
+    ),
+  );
+
+  /// Needs `domains:write`, as the server asks.
+  Future<void> removeSenderRule(int domainId, SenderList list, int id) async {
+    await _authed('DELETE', [
+      'admin',
+      'domains',
+      '$domainId',
+      list.path,
+      '$id',
+    ]);
+  }
+
+  /// [domainId]'s MTA-STS policy; none when it has none. Needs
+  /// `domains:read`.
+  Future<MtaStsPolicy?> mtaStsPolicy(int domainId) async {
+    try {
+      return MtaStsPolicy.fromJson(
+        _data(
+          await _authed('GET', ['admin', 'domains', '$domainId', 'mta-sts']),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Sets [domainId]'s MTA-STS policy, making it if there is none; what is
+  /// left out stays as it was. Needs `domains:write`.
+  Future<MtaStsPolicy> setMtaStsPolicy(
+    int domainId, {
+    MtaStsMode? mode,
+    List<String>? mxHosts,
+    Duration? maxAge,
+    bool? active,
+  }) async => MtaStsPolicy.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'domains', '$domainId', 'mta-sts'],
+        body: {
+          'mode': ?mode?.name,
+          'mx_hosts': ?mxHosts?.join(','),
+          'max_age': ?maxAge?.inSeconds,
+          'active': ?active,
+        },
+      ),
+    ),
+  );
+
+  /// Needs `domains:write`, as the server asks.
+  Future<void> deleteMtaStsPolicy(int domainId) async {
+    await _authed('DELETE', ['admin', 'domains', '$domainId', 'mta-sts']);
+  }
+
+  /// Has the server look up [domainId]'s DNS records: MX, SPF, DMARC, DKIM,
+  /// MTA-STS and TLS-RPT. Needs `domains:read`.
+  Future<DnsCheck> dnsCheck(int domainId) async => DnsCheck.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
+  );
+
   // ── Accounts and folders ─────────────────────────────────────────────
 
   Future<List<Account>> accounts() async =>
