@@ -861,13 +861,13 @@ class FakeRestmail {
     final password = body['password'] as String? ?? '';
     if (password.isEmpty) {
       _fail(
-        401,
+        403,
         'reauth_required',
         'Enter your current password to create an app password',
       );
     }
     if (password != own.password || !own.active || !box.active) {
-      _fail(401, 'invalid_password', 'The password is incorrect');
+      _fail(403, 'invalid_password', 'The password is incorrect');
     }
     if (own.totpCode != null && !session.twoFactor) {
       _fail(
@@ -1893,8 +1893,9 @@ class FakeRestmail {
         if (!box.totpPending) {
           _fail(400, 'bad_request', 'No pending 2FA enrollment');
         }
-        if (body['code'] != FakeAccounts.totpCode) {
-          _fail(401, 'unauthorized', 'Invalid 2FA code');
+        // As on the real server, a wrong code is 403, never 401.
+        if (body['totp_code'] != FakeAccounts.totpCode) {
+          _fail(403, 'invalid_totp', 'Invalid two-factor authentication code');
         }
         box
           ..totpPending = false
@@ -1916,7 +1917,7 @@ class FakeRestmail {
           );
         }
         if (current != box.password) {
-          _fail(401, 'unauthorized', 'Current password is incorrect');
+          _fail(403, 'invalid_password', 'Current password is incorrect');
         }
         if (next.length < 12) {
           _fail(

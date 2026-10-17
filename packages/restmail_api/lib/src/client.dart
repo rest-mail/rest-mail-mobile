@@ -173,14 +173,20 @@ class RestmailClient {
     _data(await _authed('POST', ['auth', '2fa', 'enroll'])),
   );
 
-  /// Finishes enrolling: from now on signing in also takes a code.
+  /// Finishes enrolling: from now on signing in also takes a code. A wrong
+  /// code is 403 `invalid_totp`, never 401: the session is still good.
   Future<void> confirmTwoFactor(String code) async {
-    await _authed('POST', ['auth', '2fa', 'confirm'], body: {'code': code});
+    await _authed(
+      'POST',
+      ['auth', '2fa', 'confirm'],
+      body: {'totp_code': code},
+    );
   }
 
   /// Replaces the signed-in account's password. The server ends every
   /// session of the account, this one included, so this client is signed out
-  /// after it: sign in again with [next].
+  /// after it: sign in again with [next]. A wrong [current] is 403
+  /// `invalid_password`, never 401: the session is still good.
   Future<void> changePassword({
     required String current,
     required String next,
@@ -751,10 +757,10 @@ class RestmailClient {
   /// shows this once.
   ///
   /// [password] is the session's own current password, entered again, even
-  /// for an account it owns. Without it the server answers 401
-  /// `reauth_required`, and with a wrong one 401 `invalid_password`:
-  /// refusals of this request, not of the session, so they are thrown as
-  /// they are, never renewing or ending the session. It also answers 403
+  /// for an account it owns. Without it the server answers 403
+  /// `reauth_required`, and with a wrong one 403 `invalid_password`:
+  /// refusals of this request, not of the session, so they never renew or
+  /// end the session. It also answers 403
   /// `two_factor_required` when the session's account has two-factor
   /// authentication and its sign-in didn't take it, and 429 when sign-in's
   /// budget, which it shares, is spent.
@@ -773,7 +779,6 @@ class RestmailClient {
         if (expiresAt != null)
           'expires_at': expiresAt.toUtc().toIso8601String(),
       },
-      ownRefusals: const {'reauth_required', 'invalid_password'},
     );
     try {
       return NewAppPassword.fromJson(_data(response));
@@ -1031,11 +1036,6 @@ class RestmailClient {
   /// Only a refused renewal ends the session. A 401 that comes back even with
   /// a fresh token is the request's own refusal, and is reported like any
   /// other error.
-  ///
-  /// A 401 whose code is in [ownRefusals] is known to be the request's own
-  /// before any renewal, and is reported straight away: renewing would spend
-  /// a refresh token, and sending it again would count twice against a
-  /// throttle.
   Future<http.Response> _authed(
     String method,
     List<String> path, {
@@ -1043,7 +1043,6 @@ class RestmailClient {
     Object? body,
     String accept = 'application/json',
     Duration? timeout,
-    Set<String> ownRefusals = const {},
   }) async {
     final uri = _uri(path, query);
     Future<http.Response> attempt(SessionTokens tokens) => _send(
@@ -1057,8 +1056,7 @@ class RestmailClient {
 
     final sentWith = await _currentTokens();
     var response = await attempt(sentWith);
-    if (response.statusCode == 401 &&
-        !ownRefusals.contains(_error(response).code)) {
+    if (response.statusCode == 401) {
       // Another request may already have renewed the session.
       final latest = _tokens;
       final renewed =

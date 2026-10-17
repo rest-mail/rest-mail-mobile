@@ -133,12 +133,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String _describe(ApiException e) {
     if (e.fields.isNotEmpty) return e.fields.values.first;
     return switch (e.code) {
-      'unauthorized' => switch (_step) {
-        _Step.signIn =>
-          _needsCode ? "That code didn't work." : 'Wrong address or password.',
-        _Step.password => e.message,
-        _ => "That code didn't work.",
-      },
+      'unauthorized' when _step == _Step.signIn =>
+        _needsCode ? "That code didn't work." : 'Wrong address or password.',
+      // A wrong code or password once signed in is 403, and the session
+      // stays: say which, and let them try again.
+      'invalid_totp' => "That code didn't work.",
+      'invalid_password' => "That isn't the current password.",
       _ => describeError(e, host: widget.server.host),
     };
   }

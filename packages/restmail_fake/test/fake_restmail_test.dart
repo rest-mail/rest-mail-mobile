@@ -498,7 +498,8 @@ void main() {
         client.changePassword(current: 'not it at all', next: chosen),
         throwsA(
           isA<ApiException>()
-              .having((e) => e.statusCode, 'status', 401)
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'invalid_password')
               .having(
                 (e) => e.message,
                 'message',
@@ -1153,11 +1154,11 @@ void main() {
 
       await expectLater(
         client.createAppPassword(account.id, name: 'Mail', password: ''),
-        refused(401, 'reauth_required'),
+        refused(403, 'reauth_required'),
       );
       await expectLater(
         client.createAppPassword(account.id, name: 'Mail', password: 'nope'),
-        refused(401, 'invalid_password'),
+        refused(403, 'invalid_password'),
       );
 
       expect(fake.appPasswordsOf(FakeAccounts.email), isEmpty);
@@ -1168,8 +1169,8 @@ void main() {
         (e) => e.action == 'credentials.create',
       );
       expect(refusals.map((e) => (e.outcome, e.status)), [
-        ('denied', 401),
-        ('denied', 401),
+        ('denied', 403),
+        ('denied', 403),
       ]);
       expect(refusals.map((e) => e.content).join(), isNot(contains('nope')));
     });

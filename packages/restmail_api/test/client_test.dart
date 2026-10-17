@@ -677,7 +677,7 @@ void main() {
             if (_isRefresh(request)) return _signedIn('2');
             return _json({
               'error': {'code': code, 'message': 'The password is incorrect'},
-            }, status: 401);
+            }, status: 403);
           }),
         );
 
@@ -685,7 +685,7 @@ void main() {
           client.createAppPassword(7, name: 'Mail', password: 'wrong'),
           throwsA(
             isA<ApiException>()
-                .having((e) => e.statusCode, 'statusCode', 401)
+                .having((e) => e.statusCode, 'statusCode', 403)
                 .having((e) => e.code, 'code', code),
           ),
         );
