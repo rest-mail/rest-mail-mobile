@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../state/app_scope.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
@@ -382,6 +383,8 @@ class MailDrawer extends StatelessWidget {
     final m = mailbox;
     final account = m.account;
     final others = m.accounts.where((a) => a.id != account?.id);
+    final app = AppScope.of(context);
+    final otherAccounts = app.accounts.where((a) => a != app.current);
     final folders = m.folders.isEmpty
         ? [Folder(name: m.folder, total: 0, unread: 0)]
         : m.folders;
@@ -428,25 +431,37 @@ class MailDrawer extends StatelessWidget {
                       ],
                     ),
                   ),
-                  for (final other in others)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Tooltip(
-                        message: 'Switch to ${other.address}',
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            Navigator.pop(context);
-                            unawaited(m.selectAccount(other));
-                          },
-                          child: RmAvatar(
-                            name: other.label,
-                            seed: other.address,
-                            size: 26,
-                          ),
-                        ),
+                  // This account's linked mailboxes, then the other
+                  // accounts signed in on this phone. Past four or so they
+                  // scroll, rather than squeezing the name out.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 4 * 32),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final other in others)
+                            _SwitchAvatar(
+                              label: other.label,
+                              address: other.address,
+                              onTap: () {
+                                Navigator.pop(context);
+                                unawaited(m.selectAccount(other));
+                              },
+                            ),
+                          for (final other in otherAccounts)
+                            _SwitchAvatar(
+                              label: other.label,
+                              address: other.address,
+                              onTap: () {
+                                Navigator.pop(context);
+                                unawaited(app.switchTo(other));
+                              },
+                            ),
+                        ],
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -533,6 +548,33 @@ class MailDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Another mailbox or account in the drawer's top row; tapping switches to
+/// it.
+class _SwitchAvatar extends StatelessWidget {
+  const _SwitchAvatar({
+    required this.label,
+    required this.address,
+    required this.onTap,
+  });
+
+  final String label;
+  final String address;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 6),
+    child: Tooltip(
+      message: 'Switch to $address',
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: RmAvatar(name: label, seed: address, size: 26),
+      ),
+    ),
+  );
 }
 
 class _FolderRow extends StatelessWidget {

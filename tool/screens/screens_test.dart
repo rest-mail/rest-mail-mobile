@@ -125,9 +125,38 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.enterText(find.byType(TextField), 'latency');
   await tester.pump(const Duration(milliseconds: 500));
   await _shot(tester, '09-search$suffix');
+  await tester.tap(find.text('Done'));
+  await tester.pumpAndSettle();
+
+  // A second account, added from Settings. Its domain has no server of its
+  // own, so the server is chosen by hand.
+  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Settings'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Add an account'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField).at(0), FakeAccounts.otherEmail);
+  await tester.pump(const Duration(milliseconds: 600));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Configure manually'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField), FakeAccounts.host);
+  await tester.testTextInput.receiveAction(TextInputAction.go);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Use this server'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField).at(1), FakeAccounts.password);
+  await tester.pump();
+  await tester.tap(find.text('Continue'));
+  await tester.pumpAndSettle();
+  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await _shot(tester, '10-accounts$suffix');
+  await tester.tap(find.text('Settings'));
+  await _shot(tester, '11-accounts-settings$suffix');
 
   await tester.pumpWidget(const SizedBox());
-  state.mailbox?.dispose();
+  state.dispose();
   fake.close();
   await tester.pump(const Duration(seconds: 5));
 }

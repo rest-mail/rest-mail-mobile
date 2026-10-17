@@ -13,6 +13,8 @@ webmail uses, not IMAP.
 - Folders, message lists, reading, reply, reply all, forward, drafts, search
   and attachments. You can also link other mailboxes on the same server and
   switch between them.
+- Several accounts at once, on one server or on several, each with its own
+  session. Signing out of one leaves the others signed in.
 - Live updates over the server's event stream while the app is open.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
@@ -50,7 +52,7 @@ About half a second after you stop typing the domain, the app looks for a
 rest-mail server at the domain and at `mail.<domain>`, and the card under the
 address shows the result. If nothing is found, **Configure manually** opens the
 Server screen. The password is sent once, to sign in. After that the app keeps
-only the session, in the system keychain.
+only the session, in the system keychain, one entry per account.
 
 If the account has two-factor authentication, a **Two-factor code** field
 appears. **Use a recovery code instead** switches it to take a recovery code.
@@ -84,9 +86,9 @@ otherwise. New mail arrives without a refresh.
 
 The menu button opens the drawer. Each folder shows its unread count, and
 Drafts shows how many drafts there are. Folders the server has beyond the
-standard ones, like **Receipts** here, are listed too. If you have linked other
-mailboxes, their avatars sit next to the account at the top; tap one to switch
-to it. **Settings** is at the bottom.
+standard ones, like **Receipts** here, are listed too. Linked mailboxes, then
+any other accounts signed in on the phone, sit as avatars next to the account
+at the top; tap one to switch to it. **Settings** is at the bottom.
 
 </td>
 </tr>
@@ -164,12 +166,16 @@ searches. Recent searches are kept only until the app closes.
 
 ### Settings
 
-- **Accounts** lists the signed-in account and any linked mailboxes. Tap one
+- **Accounts** lists the account on screen and any linked mailboxes. Tap one
   to see its display name, server and storage, and to **Sign out**, or
-  **Remove from this session** for a linked mailbox. Signing out removes the
-  session from the phone; the mail stays on the server.
+  **Remove from this session** for a linked mailbox. Signing out ends that
+  account only: its session is removed from the phone, its mail stays on the
+  server, and any other accounts stay signed in.
 - **Link another mailbox** adds another mailbox on the same server to this
   session.
+- **Other accounts** lists the other accounts signed in on the phone; tap one
+  to switch to it. **Add an account** signs in to another, on this server or
+  any other.
 - **Signature** edits the signature, with a preview and the **Append on
   replies** switch.
 - **Appearance** is **System**, **Light** or **Dark**.
