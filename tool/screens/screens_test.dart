@@ -155,6 +155,46 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.text('Settings'));
   await _shot(tester, '11-accounts-settings$suffix');
 
+  // An administrator beside them, which opens on Administration.
+  await tester.tap(find.text('Add an account'));
+  await tester.pumpAndSettle();
+  final administrator = find.text('Sign in as an administrator');
+  await tester.ensureVisible(administrator);
+  await tester.pumpAndSettle();
+  await tester.tap(administrator);
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byType(TextField).at(1),
+    FakeAccounts.adminUsername,
+  );
+  await tester.enterText(
+    find.byType(TextField).at(2),
+    FakeAccounts.adminPassword,
+  );
+  await tester.pump();
+  await tester.tap(find.text('Sign in'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField).at(3), FakeAccounts.totpCode);
+  await _shot(tester, '12-admin-sign-in$suffix');
+  await tester.tap(find.text('Sign in'));
+  await _shot(tester, '13-administration$suffix');
+  await tester.tap(find.text('Outbound queue'));
+  await _shot(tester, '14-queue$suffix');
+  await tester.tap(find.text('tom@ryeworks.test'));
+  await _shot(tester, '15-queue-entry$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Domains'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(FakeAccounts.host));
+  await _shot(tester, '16-domain$suffix');
+  await tester.tap(find.text('Mailboxes'));
+  await _shot(tester, '17-mailboxes$suffix');
+  await tester.tap(find.text(FakeAccounts.email));
+  await _shot(tester, '18-mailbox$suffix');
+
   await tester.pumpWidget(const SizedBox());
   state.dispose();
   fake.close();
