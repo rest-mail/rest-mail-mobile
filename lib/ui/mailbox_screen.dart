@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../state/admin_access.dart';
 import '../state/app_scope.dart';
+import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/format.dart';
+import 'admin/admin_screen.dart';
 import 'compose_sheet.dart';
 import 'mail_actions.dart';
 import 'message_screen.dart';
@@ -401,6 +404,9 @@ class MailDrawer extends StatelessWidget {
     final others = m.accounts.where((a) => a.id != account?.id);
     final app = AppScope.of(context);
     final otherAccounts = app.accounts.where((a) => a != app.current);
+    final current = app.current;
+    final administers =
+        current is RestAccount && AdminAccess(current.capabilities).any;
     final folders = m.folders.isEmpty
         ? [Folder(name: m.folder, total: 0, unread: 0)]
         : m.folders;
@@ -502,40 +508,16 @@ class MailDrawer extends StatelessWidget {
                       vertical: 12,
                     ),
                   ),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () {
-                      Navigator.pop(context);
-                      unawaited(
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => SettingsScreen(mailbox: m),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.settings_outlined,
-                            size: 18,
-                            color: c.ink2,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Settings',
-                            style: rmText(
-                              14.5,
-                              color: c.ink,
-                              weight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                  if (administers)
+                    _DrawerLink(
+                      icon: Icons.admin_panel_settings_outlined,
+                      label: 'Administration',
+                      screen: AdministrationScreen(account: current),
                     ),
+                  _DrawerLink(
+                    icon: Icons.settings_outlined,
+                    label: 'Settings',
+                    screen: SettingsScreen(mailbox: m),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
@@ -558,6 +540,49 @@ class MailDrawer extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A row at the foot of the drawer that opens [screen].
+class _DrawerLink extends StatelessWidget {
+  const _DrawerLink({
+    required this.icon,
+    required this.label,
+    required this.screen,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget screen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.pop(context);
+        unawaited(
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => screen),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: c.ink2),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
             ),
           ],
         ),

@@ -40,28 +40,52 @@ sealed class SignedInAccount {
   /// Its mail. The account keeps it for as long as it is signed in.
   MailBackend get backend;
 
+  /// False for an administrator, which signs in to the server, not to a
+  /// mailbox, and so opens on Administration.
+  bool get hasMailbox => true;
+
+  /// What it may do on the server's admin API, as its session last heard.
+  Capabilities get capabilities => Capabilities.none;
+
   /// Lets go of its connections, for good.
   void close();
 }
 
-/// A session on a REST Mail server. Its linked mailboxes, if it has any,
-/// belong to it.
+/// A session on a REST Mail server: a mailbox's, whose linked mailboxes
+/// belong to it, or an administrator's, which has none.
 class RestAccount extends SignedInAccount {
-  RestAccount._(this.server, this.user, this.client)
-    : backend = RestBackend(client);
+  RestAccount._(
+    this.server,
+    this.user,
+    this.client, {
+    required this.isAdministrator,
+    required this.capabilities,
+  }) : backend = RestBackend(client);
 
   final Uri server;
+
+  /// For an administrator, `email` is the username.
   final User user;
   final RestmailClient client;
 
+  /// Signed in as an admin user: a username, not a mailbox.
+  final bool isAdministrator;
+
   @override
   final MailBackend backend;
+
+  /// Renewed with the tokens at every refresh.
+  @override
+  Capabilities capabilities;
+
+  @override
+  bool get hasMailbox => !isAdministrator;
 
   @override
   AccountKind get kind => AccountKind.rest;
 
   @override
-  String get key => _keyOf(server, user.email);
+  String get key => _restKey(server, user, isAdministrator);
 
   @override
   String get address => user.email;
@@ -111,6 +135,11 @@ class ImapAccount extends SignedInAccount {
 }
 
 String _keyOf(Uri server, String email) => '$server|${email.toLowerCase()}';
+
+/// An administrator's username is kept apart from the mailbox addresses: a
+/// colon cannot be in one.
+String _restKey(Uri server, User user, bool administrator) =>
+    _keyOf(server, administrator ? 'admin:${user.email}' : user.email);
 
 /// Who is signed in to which servers, and the settings — everything that
 /// outlives a single screen.
@@ -252,6 +281,50 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Signs in as an administrator, an admin user with no mailbox of its own,
+  /// and adds the account, or renews it if it is already here, and puts it
+  /// on screen. It opens on Administration.
+  ///
+  /// Throws [TotpRequiredException] for the code from its authenticator, and
+  /// [ApiException] for anything else the server refuses: `setup_required`
+  /// for an admin that has still to choose its own password and enroll an
+  /// authenticator, which is not kept until it has.
+  Future<void> signInAdmin({
+    required Uri server,
+    required String username,
+    required String password,
+    String? totpCode,
+  }) async {
+    final candidate = probe(server);
+    try {
+      final result = await candidate.signInAdmin(
+        username: username,
+        password: password,
+        totpCode: totpCode,
+      );
+      if (!result.isSetUp) {
+        // A session that can only finish the setup is no use kept.
+        await candidate.logout();
+        throw const ApiException(
+          403,
+          'setup_required',
+          'This administrator has to choose its own password and set up '
+              'two-factor sign-in first.',
+        );
+      }
+      final saved = _SavedSession(
+        server,
+        result.user,
+        candidate.tokens!,
+        administrator: true,
+      );
+      await store.write(_accountKey(saved.key), saved.encode());
+      await _add(_openRest(saved));
+    } finally {
+      candidate.close();
+    }
+  }
+
   /// Adds a Gmail or other IMAP account, or renews it if it is already
   /// here, and puts it on screen. The address and password are tried on
   /// both the IMAP and the SMTP server first, so a wrong setting shows now
@@ -353,7 +426,13 @@ class AppState extends ChangeNotifier {
       onTokensChanged: (tokens) => _tokensChanged(account, tokens),
       userAgent: userAgent,
     );
-    return account = RestAccount._(saved.server, saved.user, client);
+    return account = RestAccount._(
+      saved.server,
+      saved.user,
+      client,
+      isAdministrator: saved.administrator,
+      capabilities: saved.tokens.capabilities,
+    );
   }
 
   ImapAccount _openImap(_SavedImap saved) => ImapAccount._(
@@ -372,7 +451,10 @@ class AppState extends ChangeNotifier {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
-    mailbox = MailboxState(account.backend)..start();
+    // An administrator has no mail to load.
+    mailbox = account.hasMailbox
+        ? (MailboxState(account.backend)..start())
+        : null;
     phase = AppPhase.signedIn;
     _sessions++;
     previous?.dispose();
@@ -391,9 +473,20 @@ class AppState extends ChangeNotifier {
       unawaited(
         store.write(
           _accountKey(account.key),
-          _SavedSession(account.server, account.user, tokens).encode(),
+          _SavedSession(
+            account.server,
+            account.user,
+            tokens,
+            administrator: account.isAdministrator,
+          ).encode(),
         ),
       );
+      // The server re-reads the grants at every refresh: what it took away
+      // goes from the screens now.
+      if (tokens.capabilities != account.capabilities) {
+        account.capabilities = tokens.capabilities;
+        notifyListeners();
+      }
     } else if (!_signingOut.contains(account)) {
       unawaited(
         _end(
@@ -548,7 +641,12 @@ sealed class _Saved {
 }
 
 class _SavedSession extends _Saved {
-  const _SavedSession(this.server, this.user, this.tokens);
+  const _SavedSession(
+    this.server,
+    this.user,
+    this.tokens, {
+    this.administrator = false,
+  });
 
   static _SavedSession? decode(String? raw) => switch (_Saved.decode(raw)) {
     final _SavedSession session => session,
@@ -559,14 +657,16 @@ class _SavedSession extends _Saved {
     Uri.parse(json['server'] as String),
     User.fromJson(json['user'] as Map<String, dynamic>),
     SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
+    administrator: json['administrator'] == true,
   );
 
   final Uri server;
   final User user;
   final SessionTokens tokens;
+  final bool administrator;
 
   @override
-  String get key => _keyOf(server, user.email);
+  String get key => _restKey(server, user, administrator);
 
   @override
   String encode() => jsonEncode({
@@ -574,6 +674,7 @@ class _SavedSession extends _Saved {
     'server': server.toString(),
     'user': user.toJson(),
     'tokens': tokens.toJson(),
+    if (administrator) 'administrator': true,
   });
 }
 

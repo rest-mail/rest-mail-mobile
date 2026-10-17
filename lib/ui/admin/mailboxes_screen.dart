@@ -1,0 +1,288 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:restmail_api/restmail_api.dart';
+
+import '../../state/admin_access.dart';
+import '../../state/app_state.dart';
+import '../../theme/tokens.dart';
+import '../../util/format.dart';
+import '../widgets/common.dart';
+import 'admin_widgets.dart';
+
+String _storage(AdminMailbox box) => box.quotaBytes > 0
+    ? '${sizeLabel(box.quotaUsedBytes)} of ${sizeLabel(box.quotaBytes)}'
+    : sizeLabel(box.quotaUsedBytes);
+
+/// The mailboxes on the server, or on one [domain].
+class MailboxesScreen extends StatefulWidget {
+  const MailboxesScreen({super.key, required this.account, this.domain});
+
+  final RestAccount account;
+  final AdminDomain? domain;
+
+  @override
+  State<MailboxesScreen> createState() => _MailboxesScreenState();
+}
+
+class _MailboxesScreenState extends State<MailboxesScreen> {
+  late final _list = AdminList<AdminMailbox>(
+    (offset) => widget.account.client.mailboxes(
+      domainId: widget.domain?.id,
+      offset: offset,
+    ),
+  );
+
+  String get _host => widget.account.server.host;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.mailboxes)) {
+      unawaited(_list.reload());
+    }
+  }
+
+  @override
+  void dispose() {
+    _list.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    final domain = widget.domain?.name;
+    final added = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Add a mailbox',
+        intro: 'On a domain this server already has.',
+        fields: [
+          AdminField(
+            'Address',
+            hint: 'someone@${domain ?? 'example.com'}',
+            email: true,
+          ),
+          const AdminField('Name', optional: true),
+          const AdminField('Password', obscure: true),
+        ],
+        action: 'Add mailbox',
+        host: _host,
+        submit: (values) => widget.account.client.createMailbox(
+          address: values[0].toLowerCase(),
+          displayName: values[1].isEmpty ? null : values[1],
+          password: values[2],
+        ),
+      ),
+    );
+    if (added) unawaited(_list.reload());
+  }
+
+  Future<void> _open(AdminMailbox mailbox) async {
+    final done = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            AdminMailboxScreen(account: widget.account, mailbox: mailbox),
+      ),
+    );
+    if (!mounted) return;
+    if (done != null) showToast(context, done);
+    unawaited(_list.reload());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final domain = widget.domain;
+    return AdminPage(
+      account: widget.account,
+      section: AdminSection.mailboxes,
+      title: 'Mailboxes',
+      body: (access) => AdminListView(
+        list: _list,
+        host: _host,
+        empty: 'No mailboxes yet.',
+        header: [
+          if (domain != null) ...[
+            Text('On ${domain.name}', style: rmText(13, color: c.ink3)),
+            const SizedBox(height: 12),
+          ],
+          if (access.canWrite(AdminSection.mailboxes))
+            AdminAddButton(
+              label: 'Add a mailbox',
+              onTap: () => unawaited(_add()),
+            ),
+        ],
+        row: (box) => RmRow(
+          label: box.address,
+          subtitle: [
+            if (box.displayName.isNotEmpty) box.displayName,
+            if (!box.active) 'Off',
+            _storage(box),
+          ].join(' · '),
+          onTap: () => unawaited(_open(box)),
+        ),
+      ),
+    );
+  }
+}
+
+/// One mailbox, as an admin sees it: who it is, whether it may sign in, and
+/// a new password when its owner has lost theirs.
+class AdminMailboxScreen extends StatefulWidget {
+  const AdminMailboxScreen({
+    super.key,
+    required this.account,
+    required this.mailbox,
+  });
+
+  final RestAccount account;
+  final AdminMailbox mailbox;
+
+  @override
+  State<AdminMailboxScreen> createState() => _AdminMailboxScreenState();
+}
+
+class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
+  late var _mailbox = widget.mailbox;
+  var _busy = false;
+
+  String get _host => widget.account.server.host;
+  RestmailClient get _client => widget.account.client;
+
+  Future<void> _setActive(bool active) async {
+    setState(() => _busy = true);
+    await runAdminChange(
+      context,
+      host: _host,
+      change: () async =>
+          _mailbox = await _client.updateMailbox(_mailbox.id, active: active),
+    );
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _rename() async {
+    await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Name',
+        fields: [AdminField('Name', initial: _mailbox.displayName)],
+        action: 'Save',
+        host: _host,
+        submit: (values) async => _mailbox = await _client.updateMailbox(
+          _mailbox.id,
+          displayName: values[0],
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _newPassword() async {
+    final changed = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'New password',
+        intro:
+            'Its sessions end, and it signs in again with this one. Eight '
+            'characters or more.',
+        fields: const [AdminField('Password', obscure: true)],
+        action: 'Set password',
+        host: _host,
+        submit: (values) async => _mailbox = await _client.updateMailbox(
+          _mailbox.id,
+          password: values[0],
+        ),
+      ),
+    );
+    if (changed && mounted) showToast(context, 'Password changed');
+  }
+
+  Future<void> _delete() async {
+    setState(() => _busy = true);
+    final address = _mailbox.address;
+    final ok = await runAdminChange(
+      context,
+      host: _host,
+      change: () => _client.deleteMailbox(_mailbox.id),
+      confirm: (
+        title: 'Delete $address?',
+        message: 'Its mail goes with it, and it cannot be undone.',
+        action: 'Delete',
+      ),
+    );
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context, 'Deleted $address');
+    } else {
+      setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final box = _mailbox;
+    return AdminPage(
+      account: widget.account,
+      section: AdminSection.mailboxes,
+      title: box.address,
+      body: (access) {
+        final write = access.canWrite(AdminSection.mailboxes);
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+          children: [
+            RmGroup(
+              children: [
+                RmRow(
+                  label: 'Name',
+                  value: box.displayName.isEmpty ? '—' : box.displayName,
+                  onTap: write ? () => unawaited(_rename()) : null,
+                ),
+                RmRow(
+                  label: 'Can sign in',
+                  value: write ? null : (box.active ? 'Yes' : 'No'),
+                  trailing: write
+                      ? RmSwitch(
+                          value: box.active,
+                          label: 'Can sign in',
+                          onChanged: (value) {
+                            if (!_busy) unawaited(_setActive(value));
+                          },
+                        )
+                      : null,
+                ),
+                RmRow(label: 'Storage', value: _storage(box)),
+                if (box.lastLoginAt case final last?)
+                  RmRow(label: 'Last signed in', value: longDate(last)),
+              ],
+            ),
+            if (write) ...[
+              const SizedBox(height: 22),
+              RmGroup(
+                children: [
+                  RmRow(
+                    label: 'Set a new password',
+                    onTap: _busy ? null : () => unawaited(_newPassword()),
+                  ),
+                ],
+              ),
+            ],
+            if (access.canDelete(AdminSection.mailboxes)) ...[
+              const SizedBox(height: 22),
+              RmGroup(
+                children: [
+                  RmRow(
+                    label: 'Delete mailbox',
+                    danger: true,
+                    onTap: _busy ? null : () => unawaited(_delete()),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}

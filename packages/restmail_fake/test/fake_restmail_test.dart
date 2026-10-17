@@ -435,4 +435,173 @@ void main() {
       );
     });
   });
+
+  group('the admin API, by capability', () {
+    Future<RestmailClient> admin(
+      FakeRestmail fake, [
+      String username = FakeAccounts.adminUsername,
+    ]) async {
+      final client = _client(fake);
+      await client.signInAdmin(
+        username: username,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      );
+      return client;
+    }
+
+    Matcher refused(String code) => throwsA(
+      isA<ApiException>()
+          .having((e) => e.statusCode, 'status', 403)
+          .having((e) => e.code, 'code', code),
+    );
+
+    test('a superadmin holds * and may do everything', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+
+      expect(client.tokens!.capabilities.names, {'*'});
+      final queue = await client.queue();
+      expect(queue.total, 4);
+      final deferred = queue.items.firstWhere(
+        (e) => e.status == QueueStatus.deferred,
+      );
+      await client.retryQueueEntry(deferred.id);
+      expect(
+        (await client.queueEntry(deferred.id)).status,
+        QueueStatus.pending,
+      );
+
+      await client.createDomain('new.test');
+      await client.createAlias(
+        source: 'sales@new.test',
+        destination: FakeAccounts.email,
+      );
+      expect((await client.aliases()).items.map((a) => a.source), [
+        'hello@${FakeAccounts.host}',
+        'sales@new.test',
+      ]);
+      expect((await client.mailboxes()).total, 2);
+    });
+
+    test('queue:read reads the queue and nothing else', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake, FakeAccounts.queueWatcher);
+
+      expect(client.tokens!.capabilities.names, {'queue:read'});
+      final entry = (await client.queue()).items.first;
+      expect((await client.queueStats()).total, 4);
+      await expectLater(client.retryQueueEntry(entry.id), refused('forbidden'));
+      await expectLater(
+        client.deleteQueueEntry(entry.id),
+        refused('forbidden'),
+      );
+      await expectLater(client.domains(), refused('forbidden'));
+      await expectLater(client.mailboxes(), refused('forbidden'));
+      expect(fake.queue, hasLength(4));
+    });
+
+    test('write without delete edits but cannot delete', () async {
+      final fake = FakeRestmail()
+        ..addAdmin(
+          'editor',
+          capabilities: {'mailboxes:read', 'mailboxes:write'},
+        );
+      final client = await admin(fake, 'editor');
+
+      final alias = (await client.aliases()).items.single;
+      await client.updateAlias(alias.id, active: false);
+      expect(fake.aliases.single.active, isFalse);
+      await expectLater(client.deleteAlias(alias.id), refused('forbidden'));
+      expect(fake.aliases, hasLength(1));
+    });
+
+    test('a mailbox session is refused', () async {
+      final client = await _signedIn(FakeRestmail());
+
+      expect(client.tokens!.capabilities.isEmpty, isTrue);
+      await expectLater(client.queue(), refused('forbidden'));
+    });
+
+    test(
+      'a role changed on an admin ends its sessions, as on the server',
+      () async {
+        final fake = FakeRestmail();
+        final superadmin = await admin(fake);
+        final watcher = await admin(fake, FakeAccounts.queueWatcher);
+        final roles = await superadmin.roles();
+        final users = (await superadmin.adminUsers()).items;
+        final target = users.firstWhere(
+          (u) => u.username == FakeAccounts.queueWatcher,
+        );
+
+        await superadmin.updateAdminUser(
+          target.id,
+          roleIds: [roles.firstWhere((r) => r.name == 'readonly').id],
+        );
+
+        expect(fake.rolesOf(FakeAccounts.queueWatcher), ['readonly']);
+        fake.expireAccessTokens();
+        await expectLater(
+          watcher.queue(),
+          throwsA(isA<SessionExpiredException>()),
+        );
+      },
+    );
+
+    test('an admin made by another signs in with its password alone, and '
+        'may do what its roles say', () async {
+      final fake = FakeRestmail();
+      final superadmin = await admin(fake);
+      final readonly = (await superadmin.roles()).firstWhere(
+        (r) => r.name == 'readonly',
+      );
+      await superadmin.createAdminUser(
+        username: 'ops',
+        password: 'ops password',
+        roleIds: [readonly.id],
+      );
+
+      final ops = _client(fake);
+      final signedIn = await ops.signInAdmin(
+        username: 'ops',
+        password: 'ops password',
+      );
+      expect(signedIn.isSetUp, isTrue);
+      expect(signedIn.capabilities.allows(Capability.domainsRead), isTrue);
+      await ops.domains();
+      await expectLater(ops.createDomain('x.test'), refused('forbidden'));
+    });
+
+    test('bans need bans:*', () async {
+      final fake = FakeRestmail();
+      final watcher = await admin(fake, FakeAccounts.queueWatcher);
+      await expectLater(watcher.bans(), refused('forbidden'));
+
+      final superadmin = await admin(fake);
+      await superadmin.createBan(
+        ip: '198.51.100.4',
+        createdBy: 'admin',
+        duration: const Duration(days: 1),
+      );
+      final bans = (await superadmin.bans()).items;
+      expect(bans.map((b) => b.ip), ['198.51.100.4', '203.0.113.7']);
+      expect(bans.first.expiresAt, isNotNull);
+      await superadmin.deleteBan(bans.first.id);
+      expect(fake.bans.single.ip, '203.0.113.7');
+    });
+
+    test('a grant taken away goes at the next refresh', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+      fake.grant(FakeAccounts.adminUsername, {'queue:read'});
+
+      // The access token keeps what it was minted with...
+      await client.domains();
+      // ...until it is renewed.
+      fake.expireAccessTokens();
+      await expectLater(client.domains(), refused('forbidden'));
+      expect(client.tokens!.capabilities.names, {'queue:read'});
+    });
+  });
 }

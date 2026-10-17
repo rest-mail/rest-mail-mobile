@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../state/admin_access.dart';
 import '../state/app_scope.dart';
+import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import '../version.dart';
 import 'add_account_screen.dart';
+import 'admin/admin_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
@@ -60,6 +63,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final quota = _quota;
     final signature = settings.signature.trim();
     final others = app.accounts.where((a) => a != app.current);
+    final current = app.current;
+    final administers =
+        current is RestAccount && AdminAccess(current.capabilities).any;
     return ListenableBuilder(
       listenable: m,
       builder: (context, _) => Scaffold(
@@ -108,7 +114,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _AccountRow(
                             label: other.label,
                             address: other.address,
-                            subtitle: 'Signed in · ${other.host}',
+                            subtitle: other.hasMailbox
+                                ? 'Signed in · ${other.host}'
+                                : 'Administrator · ${other.host}',
                             icon: Icons.swap_horiz_rounded,
                             onTap: () => unawaited(app.switchTo(other)),
                           ),
@@ -119,6 +127,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 22),
+                    if (administers) ...[
+                      const SectionLabel('Server'),
+                      const SizedBox(height: 9),
+                      RmGroup(
+                        children: [
+                          RmRow(
+                            label: 'Administration',
+                            subtitle: 'What this session may run on $host',
+                            onTap: () => _push(
+                              context,
+                              AdministrationScreen(account: current),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                    ],
                     const SectionLabel('General'),
                     const SizedBox(height: 9),
                     RmGroup(

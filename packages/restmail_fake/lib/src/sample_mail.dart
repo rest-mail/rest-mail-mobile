@@ -23,6 +23,14 @@ abstract final class FakeAccounts {
   static const adminUsername = 'admin';
   static const bootstrapPassword = 'bootstrap-password-0123456789';
 
+  /// The password of the other scenarios' admin, [adminUsername], who is set
+  /// up already: signing in takes [totpCode] too. It may do everything.
+  static const adminPassword = 'restmail-admin';
+
+  /// An admin of the other scenarios who may only look at the outbound
+  /// queue. Same password and code as [adminUsername].
+  static const queueWatcher = 'queue-watch';
+
   /// What 2FA enrollment hands out: a base32 secret and its provisioning URI.
   static const totpSecret = 'JBSWY3DPEHPK3PXP';
   static const totpUri =

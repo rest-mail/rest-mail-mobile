@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'capabilities.dart';
 import 'session.dart';
 
 /// The person a session belongs to.
@@ -53,9 +54,13 @@ enum SetupStep {
 }
 
 /// An admin signed in. While [setupRequired] is not empty the session can do
-/// nothing but those steps.
+/// nothing but those steps, and holds no capabilities.
 class AdminSignIn {
-  const AdminSignIn({required this.user, required this.setupRequired});
+  const AdminSignIn({
+    required this.user,
+    required this.setupRequired,
+    this.capabilities = Capabilities.none,
+  });
 
   factory AdminSignIn.fromJson(Map<String, dynamic> json) => AdminSignIn(
     user: User.fromJson(json['user'] as Map<String, dynamic>),
@@ -63,10 +68,14 @@ class AdminSignIn {
       for (final raw in json['setup_required'] as List? ?? const [])
         ?SetupStep._parse(raw),
     ],
+    capabilities: Capabilities.fromJson(json['capabilities']),
   );
 
+  /// The admin user. Its `email` is the username: an admin user has no
+  /// mailbox.
   final User user;
   final List<SetupStep> setupRequired;
+  final Capabilities capabilities;
 
   bool get isSetUp => setupRequired.isEmpty;
 }

@@ -18,6 +18,10 @@ webmail uses, not IMAP.
 - Gmail, iCloud, Yahoo, Fastmail or any other IMAP and SMTP account beside
   the REST Mail ones, signed in with a password or an app password. Gmail is
   added with an app password, guided step by step.
+- Administration of a REST Mail server: the outbound queue, domains,
+  mailboxes, aliases, administrators and their roles, bans, and an overview.
+  Each part shows only to a session whose capabilities allow it, and its
+  changes only with the capability to make them.
 - Live updates over the server's event stream while the app is open.
 - HTML mail is cut down to the webmail's allowlist and drawn as native
   widgets. There is no web view and no JavaScript. Remote images stay blocked
@@ -228,6 +232,28 @@ Settings are stored only on the device.
 
 </td>
 </tr>
+<tr>
+<td valign="top" width="260"><img src="media/13-administration.png" width="260" alt="Administration"></td>
+<td valign="top">
+
+### Administration
+
+**Sign in as an administrator**, under **Add an account**, takes a server,
+an admin username, its password and the code from its authenticator. An
+administrator has no mailbox, so the account opens on **Administration**
+beside the mail accounts.
+
+Administration lists only the parts the session's capabilities let it see:
+the **Outbound queue** with `queue:read`, **Domains** with `domains:read`,
+and so on. Inside each, the add, change and delete controls show only with
+the capability for them, such as `queue:manage` to retry or bounce a
+message. The server sends the capabilities with every sign-in and token
+refresh, so one taken away on the server goes from the app at the next
+refresh. Hiding is only for comfort: the server checks every request, and
+when it refuses one the app says "You don't have permission for this".
+
+</td>
+</tr>
 </table>
 
 ### Dark
@@ -264,8 +290,10 @@ flutter run
 `packages/restmail_fake`. Every screen works, on a simulator or a phone,
 with no server anywhere. Sign in as `dana@restmail.test` with the password
 `restmail`; the sign-in screen shows these as well. `SCENARIO=empty`
-starts with no mail. `SCENARIO=twoFactor` asks for the code `123456`. Only
-debug builds can do this.
+starts with no mail. `SCENARIO=twoFactor` asks for the code `123456`. To
+try Administration, **Sign in as an administrator** as `admin`, who may do
+everything, or `queue-watch`, who may only look at the queue; the password
+is `restmail-admin` and the code `123456`. Only debug builds can do this.
 
 `chore sim:sample` builds the same thing and starts it in the iOS simulator,
 booting one first if none is running, with no terminal left attached. The
@@ -351,4 +379,7 @@ under Apple Developer team `43UMKXZ8P4`.
 - Sign in with Google or Microsoft (#37). Creating a Gmail label from the
   app.
 - Sending attachments. The send API has no field for them.
-- Contacts, vacation replies, Sieve filters, quarantine and administration.
+- Contacts, vacation replies, Sieve filters and quarantine.
+- The rest of administration: the delivery and activity logs, message trace,
+  TLS reports, the audit log, DKIM and certificates, and pipelines and custom
+  filters.

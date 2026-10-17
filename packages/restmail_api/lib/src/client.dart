@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'admin_models.dart';
+import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
 import 'models.dart';
@@ -213,8 +215,72 @@ class RestmailClient {
     _setTokens(null);
   }
 
+  // ── Admin ────────────────────────────────────────────────────────────
+  //
+  // Each call needs a capability (see [Capability]); without it the server
+  // answers 403, whatever the app showed.
+
+  /// One page of the outbound queue, newest first, optionally only those in
+  /// [status]. Needs `queue:read`.
+  Future<OffsetPage<QueueEntry>> queue({
+    QueueStatus? status,
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    final data = _data(
+      await _authed(
+        'GET',
+        ['admin', 'queue'],
+        query: {
+          'status': ?status?.name,
+          'limit': '$limit',
+          'offset': '$offset',
+        },
+      ),
+    );
+    final items = data['items'];
+    return OffsetPage(
+      [
+        if (items is List)
+          for (final item in items)
+            QueueEntry.fromJson(item as Map<String, dynamic>),
+      ],
+      offset: (data['offset'] as num?)?.toInt() ?? offset,
+      total: (data['total'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// How many entries are in each state. Needs `queue:read`.
+  Future<QueueStats> queueStats() async => QueueStats.fromJson(
+    _data(await _authed('GET', ['admin', 'queue', 'stats'])),
+  );
+
+  Future<QueueEntry> queueEntry(int id) async => QueueEntry.fromJson(
+    _data(await _authed('GET', ['admin', 'queue', '$id'])),
+  );
+
+  /// Tries a waiting entry again now. Needs `queue:manage`.
+  Future<void> retryQueueEntry(int id) async {
+    await _authed('POST', ['admin', 'queue', '$id', 'retry']);
+  }
+
+  /// Gives up on an entry and bounces it to its sender. Needs `queue:manage`.
+  Future<void> bounceQueueEntry(int id) async {
+    await _authed('POST', ['admin', 'queue', '$id', 'bounce']);
+  }
+
+  /// Drops an entry without telling its sender. Needs `queue:manage`.
+  Future<void> deleteQueueEntry(int id) async {
+    await _authed('DELETE', ['admin', 'queue', '$id']);
+  }
+
+  /// Needs `domains:read`.
+  Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
+
   /// Creates a domain whose mail rest-mail serves itself. Throws
   /// [ApiException] with code `already_exists` when it is there already.
+  /// Needs `domains:write`.
   Future<void> createDomain(String name) async {
     await _authed(
       'POST',
@@ -223,7 +289,38 @@ class RestmailClient {
     );
   }
 
-  /// Creates a mailbox on a domain the server already has.
+  /// Turns a domain's mail on or off. Needs `domains:write`.
+  Future<AdminDomain> updateDomain(int id, {bool? active}) async =>
+      AdminDomain.fromJson(
+        _data(
+          await _authed(
+            'PATCH',
+            ['admin', 'domains', '$id'],
+            body: {'active': ?active},
+          ),
+        ),
+      );
+
+  /// Needs `domains:delete`.
+  Future<void> deleteDomain(int id) async {
+    await _authed('DELETE', ['admin', 'domains', '$id']);
+  }
+
+  /// Needs `mailboxes:read`.
+  Future<OffsetPage<AdminMailbox>> mailboxes({
+    int? domainId,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'mailboxes'],
+    AdminMailbox.fromJson,
+    offset,
+    limit,
+    {'domain_id': ?domainId?.toString()},
+  );
+
+  /// Creates a mailbox on a domain the server already has. Needs
+  /// `mailboxes:write`.
   Future<void> createMailbox({
     required String address,
     required String password,
@@ -238,6 +335,155 @@ class RestmailClient {
         'display_name': ?displayName,
       },
     );
+  }
+
+  /// Changes what is given; a new [password] ends the mailbox's sessions.
+  /// Needs `mailboxes:write`.
+  Future<AdminMailbox> updateMailbox(
+    int id, {
+    String? displayName,
+    String? password,
+    bool? active,
+  }) async => AdminMailbox.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'mailboxes', '$id'],
+        body: {
+          'display_name': ?displayName,
+          'password': ?password,
+          'active': ?active,
+        },
+      ),
+    ),
+  );
+
+  /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
+  Future<void> deleteMailbox(int id) async {
+    await _authed('DELETE', ['admin', 'mailboxes', '$id']);
+  }
+
+  /// Needs `mailboxes:read`.
+  Future<OffsetPage<AdminAlias>> aliases({
+    int? domainId,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'aliases'],
+    AdminAlias.fromJson,
+    offset,
+    limit,
+    {'domain_id': ?domainId?.toString()},
+  );
+
+  /// Sends mail for [source], on a domain the server has, to [destination].
+  /// Needs `mailboxes:write`.
+  Future<void> createAlias({
+    required String source,
+    required String destination,
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'aliases'],
+      body: {'source_address': source, 'destination_address': destination},
+    );
+  }
+
+  /// Needs `mailboxes:write`.
+  Future<AdminAlias> updateAlias(
+    int id, {
+    String? destination,
+    bool? active,
+  }) async => AdminAlias.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'aliases', '$id'],
+        body: {'destination_address': ?destination, 'active': ?active},
+      ),
+    ),
+  );
+
+  /// Needs `mailboxes:delete`.
+  Future<void> deleteAlias(int id) async {
+    await _authed('DELETE', ['admin', 'aliases', '$id']);
+  }
+
+  /// Needs `users:read`.
+  Future<OffsetPage<AdminUser>> adminUsers({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'admin-users'], AdminUser.fromJson, offset, limit);
+
+  /// Every role there is. Needs `users:read`.
+  Future<List<AdminRole>> roles() async =>
+      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
+
+  /// Needs `users:write`.
+  Future<void> createAdminUser({
+    required String username,
+    required String password,
+    List<int> roleIds = const [],
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'admin-users'],
+      body: {'username': username, 'password': password, 'role_ids': roleIds},
+    );
+  }
+
+  /// Changes what is given. A new password, roles, or turning it off ends
+  /// the user's sessions. Needs `users:write`.
+  Future<void> updateAdminUser(
+    int id, {
+    bool? active,
+    String? password,
+    List<int>? roleIds,
+  }) async {
+    await _authed(
+      'PUT',
+      ['admin', 'admin-users', '$id'],
+      body: {'active': ?active, 'password': ?password, 'role_ids': ?roleIds},
+    );
+  }
+
+  /// Needs `users:delete`.
+  Future<void> deleteAdminUser(int id) async {
+    await _authed('DELETE', ['admin', 'admin-users', '$id']);
+  }
+
+  /// The server at a glance. Any admin may read it today; the app shows it
+  /// with `observability:read`, where the server's design puts it.
+  Future<ServerStats> stats() async =>
+      ServerStats.fromJson(_data(await _authed('GET', ['admin', 'stats'])));
+
+  /// The bans in force. Needs `bans:read`.
+  Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
+      _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);
+
+  /// Keeps [ip] out of [protocol] (`all` of them unless named) for
+  /// [duration], or for good. Needs `bans:write`.
+  Future<void> createBan({
+    required String ip,
+    required String createdBy,
+    String reason = '',
+    String protocol = 'all',
+    Duration? duration,
+  }) async {
+    await _authed(
+      'POST',
+      ['admin', 'bans'],
+      body: {
+        'ip': ip,
+        'reason': reason,
+        'protocol': protocol,
+        'created_by': createdBy,
+        if (duration != null) 'duration': '${duration.inMinutes}m',
+      },
+    );
+  }
+
+  /// Lifts a ban. Needs `bans:delete`.
+  Future<void> deleteBan(int id) async {
+    await _authed('DELETE', ['admin', 'bans', '$id']);
   }
 
   // ── Accounts and folders ─────────────────────────────────────────────
@@ -619,6 +865,32 @@ class RestmailClient {
     throw _unreadable(response);
   }
 
+  /// A `{"data": [...], "pagination": {"total"}}` list, paged by offset.
+  Future<OffsetPage<T>> _offsetPage<T>(
+    List<String> path,
+    T Function(Map<String, dynamic>) fromJson,
+    int offset,
+    int limit, [
+    Map<String, String> query = const {},
+  ]) async {
+    final response = await _authed(
+      'GET',
+      path,
+      query: {...query, 'limit': '$limit', 'offset': '$offset'},
+    );
+    final envelope = _envelope(response);
+    final items = _items(envelope['data'], response, fromJson);
+    final pagination = envelope['pagination'];
+    final total = pagination is Map<String, dynamic>
+        ? (pagination['total'] as num?)?.toInt()
+        : null;
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
+
   List<T> _list<T>(
     http.Response response,
     T Function(Map<String, dynamic>) fromJson,
@@ -657,9 +929,9 @@ class RestmailClient {
     'The server sent a response this app does not understand',
   );
 
-  /// Reads the pair a native sign-in or refresh returns in its body. A server
-  /// from before native clients were supported answers with cookies only, and
-  /// lands here as `missing_tokens`.
+  /// Reads the pair a native sign-in or refresh returns in its body, with the
+  /// capabilities they carry. A server from before native clients were
+  /// supported answers with cookies only, and lands here as `missing_tokens`.
   SessionTokens _tokensFrom(http.Response response, Map<String, dynamic> data) {
     final access = data['access_token'];
     final refresh = data['refresh_token'];
@@ -678,6 +950,7 @@ class RestmailClient {
       accessToken: access,
       refreshToken: refresh,
       accessExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
+      capabilities: Capabilities.fromJson(data['capabilities']),
     );
   }
 
