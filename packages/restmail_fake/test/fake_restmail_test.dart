@@ -603,5 +603,175 @@ void main() {
       await expectLater(client.domains(), refused('forbidden'));
       expect(client.tokens!.capabilities.names, {'queue:read'});
     });
+
+    test('logs, traces and reports each need their own capability', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('postmaster', capabilities: {'messages:read'});
+      final client = await admin(fake, 'postmaster');
+
+      final log = await client.deliveryLog();
+      expect(log.total, 4);
+      expect(log.items.first.recipient, 'ana@harbor.test');
+      expect(
+        (await client.deliveryLog(
+          status: QueueStatus.bounced,
+        )).items.map((e) => e.recipient),
+        ['nobody@ryeworks.test'],
+      );
+      final messageId = log.items.first.messageId!;
+      await expectLater(client.messageTrace(messageId), refused('forbidden'));
+      await expectLater(client.activityLog(), refused('forbidden'));
+      await expectLater(client.tlsReports(), refused('forbidden'));
+      await expectLater(client.audit(), refused('forbidden'));
+      await expectLater(client.verifyAudit(), refused('forbidden'));
+
+      final superadmin = await admin(fake);
+      final trace = await superadmin.messageTrace(messageId);
+      expect(trace.direction, 'outbound');
+      expect(trace.rcptTo, 'ana@harbor.test');
+      expect(trace.stages.map((s) => s.filter), [
+        'sender_verify',
+        'header_cleanup',
+        'dkim_sign',
+      ]);
+      await expectLater(
+        superadmin.messageTrace(999999),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+      expect(
+        (await superadmin.activityLog()).items.first.detail,
+        contains('203.0.113.7'),
+      );
+      final reports = (await superadmin.tlsReports()).items;
+      expect(reports.map((r) => r.failed), [0, 3]);
+      expect(reports.last.failureDetails, isA<List<Object?>>());
+    });
+
+    test('the audit log reads newest first a page at a time, filters, and '
+        'its chain shows tampering', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+
+      final first = await client.audit();
+      expect(first.items, hasLength(50));
+      expect(first.hasMore, isTrue);
+      // The sign-in just made is the newest.
+      expect(first.items.first.action, 'auth.sign_in');
+      expect(first.items.first.actorName, FakeAccounts.adminUsername);
+      final seqs = first.items.map((e) => e.seq).toList();
+      expect(seqs, [...seqs]..sort((a, b) => b.compareTo(a)));
+
+      final second = await client.audit(before: first.cursor);
+      expect(second.items.first.seq, seqs.last - 1);
+      expect(second.hasMore, isFalse);
+
+      final denied = await client.audit(outcome: 'denied');
+      expect(denied.items, isNotEmpty);
+      expect(denied.items.every((e) => e.outcome == 'denied'), isTrue);
+
+      // Reading it is recorded too.
+      expect(fake.auditLog.last.action, 'audit.read');
+
+      final check = await client.verifyAudit();
+      expect(check.ok, isTrue);
+      expect(check.checked, fake.auditLog.length - 1);
+      expect(check.brokenAtSeq, isNull);
+
+      fake.tamperWithAudit(12);
+      final broken = await client.verifyAudit();
+      expect(broken.ok, isFalse);
+      expect(broken.brokenAtSeq, 12);
+      expect(broken.checked, 11);
+      expect(broken.reason, isNotEmpty);
+    });
+
+    test('a change is audited with how it went, refused or not', () async {
+      final fake = FakeRestmail();
+      final watcher = await admin(fake, FakeAccounts.queueWatcher);
+      final entry = (await watcher.queue()).items.first;
+      await expectLater(
+        watcher.retryQueueEntry(entry.id),
+        refused('forbidden'),
+      );
+
+      final last = fake.auditLog.last;
+      expect(last.action, 'admin.change');
+      expect(last.actorName, FakeAccounts.queueWatcher);
+      expect(last.outcome, 'denied');
+      expect(last.status, 403);
+    });
+
+    test('DKIM keys and certificates are read with domains:read, and '
+        'removed with domains:write, as the server asks', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('deleter', capabilities: {'domains:read', 'domains:delete'})
+        ..addAdmin('writer', capabilities: {'domains:read', 'domains:write'});
+      final deleter = await admin(fake, 'deleter');
+
+      final keys = await deleter.dkimKeys();
+      expect(keys.map((k) => k.domain), contains(FakeAccounts.host));
+      final key = keys.firstWhere((k) => k.domain == FakeAccounts.host);
+      expect(key.selector, 'mail');
+      final certificates = (await deleter.certificates()).items;
+      expect(certificates.first.domain, isNotEmpty);
+      await expectLater(
+        deleter.deleteDkimKey(key.domainId),
+        refused('forbidden'),
+      );
+      await expectLater(
+        deleter.deleteCertificate(certificates.first.id),
+        refused('forbidden'),
+      );
+
+      final writer = await admin(fake, 'writer');
+      await writer.deleteDkimKey(key.domainId);
+      await writer.deleteCertificate(certificates.first.id);
+      expect(
+        (await writer.dkimKeys()).map((k) => k.domain),
+        isNot(contains(FakeAccounts.host)),
+      );
+      expect(fake.certificates, hasLength(certificates.length - 1));
+    });
+
+    test('pipelines and custom filters need pipelines:*', () async {
+      final fake = FakeRestmail()
+        ..addAdmin('reader', capabilities: {'pipelines:read'})
+        ..addAdmin(
+          'editor',
+          capabilities: {'pipelines:read', 'pipelines:write'},
+        );
+      final reader = await admin(fake, 'reader');
+      final pipelines = (await reader.pipelines()).items;
+      expect(pipelines.map((p) => p.direction), ['inbound', 'outbound']);
+      expect(pipelines.first.filters.first.name, 'size_check');
+      final filter = (await reader.customFilters()).items.single;
+      expect(filter.config, isA<Map<String, Object?>>());
+      await expectLater(
+        reader.updatePipeline(pipelines.first.id, active: false),
+        refused('forbidden'),
+      );
+
+      final editor = await admin(fake, 'editor');
+      expect(
+        (await editor.updatePipeline(pipelines.first.id, active: false)).active,
+        isFalse,
+      );
+      await editor.updateCustomFilter(filter.id, enabled: false);
+      expect(fake.customFilters.single.enabled, isFalse);
+      await expectLater(
+        editor.deletePipeline(pipelines.first.id),
+        refused('forbidden'),
+      );
+      await expectLater(
+        editor.deleteCustomFilter(filter.id),
+        refused('forbidden'),
+      );
+
+      final superadmin = await admin(fake);
+      await superadmin.deletePipeline(pipelines.first.id);
+      await superadmin.deleteCustomFilter(filter.id);
+      expect(fake.pipelines, hasLength(1));
+      expect(fake.customFilters, isEmpty);
+    });
   });
 }
