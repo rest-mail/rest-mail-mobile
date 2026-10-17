@@ -158,6 +158,11 @@ void main() {
     // And the server at a glance.
     await tap(tester, 'Overview');
     expect(find.text('MESSAGES A DAY'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Bounced: nobody@ryeworks.test'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Bounced: nobody@ryeworks.test'), findsOneWidget);
 
     await close(tester, fake, state);

@@ -110,9 +110,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
                         child: Row(
                           children: [
                             SizedBox(
-                              width: 56,
+                              width: 64,
                               child: Text(
                                 day.date,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: rmText(13, color: c.ink2),
                               ),
                             ),
