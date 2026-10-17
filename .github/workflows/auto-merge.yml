@@ -23,7 +23,9 @@ name: Auto-merge
 # repository alone. Past that date the step below fails to authenticate and
 # nothing merges — a failure that reads as "auto-merge stopped working" with
 # nothing naming a credential, which is why the date is written here rather
-# than left to be rediscovered. Re-issue it and set the secret again.
+# than left to be rediscovered. release-on-merge.yml pushes each release tag
+# with the same token, so past that date merges stop reaching TestFlight too.
+# Re-issue it and set the secret again.
 on:
   pull_request_target:
     # `edited` covers a stacked pull request retargeted to main after the one
