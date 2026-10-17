@@ -488,9 +488,10 @@ under Apple Developer team `43UMKXZ8P4`.
 - Notifications on Android, which needs FCM, and for IMAP accounts, which
   need something server-side. On iPhone they need a server that pushes
   through APNs (rest-mail-mobile#8).
-- Sign in with Microsoft and Google in the TestFlight builds: they wait for
-  the app's registrations at Microsoft and Google, and their client IDs in
-  the `release` environment (#37). Creating a Gmail label from the app.
+- Sign in with Google in the TestFlight builds: it waits for the app's
+  Google client, and `GOOGLE_IOS_CLIENT_ID` in the `release` environment
+  (#58). Sign in with Microsoft is in them (#57). Creating a Gmail label from
+  the app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
 - Editing a pipeline's filters or a custom filter, and making new ones.
