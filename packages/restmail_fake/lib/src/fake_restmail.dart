@@ -133,6 +133,14 @@ class FakeRestmail {
     _adminRefreshTokens.clear();
   }
 
+  /// Ends the sessions signed in as [address] only; the rest carry on.
+  void revokeSessionsOf(String address) {
+    final box = _mailboxAt(address);
+    if (box == null) return;
+    _accessTokens.removeWhere((_, grant) => grant.session.primary == box.id);
+    _refreshTokens.removeWhere((_, session) => session.primary == box.id);
+  }
+
   /// The admin's password as it stands, for a test to check a change.
   String? get adminPassword => _admin?.password;
 

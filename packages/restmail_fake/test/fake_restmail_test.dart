@@ -118,6 +118,17 @@ void main() {
     );
   });
 
+  test('revoking one address leaves the other sessions signed in', () async {
+    final fake = FakeRestmail();
+    final dana = await _signedIn(fake);
+    final other = await _signedIn(fake, email: FakeAccounts.otherEmail);
+
+    fake.revokeSessionsOf(FakeAccounts.email);
+
+    await expectLater(dana.accounts(), throwsA(isA<SessionExpiredException>()));
+    expect(await other.accounts(), hasLength(1));
+  });
+
   test('mail between its mailboxes arrives, and the stream hears it', () async {
     final fake = FakeRestmail();
     final dana = await _signedIn(fake);
