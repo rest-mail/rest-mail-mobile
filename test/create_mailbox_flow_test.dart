@@ -113,7 +113,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Folders and accounts'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Switch to $_chris'));
+    await tester.tap(
+      find.descendant(of: find.byType(Drawer), matching: find.text(_chris)),
+    );
     await tester.pumpAndSettle();
     expect(state.mailbox!.account!.address, _chris);
     await snackGone(tester);
