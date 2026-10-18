@@ -866,8 +866,8 @@ class _DrawerLink extends StatelessWidget {
   }
 }
 
-/// An account or mailbox in the drawer, by name and address, with its
-/// inbox's unread count. Tapping it opens out its folders.
+/// An account or mailbox in the drawer, by name and address, with how many
+/// messages its folders hold between them. Tapping it opens out its folders.
 class _AccountRow extends StatelessWidget {
   const _AccountRow({
     required this.account,
@@ -891,12 +891,7 @@ class _AccountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.rm;
     final a = account;
-    final unread =
-        folders
-            ?.where((f) => f.name == StandardFolder.inbox)
-            .firstOrNull
-            ?.unread ??
-        0;
+    final folders = this.folders;
     return Material(
       color: a.selected ? c.accentSoft : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
@@ -939,9 +934,9 @@ class _AccountRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (unread > 0)
+              if (folders != null && folders.isNotEmpty)
                 Text(
-                  countLabel(unread),
+                  countLabel(accountTotal(folders)),
                   style: rmText(
                     12.5,
                     color: a.selected ? c.accent : c.ink3,

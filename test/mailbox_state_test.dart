@@ -96,6 +96,38 @@ Future<void> _settle() =>
     Future<void>.delayed(const Duration(milliseconds: 20));
 
 void main() {
+  group('accountTotal', () {
+    Folder f(String name, int total) =>
+        Folder(name: name, total: total, unread: 0);
+
+    test('adds up every folder', () {
+      expect(
+        accountTotal([
+          f('INBOX', 120),
+          f('Sent', 30),
+          f('Drafts', 2),
+          f('Projects', 8),
+        ]),
+        160,
+      );
+    });
+
+    test('with All Mail, counts it with Spam and Trash, not the folders '
+        'already in it', () {
+      expect(
+        accountTotal([
+          f('INBOX', 120),
+          f('Sent', 30),
+          f('Starred', 4),
+          f('All Mail', 400),
+          f('Spam', 9),
+          f('Trash', 11),
+        ]),
+        420,
+      );
+    });
+  });
+
   test('starts on the primary account, rest-mail folders first', () async {
     final server = _Server()..inbox = [_message(1)];
     final mailbox = MailboxState(RestBackend(server.client));
