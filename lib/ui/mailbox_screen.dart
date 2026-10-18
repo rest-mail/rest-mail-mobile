@@ -515,18 +515,94 @@ class _ComposeButton extends StatelessWidget {
   }
 }
 
-/// Every account down the side, then the folders of the one on screen with
-/// their counts, then settings.
-class MailDrawer extends StatelessWidget {
+/// Every account down the side, each with its inbox's unread count, and
+/// opened out, its folders with theirs; then settings.
+class MailDrawer extends StatefulWidget {
   const MailDrawer({super.key, required this.mailbox});
 
   final MailboxState mailbox;
 
   @override
+  State<MailDrawer> createState() => _MailDrawerState();
+}
+
+class _MailDrawerState extends State<MailDrawer> {
+  /// The folders of the accounts not on screen, as they come in.
+  final _folders = <String, List<Folder>>{};
+
+  /// Those whose folders could not be loaded.
+  final _failed = <String>{};
+
+  final _requested = <String>{};
+
+  /// Opened out to show their folders; the one on screen starts that way.
+  Set<String>? _expanded;
+
+  /// One entry per account, in the order they were added, so switching
+  /// doesn't reshuffle them. The one on screen stands in for its linked
+  /// mailboxes; signed out, its mail isn't loaded and it shows as it was
+  /// saved.
+  List<_DrawerAccount> _accounts(AppState app) {
+    final m = widget.mailbox;
+    final account = m.account;
+    return [
+      for (final other in app.accounts)
+        if (other != app.current)
+          _DrawerAccount(
+            key: other.key,
+            label: other.label,
+            address: other.address,
+            selected: false,
+            open: (folder) => app.switchTo(other, folder: folder),
+            load: other.signedOut == null ? () => app.folders(other) : null,
+          )
+        else if (m.accounts.isEmpty)
+          _DrawerAccount(
+            key: other.key,
+            label: other.label,
+            address: other.address,
+            selected: true,
+            signedOut: other.signedOut != null,
+            open: m.selectFolder,
+          )
+        else
+          for (final linked in m.accounts)
+            _DrawerAccount(
+              key: '${other.key}#${linked.id}',
+              label: linked.label,
+              address: linked.address,
+              selected: linked.id == account?.id,
+              open: (folder) => m.selectAccount(linked, folder: folder),
+              load: linked.id == account?.id
+                  ? null
+                  : () async => sortFolders(await m.backend.folders(linked.id)),
+            ),
+    ];
+  }
+
+  /// Asks every account not on screen for its folders, once, for the
+  /// unread counts.
+  void _load(List<_DrawerAccount> accounts) {
+    for (final a in accounts) {
+      final load = a.load;
+      if (load == null || !_requested.add(a.key)) continue;
+      unawaited(
+        load().then(
+          (folders) {
+            if (mounted) setState(() => _folders[a.key] = folders);
+          },
+          onError: (Object _) {
+            if (mounted) setState(() => _failed.add(a.key));
+          },
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final m = mailbox;
-    final account = m.account;
+    final m = widget.mailbox;
     final app = AppScope.of(context);
     final current = app.current;
     final signedOut = current?.signedOut != null;
@@ -534,60 +610,36 @@ class MailDrawer extends StatelessWidget {
         current is RestAccount &&
         !signedOut &&
         AdminAccess(current.capabilities).any;
-    final folders = m.folders.isEmpty
-        ? [Folder(name: m.folder, total: 0, unread: 0)]
-        : m.folders;
+    final accounts = _accounts(app);
+    _load(accounts);
+    final expanded = _expanded ??= {
+      for (final a in accounts)
+        if (a.selected && !a.signedOut) a.key,
+    };
     void close() => Navigator.pop(context);
     return Drawer(
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
           children: [
-            // In the order they were added, so switching doesn't reshuffle
-            // them. The one on screen stands in for its linked mailboxes;
-            // signed out, its mail isn't loaded and it shows as it was
-            // saved.
-            for (final other in app.accounts)
-              if (other != current)
-                _AccountRow(
-                  label: other.label,
-                  address: other.address,
-                  selected: false,
-                  onTap: () {
-                    close();
-                    unawaited(app.switchTo(other));
-                  },
-                )
-              else if (m.accounts.isEmpty)
-                _AccountRow(
-                  label: other.label,
-                  address: other.address,
-                  selected: true,
-                  onTap: close,
-                )
-              else
-                for (final linked in m.accounts)
-                  _AccountRow(
-                    label: linked.label,
-                    address: linked.address,
-                    selected: linked.id == account?.id,
-                    onTap: () {
-                      close();
-                      if (linked.id != account?.id) {
-                        unawaited(m.selectAccount(linked));
-                      }
-                    },
-                  ),
-            const _DrawerRule(),
-            for (final folder in folders)
-              _FolderRow(
-                folder: folder,
-                selected: folder.name == m.folder,
+            for (final a in accounts) ...[
+              _AccountRow(
+                account: a,
+                folders: a.selected ? m.folders : _folders[a.key],
+                expanded: expanded.contains(a.key),
                 onTap: () {
                   close();
-                  unawaited(m.selectFolder(folder.name));
+                  if (!a.selected) unawaited(a.open(StandardFolder.inbox));
                 },
+                onExpand: a.signedOut || (a.load == null && !a.selected)
+                    ? null
+                    : () => setState(() {
+                        if (!expanded.remove(a.key)) expanded.add(a.key);
+                      }),
               ),
+              if (expanded.contains(a.key))
+                ..._accountFolders(a, a.selected ? m.folders : _folders[a.key]),
+            ],
             const _DrawerRule(),
             if (administers)
               _DrawerLink(
@@ -624,6 +676,71 @@ class MailDrawer extends StatelessWidget {
       ),
     );
   }
+
+  /// [account]'s folders under its row; tapping one puts the account on
+  /// screen there.
+  List<Widget> _accountFolders(_DrawerAccount account, List<Folder>? folders) {
+    final m = widget.mailbox;
+    final c = context.rm;
+    if (folders == null || folders.isEmpty) {
+      final failed = _failed.contains(account.key);
+      // The one on screen has at least the folder it shows.
+      if (account.selected) {
+        folders = [Folder(name: m.folder, total: 0, unread: 0)];
+      } else {
+        return [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(46, 8, 12, 10),
+            child: Text(
+              failed ? 'Couldn’t load its folders' : 'Loading folders…',
+              style: rmText(12.5, color: c.ink3),
+            ),
+          ),
+        ];
+      }
+    }
+    return [
+      for (final folder in folders)
+        Padding(
+          padding: const EdgeInsets.only(left: 22),
+          child: _FolderRow(
+            folder: folder,
+            selected: account.selected && folder.name == m.folder,
+            onTap: () {
+              Navigator.pop(context);
+              unawaited(account.open(folder.name));
+            },
+          ),
+        ),
+    ];
+  }
+}
+
+/// An account in the drawer, on screen or not.
+class _DrawerAccount {
+  const _DrawerAccount({
+    required this.key,
+    required this.label,
+    required this.address,
+    required this.selected,
+    required this.open,
+    this.load,
+    this.signedOut = false,
+  });
+
+  final String key;
+  final String label;
+  final String address;
+
+  /// On screen.
+  final bool selected;
+  final bool signedOut;
+
+  /// Puts it on screen at a folder.
+  final Future<void> Function(String folder) open;
+
+  /// Its folders, for one not on screen and signed in.
+  final Future<List<Folder>> Function()? load;
 }
 
 /// The line between the drawer's accounts, folders and links.
@@ -681,39 +798,53 @@ class _DrawerLink extends StatelessWidget {
   }
 }
 
-/// An account or mailbox in the drawer, by name and address; tapping one
-/// that isn't [selected] switches to it.
+/// An account or mailbox in the drawer, by name and address, with its
+/// inbox's unread count. Tapping it switches to it; the arrow opens out its
+/// folders.
 class _AccountRow extends StatelessWidget {
   const _AccountRow({
-    required this.label,
-    required this.address,
-    required this.selected,
+    required this.account,
+    required this.folders,
+    required this.expanded,
     required this.onTap,
+    required this.onExpand,
   });
 
-  final String label;
-  final String address;
-  final bool selected;
+  final _DrawerAccount account;
+
+  /// Its folders, or null until they come in.
+  final List<Folder>? folders;
+  final bool expanded;
   final VoidCallback onTap;
+
+  /// Null where there are no folders to show.
+  final VoidCallback? onExpand;
 
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
+    final a = account;
+    final unread =
+        folders
+            ?.where((f) => f.name == StandardFolder.inbox)
+            .firstOrNull
+            ?.unread ??
+        0;
     return Material(
-      color: selected ? c.accentSoft : Colors.transparent,
+      color: a.selected ? c.accentSoft : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          padding: const EdgeInsets.fromLTRB(10, 9, 0, 9),
           child: Row(
             children: [
               RmAvatar(
-                name: label.isEmpty ? '?' : label,
-                seed: address,
+                name: a.label.isEmpty ? '?' : a.label,
+                seed: a.address,
                 size: 32,
-                color: selected ? c.accent : null,
+                color: a.selected ? c.accent : null,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -721,19 +852,19 @@ class _AccountRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label,
+                      a.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: rmText(
                         14.5,
                         color: c.ink,
-                        weight: selected ? FontWeight.w700 : FontWeight.w600,
+                        weight: a.selected ? FontWeight.w700 : FontWeight.w600,
                         tracking: -0.01,
                       ),
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      address,
+                      a.address,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: rmText(12, color: c.ink3),
@@ -741,6 +872,29 @@ class _AccountRow extends StatelessWidget {
                   ],
                 ),
               ),
+              if (unread > 0)
+                Text(
+                  countLabel(unread),
+                  style: rmText(
+                    12.5,
+                    color: a.selected ? c.accent : c.ink3,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              if (onExpand case final onExpand?)
+                IconButton(
+                  tooltip: expanded
+                      ? 'Hide ${a.address}’s folders'
+                      : 'Show ${a.address}’s folders',
+                  onPressed: onExpand,
+                  icon: Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: c.ink3,
+                  ),
+                )
+              else
+                const SizedBox(width: 12),
             ],
           ),
         ),

@@ -84,10 +84,14 @@ class MailboxState extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> selectAccount(Account next) async {
-    if (next.id == account?.id) return;
+  /// Puts [next] on screen, at [folder].
+  Future<void> selectAccount(
+    Account next, {
+    String folder = StandardFolder.inbox,
+  }) async {
+    if (next.id == account?.id) return selectFolder(folder);
     account = next;
-    folder = StandardFolder.inbox;
+    this.folder = folder;
     folders = const [];
     messages = const [];
     _listen();

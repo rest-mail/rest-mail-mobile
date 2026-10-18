@@ -152,6 +152,12 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pumpAndSettle();
   tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
   await _shot(tester, '10-accounts$suffix');
+  // The other account opened out, its folders with their counts.
+  final folders = '${FakeAccounts.email}’s folders';
+  await tester.tap(find.byTooltip('Show $folders'));
+  await _shot(tester, '10-accounts-open$suffix');
+  await tester.tap(find.byTooltip('Hide $folders'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Settings'));
   await _shot(tester, '11-accounts-settings$suffix');
 

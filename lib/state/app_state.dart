@@ -491,12 +491,34 @@ class AppState extends ChangeNotifier {
     unawaited(push.sync());
   }
 
-  /// Puts [account] on screen.
-  Future<void> switchTo(SignedInAccount account) async {
+  /// Puts [account] on screen, at [folder].
+  Future<void> switchTo(
+    SignedInAccount account, {
+    String folder = StandardFolder.inbox,
+  }) async {
     if (identical(account, current) || !accounts.contains(account)) return;
-    _show(account);
+    _show(account, folder: folder);
     notifyListeners();
     await _writeIndex();
+  }
+
+  /// [account]'s folders, without putting it on screen: its primary
+  /// mailbox's, for the drawer. An IMAP account lets go of the connection
+  /// again, unless it was put on screen in the meantime.
+  Future<List<Folder>> folders(SignedInAccount account) async {
+    final backend = account.backend;
+    try {
+      final mailboxes = await backend.accounts();
+      final primary = mailboxes.firstWhere(
+        (a) => a.isPrimary,
+        orElse: () => mailboxes.first,
+      );
+      return sortFolders(await backend.folders(primary.id));
+    } finally {
+      if (account is ImapAccount && !identical(account, current)) {
+        unawaited(account.backend.disconnect());
+      }
+    }
   }
 
   /// Signs [account] out and takes it off the phone, the one on screen if
@@ -630,12 +652,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Starts [account]'s mail and stops the previous account's.
-  void _show(SignedInAccount account) {
+  /// Starts [account]'s mail, at [folder], and stops the previous account's.
+  void _show(SignedInAccount account, {String folder = StandardFolder.inbox}) {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
-    final next = mailbox = MailboxState(account.backend);
+    final next = mailbox = MailboxState(account.backend)..folder = folder;
     // Signed out, it has nothing to load until it signs in again.
     if (account.signedOut == null) unawaited(next.start());
     phase = AppPhase.signedIn;
