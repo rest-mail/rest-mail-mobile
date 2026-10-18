@@ -89,6 +89,27 @@ void main() {
       expect(server.unexpected, isEmpty);
     });
 
+    test('count a mailbox Outlook names without quotes', () async {
+      // Outlook.com answers `STATUS INBOX (...)`, the name an atom; read as
+      // nothing, every Hotmail folder showed 0.
+      final server = await _gmailServer([
+        Rule(
+          r'^STATUS',
+          '* STATUS INBOX (MESSAGES 231 UNSEEN 12)\n{tag} OK STATUS completed.',
+          repeat: true,
+        ),
+      ]);
+      addTearDown(server.close);
+      final backend = _backend(server);
+      addTearDown(backend.close);
+
+      final folders = await backend.folders(ImapBackend.accountId);
+
+      expect(folders.first.total, 231);
+      expect(folders.first.unread, 12);
+      expect(server.unexpected, isEmpty);
+    });
+
     test('without SPECIAL-USE, the usual names stand in', () async {
       final server = await ScriptedServer.start('* OK Dovecot ready.', [
         Rule(r'^LOGIN', '{tag} OK [CAPABILITY IMAP4rev1 IDLE] Logged in'),
