@@ -97,6 +97,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(Drawer), matching: find.text('Inbox')),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
     // The other account's snackbar stayed with it.
     expect(find.text('Message sent'), findsNothing);

@@ -58,9 +58,15 @@ dependencies:
   # Opens the app from rest-mail://setup?… sign-in links. Apache-2.0.
   app_links: ^7.2.2
   # IMAP (with IDLE), SMTP and MIME for Gmail and other mail accounts. Pure
-  # Dart. MPL-2.0, which applies file by file: used unmodified, so the app
-  # stays MIT. If it stops being maintained it is forked into packages/.
-  enough_mail: ^2.1.7
+  # Dart. MPL-2.0, which applies file by file: the files we change stay
+  # MPL-2.0 and public in our fork, and the app stays MIT. The fork is
+  # 2.1.7 with STATUS read for Outlook's unquoted INBOX, which otherwise
+  # left every Hotmail folder count at 0. Upstream fixed it in #290; back to
+  # pub.dev once a release after 2.1.7 carries it.
+  enough_mail:
+    git:
+      url: https://github.com/rest-mail/enough_mail.git
+      ref: c26ccd6404540c99e626c1ffeb7aa1ef433d84cb
   # Reads the autoconfig files that say where a domain's IMAP and SMTP
   # servers are. MIT.
   xml: ^6.6.1

@@ -117,6 +117,10 @@ void main() {
       find.descendant(of: find.byType(Drawer), matching: find.text(_chris)),
     );
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(Drawer), matching: find.text('Inbox')),
+    );
+    await tester.pumpAndSettle();
     expect(state.mailbox!.account!.address, _chris);
     await snackGone(tester);
     await tapText(tester, 'Welcome aboard');
