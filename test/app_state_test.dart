@@ -9,58 +9,76 @@ import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 void main() {
-  test(
-    'a saved session the server will not renew ends, and says why',
-    () async {
-      final store = MemoryKeyValueStore();
-      const key = 'https://mail.example.test|ada@example.test';
-      await store.write(
-        'accounts',
-        jsonEncode({
-          'order': [key],
-          'current': key,
-        }),
-      );
-      await store.write(
-        'account:$key',
-        jsonEncode({
-          'kind': 'rest',
-          'server': 'https://mail.example.test',
-          'user': {'id': 1, 'email': 'ada@example.test', 'display_name': 'Ada'},
-          'tokens': {
-            'access_token': 'a',
-            'refresh_token': 'r',
-            'access_expires_at': DateTime.now()
-                .subtract(const Duration(minutes: 1))
-                .toUtc()
-                .toIso8601String(),
-          },
-        }),
-      );
-      final state = AppState(
-        store: store,
-        httpClientFactory: () => MockClient(
-          (_) async => http.Response(
-            jsonEncode({
-              'error': {
-                'code': 'unauthorized',
-                'message': 'Invalid refresh token',
-              },
-            }),
-            401,
-          ),
-        ),
-      );
+  test('a saved session the server will not renew signs the account out, and '
+      'keeps it, with nothing to renew the next time', () async {
+    final store = MemoryKeyValueStore();
+    const key = 'https://mail.example.test|ada@example.test';
+    await store.write(
+      'accounts',
+      jsonEncode({
+        'order': [key],
+        'current': key,
+      }),
+    );
+    await store.write(
+      'account:$key',
+      jsonEncode({
+        'kind': 'rest',
+        'server': 'https://mail.example.test',
+        'user': {'id': 1, 'email': 'ada@example.test', 'display_name': 'Ada'},
+        'tokens': {
+          'access_token': 'a',
+          'refresh_token': 'r',
+          'access_expires_at': DateTime.now()
+              .subtract(const Duration(minutes: 1))
+              .toUtc()
+              .toIso8601String(),
+        },
+      }),
+    );
+    var asked = 0;
+    AppState newState() => AppState(
+      store: store,
+      httpClientFactory: () => MockClient((_) async {
+        asked++;
+        return http.Response(
+          jsonEncode({
+            'error': {
+              'code': 'unauthorized',
+              'message': 'Invalid refresh token',
+            },
+          }),
+          401,
+        );
+      }),
+    );
+    final state = newState();
+    addTearDown(state.dispose);
 
-      await state.start();
-      expect(state.phase, AppPhase.signedIn);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+    await state.start();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      expect(state.phase, AppPhase.signedOut);
-      expect(state.signedOutReason, isNotNull);
-      expect(store.values.keys.where((k) => k.startsWith('account')), isEmpty);
-    },
-  );
+    // Still here, and on screen, saying why and waiting to sign in.
+    expect(state.phase, AppPhase.signedIn);
+    expect(
+      state.current!.signedOut,
+      'Your session for ada@example.test ended. Sign in again to carry on.',
+    );
+    final entry =
+        jsonDecode(store.values['account:$key']!) as Map<String, dynamic>;
+    expect(entry['user']['display_name'], 'Ada');
+    expect(entry.containsKey('tokens'), isFalse);
+
+    // The next launch starts it signed out, and asks the server nothing.
+    asked = 0;
+    final again = newState();
+    addTearDown(again.dispose);
+    await again.start();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(again.current!.address, 'ada@example.test');
+    expect(again.current!.signedOut, isNotNull);
+    expect(asked, 0);
+  });
 
   test(
     'an unreadable saved session means signing in again, not a crash',
@@ -84,7 +102,6 @@ void main() {
       await state.start();
 
       expect(state.phase, AppPhase.signedOut);
-      expect(state.signedOutReason, isNull);
     },
   );
 
@@ -241,8 +258,9 @@ void main() {
       expect(store.values.containsKey(_entry(FakeAccounts.email)), isFalse);
     });
 
-    test('a session ending on an account not on screen says so, and leaves '
-        'the one on screen alone', () async {
+    test('a session ending on an account not on screen says so, keeps the '
+        'account, signed out, and leaves the one on screen alone; signing in '
+        'again puts it back where it was', () async {
       final state = await signedInToBoth();
       final mailbox = state.mailbox;
       final notices = <String>[];
@@ -258,14 +276,31 @@ void main() {
       await _settle();
 
       expect(notices, [
-        'Your session for ${FakeAccounts.email} ended. Add the account again '
-            'to carry on.',
+        'Your session for ${FakeAccounts.email} ended. Sign in again to carry '
+            'on.',
       ]);
       expect(state.phase, AppPhase.signedIn);
-      expect(_addresses(state), [FakeAccounts.otherEmail]);
+      expect(_addresses(state), [FakeAccounts.email, FakeAccounts.otherEmail]);
+      expect(state.accounts.first.signedOut, isNotNull);
+      expect(state.current!.address, FakeAccounts.otherEmail);
       expect(state.mailbox, same(mailbox));
-      expect(state.signedOutReason, isNull);
-      expect(store.values.containsKey(_entry(FakeAccounts.email)), isFalse);
+      final entry = jsonDecode(
+        store.values[_entry(FakeAccounts.email)]!,
+      ) as Map<String, dynamic>;
+      expect(entry.containsKey('tokens'), isFalse);
+
+      await state.signIn(
+        server: _server,
+        email: FakeAccounts.email,
+        password: FakeAccounts.password,
+      );
+      await _settle();
+
+      expect(_addresses(state), [FakeAccounts.email, FakeAccounts.otherEmail]);
+      expect(state.current!.address, FakeAccounts.email);
+      expect(state.current!.signedOut, isNull);
+      expect(state.mailbox!.error, isNull);
+      expect(notices, hasLength(1));
     });
 
     for (final (kind, spoil) in [

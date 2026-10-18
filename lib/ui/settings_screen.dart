@@ -69,7 +69,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final others = app.accounts.where((a) => a != app.current);
     final current = app.current;
     final administers =
-        current is RestAccount && AdminAccess(current.capabilities).any;
+        current is RestAccount &&
+        current.signedOut == null &&
+        AdminAccess(current.capabilities).any;
     // Creating takes mailboxes:write; the server checks it covers the
     // domain asked for.
     final creates =
@@ -91,33 +93,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 9),
                     RmGroup(
                       children: [
-                        for (final account in m.accounts)
+                        // Signed out, it has none of its mail to show: its
+                        // mail screen signs it in again, or removes it.
+                        if (current case final out? when out.signedOut != null)
                           _AccountRow(
-                            label: account.label,
-                            address: account.address,
-                            subtitle: account.isPrimary
-                                ? 'Signed in · $host'
-                                : 'Mailbox of this account · $host',
-                            primary: account.isPrimary,
-                            onTap: () => _push(
-                              context,
-                              AccountScreen(mailbox: m, account: account),
+                            label: out.label,
+                            address: out.address,
+                            subtitle: 'Signed out · ${out.host}',
+                            primary: true,
+                            onTap: () => Navigator.pop(context),
+                          )
+                        else ...[
+                          for (final account in m.accounts)
+                            _AccountRow(
+                              label: account.label,
+                              address: account.address,
+                              subtitle: account.isPrimary
+                                  ? 'Signed in · $host'
+                                  : 'Mailbox of this account · $host',
+                              primary: account.isPrimary,
+                              onTap: () => _push(
+                                context,
+                                AccountScreen(mailbox: m, account: account),
+                              ),
                             ),
-                          ),
-                        if (creates)
-                          _AddRow(
-                            label: 'Create a mailbox',
-                            onTap: () => _push(
-                              context,
-                              CreateMailboxScreen(account: current, mailbox: m),
+                          if (creates)
+                            _AddRow(
+                              label: 'Create a mailbox',
+                              onTap: () => _push(
+                                context,
+                                CreateMailboxScreen(
+                                  account: current,
+                                  mailbox: m,
+                                ),
+                              ),
                             ),
-                          ),
-                        if (m.backend.canLinkMailboxes)
-                          _AddRow(
-                            label: 'Link another mailbox',
-                            onTap: () =>
-                                _push(context, LinkAccountScreen(mailbox: m)),
-                          ),
+                          if (m.backend.canLinkMailboxes)
+                            _AddRow(
+                              label: 'Link another mailbox',
+                              onTap: () =>
+                                  _push(context, LinkAccountScreen(mailbox: m)),
+                            ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 22),
@@ -132,7 +149,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _AccountRow(
                             label: other.label,
                             address: other.address,
-                            subtitle: 'Signed in · ${other.host}',
+                            subtitle: other.signedOut == null
+                                ? 'Signed in · ${other.host}'
+                                : 'Signed out · ${other.host}',
                             icon: Icons.swap_horiz_rounded,
                             onTap: () => unawaited(app.switchTo(other)),
                           ),

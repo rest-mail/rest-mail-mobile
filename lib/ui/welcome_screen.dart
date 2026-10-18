@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'add_account_screen.dart';
 import 'server_screen.dart';
@@ -16,7 +15,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final reason = AppScope.of(context).signedOutReason;
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -73,10 +71,6 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      if (reason != null) ...[
-                        _Notice(reason),
-                        const SizedBox(height: 18),
-                      ],
                       const Padding(
                         padding: EdgeInsets.only(bottom: 18),
                         // Each stat takes half the width and wraps inside it,
@@ -193,41 +187,6 @@ class _Stat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(label, style: rmText(12, color: c.ink3)),
       ],
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.rm;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.surface,
-        border: Border.all(color: c.line),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: c.tintAmber,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: rmText(13.5, color: c.ink2, height: 1.45)),
-          ),
-        ],
-      ),
     );
   }
 }

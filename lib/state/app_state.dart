@@ -25,9 +25,9 @@ enum AppPhase { starting, signedOut, signedIn }
 /// What an account is, as its saved entry says.
 enum AccountKind { rest, imap }
 
-/// One account signed in on this phone: a session on a REST Mail server
-/// ([RestAccount]), or a mailbox at an IMAP provider such as Gmail
-/// ([ImapAccount]).
+/// One account on this phone, signed in or [signedOut]: a session on a
+/// REST Mail server ([RestAccount]), or a mailbox at an IMAP provider such
+/// as Gmail ([ImapAccount]).
 sealed class SignedInAccount {
   AccountKind get kind;
 
@@ -46,6 +46,12 @@ sealed class SignedInAccount {
 
   /// What it may do on the server's admin API, as its session last heard.
   Capabilities get capabilities => Capabilities.none;
+
+  /// Why it can't reach its mail until it is signed in again, or null while
+  /// it can: its session ended, or Microsoft or Google stopped letting REST
+  /// Mail in. It stays on the phone all the same, with its settings and its
+  /// place in the list, until it is signed in again or removed.
+  String? get signedOut;
 
   /// Lets go of its connections, for good.
   void close();
@@ -89,6 +95,11 @@ class RestAccount extends SignedInAccount {
   String get host => server.host;
 
   @override
+  String? get signedOut => client.tokens == null
+      ? 'Your session for $address ended. Sign in again to carry on.'
+      : null;
+
+  @override
   void close() => client.close();
 }
 
@@ -125,6 +136,14 @@ class ImapAccount extends SignedInAccount {
 
   @override
   String get host => settings.imapHost;
+
+  @override
+  String? get signedOut => switch (oauth) {
+    final session? when session.hasEnded =>
+      '${session.kind.label} no longer lets REST Mail into $address. Sign in '
+          'again to carry on.',
+    _ => null,
+  };
 
   @override
   void close() => unawaited(backend.close());
@@ -178,7 +197,7 @@ class AppState extends ChangeNotifier {
   AppPhase phase = AppPhase.starting;
   AppSettings settings = const AppSettings();
 
-  /// Every account signed in on this phone, in the order they were added.
+  /// Every account on this phone, in the order they were added.
   List<SignedInAccount> accounts = const [];
 
   /// The account on screen.
@@ -187,9 +206,6 @@ class AppState extends ChangeNotifier {
   /// The mail of the account on screen. Only that account's mail is loaded
   /// and listening; switching stops it and starts the next one's.
   MailboxState? mailbox;
-
-  /// Why the last account ended when the user did not end it themselves.
-  String? signedOutReason;
 
   final _notices = StreamController<String>.broadcast();
 
@@ -354,6 +370,39 @@ class AppState extends ChangeNotifier {
     required MailServerSettings settings,
     String displayName = '',
     MailProvider? provider,
+  }) => _addOAuth(
+    kind: kind,
+    address: address,
+    settings: settings,
+    displayName: displayName,
+    provider: provider,
+  );
+
+  /// Signs [account] in with Microsoft or Google again once they have
+  /// stopped letting REST Mail in, keeping its name, its servers and its
+  /// place in the list. Throws as [addOAuthAccount] does, and
+  /// `other_account` when a different account signs in.
+  Future<void> signInAgain(ImapAccount account) async {
+    final kind = account.oauth?.kind;
+    if (kind == null) return;
+    await _addOAuth(
+      kind: kind,
+      address: account.address,
+      settings: account.settings,
+      displayName: account.displayName,
+      provider: account.provider,
+      only: account.address,
+    );
+  }
+
+  /// [addOAuthAccount], or with [only], [signInAgain] for that address.
+  Future<void> _addOAuth({
+    required OAuthKind kind,
+    required String address,
+    required MailServerSettings settings,
+    required String displayName,
+    required MailProvider? provider,
+    String? only,
   }) async {
     final client = oauth[kind];
     if (client == null) {
@@ -375,9 +424,18 @@ class AppState extends ChangeNotifier {
     } finally {
       http.close();
     }
+    final email = grant.email ?? address.trim();
+    if (only != null && email.toLowerCase() != only.toLowerCase()) {
+      throw ApiException(
+        409,
+        'other_account',
+        'You signed in to ${kind.label} as $email. Sign in as $only to carry '
+            'on with it, or add $email as an account of its own.',
+      );
+    }
     final name = displayName.trim();
     final saved = _SavedImap(
-      address: grant.email ?? address.trim(),
+      address: email,
       displayName: name.isNotEmpty ? name : grant.name ?? '',
       oauth: _SavedOAuth(kind, grant.refreshToken),
       settings: settings,
@@ -405,7 +463,6 @@ class AppState extends ChangeNotifier {
     accounts = index < 0
         ? [...accounts, account]
         : ([...accounts]..[index] = account);
-    signedOutReason = null;
     _show(account);
     notifyListeners();
     switch (replaced) {
@@ -442,8 +499,8 @@ class AppState extends ChangeNotifier {
     await _writeIndex();
   }
 
-  /// Signs [account] out, the one on screen if none is named. The others
-  /// stay signed in.
+  /// Signs [account] out and takes it off the phone, the one on screen if
+  /// none is named. The others stay signed in.
   Future<void> signOut([SignedInAccount? account]) async {
     account ??= current;
     if (account == null) return;
@@ -493,7 +550,7 @@ class AppState extends ChangeNotifier {
       saved.server,
       saved.user,
       client,
-      capabilities: saved.tokens.capabilities,
+      capabilities: saved.tokens?.capabilities ?? Capabilities.none,
     );
   }
 
@@ -510,7 +567,7 @@ class AppState extends ChangeNotifier {
             access: access,
             onRefreshTokenChanged: (token) =>
                 _refreshTokenChanged(account, saved, token),
-            onEnded: () => _oauthEnded(account),
+            onEnded: () => _accessEnded(account, saved.withRefreshToken(null)),
           );
     return account = ImapAccount._(
       ImapBackend(
@@ -540,33 +597,31 @@ class AppState extends ChangeNotifier {
     unawaited(store.write(_accountKey(next.key), next.encode()));
   }
 
-  /// The provider no longer takes the account's refresh token: its owner
-  /// took REST Mail's access away, or changed their password. The account
-  /// ends, and has to be signed in again.
-  void _oauthEnded(ImapAccount account) {
-    if (_signingOut.contains(account)) return;
-    final who = account.oauth?.kind.label ?? 'The provider';
-    unawaited(
-      _end(
-        account,
-        reason: accounts.length > 1
-            ? '$who no longer lets REST Mail into ${account.address}. Add '
-                  'the account again to carry on.'
-            : '$who no longer lets REST Mail into ${account.address}. Sign '
-                  'in again to carry on.',
-      ),
-    );
+  /// [account] can no longer reach its mail: its session ended, or its
+  /// owner took REST Mail's access away at Microsoft or Google, or changed
+  /// their password. Taking access away isn't removing the account from the
+  /// phone, so it stays, signed out, with everything saved for it but the
+  /// credential that stopped working ([saved]), until it is signed in again
+  /// or removed.
+  void _accessEnded(SignedInAccount account, _Saved saved) {
+    if (_signingOut.contains(account) || !accounts.contains(account)) return;
+    notifyListeners();
+    // The one on screen says so in place of its mail.
+    if (!identical(account, current)) _notices.add(account.signedOut!);
+    unawaited(store.write(_accountKey(saved.key), saved.encode()));
+    if (account is RestAccount) unawaited(push.forget(account));
   }
 
   /// Gives a refresh token back, where the provider takes them back
   /// (Google). Best effort: signing out goes ahead whatever it answers.
   Future<void> _revoke(OAuthSession session) async {
     final endpoint = session.provider?.revocationEndpoint;
-    if (endpoint == null || session.hasEnded) return;
+    final token = session.refreshToken;
+    if (endpoint == null || token == null) return;
     final http = httpClientFactory();
     try {
       await http
-          .post(endpoint, body: {'token': session.refreshToken})
+          .post(endpoint, body: {'token': token})
           .timeout(const Duration(seconds: 10));
     } on Object {
       // Signed out on the phone all the same.
@@ -580,7 +635,9 @@ class AppState extends ChangeNotifier {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
-    mailbox = MailboxState(account.backend)..start();
+    final next = mailbox = MailboxState(account.backend);
+    // Signed out, it has nothing to load until it signs in again.
+    if (account.signedOut == null) unawaited(next.start());
     phase = AppPhase.signedIn;
     _sessions++;
     previous?.dispose();
@@ -608,20 +665,13 @@ class AppState extends ChangeNotifier {
         account.capabilities = tokens.capabilities;
         notifyListeners();
       }
-    } else if (!_signingOut.contains(account)) {
-      unawaited(
-        _end(
-          account,
-          reason: accounts.length > 1
-              ? 'Your session for ${account.address} ended. Add the account '
-                    'again to carry on.'
-              : 'Your session ended. Sign in again to carry on.',
-        ),
-      );
+    } else {
+      _accessEnded(account, _SavedSession(account.server, account.user, null));
     }
   }
 
-  Future<void> _end(SignedInAccount account, {String? reason}) async {
+  /// Takes [account] off the phone.
+  Future<void> _end(SignedInAccount account) async {
     if (!accounts.contains(account)) return;
     accounts = [...accounts]..remove(account);
     if (identical(account, current)) {
@@ -634,12 +684,10 @@ class AppState extends ChangeNotifier {
         mailbox = null;
         current = null;
         phase = AppPhase.signedOut;
-        signedOutReason = reason;
         _sessions++;
       }
     }
     notifyListeners();
-    if (reason != null && accounts.isNotEmpty) _notices.add(reason);
     account.close();
     await store.delete(_accountKey(account.key));
     await push.forget(account);
@@ -742,18 +790,24 @@ sealed class _Saved {
   String encode();
 }
 
+/// A REST Mail account, with its session's tokens while it is signed in.
 class _SavedSession extends _Saved {
   const _SavedSession(this.server, this.user, this.tokens);
 
   factory _SavedSession.fromJson(Map<String, dynamic> json) => _SavedSession(
     Uri.parse(json['server'] as String),
     User.fromJson(json['user'] as Map<String, dynamic>),
-    SessionTokens.fromJson(json['tokens'] as Map<String, dynamic>),
+    switch (json['tokens']) {
+      null => null,
+      final tokens => SessionTokens.fromJson(tokens as Map<String, dynamic>),
+    },
   );
 
   final Uri server;
   final User user;
-  final SessionTokens tokens;
+
+  /// Null once the session has ended.
+  final SessionTokens? tokens;
 
   @override
   String get key => _keyOf(server, user.email);
@@ -763,12 +817,12 @@ class _SavedSession extends _Saved {
     'kind': AccountKind.rest.name,
     'server': server.toString(),
     'user': user.toJson(),
-    'tokens': tokens.toJson(),
+    'tokens': ?tokens?.toJson(),
   });
 }
 
 /// An IMAP account's sign-in with Microsoft or Google: who, and the
-/// refresh token.
+/// refresh token while it works.
 class _SavedOAuth {
   const _SavedOAuth(this.kind, this.refreshToken);
 
@@ -778,16 +832,19 @@ class _SavedOAuth {
         .where((k) => k.name == json['provider'])
         .firstOrNull;
     final token = json['refresh_token'];
-    if (kind == null || token is! String || token.isEmpty) return null;
-    return _SavedOAuth(kind, token);
+    if (kind == null) return null;
+    if (token != null && (token is! String || token.isEmpty)) return null;
+    return _SavedOAuth(kind, token as String?);
   }
 
   final OAuthKind kind;
-  final String refreshToken;
+
+  /// Null once Microsoft or Google stopped taking it.
+  final String? refreshToken;
 
   Map<String, String> toJson() => {
     'provider': kind.name,
-    'refresh_token': refreshToken,
+    'refresh_token': ?refreshToken,
   };
 }
 
@@ -827,7 +884,7 @@ class _SavedImap extends _Saved {
   final MailServerSettings settings;
   final String? provider;
 
-  _SavedImap withRefreshToken(String token) => _SavedImap(
+  _SavedImap withRefreshToken(String? token) => _SavedImap(
     address: address,
     displayName: displayName,
     oauth: _SavedOAuth(oauth!.kind, token),
