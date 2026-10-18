@@ -90,7 +90,12 @@ void main() {
     // Back to the first, from the drawer.
     await tester.tap(find.byTooltip('Folders and accounts'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Switch to ${FakeAccounts.email}'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Drawer),
+        matching: find.text(FakeAccounts.email),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
     // The other account's snackbar stayed with it.

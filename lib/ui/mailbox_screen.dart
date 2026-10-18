@@ -515,7 +515,8 @@ class _ComposeButton extends StatelessWidget {
   }
 }
 
-/// Accounts along the top, then folders with their counts, then settings.
+/// Every account down the side, then the folders of the one on screen with
+/// their counts, then settings.
 class MailDrawer extends StatelessWidget {
   const MailDrawer({super.key, required this.mailbox});
 
@@ -526,148 +527,93 @@ class MailDrawer extends StatelessWidget {
     final c = context.rm;
     final m = mailbox;
     final account = m.account;
-    final others = m.accounts.where((a) => a.id != account?.id);
     final app = AppScope.of(context);
-    final otherAccounts = app.accounts.where((a) => a != app.current);
     final current = app.current;
     final signedOut = current?.signedOut != null;
     final administers =
         current is RestAccount &&
         !signedOut &&
         AdminAccess(current.capabilities).any;
-    // Signed out, its mail isn't loaded: the name is the one it was saved
-    // with.
-    final label = account?.label ?? current?.label ?? '';
-    final address = account?.address ?? current?.address ?? '';
     final folders = m.folders.isEmpty
         ? [Folder(name: m.folder, total: 0, unread: 0)]
         : m.folders;
+    void close() => Navigator.pop(context);
     return Drawer(
       child: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: c.line)),
+            // In the order they were added, so switching doesn't reshuffle
+            // them. The one on screen stands in for its linked mailboxes;
+            // signed out, its mail isn't loaded and it shows as it was
+            // saved.
+            for (final other in app.accounts)
+              if (other != current)
+                _AccountRow(
+                  label: other.label,
+                  address: other.address,
+                  selected: false,
+                  onTap: () {
+                    close();
+                    unawaited(app.switchTo(other));
+                  },
+                )
+              else if (m.accounts.isEmpty)
+                _AccountRow(
+                  label: other.label,
+                  address: other.address,
+                  selected: true,
+                  onTap: close,
+                )
+              else
+                for (final linked in m.accounts)
+                  _AccountRow(
+                    label: linked.label,
+                    address: linked.address,
+                    selected: linked.id == account?.id,
+                    onTap: () {
+                      close();
+                      if (linked.id != account?.id) {
+                        unawaited(m.selectAccount(linked));
+                      }
+                    },
+                  ),
+            const _DrawerRule(),
+            for (final folder in folders)
+              _FolderRow(
+                folder: folder,
+                selected: folder.name == m.folder,
+                onTap: () {
+                  close();
+                  unawaited(m.selectFolder(folder.name));
+                },
               ),
+            const _DrawerRule(),
+            if (administers)
+              _DrawerLink(
+                icon: Icons.admin_panel_settings_outlined,
+                label: 'Administration',
+                screen: AdministrationScreen(account: current),
+              ),
+            _DrawerLink(
+              icon: Icons.settings_outlined,
+              label: 'Settings',
+              screen: SettingsScreen(mailbox: m),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
               child: Row(
                 children: [
-                  RmAvatar(
-                    name: label.isEmpty ? '?' : label,
-                    seed: address,
-                    size: 38,
-                    color: c.accent,
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: rmText(
-                            14.5,
-                            color: c.ink,
-                            weight: FontWeight.w700,
-                            tracking: -0.01,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: rmText(12, color: c.ink3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // This account's linked mailboxes, then the other
-                  // accounts signed in on this phone. Past four or so they
-                  // scroll, rather than squeezing the name out.
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 4 * 32),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final other in others)
-                            _SwitchAvatar(
-                              label: other.label,
-                              address: other.address,
-                              onTap: () {
-                                Navigator.pop(context);
-                                unawaited(m.selectAccount(other));
-                              },
-                            ),
-                          for (final other in otherAccounts)
-                            _SwitchAvatar(
-                              label: other.label,
-                              address: other.address,
-                              onTap: () {
-                                Navigator.pop(context);
-                                unawaited(app.switchTo(other));
-                              },
-                            ),
-                        ],
+                  SyncDot(signedOut ? LiveStatus.offline : m.live),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      signedOut ? 'Signed out' : liveLabel(m.live),
+                      style: rmText(
+                        11.5,
+                        color: c.ink3,
+                        weight: FontWeight.w600,
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
-                children: [
-                  for (final folder in folders)
-                    _FolderRow(
-                      folder: folder,
-                      selected: folder.name == m.folder,
-                      onTap: () {
-                        Navigator.pop(context);
-                        unawaited(m.selectFolder(folder.name));
-                      },
-                    ),
-                  Container(
-                    height: 1,
-                    color: c.line,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 12,
-                    ),
-                  ),
-                  if (administers)
-                    _DrawerLink(
-                      icon: Icons.admin_panel_settings_outlined,
-                      label: 'Administration',
-                      screen: AdministrationScreen(account: current),
-                    ),
-                  _DrawerLink(
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                    screen: SettingsScreen(mailbox: m),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
-                    child: Row(
-                      children: [
-                        SyncDot(signedOut ? LiveStatus.offline : m.live),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            signedOut ? 'Signed out' : liveLabel(m.live),
-                            style: rmText(
-                              11.5,
-                              color: c.ink3,
-                              weight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ],
@@ -678,6 +624,18 @@ class MailDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The line between the drawer's accounts, folders and links.
+class _DrawerRule extends StatelessWidget {
+  const _DrawerRule();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 1,
+    color: context.rm.line,
+    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+  );
 }
 
 /// A row at the foot of the drawer that opens [screen].
@@ -723,31 +681,72 @@ class _DrawerLink extends StatelessWidget {
   }
 }
 
-/// Another mailbox or account in the drawer's top row; tapping switches to
-/// it.
-class _SwitchAvatar extends StatelessWidget {
-  const _SwitchAvatar({
+/// An account or mailbox in the drawer, by name and address; tapping one
+/// that isn't [selected] switches to it.
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({
     required this.label,
     required this.address,
+    required this.selected,
     required this.onTap,
   });
 
   final String label;
   final String address;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 6),
-    child: Tooltip(
-      message: 'Switch to $address',
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Material(
+      color: selected ? c.accentSoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        customBorder: const CircleBorder(),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
-        child: RmAvatar(name: label, seed: address, size: 26),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(
+            children: [
+              RmAvatar(
+                name: label.isEmpty ? '?' : label,
+                seed: address,
+                size: 32,
+                color: selected ? c.accent : null,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: rmText(
+                        14.5,
+                        color: c.ink,
+                        weight: selected ? FontWeight.w700 : FontWeight.w600,
+                        tracking: -0.01,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      address,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: rmText(12, color: c.ink3),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _FolderRow extends StatelessWidget {
