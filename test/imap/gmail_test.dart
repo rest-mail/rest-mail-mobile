@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/testing.dart';
 import 'package:restmail/imap/imap_backend.dart';
 import 'package:restmail/imap/mail_settings.dart';
+import 'package:restmail/state/app_scope.dart';
+import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/mailbox_state.dart';
+import 'package:restmail/state/storage.dart';
 import 'package:restmail/theme/theme.dart';
 import 'package:restmail/ui/mailbox_screen.dart';
 import 'package:restmail/util/search_parser.dart';
@@ -517,10 +521,19 @@ void main() {
         }
       }
 
+      // The screen asks the app which account is on screen; none is.
+      final app = AppState(
+        store: MemoryKeyValueStore(),
+        httpClientFactory: () => MockClient((_) => throw UnimplementedError()),
+      );
+      addTearDown(app.dispose);
       await tester.pumpWidget(
-        MaterialApp(
-          theme: buildTheme(Brightness.light),
-          home: MailboxScreen(mailbox: mailbox),
+        AppScope(
+          state: app,
+          child: MaterialApp(
+            theme: buildTheme(Brightness.light),
+            home: MailboxScreen(mailbox: mailbox),
+          ),
         ),
       );
       await settle();

@@ -10,6 +10,7 @@ import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/format.dart';
+import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'compose_sheet.dart';
 import 'mail_actions.dart';
@@ -110,6 +111,8 @@ class _MailboxScreenState extends State<MailboxScreen> {
       listenable: widget.mailbox,
       builder: (context, _) {
         final m = widget.mailbox;
+        final account = AppScope.of(context).current;
+        final signedOut = account?.signedOut != null;
         _topOnSwitch(m);
         return Scaffold(
           drawer: MailDrawer(mailbox: m),
@@ -117,14 +120,20 @@ class _MailboxScreenState extends State<MailboxScreen> {
             bottom: false,
             child: Column(
               children: [
-                _Header(mailbox: m),
-                Expanded(child: _list(context, m)),
+                _Header(mailbox: m, account: account),
+                Expanded(
+                  child: account != null && signedOut
+                      ? _SignedOut(account: account)
+                      : _list(context, m),
+                ),
               ],
             ),
           ),
-          floatingActionButton: _ComposeButton(
-            onPressed: () => unawaited(openCompose(context, mailbox: m)),
-          ),
+          floatingActionButton: signedOut
+              ? null
+              : _ComposeButton(
+                  onPressed: () => unawaited(openCompose(context, mailbox: m)),
+                ),
         );
       },
     );
@@ -191,15 +200,20 @@ class _MailboxScreenState extends State<MailboxScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.mailbox});
+  const _Header({required this.mailbox, required this.account});
 
   final MailboxState mailbox;
+
+  /// The account on screen, whose mail [mailbox] is.
+  final SignedInAccount? account;
 
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
     final m = mailbox;
-    final address = m.account?.address;
+    final address = m.account?.address ?? account?.address;
+    final signedOut = account?.signedOut != null;
+    final status = signedOut ? 'Signed out' : liveLabel(m.live);
     return Container(
       padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
       decoration: BoxDecoration(
@@ -231,13 +245,11 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 1),
                 Row(
                   children: [
-                    SyncDot(m.live),
+                    SyncDot(signedOut ? LiveStatus.offline : m.live),
                     const SizedBox(width: 5),
                     Flexible(
                       child: Text(
-                        address == null
-                            ? liveLabel(m.live)
-                            : '${liveLabel(m.live)} · $address',
+                        address == null ? status : '$status · $address',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: rmText(
@@ -253,20 +265,24 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          RmIconButton(
-            icon: Icons.refresh_rounded,
-            tooltip: 'Refresh',
-            color: c.ink2,
-            onPressed: () => unawaited(m.retry()),
-          ),
-          RmIconButton(
-            icon: Icons.search_rounded,
-            tooltip: 'Search',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(builder: (_) => SearchScreen(mailbox: m)),
+          if (!signedOut) ...[
+            RmIconButton(
+              icon: Icons.refresh_rounded,
+              tooltip: 'Refresh',
+              color: c.ink2,
+              onPressed: () => unawaited(m.retry()),
             ),
-          ),
+            RmIconButton(
+              icon: Icons.search_rounded,
+              tooltip: 'Search',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => SearchScreen(mailbox: m),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -351,6 +367,115 @@ class _Problem extends StatelessWidget {
   }
 }
 
+/// In place of the mail of an account that can no longer reach it: why,
+/// the way back in, and the way to take it off the phone. Signing in again
+/// keeps the account as it was, its name, servers and place in the list.
+class _SignedOut extends StatefulWidget {
+  const _SignedOut({required this.account});
+
+  final SignedInAccount account;
+
+  @override
+  State<_SignedOut> createState() => _SignedOutState();
+}
+
+class _SignedOutState extends State<_SignedOut> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _signIn() async {
+    final account = widget.account;
+    switch (account) {
+      // A REST Mail account signs in with its password, and its code.
+      case RestAccount(:final server, :final address):
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => AddAccountScreen(server: server, email: address),
+          ),
+        );
+      case final ImapAccount imap:
+        setState(() {
+          _busy = true;
+          _error = null;
+        });
+        try {
+          await AppScope.read(context).signInAgain(imap);
+          // Signed in: the app puts the account's mail in place of this.
+        } on ApiException catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _busy = false;
+            // Closing the sign-in page is an answer, not a failure.
+            _error = e.code == 'cancelled' ? null : describeError(e);
+          });
+        }
+    }
+  }
+
+  Future<void> _remove() async {
+    final app = AppScope.read(context);
+    final account = widget.account;
+    final sure = await confirmAction(
+      context,
+      title: 'Remove ${account.address}?',
+      message: [
+        'It comes off this phone, with its settings. Your mail stays on '
+            '${account.host}.',
+        if (app.accounts.length > 1) 'Your other accounts stay.',
+      ].join(' '),
+      action: 'Remove',
+    );
+    if (sure) await app.signOut(account);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final account = widget.account;
+    final error = _error;
+    final label = switch (account) {
+      ImapAccount(:final oauth?) => 'Sign in with ${oauth.kind.label}',
+      _ => 'Sign in again',
+    };
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 28, color: c.ink3),
+            const SizedBox(height: 12),
+            Text(
+              account.signedOut ?? '',
+              textAlign: TextAlign.center,
+              style: rmText(14, color: c.ink2, height: 1.45),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 14),
+              ErrorText(error),
+            ],
+            const SizedBox(height: 20),
+            RmPrimaryButton(
+              label: label,
+              busy: _busy,
+              onPressed: () => unawaited(_signIn()),
+            ),
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: _busy ? null : () => unawaited(_remove()),
+              child: Text(
+                'Remove from this phone',
+                style: rmText(14, color: c.ink2, weight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ComposeButton extends StatelessWidget {
   const _ComposeButton({required this.onPressed});
 
@@ -405,8 +530,15 @@ class MailDrawer extends StatelessWidget {
     final app = AppScope.of(context);
     final otherAccounts = app.accounts.where((a) => a != app.current);
     final current = app.current;
+    final signedOut = current?.signedOut != null;
     final administers =
-        current is RestAccount && AdminAccess(current.capabilities).any;
+        current is RestAccount &&
+        !signedOut &&
+        AdminAccess(current.capabilities).any;
+    // Signed out, its mail isn't loaded: the name is the one it was saved
+    // with.
+    final label = account?.label ?? current?.label ?? '';
+    final address = account?.address ?? current?.address ?? '';
     final folders = m.folders.isEmpty
         ? [Folder(name: m.folder, total: 0, unread: 0)]
         : m.folders;
@@ -422,8 +554,8 @@ class MailDrawer extends StatelessWidget {
               child: Row(
                 children: [
                   RmAvatar(
-                    name: account?.label ?? '?',
-                    seed: account?.address ?? '',
+                    name: label.isEmpty ? '?' : label,
+                    seed: address,
                     size: 38,
                     color: c.accent,
                   ),
@@ -433,7 +565,7 @@ class MailDrawer extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          account?.label ?? '',
+                          label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: rmText(
@@ -445,7 +577,7 @@ class MailDrawer extends StatelessWidget {
                         ),
                         const SizedBox(height: 1),
                         Text(
-                          account?.address ?? '',
+                          address,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: rmText(12, color: c.ink3),
@@ -523,11 +655,11 @@ class MailDrawer extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
                     child: Row(
                       children: [
-                        SyncDot(m.live),
+                        SyncDot(signedOut ? LiveStatus.offline : m.live),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            liveLabel(m.live),
+                            signedOut ? 'Signed out' : liveLabel(m.live),
                             style: rmText(
                               11.5,
                               color: c.ink3,

@@ -106,11 +106,11 @@ class PushNotifications extends ChangeNotifier {
 
   static String _storeKey(String accountKey) => 'push:$accountKey';
 
-  /// The REST Mail accounts. An IMAP account's mail doesn't come from
-  /// REST Mail.
+  /// The REST Mail accounts signed in. An IMAP account's mail doesn't come
+  /// from REST Mail, and a signed-out one has no session to register.
   List<RestAccount> get _accounts => [
     for (final a in _app.accounts)
-      if (a is RestAccount) a,
+      if (a is RestAccount && a.signedOut == null) a,
   ];
 
   /// True once this phone has a push token and the server of one of its

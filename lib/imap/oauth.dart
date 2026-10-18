@@ -319,6 +319,15 @@ String codeFromRedirect(
   return code;
 }
 
+/// What a sign-in with [kind] answers once its refresh token no longer
+/// works: `invalid_grant`, with status 401.
+ApiException accessEnded(OAuthKind kind) => ApiException(
+  401,
+  'invalid_grant',
+  '${kind.label} no longer lets REST Mail into this account. Sign in again '
+      'to carry on.',
+);
+
 /// A refresh token that no longer works: revoked by its owner, a changed
 /// password, or a sign-in the provider wants to see again.
 bool _signInEnded(String? error) =>
@@ -363,14 +372,7 @@ Future<Map<String, dynamic>> _tokenRequest(
   }
   if (response.statusCode == 200 && json != null) return json;
   final error = json?['error'];
-  if (error is String && _signInEnded(error)) {
-    throw ApiException(
-      401,
-      'invalid_grant',
-      '${provider.name} no longer lets REST Mail into this account. Sign in '
-          'again to carry on.',
-    );
-  }
+  if (error is String && _signInEnded(error)) throw accessEnded(provider.kind);
   final description = json?['error_description'];
   throw ApiException(
     response.statusCode == 200 ? 502 : response.statusCode,
@@ -437,18 +439,20 @@ bool _sameText(String a, String b) {
 ///
 /// A refresh token that stops working (consent revoked, password changed)
 /// ends the session for good: every call after that fails at once with
-/// `invalid_grant`, and [onEnded] is called, once.
+/// `invalid_grant`, and [onEnded] is called, once. A session made with no
+/// refresh token is one that has already ended.
 class OAuthSession {
   OAuthSession({
     required this.kind,
     required this.provider,
-    required this._refreshToken,
+    required String? refreshToken,
     required this.httpClient,
     this._access,
     this.onRefreshTokenChanged,
     this.onEnded,
     this.now = DateTime.now,
-  });
+  }) : _refreshToken = refreshToken,
+       _ended = refreshToken == null ? accessEnded(kind) : null;
 
   final OAuthKind kind;
 
@@ -472,12 +476,13 @@ class OAuthSession {
   /// to a server just as it expires.
   static const margin = Duration(minutes: 5);
 
-  String _refreshToken;
+  String? _refreshToken;
   AccessGrant? _access;
   Future<String>? _refreshing;
   ApiException? _ended;
 
-  String get refreshToken => _refreshToken;
+  /// Null once it no longer works.
+  String? get refreshToken => _refreshToken;
 
   bool get hasEnded => _ended != null;
 
@@ -510,7 +515,8 @@ class OAuthSession {
     try {
       final json = await _tokenRequest(provider, client, {
         'grant_type': 'refresh_token',
-        'refresh_token': _refreshToken,
+        // Only asked for while the session hasn't ended, when there is one.
+        'refresh_token': _refreshToken!,
         'client_id': provider.clientId,
         if (provider.scopeOnRefresh) 'scope': provider.scopes.join(' '),
       });
@@ -527,6 +533,7 @@ class OAuthSession {
       if (e.code == 'invalid_grant') {
         _ended = e;
         _access = null;
+        _refreshToken = null;
         // After the caller has its error, so it isn't torn down under it.
         if (onEnded != null) scheduleMicrotask(onEnded!);
       }

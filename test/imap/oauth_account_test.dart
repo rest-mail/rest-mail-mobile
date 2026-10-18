@@ -229,82 +229,136 @@ void main() {
     },
   );
 
-  test('revoking the app at Microsoft ends the account at its next sign-in, '
-      'and asks to sign in again', () async {
-    final state = newState();
-    await state.start();
-    await state.addOAuthAccount(
-      kind: OAuthKind.microsoft,
-      address: 'ada@outlook.com',
-      settings: _outlook,
-      provider: MailProviders.outlook,
-    );
-    await settle();
-
-    auth.revokeAll();
-    final again = newState();
-    await again.start();
-    await settle();
-
-    expect(again.accounts, isEmpty);
-    expect(again.phase, AppPhase.signedOut);
-    expect(
-      again.signedOutReason,
-      'Microsoft no longer lets REST Mail into ada@outlook.com. Sign in '
-      'again to carry on.',
-    );
-    expect(store.values, isEmpty);
-  });
-
   test(
-    'Google: a token turned down at once is renewed, and when the '
-    'renewal is refused too the account ends; the REST Mail account stays',
+    'revoking the app at Microsoft signs the account out at its next '
+    'sign-in and keeps it; signing in again brings it back as it was',
     () async {
+      const key = 'imaps://outlook.office365.com|ada@outlook.com';
       final state = newState();
       await state.start();
-      await state.signIn(
-        server: Uri.parse('https://${FakeAccounts.host}'),
-        email: FakeAccounts.email,
-        password: FakeAccounts.password,
-      );
-      auth.email = 'ada@gmail.com';
       await state.addOAuthAccount(
-        kind: OAuthKind.google,
-        address: 'ada@gmail.com',
-        settings: _gmail,
-        provider: MailProviders.gmail,
+        kind: OAuthKind.microsoft,
+        address: 'ada@outlook.com',
+        displayName: 'Countess',
+        settings: _outlook,
+        provider: MailProviders.outlook,
       );
       await settle();
-      expect(state.accounts, hasLength(2));
-      final notices = <String>[];
-      final listening = state.notices.listen(notices.add);
-      addTearDown(listening.cancel);
 
-      // The owner takes REST Mail's access away at Google: the token it holds
-      // stops working at once, and so does the refresh token.
       auth.revokeAll();
-      refused.addAll(auth.accessTokens);
-      final gmail = state.current! as ImapAccount;
-      await gmail.backend.disconnect();
-      final logins = imapLogins.length;
-      await state.mailbox!.refresh();
+      final again = newState();
+      await again.start();
       await settle();
 
-      // One more try, with a renewal that Google refused.
-      expect(imapLogins.length, logins + 1);
-      expect(auth.tokenRequests.last['grant_type'], 'refresh_token');
-      expect(state.accounts.single.kind, AccountKind.rest);
-      expect(state.current?.address, FakeAccounts.email);
-      expect(notices, [
-        'Google no longer lets REST Mail into ada@gmail.com. Add the account '
-            'again to carry on.',
-      ]);
+      final account = again.current! as ImapAccount;
+      expect(again.phase, AppPhase.signedIn);
+      expect(again.accounts, [account]);
+      expect(account.address, 'ada@outlook.com');
+      expect(account.displayName, 'Countess');
       expect(
-        store.values.keys.where((k) => k.contains('ada@gmail.com')),
-        isEmpty,
+        account.signedOut,
+        'Microsoft no longer lets REST Mail into ada@outlook.com. Sign in '
+        'again to carry on.',
       );
+      // Kept as it was, but for the refresh token that stopped working.
+      expect(saved(key)['display_name'], 'Countess');
+      expect(saved(key)['settings'], isNotNull);
+      expect(saved(key)['oauth'], {'provider': 'microsoft'});
+
+      // The next launch starts it signed out, and asks Microsoft nothing.
+      final asked = auth.tokenRequests.length;
+      final logins = imapLogins.length;
+      final third = newState();
+      await third.start();
+      await settle();
+      expect(third.current!.signedOut, isNotNull);
+      expect(auth.tokenRequests, hasLength(asked));
+      expect(imapLogins, hasLength(logins));
+
+      // Signing in as somebody else doesn't sign it in.
+      auth.email = 'grace@outlook.com';
+      await expectLater(
+        third.signInAgain(third.current! as ImapAccount),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'other_account'),
+        ),
+      );
+      expect(third.accounts.single.signedOut, isNotNull);
+      expect(saved(key)['oauth'], {'provider': 'microsoft'});
+
+      auth.email = 'ada@outlook.com';
+      await third.signInAgain(third.current! as ImapAccount);
+      await settle();
+
+      final back = third.current! as ImapAccount;
+      expect(third.accounts, [back]);
+      expect(back.signedOut, isNull);
+      expect(back.displayName, 'Countess');
+      expect(third.mailbox!.error, isNull);
+      expect(imapLogins.last.token, auth.accessTokens.last);
+      expect(
+        auth.authorizations.last.queryParameters['login_hint'],
+        'ada@outlook.com',
+      );
+      // Kept with the refresh token Microsoft has just given, one that
+      // works.
+      final kept = saved(key)['oauth'] as Map<String, dynamic>;
+      expect(kept['provider'], 'microsoft');
+      expect(auth.liveRefreshTokens, contains(kept['refresh_token']));
     },
   );
+
+  test('Google: a token turned down at once is renewed, and when the '
+      'renewal is refused too the account signs out, and stays', () async {
+    final state = newState();
+    await state.start();
+    await state.signIn(
+      server: Uri.parse('https://${FakeAccounts.host}'),
+      email: FakeAccounts.email,
+      password: FakeAccounts.password,
+    );
+    auth.email = 'ada@gmail.com';
+    await state.addOAuthAccount(
+      kind: OAuthKind.google,
+      address: 'ada@gmail.com',
+      settings: _gmail,
+      provider: MailProviders.gmail,
+    );
+    await settle();
+    expect(state.accounts, hasLength(2));
+    final notices = <String>[];
+    final listening = state.notices.listen(notices.add);
+    addTearDown(listening.cancel);
+
+    // The owner takes REST Mail's access away at Google: the token it holds
+    // stops working at once, and so does the refresh token.
+    auth.revokeAll();
+    refused.addAll(auth.accessTokens);
+    final gmail = state.current! as ImapAccount;
+    await gmail.backend.disconnect();
+    final logins = imapLogins.length;
+    await state.mailbox!.refresh();
+    await settle();
+
+    // One more try, with a renewal that Google refused.
+    expect(imapLogins.length, logins + 1);
+    expect(auth.tokenRequests.last['grant_type'], 'refresh_token');
+    expect(state.accounts.map((a) => a.kind), [
+      AccountKind.rest,
+      AccountKind.imap,
+    ]);
+    // On screen, where it says so itself: no notice.
+    expect(state.current, same(gmail));
+    expect(
+      gmail.signedOut,
+      'Google no longer lets REST Mail into ada@gmail.com. Sign in again to '
+      'carry on.',
+    );
+    expect(notices, isEmpty);
+    expect(saved('imaps://imap.gmail.com|ada@gmail.com')['oauth'], {
+      'provider': 'google',
+    });
+  });
 
   test('a token the server turns down while the refresh token still works '
       'is renewed, and the account goes on', () async {

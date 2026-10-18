@@ -135,4 +135,72 @@ void main() {
     fake.close();
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('an account whose session ends stays, signed out: it says why, '
+      'signs in again where it is, or comes off the phone', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final fake = FakeRestmail();
+    final state = AppState(
+      store: MemoryKeyValueStore(),
+      httpClientFactory: () => fake.client,
+    );
+    await state.start();
+    await tester.pumpWidget(RestmailApp(state: state));
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+    await _signIn(tester, FakeAccounts.email);
+    expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
+
+    fake.revokeSessionsOf(FakeAccounts.email);
+    await tester.tap(find.byTooltip('Refresh'));
+    await tester.pumpAndSettle();
+
+    expect(state.accounts, hasLength(1));
+    expect(
+      find.text(
+        'Your session for ${FakeAccounts.email} ended. Sign in again to '
+        'carry on.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Signed out · ${FakeAccounts.email}'), findsOneWidget);
+    expect(find.byTooltip('New message'), findsNothing);
+    expect(find.byTooltip('Search'), findsNothing);
+
+    // The address and the server are filled in: the password is all it
+    // takes.
+    await tester.tap(find.text('Sign in again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Using ${FakeAccounts.host}'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(1), FakeAccounts.password);
+    await tester.pump();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
+    expect(state.accounts, hasLength(1));
+    expect(state.current!.signedOut, isNull);
+
+    fake.revokeSessionsOf(FakeAccounts.email);
+    await tester.tap(find.byTooltip('Refresh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove from this phone'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Your mail stays on ${FakeAccounts.host}.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Remove'));
+    await tester.pumpAndSettle();
+
+    expect(state.accounts, isEmpty);
+    expect(state.phase, AppPhase.signedOut);
+    expect(find.text('Add an account'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    state.dispose();
+    fake.close();
+    await tester.pump(const Duration(seconds: 5));
+  });
 }

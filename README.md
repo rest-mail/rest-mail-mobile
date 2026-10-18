@@ -72,7 +72,10 @@ About half a second after you stop typing the domain, the app looks for a
 rest-mail server at the domain and at `mail.<domain>`, and the card under the
 address shows the result. If nothing is found, **Configure manually** opens the
 Server screen. The password is sent once, to sign in. After that the app keeps
-only the session, in the system keychain, one entry per account.
+only the session, in the system keychain, one entry per account. A session
+that ends without you signing out, because the server ended it, leaves the
+account in the app, signed out: its mail screen says so, and **Sign in
+again** has its address and server filled in.
 
 If the account has two-factor authentication, a **Two-factor code** field
 appears. **Use a recovery code instead** switches it to take a recovery code.
@@ -131,9 +134,11 @@ each time they connect. An account signed in with Microsoft or Google keeps
 no password, only the refresh token they gave it, in the keychain. The
 access token it signs IMAP and SMTP in with (XOAUTH2) is kept in memory and
 renewed before it runs out. If you take REST Mail's access away at Microsoft
-or Google, or change your password there, that account signs out and the
-app asks you to sign in again; the other accounts carry on. Signing out of a
-Google account gives its token back to Google. While the app is open, IDLE
+or Google, or change your password there, that account signs out but stays in
+the app, with its name, servers and place in the list. Its mail screen says
+why, with **Sign in with Microsoft** (or Google) to carry on, and **Remove
+from this phone** to take it off. The other accounts carry on. Signing out
+of a Google account gives its token back to Google. While the app is open, IDLE
 brings new mail in as it arrives.
 
 </td>
