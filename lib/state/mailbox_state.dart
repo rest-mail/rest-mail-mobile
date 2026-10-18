@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:restmail_api/restmail_api.dart';
 
-import '../imap/imap_backend.dart' show allMail;
 import 'mail_backend.dart';
 
 enum LiveStatus { connecting, live, offline }
@@ -416,22 +415,6 @@ List<List<Message>> groupThreads(List<Message> messages) {
     }
   }
   return rows;
-}
-
-/// How many messages an account holds: its folders' counts added up. Where
-/// an All Mail folder holds every message but the spam and the bin (Gmail,
-/// and other servers' `\All`), the rest are in it already, so it is All Mail,
-/// Spam and Trash alone, and a message is counted once.
-int accountTotal(List<Folder> folders) {
-  final all = folders.where((f) => f.name == allMail).firstOrNull;
-  if (all == null) return folders.fold(0, (sum, f) => sum + f.total);
-  return all.total +
-      folders
-          .where(
-            (f) =>
-                f.name == StandardFolder.spam || f.name == StandardFolder.trash,
-          )
-          .fold(0, (sum, f) => sum + f.total);
 }
 
 /// rest-mail's own folders first, in the usual order, then the user's.
