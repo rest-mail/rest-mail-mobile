@@ -539,10 +539,7 @@ class AppState extends ChangeNotifier {
   Future<void> removeAccount([SignedInAccount? account]) =>
       _signOut(account, remove: true);
 
-  Future<void> _signOut(
-    SignedInAccount? account, {
-    bool remove = false,
-  }) async {
+  Future<void> _signOut(SignedInAccount? account, {bool remove = false}) async {
     account ??= current;
     if (account == null) return;
     _signingOut.add(account);
@@ -924,10 +921,8 @@ class _SavedImap extends _Saved {
     this.provider,
     this.signedOut = false,
   }) : assert(
-    signedOut
-        ? password == null && (oauth == null || oauth.refreshToken == null)
-        : (password == null) != (oauth == null),
-  );
+         signedOut ? password == null : (password == null) != (oauth == null),
+       );
 
   static _SavedImap? fromJson(Map<String, dynamic> json) {
     final settings = MailServerSettings.fromJson(json['settings']);

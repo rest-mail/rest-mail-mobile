@@ -415,39 +415,36 @@ void main() {
     expect(smtp.connections, 1);
   });
 
-  test(
-    'signing out of a Google account gives its refresh token back and keeps '
-        'the account',
-    () async {
-      final state = newState();
-      await state.start();
-      auth.email = 'ada@gmail.com';
-      await state.addOAuthAccount(
-        kind: OAuthKind.google,
-        address: 'ada@gmail.com',
-        settings: _gmail,
-        provider: MailProviders.gmail,
-      );
-      final token = (state.current! as ImapAccount).oauth!.refreshToken;
+  test('signing out of a Google account gives its refresh token back and keeps '
+      'the account', () async {
+    final state = newState();
+    await state.start();
+    auth.email = 'ada@gmail.com';
+    await state.addOAuthAccount(
+      kind: OAuthKind.google,
+      address: 'ada@gmail.com',
+      settings: _gmail,
+      provider: MailProviders.gmail,
+    );
+    final token = (state.current! as ImapAccount).oauth!.refreshToken;
 
-      await state.signOut();
+    await state.signOut();
 
-      expect(auth.revocations, [token]);
-      expect(state.accounts, hasLength(1));
-      expect(state.current!.signedOut, isNotNull);
-      expect(store.values, isNotEmpty);
+    expect(auth.revocations, [token]);
+    expect(state.accounts, hasLength(1));
+    expect(state.current!.signedOut, isNotNull);
+    expect(store.values, isNotEmpty);
 
-      final restarted = newState();
-      await restarted.start();
-      expect(restarted.accounts, hasLength(1));
-      expect(restarted.current!.signedOut, isNotNull);
-      expect((restarted.current! as ImapAccount).oauth!.kind, OAuthKind.google);
+    final restarted = newState();
+    await restarted.start();
+    expect(restarted.accounts, hasLength(1));
+    expect(restarted.current!.signedOut, isNotNull);
+    expect((restarted.current! as ImapAccount).oauth!.kind, OAuthKind.google);
 
-      await state.removeAccount(state.current);
-      expect(state.accounts, isEmpty);
-      expect(store.values, isEmpty);
-    },
-  );
+    await state.removeAccount(state.current);
+    expect(state.accounts, isEmpty);
+    expect(store.values, isEmpty);
+  });
 
   test(
     'closing the sign-in page, or a build with no client, adds nothing',

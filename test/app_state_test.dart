@@ -236,10 +236,7 @@ void main() {
       expect(state.current!.address, FakeAccounts.otherEmail);
       expect(state.current!.signedOut, isNotNull);
       expect(notices, ['Signed out of ${FakeAccounts.otherEmail}']);
-      expect(
-        store.values.containsKey(_entry(FakeAccounts.otherEmail)),
-        isTrue,
-      );
+      expect(store.values.containsKey(_entry(FakeAccounts.otherEmail)), isTrue);
 
       final again = newState();
       await again.start();

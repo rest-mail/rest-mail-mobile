@@ -478,7 +478,8 @@ class _AccountScreenState extends State<AccountScreen> {
     final sure = await confirmAction(
       context,
       title: 'Remove ${signedIn.address}?',
-      message: 'The account and its settings are removed from this phone. '
+      message:
+          'The account and its settings are removed from this phone. '
           'Your mail stays on ${signedIn.host}.',
       action: 'Remove',
     );
@@ -610,7 +611,6 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
   }
-
 }
 
 class SignatureScreen extends StatefulWidget {
