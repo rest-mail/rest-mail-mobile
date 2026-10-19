@@ -136,10 +136,7 @@ void main() {
       [FakeAccounts.email, FakeAccounts.otherEmail],
     );
     expect(state.current!.signedOut, isNotNull);
-    expect(
-      find.text('Signed out · ${FakeAccounts.otherEmail}'),
-      findsOneWidget,
-    );
+    expect(find.text('Signed out · ${FakeAccounts.host}'), findsOneWidget);
     expect(
       find.text('Signed out of ${FakeAccounts.otherEmail}'),
       findsOneWidget,

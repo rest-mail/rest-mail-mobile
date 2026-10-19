@@ -147,11 +147,11 @@ class ImapAccount extends SignedInAccount {
   String? get signedOut => wasSignedOut
       ? 'You signed out of $address. Sign in again to carry on.'
       : switch (oauth) {
-          final session? when session.refreshToken == null =>
-            'Sign in with ${session.kind.label} again to carry on with $address.',
           final session? when session.hasEnded =>
             '${session.kind.label} no longer lets REST Mail into $address. '
                 'Sign in again to carry on.',
+          final session? when session.refreshToken == null =>
+            'Sign in with ${session.kind.label} again to carry on with $address.',
           _ => null,
         };
 
@@ -637,6 +637,9 @@ class AppState extends ChangeNotifier {
         accessToken: session?.accessToken,
         settings: saved.settings,
         openSocket: mailSockets,
+        signedOut:
+            saved.signedOut ||
+            (saved.password == null && saved.oauth?.refreshToken == null),
       ),
       provider: MailProviders.byId(saved.provider),
       wasSignedOut: saved.signedOut,
