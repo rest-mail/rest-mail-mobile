@@ -33,7 +33,8 @@ class ImapBackend implements MailBackend {
     this.accessToken,
     required this.settings,
     required this.openSocket,
-  }) : assert((password == null) != (accessToken == null));
+    bool signedOut = false,
+  }) : assert(signedOut || (password == null) != (accessToken == null));
 
   final String address;
   final String displayName;

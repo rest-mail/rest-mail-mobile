@@ -22,10 +22,18 @@ final _twoStepVerification = Uri.parse(
 /// accounts on Microsoft 365, sign in with Microsoft instead, and Gmail can
 /// sign in with Google for personal use, when the build has their clients.
 class ImapAccountScreen extends StatefulWidget {
-  const ImapAccountScreen({super.key, this.email = '', this.password = ''});
+  const ImapAccountScreen({
+    super.key,
+    this.email = '',
+    this.password = '',
+    this.initialSettings,
+    this.initialDisplayName = '',
+  });
 
   final String email;
   final String password;
+  final MailServerSettings? initialSettings;
+  final String initialDisplayName;
 
   @override
   State<ImapAccountScreen> createState() => _ImapAccountScreenState();
@@ -55,8 +63,12 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   @override
   void initState() {
     super.initState();
+    _name.text = widget.initialDisplayName;
+    if (widget.initialSettings case final settings?) {
+      _found = FoundSettings(settings, SettingsSource.saved);
+    }
     _email.addListener(_emailChanged);
-    if (domainOf(widget.email) != null) {
+    if (_found == null && domainOf(widget.email) != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _emailChanged());
     }
   }

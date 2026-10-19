@@ -11,6 +11,7 @@ import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/format.dart';
 import 'add_account_screen.dart';
+import 'imap_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'compose_sheet.dart';
 import 'mail_actions.dart';
@@ -395,6 +396,19 @@ class _SignedOutState extends State<_SignedOut> {
           ),
         );
       case final ImapAccount imap:
+        if (imap.oauth == null) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => ImapAccountScreen(
+                email: imap.address,
+                initialSettings: imap.settings,
+                initialDisplayName: imap.displayName,
+              ),
+            ),
+          );
+          return;
+        }
         setState(() {
           _busy = true;
           _error = null;
@@ -426,7 +440,7 @@ class _SignedOutState extends State<_SignedOut> {
       ].join(' '),
       action: 'Remove',
     );
-    if (sure) await app.signOut(account);
+    if (sure) await app.removeAccount(account);
   }
 
   @override
