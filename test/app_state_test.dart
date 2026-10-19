@@ -221,7 +221,7 @@ void main() {
       expect(store.values.containsKey('accounts'), isFalse);
     });
 
-    test('signing out of the one on screen shows the other', () async {
+    test('signing out of the one on screen keeps it signed out', () async {
       final state = await signedInToBoth();
       final notices = <String>[];
       state.notices.listen(notices.add);
@@ -232,30 +232,32 @@ void main() {
       await _settle();
 
       expect(state.phase, AppPhase.signedIn);
-      expect(_addresses(state), [FakeAccounts.email]);
-      expect(state.current!.address, FakeAccounts.email);
-      expect(state.mailbox!.account!.address, FakeAccounts.email);
+      expect(_addresses(state), [FakeAccounts.email, FakeAccounts.otherEmail]);
+      expect(state.current!.address, FakeAccounts.otherEmail);
+      expect(state.current!.signedOut, isNotNull);
       expect(notices, ['Signed out of ${FakeAccounts.otherEmail}']);
       expect(
         store.values.containsKey(_entry(FakeAccounts.otherEmail)),
-        isFalse,
+        isTrue,
       );
 
       final again = newState();
       await again.start();
-      expect(_addresses(again), [FakeAccounts.email]);
+      expect(_addresses(again), [FakeAccounts.email, FakeAccounts.otherEmail]);
+      expect(again.accounts.last.signedOut, isNotNull);
     });
 
-    test('signing out of one not on screen leaves the screen alone', () async {
+    test('signing out of one not on screen keeps it signed out', () async {
       final state = await signedInToBoth();
       final mailbox = state.mailbox;
 
       await state.signOut(state.accounts.first);
 
-      expect(_addresses(state), [FakeAccounts.otherEmail]);
+      expect(_addresses(state), [FakeAccounts.email, FakeAccounts.otherEmail]);
       expect(state.current!.address, FakeAccounts.otherEmail);
       expect(state.mailbox, same(mailbox));
-      expect(store.values.containsKey(_entry(FakeAccounts.email)), isFalse);
+      expect(state.accounts.first.signedOut, isNotNull);
+      expect(store.values.containsKey(_entry(FakeAccounts.email)), isTrue);
     });
 
     test('a session ending on an account not on screen says so, keeps the '

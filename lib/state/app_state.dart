@@ -108,7 +108,12 @@ class RestAccount extends SignedInAccount {
 /// and SMTP want it each time they connect; or signed in with Microsoft or
 /// Google, when the Keychain or Keystore holds the refresh token instead.
 class ImapAccount extends SignedInAccount {
-  ImapAccount._(this.backend, {this.provider, this.oauth});
+  ImapAccount._(
+    this.backend, {
+    this.provider,
+    this.oauth,
+    this.wasSignedOut = false,
+  });
 
   @override
   final ImapBackend backend;
@@ -118,6 +123,7 @@ class ImapAccount extends SignedInAccount {
 
   /// Its sign-in with Microsoft or Google, if it has no password.
   final OAuthSession? oauth;
+  final bool wasSignedOut;
 
   MailServerSettings get settings => backend.settings;
 
@@ -138,12 +144,16 @@ class ImapAccount extends SignedInAccount {
   String get host => settings.imapHost;
 
   @override
-  String? get signedOut => switch (oauth) {
-    final session? when session.hasEnded =>
-      '${session.kind.label} no longer lets REST Mail into $address. Sign in '
-          'again to carry on.',
-    _ => null,
-  };
+  String? get signedOut => wasSignedOut
+      ? 'You signed out of $address. Sign in again to carry on.'
+      : switch (oauth) {
+          final session? when session.refreshToken == null =>
+            'Sign in with ${session.kind.label} again to carry on with $address.',
+          final session? when session.hasEnded =>
+            '${session.kind.label} no longer lets REST Mail into $address. '
+                'Sign in again to carry on.',
+          _ => null,
+        };
 
   @override
   void close() => unawaited(backend.close());
@@ -521,9 +531,18 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Signs [account] out and takes it off the phone, the one on screen if
-  /// none is named. The others stay signed in.
-  Future<void> signOut([SignedInAccount? account]) async {
+  /// Signs [account] out but keeps it on the phone. Defaults to the account
+  /// on screen; the others stay signed in.
+  Future<void> signOut([SignedInAccount? account]) => _signOut(account);
+
+  /// Signs [account] out and removes its saved entry from this phone.
+  Future<void> removeAccount([SignedInAccount? account]) =>
+      _signOut(account, remove: true);
+
+  Future<void> _signOut(
+    SignedInAccount? account, {
+    bool remove = false,
+  }) async {
     account ??= current;
     if (account == null) return;
     _signingOut.add(account);
@@ -544,7 +563,29 @@ class AppState extends ChangeNotifier {
     } finally {
       _signingOut.remove(account);
     }
-    await _end(account);
+    if (remove) {
+      await _end(account);
+    } else if (account case RestAccount()) {
+      _accessEnded(account, _SavedSession(account.server, account.user, null));
+    } else if (account case ImapAccount()) {
+      final saved = _SavedImap(
+        address: account.address,
+        displayName: account.displayName,
+        settings: account.settings,
+        provider: account.provider?.id,
+        oauth: account.oauth == null
+            ? null
+            : _SavedOAuth(account.oauth!.kind, null),
+        signedOut: true,
+      );
+      final index = accounts.indexOf(account);
+      final signedOut = _openImap(saved);
+      accounts = [...accounts]..[index] = signedOut;
+      if (identical(current, account)) _show(signedOut);
+      account.close();
+      await store.write(_accountKey(saved.key), saved.encode());
+      notifyListeners();
+    }
     if (accounts.isNotEmpty) _notices.add('Signed out of ${account.address}');
   }
 
@@ -601,6 +642,7 @@ class AppState extends ChangeNotifier {
         openSocket: mailSockets,
       ),
       provider: MailProviders.byId(saved.provider),
+      wasSignedOut: saved.signedOut,
       oauth: session,
     );
   }
@@ -880,13 +922,22 @@ class _SavedImap extends _Saved {
     this.oauth,
     required this.settings,
     this.provider,
-  }) : assert((password == null) != (oauth == null));
+    this.signedOut = false,
+  }) : assert(
+    signedOut
+        ? password == null && (oauth == null || oauth.refreshToken == null)
+        : (password == null) != (oauth == null),
+  );
 
   static _SavedImap? fromJson(Map<String, dynamic> json) {
     final settings = MailServerSettings.fromJson(json['settings']);
     final password = json['password'] as String?;
     final oauth = _SavedOAuth.fromJson(json['oauth']);
-    if (settings == null || (password == null) == (oauth == null)) {
+    final signedOut = json['signed_out'] as bool? ?? false;
+    if (settings == null ||
+        (signedOut
+            ? password != null || (oauth != null && oauth.refreshToken != null)
+            : (password == null) == (oauth == null))) {
       return null;
     }
     return _SavedImap(
@@ -896,6 +947,7 @@ class _SavedImap extends _Saved {
       oauth: oauth,
       settings: settings,
       provider: json['provider'] as String?,
+      signedOut: signedOut,
     );
   }
 
@@ -905,6 +957,7 @@ class _SavedImap extends _Saved {
   final _SavedOAuth? oauth;
   final MailServerSettings settings;
   final String? provider;
+  final bool signedOut;
 
   _SavedImap withRefreshToken(String? token) => _SavedImap(
     address: address,
@@ -912,6 +965,7 @@ class _SavedImap extends _Saved {
     oauth: _SavedOAuth(oauth!.kind, token),
     settings: settings,
     provider: provider,
+    signedOut: false,
   );
 
   @override
@@ -927,5 +981,6 @@ class _SavedImap extends _Saved {
     'oauth': ?oauth?.toJson(),
     'settings': settings.toJson(),
     'provider': ?provider,
+    'signed_out': signedOut,
   });
 }

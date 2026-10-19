@@ -104,10 +104,9 @@ none of them knows the domain, you type the servers in.
   says Outlook.com needs Microsoft sign-in.
 - **Sign in with Google** sits under Gmail's app-password setup, marked
   *personal use*. REST Mail's Google client is unverified, so Google warns
-  about it and lets at most 100 people use it: enough for the owner and
-  family. REST Mail won't pay for the security audit Google wants before it
-  lifts that cap (#37), so an app password stays the way in for everyone
-  else. A build without a Google client ID shows only the app password.
+  about it and lets at most 100 people use the button (#37). Anyone can still
+  add Gmail with an app password. A build without a Google client ID shows
+  only the app password.
 
 **Gmail behaves like Gmail.** The app knows it by its IMAP extensions
 (`X-GM-EXT-1`), not its domain, so Google Workspace addresses count too:
@@ -130,7 +129,10 @@ IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
 that doesn't offer STARTTLS is refused before the password is sent. Nothing
 goes in plaintext, and certificate checks can't be turned off. The password
 is kept in the system keychain with the account, since IMAP and SMTP want it
-each time they connect. An account signed in with Microsoft or Google keeps
+each time they connect. **Sign out** ends an account's session and keeps its
+settings and place in the list, marked signed out. **Remove from this phone**
+takes the account and its settings off the device. An account signed in with
+Microsoft or Google keeps
 no password, only the refresh token they gave it, in the keychain. The
 access token it signs IMAP and SMTP in with (XOAUTH2) is kept in memory and
 renewed before it runs out. If you take REST Mail's access away at Microsoft
@@ -493,10 +495,7 @@ under Apple Developer team `43UMKXZ8P4`.
 - Notifications on Android, which needs FCM, and for IMAP accounts, which
   need something server-side. On iPhone they need a server that pushes
   through APNs (rest-mail-mobile#8).
-- Sign in with Google in the TestFlight builds: it waits for the app's
-  Google client, and `GOOGLE_IOS_CLIENT_ID` in the `release` environment
-  (#58). Sign in with Microsoft is in them (#57). Creating a Gmail label from
-  the app.
+- Creating a Gmail label from the app.
 - Sending attachments. The send API has no field for them.
 - Contacts, vacation replies, Sieve filters and quarantine.
 - Editing a pipeline's filters or a custom filter, and making new ones.

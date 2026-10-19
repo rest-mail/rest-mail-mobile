@@ -435,8 +435,8 @@ class _AccountScreenState extends State<AccountScreen> {
         context,
         title: 'Sign out?',
         message: [
-          'The session for ${account.address} is removed from this device. '
-              'Your mail stays on $host.',
+          'The session for ${account.address} ends. The account stays on this '
+              'phone, signed out. Your mail stays on $host.',
           if (app.accounts.length > 1) 'Your other accounts stay signed in.',
         ].join(' '),
         action: 'Sign out',
@@ -469,6 +469,20 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() => _busy = false);
       showToast(context, describeError(e, host: host));
     }
+  }
+
+  Future<void> _removeFromPhone() async {
+    final app = AppScope.read(context);
+    final signedIn = app.current;
+    if (signedIn == null) return;
+    final sure = await confirmAction(
+      context,
+      title: 'Remove ${signedIn.address}?',
+      message: 'The account and its settings are removed from this phone. '
+          'Your mail stays on ${signedIn.host}.',
+      action: 'Remove',
+    );
+    if (sure) await app.removeAccount(signedIn);
   }
 
   @override
@@ -578,6 +592,14 @@ class _AccountScreenState extends State<AccountScreen> {
                         danger: true,
                         onTap: _busy ? null : () => unawaited(_remove()),
                       ),
+                      if (account.isPrimary)
+                        RmRow(
+                          label: 'Remove from this phone',
+                          danger: true,
+                          onTap: _busy
+                              ? null
+                              : () => unawaited(_removeFromPhone()),
+                        ),
                     ],
                   ),
                 ],
@@ -588,6 +610,7 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
   }
+
 }
 
 class SignatureScreen extends StatefulWidget {

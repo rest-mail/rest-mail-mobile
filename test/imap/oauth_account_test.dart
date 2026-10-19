@@ -416,7 +416,8 @@ void main() {
   });
 
   test(
-    'signing out of a Google account gives its refresh token back',
+    'signing out of a Google account gives its refresh token back and keeps '
+        'the account',
     () async {
       final state = newState();
       await state.start();
@@ -432,6 +433,17 @@ void main() {
       await state.signOut();
 
       expect(auth.revocations, [token]);
+      expect(state.accounts, hasLength(1));
+      expect(state.current!.signedOut, isNotNull);
+      expect(store.values, isNotEmpty);
+
+      final restarted = newState();
+      await restarted.start();
+      expect(restarted.accounts, hasLength(1));
+      expect(restarted.current!.signedOut, isNotNull);
+      expect((restarted.current! as ImapAccount).oauth!.kind, OAuthKind.google);
+
+      await state.removeAccount(state.current);
       expect(state.accounts, isEmpty);
       expect(store.values, isEmpty);
     },

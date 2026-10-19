@@ -117,7 +117,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Live · ${FakeAccounts.otherEmail}'), findsOneWidget);
 
-    // Signing out ends only the account on screen.
+    // Signing out ends only the session and keeps the account on the phone.
     await _openSettings(tester);
     await tester.tap(find.text(FakeAccounts.otherEmail));
     await tester.pumpAndSettle();
@@ -131,8 +131,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(state.phase, AppPhase.signedIn);
-    expect([for (final a in state.accounts) a.address], [FakeAccounts.email]);
-    expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
+    expect([for (final a in state.accounts) a.address], [
+      FakeAccounts.email,
+      FakeAccounts.otherEmail,
+    ]);
+    expect(state.current!.signedOut, isNotNull);
+    expect(find.text('Signed out · ${FakeAccounts.otherEmail}'), findsOneWidget);
     expect(
       find.text('Signed out of ${FakeAccounts.otherEmail}'),
       findsOneWidget,

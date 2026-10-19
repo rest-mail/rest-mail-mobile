@@ -9,6 +9,7 @@ import 'mail_settings.dart';
 /// Where a domain's settings were found, in the order they are tried.
 enum SettingsSource {
   preset('Built in'),
+  saved('Saved on this phone'),
   ispdb("From Thunderbird's database"),
   autoconfig("From the domain's own settings"),
   dns('From DNS');

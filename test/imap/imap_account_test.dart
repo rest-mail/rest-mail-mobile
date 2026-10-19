@@ -151,8 +151,8 @@ void main() {
     expect(store.values, isEmpty);
   });
 
-  test('signing out of the IMAP account forgets its password and leaves the '
-      'REST Mail account signed in', () async {
+  test('signing out of the IMAP account forgets its password and keeps it '
+      'signed out beside the REST Mail account', () async {
     final state = newState();
     await state.start();
     await state.signIn(
@@ -170,11 +170,23 @@ void main() {
     await state.signOut();
     await settle();
 
-    expect(state.accounts.single.kind, AccountKind.rest);
-    expect(state.current?.address, FakeAccounts.email);
+    expect(state.accounts.map((a) => a.kind), [
+      AccountKind.rest,
+      AccountKind.imap,
+    ]);
+    expect(state.accounts.last.signedOut, isNotNull);
+    expect(state.current?.address, 'ada@gmail.com');
+    expect(state.current?.signedOut, isNotNull);
     expect(
       store.values.values.where((v) => v.contains('abcdabcdabcdabcd')),
       isEmpty,
     );
+
+    final restarted = newState();
+    await restarted.start();
+    final saved = restarted.accounts.last as ImapAccount;
+    expect(saved.address, 'ada@gmail.com');
+    expect(saved.signedOut, isNotNull);
+    expect(saved.settings.imapHost, 'imap.gmail.com');
   });
 }
