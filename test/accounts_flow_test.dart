@@ -129,6 +129,8 @@ void main() {
     );
     await tester.tap(find.text('Sign out').last);
     await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
 
     expect(state.phase, AppPhase.signedIn);
     expect(
