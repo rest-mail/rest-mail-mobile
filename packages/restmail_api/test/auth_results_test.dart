@@ -66,10 +66,9 @@ void main() {
 
   test('headerValue is case insensitive', () {
     expect(
-      headerValue(
-        {'Authentication-Results': 'x; spf=pass'},
-        'authentication-results',
-      ),
+      headerValue({
+        'Authentication-Results': 'x; spf=pass',
+      }, 'authentication-results'),
       'x; spf=pass',
     );
   });

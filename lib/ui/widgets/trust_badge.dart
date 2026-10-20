@@ -8,11 +8,7 @@ import '../../theme/tokens.dart';
 /// Renders nothing when the message carries no authentication results, so a
 /// missing header never looks like a verdict.
 class RmTrustBadge extends StatelessWidget {
-  const RmTrustBadge({
-    super.key,
-    required this.verdict,
-    this.compact = false,
-  });
+  const RmTrustBadge({super.key, required this.verdict, this.compact = false});
 
   final TrustVerdict verdict;
   final bool compact;
