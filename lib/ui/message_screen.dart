@@ -14,6 +14,7 @@ import 'mail_actions.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/message_body.dart';
+import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
 enum _More { markUnread, flag, labels, spam, notSpam }
@@ -385,6 +386,7 @@ class _MessageScreenState extends State<MessageScreen> {
                                 m.sender,
                                 style: rmText(12.5, color: c.ink3),
                               ),
+                              RmTrustLine(headers: m.headers),
                             ],
                           ),
                         ),
