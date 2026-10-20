@@ -264,6 +264,7 @@ class Message {
     this.isDraft = false,
     this.dateHeader,
     this.labels = const [],
+    this.headers = const {},
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -289,6 +290,7 @@ class Message {
     isDraft: json['is_draft'] as bool? ?? false,
     receivedAt: _time(json['received_at']),
     dateHeader: _optionalTime(json['date_header']),
+    headers: _headerMap(json['headers']),
   );
 
   final int id;
@@ -319,6 +321,12 @@ class Message {
   /// The labels it carries, by folder name, where messages have labels
   /// rather than one folder each (Gmail). Empty on rest-mail.
   final List<String> labels;
+
+  /// The header fields as the message arrived, each name with its values.
+  /// Empty for mail sent from here, and for drafts. Feeds the sender trust
+  /// badge: the server writes Authentication-Results from its filter
+  /// verdicts at delivery.
+  final Map<String, String> headers;
 
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
@@ -365,6 +373,7 @@ class Message {
     receivedAt: receivedAt,
     dateHeader: dateHeader,
     labels: labels ?? this.labels,
+    headers: headers,
   );
 }
 
@@ -518,6 +527,25 @@ class SearchQuery {
 }
 
 int _int(Object? value) => (value as num).toInt();
+
+/// The schema writes a header name to its values; a single string is what a
+/// hand-written fixture offers.
+Map<String, String> _headerMap(Object? value) {
+  if (value is! Map) return const {};
+  final headers = <String, String>{};
+  for (final entry in value.entries) {
+    final key = entry.key;
+    if (key is! String) continue;
+    final item = entry.value;
+    if (item is String) {
+      headers[key] = item;
+    } else if (item is List) {
+      final values = item.whereType<String>();
+      if (values.isNotEmpty) headers[key] = values.join('\n');
+    }
+  }
+  return headers;
+}
 
 String? _optionalString(Object? value) =>
     value is String && value.isNotEmpty ? value : null;
