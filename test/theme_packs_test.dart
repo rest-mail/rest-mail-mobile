@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/state/settings.dart';
 import 'package:restmail/theme/packs.dart';
-import 'package:restmail/theme/tokens.dart';
 
 void main() {
   test('every pack has its own id, and byId falls back to classic', () {
@@ -22,7 +21,7 @@ void main() {
   });
 
   test('the classic pack keeps the shipped look', () {
-    const v = ThemePack.classic.variants;
+    final v = ThemePack.classic.variants;
     expect(v.surface, Surface.dividers);
     expect(v.unread, UnreadSignal.dot);
     expect(v.identity, Identity.circle);
