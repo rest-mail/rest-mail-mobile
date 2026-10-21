@@ -61,12 +61,12 @@ class InterfaceSettings extends StatelessWidget {
     switch (option) {
       case ChoiceOption():
         return Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 10, 10),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(option.label, style: rmText(13.5, color: c.ink2)),
-              ),
+              Text(option.label, style: rmText(13.5, color: c.ink2)),
+              const SizedBox(height: 8),
               RmSegmented<String>(
                 options: option.values,
                 value: prefs.choice(panel, option),
