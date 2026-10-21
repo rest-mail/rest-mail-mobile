@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'interface_prefs.dart';
+
 /// Whether the user wants to hear of new mail when the app is closed.
 enum NotificationChoice {
   /// Not asked yet. The app explains and asks once, after sign-in.
@@ -21,6 +23,7 @@ class AppSettings {
     this.signature = '',
     this.signReplies = false,
     this.notifications = NotificationChoice.undecided,
+    this.interface = const InterfacePrefs(),
   });
 
   factory AppSettings.decode(String? raw) {
@@ -36,6 +39,7 @@ class AppSettings {
         notifications:
             NotificationChoice.values.asNameMap()[json['notifications']] ??
             NotificationChoice.undecided,
+        interface: InterfacePrefs.decode(json['interface']),
       );
     } on Object {
       return const AppSettings();
@@ -58,12 +62,16 @@ class AppSettings {
   /// send them.
   final NotificationChoice notifications;
 
+  /// Which optional components are on, and the options inside them.
+  final InterfacePrefs interface;
+
   String encode() => jsonEncode({
     'theme': themeMode.name,
     'pack': packId,
     'signature': signature,
     'sign_replies': signReplies,
     'notifications': notifications.name,
+    'interface': interface.toJson(),
   });
 
   AppSettings copyWith({
@@ -72,11 +80,13 @@ class AppSettings {
     String? signature,
     bool? signReplies,
     NotificationChoice? notifications,
+    InterfacePrefs? interface,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     packId: packId ?? this.packId,
     signature: signature ?? this.signature,
     signReplies: signReplies ?? this.signReplies,
     notifications: notifications ?? this.notifications,
+    interface: interface ?? this.interface,
   );
 }

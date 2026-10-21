@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../state/app_scope.dart';
+import '../state/interface_prefs.dart';
 import '../state/mailbox_state.dart';
 import '../theme/packs.dart';
 import '../theme/tokens.dart';
@@ -15,6 +17,7 @@ import 'mail_actions.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/message_body.dart';
+import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
@@ -250,6 +253,14 @@ class _MessageScreenState extends State<MessageScreen> {
     final v = context.rmv;
     final family = typefaceFamily(v.readerType);
     final m = _message;
+    final i = AppScope.of(context).settings.interface;
+    final trust = trustFromHeaders(m.headers);
+    final warningsOnly =
+        i.choice(senderTrustPanel, trustShowForOption) == 'warnings';
+    final showTrust =
+        i.isOn(senderTrustPanel) && (!warningsOnly || trust.isWarning);
+    final showReceipt =
+        showTrust && i.choice(senderTrustPanel, trustDetailOption) == 'receipt';
     final error = _error;
     final isDraft = m.isDraft || m.folder == StandardFolder.drafts;
     final own = _mailbox.ownAddresses;
@@ -418,7 +429,8 @@ class _MessageScreenState extends State<MessageScreen> {
                                   family: family,
                                 ),
                               ),
-                              RmTrustLine(headers: m.headers),
+                              if (showTrust && !showReceipt)
+                                RmTrustLine(headers: m.headers),
                             ],
                           ),
                         ),
@@ -429,6 +441,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       ],
                     ),
                   ),
+                  if (showReceipt) RmTrustReceipt(verdict: trust),
                   InkWell(
                     onTap: () =>
                         setState(() => _allRecipients = !_allRecipients),
