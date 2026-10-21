@@ -138,7 +138,10 @@ class InterfacePrefs {
         for (final option in map.entries) {
           final optionKey = option.key;
           final value = option.value;
-          if (optionKey is String && (value is bool || value is String)) {
+          if (optionKey is! String) continue;
+          if (value is bool) {
+            options[optionKey] = value;
+          } else if (value is String) {
             options[optionKey] = value;
           }
         }

@@ -6,7 +6,6 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/admin_access.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
-import '../state/app_scope.dart';
 import '../state/interface_prefs.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
@@ -22,8 +21,8 @@ import 'message_screen.dart';
 import 'search_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
-import 'widgets/day_heading.dart';
 import 'widgets/common.dart';
+import 'widgets/day_heading.dart';
 import 'widgets/message_row.dart';
 
 /// The folder on screen, with the drawer for folders and accounts and the
