@@ -311,6 +311,7 @@ class _NotificationsSection extends StatelessWidget {
                     : 'Only a signal goes through Apple. The app fetches '
                           'the mail from your server itself.',
                 trailing: RmSwitch(
+                  key: const Key('notifications-switch'),
                   label: 'New mail notifications',
                   value: push.enabled,
                   onChanged: (on) =>
