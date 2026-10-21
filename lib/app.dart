@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'state/app_scope.dart';
 import 'state/app_state.dart';
+import 'theme/packs.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
 import 'ui/mailbox_screen.dart';
@@ -78,31 +79,36 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
       state: state,
       child: ListenableBuilder(
         listenable: state,
-        builder: (context, _) => MaterialApp(
-          // A new session, or the end of one, starts a fresh navigator, so no
-          // screen from the old session is left on the stack.
-          key: ValueKey(state.sessionKey),
-          scaffoldMessengerKey: _messengerFor(state.sessionKey),
-          title: 'rest-mail',
-          debugShowCheckedModeBanner: false,
-          theme: buildTheme(Brightness.light),
-          darkTheme: buildTheme(Brightness.dark),
-          themeMode: state.settings.themeMode,
-          home: switch (state.phase) {
-            AppPhase.starting => const _Launch(),
-            AppPhase.signedOut => const SetupLinkHandler(
-              child: WelcomeScreen(),
-            ),
-            AppPhase.signedIn => SetupLinkHandler(
-              child: PushOffer(
-                child: switch (state.mailbox) {
-                  final mailbox? => MailboxScreen(mailbox: mailbox),
-                  null => const _Launch(),
-                },
+        // The pack lives in the settings, so read it inside the builder:
+        // picking a theme in Settings must rebuild the MaterialApp.
+        builder: (context, _) {
+          final pack = ThemePack.byId(state.settings.packId);
+          return MaterialApp(
+            // A new session, or the end of one, starts a fresh navigator, so no
+            // screen from the old session is left on the stack.
+            key: ValueKey(state.sessionKey),
+            scaffoldMessengerKey: _messengerFor(state.sessionKey),
+            title: 'rest-mail',
+            debugShowCheckedModeBanner: false,
+            theme: buildTheme(pack, Brightness.light),
+            darkTheme: buildTheme(pack, Brightness.dark),
+            themeMode: state.settings.themeMode,
+            home: switch (state.phase) {
+              AppPhase.starting => const _Launch(),
+              AppPhase.signedOut => const SetupLinkHandler(
+                child: WelcomeScreen(),
               ),
-            ),
-          },
-        ),
+              AppPhase.signedIn => SetupLinkHandler(
+                child: PushOffer(
+                  child: switch (state.mailbox) {
+                    final mailbox? => MailboxScreen(mailbox: mailbox),
+                    null => const _Launch(),
+                  },
+                ),
+              ),
+            },
+          );
+        },
       ),
     );
   }

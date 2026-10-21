@@ -17,6 +17,7 @@ enum NotificationChoice {
 class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.system,
+    this.packId = 'classic',
     this.signature = '',
     this.signReplies = false,
     this.notifications = NotificationChoice.undecided,
@@ -29,6 +30,7 @@ class AppSettings {
       return AppSettings(
         themeMode:
             ThemeMode.values.asNameMap()[json['theme']] ?? ThemeMode.system,
+        packId: json['pack'] as String? ?? 'classic',
         signature: json['signature'] as String? ?? '',
         signReplies: json['sign_replies'] as bool? ?? false,
         notifications:
@@ -43,6 +45,9 @@ class AppSettings {
   /// System until the user picks light or dark.
   final ThemeMode themeMode;
 
+  /// The theme pack in force. Packs that pin a brightness ignore [themeMode].
+  final String packId;
+
   /// Appended to new messages when not empty.
   final String signature;
 
@@ -55,6 +60,7 @@ class AppSettings {
 
   String encode() => jsonEncode({
     'theme': themeMode.name,
+    'pack': packId,
     'signature': signature,
     'sign_replies': signReplies,
     'notifications': notifications.name,
@@ -62,11 +68,13 @@ class AppSettings {
 
   AppSettings copyWith({
     ThemeMode? themeMode,
+    String? packId,
     String? signature,
     bool? signReplies,
     NotificationChoice? notifications,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
+    packId: packId ?? this.packId,
     signature: signature ?? this.signature,
     signReplies: signReplies ?? this.signReplies,
     notifications: notifications ?? this.notifications,

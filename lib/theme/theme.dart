@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'packs.dart';
 import 'tokens.dart';
 
-ThemeData buildTheme(Brightness brightness) {
-  final c = brightness == Brightness.dark ? RmColors.dark : RmColors.light;
+/// The app's theme for one pack at one brightness. Packs that pin their own
+/// brightness return the same theme for both slots, so `themeMode` simply
+/// stops mattering for them.
+ThemeData buildTheme(ThemePack pack, Brightness brightness) {
+  final effective = pack.followsSystem ? brightness : pack.brightness;
+  final c = pack.followsSystem
+      ? (effective == Brightness.dark ? RmColors.dark : RmColors.light)
+      : pack.colors;
   final scheme =
-      ColorScheme.fromSeed(
-        seedColor: c.accent,
-        brightness: brightness,
-      ).copyWith(
+      ColorScheme.fromSeed(seedColor: c.accent, brightness: effective).copyWith(
         primary: c.accent,
-        onPrimary: Colors.white,
+        onPrimary: c.accent.computeLuminance() > 0.5
+            ? const Color(0xFF191204)
+            : Colors.white,
         surface: c.bg,
         onSurface: c.ink,
         onSurfaceVariant: c.ink2,
@@ -26,12 +32,11 @@ ThemeData buildTheme(Brightness brightness) {
 
   return ThemeData(
     useMaterial3: true,
-    brightness: brightness,
+    brightness: effective,
     colorScheme: scheme,
-    fontFamily: rmFontFamily,
     scaffoldBackgroundColor: c.bg,
     canvasColor: c.bg,
-    extensions: [c],
+    extensions: [c, pack.variants],
     dividerTheme: DividerThemeData(color: c.line, thickness: 1, space: 1),
     iconTheme: IconThemeData(color: c.ink),
     textSelectionTheme: TextSelectionThemeData(

@@ -9,6 +9,7 @@ import 'package:restmail/state/app_scope.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/mailbox_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/theme/packs.dart';
 import 'package:restmail/theme/theme.dart';
 import 'package:restmail/ui/mailbox_screen.dart';
 import 'package:restmail/util/search_parser.dart';
@@ -531,7 +532,7 @@ void main() {
         AppScope(
           state: app,
           child: MaterialApp(
-            theme: buildTheme(Brightness.light),
+            theme: buildTheme(ThemePack.classic, Brightness.light),
             home: MailboxScreen(mailbox: mailbox),
           ),
         ),

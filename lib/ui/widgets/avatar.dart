@@ -11,6 +11,7 @@ class RmAvatar extends StatelessWidget {
     required this.seed,
     this.size = 42,
     this.color,
+    this.radius,
   });
 
   final String name;
@@ -22,6 +23,10 @@ class RmAvatar extends StatelessWidget {
   /// Overrides the seeded colour, as the drawer does for the user's own.
   final Color? color;
 
+  /// Corner radius for packs whose identity axis wants a squircle; null
+  /// keeps the circle.
+  final BorderRadius? radius;
+
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
     child: Container(
@@ -30,7 +35,8 @@ class RmAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color ?? avatarTint(seed),
-        shape: BoxShape.circle,
+        borderRadius: radius,
+        shape: radius == null ? BoxShape.circle : BoxShape.rectangle,
       ),
       child: Text(
         initialsOf(name),
@@ -56,21 +62,25 @@ class LogoMark extends StatelessWidget {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: context.rm.accent,
+      color: context.rm.mark,
       borderRadius: BorderRadius.circular(size * 9 / 34),
     ),
-    child: CustomPaint(painter: _EnvelopePainter()),
+    child: CustomPaint(painter: _EnvelopePainter(color: context.rm.onMark)),
   );
 }
 
 /// The design's 18-unit envelope glyph, drawn at 18/34 of the tile.
 class _EnvelopePainter extends CustomPainter {
+  _EnvelopePainter({this.color = Colors.white});
+
+  final Color color;
+
   @override
   void paint(Canvas canvas, Size size) {
     final unit = size.width * 18 / 34 / 18;
     final offset = (size.width - 18 * unit) / 2;
     final stroke = Paint()
-      ..color = Colors.white
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6 * unit
       ..strokeCap = StrokeCap.round
