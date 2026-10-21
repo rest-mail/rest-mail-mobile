@@ -90,6 +90,17 @@ abstract interface class MailBackend {
 
   Future<Message> send(OutgoingMessage message);
 
+  /// Whether the server can hold a message and send it at a chosen time.
+  bool get canScheduleSend;
+
+  /// Leaves [message] with the server to send at [at].
+  Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at);
+
+  /// Messages still waiting to be sent, soonest first.
+  Future<List<ScheduledSend>> scheduledSends();
+
+  Future<void> cancelScheduledSend(int id);
+
   Future<Message> saveDraft(OutgoingMessage draft);
 
   Future<Message> updateDraft(int id, OutgoingMessage draft);
@@ -204,6 +215,19 @@ class RestBackend implements MailBackend {
 
   @override
   Future<Message> send(OutgoingMessage message) => client.send(message);
+
+  @override
+  bool get canScheduleSend => true;
+
+  @override
+  Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) =>
+      client.schedule(message, at);
+
+  @override
+  Future<List<ScheduledSend>> scheduledSends() => client.scheduledSends();
+
+  @override
+  Future<void> cancelScheduledSend(int id) => client.cancelScheduledSend(id);
 
   @override
   Future<Message> saveDraft(OutgoingMessage draft) => client.saveDraft(draft);
