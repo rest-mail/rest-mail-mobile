@@ -18,6 +18,7 @@ import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'interface_settings.dart';
 import 'push_offer.dart';
+import 'scheduled_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/painters.dart';
@@ -199,6 +200,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : signature.split('\n').first,
                           onTap: () => _push(context, const SignatureScreen()),
                         ),
+                        if (m.backend.canScheduleSend)
+                          RmRow(
+                            label: 'Scheduled',
+                            subtitle: 'Messages the server will send later',
+                            onTap: () =>
+                                _push(context, ScheduledScreen(mailbox: m)),
+                          ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
                           child: Row(
