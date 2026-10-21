@@ -86,12 +86,13 @@ void main() {
 
     await _openSettings(tester);
     expect(find.text('NOTIFICATIONS'), findsOneWidget);
-    expect(tester.widget<RmSwitch>(find.byType(RmSwitch)).value, isTrue);
-    await tester.tap(find.byType(RmSwitch));
+    final notificationsSwitch = find.byKey(const Key('notifications-switch'));
+    expect(tester.widget<RmSwitch>(notificationsSwitch).value, isTrue);
+    await tester.tap(notificationsSwitch);
     await tester.pumpAndSettle();
 
     expect(fake.devicesOf(FakeAccounts.email), isEmpty);
-    expect(tester.widget<RmSwitch>(find.byType(RmSwitch)).value, isFalse);
+    expect(tester.widget<RmSwitch>(notificationsSwitch).value, isFalse);
 
     await finish(tester);
   });

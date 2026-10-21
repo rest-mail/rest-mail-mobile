@@ -16,6 +16,7 @@ import '../version.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'interface_settings.dart';
 import 'push_offer.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
@@ -181,6 +182,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 22),
                     ],
                     _NotificationsSection(app: app),
+                    InterfaceSettings(
+                      prefs: settings.interface,
+                      onChanged: (prefs) => unawaited(
+                        app.updateSettings(settings.copyWith(interface: prefs)),
+                      ),
+                    ),
                     const SectionLabel('General'),
                     const SizedBox(height: 9),
                     RmGroup(
@@ -304,6 +311,7 @@ class _NotificationsSection extends StatelessWidget {
                     : 'Only a signal goes through Apple. The app fetches '
                           'the mail from your server itself.',
                 trailing: RmSwitch(
+                  key: const Key('notifications-switch'),
                   label: 'New mail notifications',
                   value: push.enabled,
                   onChanged: (on) =>

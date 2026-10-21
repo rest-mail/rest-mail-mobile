@@ -6,9 +6,11 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/admin_access.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
+import '../state/interface_prefs.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
+import '../util/day_sections.dart';
 import '../util/format.dart';
 import 'add_account_screen.dart';
 import 'imap_account_screen.dart';
@@ -20,6 +22,7 @@ import 'search_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
+import 'widgets/day_heading.dart';
 import 'widgets/message_row.dart';
 
 /// The folder on screen, with the drawer for folders and accounts and the
@@ -157,7 +160,14 @@ class _MailboxScreenState extends State<MailboxScreen> {
         onRetry: () => unawaited(m.retry()),
       );
     }
-    final rows = m.conversations;
+    final prefs = AppScope.of(context).settings.interface;
+    final absolute =
+        prefs.choice(dateSeparatorsPanel, dayStyleOption) == 'absolute';
+    final showCount = prefs.toggle(dateSeparatorsPanel, dayCountOption);
+    final entries = buildListEntries(
+      m.conversations,
+      withDays: prefs.isOn(dateSeparatorsPanel),
+    );
     return RefreshIndicator(
       color: c.accent,
       onRefresh: m.refresh,
@@ -165,10 +175,17 @@ class _MailboxScreenState extends State<MailboxScreen> {
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 110),
-        itemCount: rows.length + 1,
+        itemCount: entries.length + 1,
         itemBuilder: (context, index) {
-          if (index == rows.length) return _Footer(mailbox: m);
-          final conversation = rows[index];
+          if (index == entries.length) return _Footer(mailbox: m);
+          final entry = entries[index];
+          if (entry is DayEntry) {
+            return RmDayHeading(
+              label: dayHeading(entry.day, absolute: absolute),
+              count: showCount ? entry.count : null,
+            );
+          }
+          final conversation = (entry as ConversationEntry).conversation;
           final message = conversation.first;
           return Dismissible(
             key: ValueKey('message-${message.id}'),
