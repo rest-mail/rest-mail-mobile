@@ -18,9 +18,28 @@ class InterfaceSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.rm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [for (final area in PanelArea.values) ..._area(context, area)],
+      children: [
+        const SizedBox(height: 22),
+        const SectionLabel('Presets'),
+        const SizedBox(height: 9),
+        RmGroup(
+          children: [
+            for (final preset in interfacePresets)
+              RmRow(
+                label: preset.name,
+                subtitle: preset.description,
+                trailing: preset.prefs.matches(prefs)
+                    ? Icon(Icons.check_rounded, size: 20, color: c.accent)
+                    : const SizedBox(width: 20),
+                onTap: () => onChanged(preset.prefs),
+              ),
+          ],
+        ),
+        for (final area in PanelArea.values) ..._area(context, area),
+      ],
     );
   }
 

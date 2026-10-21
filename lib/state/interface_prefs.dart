@@ -106,8 +106,27 @@ const senderTrustPanel = PanelSpec(
   options: [trustDetailOption, trustShowForOption],
 );
 
+const composerCcPanel = PanelSpec(
+  id: 'composer_cc',
+  area: PanelArea.composer,
+  name: 'Cc and Bcc fields',
+  description: 'Keep the copy fields open instead of hiding them behind Cc.',
+);
+
+const composerFromPanel = PanelSpec(
+  id: 'composer_from',
+  area: PanelArea.composer,
+  name: 'Sending account',
+  description: 'Show which account the message goes from, even with one.',
+);
+
 /// Everything the user can add to or remove from their client.
-const panelRegistry = <PanelSpec>[dateSeparatorsPanel, senderTrustPanel];
+const panelRegistry = <PanelSpec>[
+  dateSeparatorsPanel,
+  senderTrustPanel,
+  composerCcPanel,
+  composerFromPanel,
+];
 
 /// The layout choices, kept on the device with the rest of the settings.
 @immutable
@@ -185,4 +204,78 @@ class InterfacePrefs {
   Map<String, Object?> toJson() => {'panels': enabled, 'values': values};
 
   String encode() => jsonEncode(toJson());
+
+  /// Whether this is exactly the same layout as [other]. Used to mark the
+  /// preset that is in force without touching the stored form.
+  bool matches(InterfacePrefs other) {
+    if (enabled.length != other.enabled.length) return false;
+    for (final entry in enabled.entries) {
+      if (other.enabled[entry.key] != entry.value) return false;
+    }
+    if (values.length != other.values.length) return false;
+    for (final panel in values.entries) {
+      final theirs = other.values[panel.key];
+      if (theirs == null || theirs.length != panel.value.length) return false;
+      for (final option in panel.value.entries) {
+        if (theirs[option.key] != option.value) return false;
+      }
+    }
+    return true;
+  }
 }
+
+/// A named set of panel choices. Applying one writes every panel and option,
+/// so the result is the same whatever was set before.
+@immutable
+class InterfacePreset {
+  const InterfacePreset({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.prefs,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final InterfacePrefs prefs;
+}
+
+/// The starting points the settings screen offers above the panels.
+const classicPreset = InterfacePreset(
+  id: 'classic',
+  name: 'Classic',
+  description: 'The list as a list, with sender verification in the reader.',
+  prefs: InterfacePrefs(),
+);
+
+const triagePreset = InterfacePreset(
+  id: 'triage',
+  name: 'Triage',
+  description: 'Day headings with counts, and only warn about senders.',
+  prefs: InterfacePrefs(
+    enabled: {'date_separators': true},
+    values: {
+      'date_separators': {'style': 'absolute', 'count': true},
+      'sender_trust': {'detail': 'chip', 'show_for': 'warnings'},
+    },
+  ),
+);
+
+const readingPreset = InterfacePreset(
+  id: 'reading',
+  name: 'Reading',
+  description: 'Full sender checks, and the copy fields ready to write.',
+  prefs: InterfacePrefs(
+    enabled: {'composer_cc': true},
+    values: {
+      'sender_trust': {'detail': 'receipt', 'show_for': 'all'},
+    },
+  ),
+);
+
+const interfacePresets = <InterfacePreset>[
+  classicPreset,
+  triagePreset,
+  readingPreset,
+];

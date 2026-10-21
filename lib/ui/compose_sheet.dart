@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../state/app_scope.dart';
+import '../state/interface_prefs.dart';
 import '../state/mail_backend.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
@@ -65,8 +66,10 @@ class _ComposeSheetState extends State<ComposeSheet> {
 
   late String _from = _initialFrom();
   late bool _showCc = widget.seed.cc.isNotEmpty;
+  late bool _showFrom = _mailbox.accounts.length > 1;
   late int? _draftId = widget.seed.draftId;
   late final String _pristine;
+  bool _interfaceApplied = false;
   bool _expanded = false;
   bool _sending = false;
   bool _saving = false;
@@ -87,6 +90,18 @@ class _ComposeSheetState extends State<ComposeSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) (startInBody ? _bodyFocus : _toFocus).requestFocus();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_interfaceApplied) return;
+    _interfaceApplied = true;
+    // The composer's panels decide what is open when it first appears; the
+    // user can still ask for Cc while writing when they are off.
+    final prefs = AppScope.read(context).settings.interface;
+    if (prefs.isOn(composerCcPanel)) _showCc = true;
+    if (prefs.isOn(composerFromPanel)) _showFrom = true;
   }
 
   @override
@@ -354,7 +369,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
                         ),
                       ),
                     ),
-                  if (accounts.length > 1)
+                  if (_showFrom)
                     _FieldRow(
                       label: 'From',
                       child: DropdownButtonHideUnderline(
