@@ -32,6 +32,25 @@ void main() {
     expect(back.choice(dateSeparatorsPanel, dayStyleOption), 'absolute');
   });
 
+  test('the list panels start on, matching the shipped look', () {
+    const prefs = InterfacePrefs();
+    expect(prefs.isOn(listPreviewPanel), isTrue);
+    expect(prefs.choice(listPreviewPanel, previewLinesOption), 'two');
+    expect(prefs.isOn(listAttachmentsPanel), isTrue);
+    expect(prefs.isOn(listCountPanel), isTrue);
+    expect(prefs.isOn(listFlagPanel), isTrue);
+  });
+
+  test('turning a list panel off leaves the row to its other parts', () {
+    final prefs = const InterfacePrefs()
+        .withPanel('list_count', false)
+        .withPanel('list_flag', false)
+        .withValue('list_preview', 'lines', 'none');
+    expect(prefs.isOn(listCountPanel), isFalse);
+    expect(prefs.isOn(listFlagPanel), isFalse);
+    expect(prefs.choice(listPreviewPanel, previewLinesOption), 'none');
+  });
+
   test('the composer panels start off, so nothing opens by surprise', () {
     const prefs = InterfacePrefs();
     expect(prefs.isOn(composerCcPanel), isFalse);

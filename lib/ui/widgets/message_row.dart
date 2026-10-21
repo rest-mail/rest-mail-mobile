@@ -15,6 +15,10 @@ class MessageRow extends StatelessWidget {
     required this.onTap,
     this.dense = false,
     this.count = 1,
+    this.previewLines = 2,
+    this.showAttachment = true,
+    this.showCount = true,
+    this.showFlag = true,
   });
 
   final Message message;
@@ -26,6 +30,13 @@ class MessageRow extends StatelessWidget {
   /// How many messages the row's conversation has, shown when more than one.
   final int count;
 
+  /// Lines of body under the subject; none hides it.
+  final int previewLines;
+
+  final bool showAttachment;
+  final bool showCount;
+  final bool showFlag;
+
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
@@ -34,13 +45,15 @@ class MessageRow extends StatelessWidget {
     final unread = !message.isRead;
     final subject = message.subject.isEmpty ? '(no subject)' : message.subject;
     final rail = v.unread == UnreadSignal.rail && unread;
+    final attachment = showAttachment && message.hasAttachments;
+    final showTheCount = showCount && count > 1;
     final side = BorderSide(color: c.line);
     return Semantics(
       button: true,
       label: [
         if (unread) 'Unread',
         'From ${message.senderLabel}',
-        if (count > 1) '$count messages',
+        if (showTheCount) '$count messages',
         subject,
         timeLabel(message.date),
         if (message.hasAttachments) 'Has attachments',
@@ -123,7 +136,7 @@ class MessageRow extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (count > 1)
+                              if (showTheCount)
                                 Padding(
                                   padding: const EdgeInsets.only(left: 6),
                                   child: Text(
@@ -140,7 +153,7 @@ class MessageRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        if (message.isFlagged)
+                        if (showFlag && message.isFlagged)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: Icon(
@@ -173,11 +186,11 @@ class MessageRow extends StatelessWidget {
                         family: family,
                       ),
                     ),
-                    if (message.preview.isNotEmpty) ...[
+                    if (previewLines > 0 && message.preview.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Text(
                         message.preview,
-                        maxLines: dense ? 1 : 2,
+                        maxLines: dense ? 1 : previewLines,
                         overflow: TextOverflow.ellipsis,
                         style: rmText(
                           dense ? 13 : 13.5,
@@ -188,14 +201,14 @@ class MessageRow extends StatelessWidget {
                       ),
                     ],
                     if (!dense &&
-                        (message.hasAttachments ||
+                        (attachment ||
                             (unread && v.unread == UnreadSignal.dot)))
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
                         child: Row(
                           children: [
-                            if (message.hasAttachments) const _AttachmentChip(),
-                            if (message.hasAttachments &&
+                            if (attachment) const _AttachmentChip(),
+                            if (attachment &&
                                 unread &&
                                 v.unread == UnreadSignal.dot)
                               const SizedBox(width: 6),

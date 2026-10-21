@@ -164,6 +164,16 @@ class _MailboxScreenState extends State<MailboxScreen> {
     final absolute =
         prefs.choice(dateSeparatorsPanel, dayStyleOption) == 'absolute';
     final showCount = prefs.toggle(dateSeparatorsPanel, dayCountOption);
+    final previewLines = prefs.isOn(listPreviewPanel)
+        ? switch (prefs.choice(listPreviewPanel, previewLinesOption)) {
+            'one' => 1,
+            'none' => 0,
+            _ => 2,
+          }
+        : 2;
+    final showAttachments = prefs.isOn(listAttachmentsPanel);
+    final showConversationCount = prefs.isOn(listCountPanel);
+    final showFlags = prefs.isOn(listFlagPanel);
     final entries = buildListEntries(
       m.conversations,
       withDays: prefs.isOn(dateSeparatorsPanel),
@@ -208,6 +218,10 @@ class _MailboxScreenState extends State<MailboxScreen> {
                 isFlagged: conversation.any((each) => each.isFlagged),
               ),
               count: conversation.length,
+              previewLines: previewLines,
+              showAttachment: showAttachments,
+              showCount: showConversationCount,
+              showFlag: showFlags,
               onTap: () => unawaited(_open(conversation)),
             ),
           );

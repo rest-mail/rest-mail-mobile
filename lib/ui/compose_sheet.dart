@@ -55,7 +55,12 @@ class ComposeSheet extends StatefulWidget {
   State<ComposeSheet> createState() => _ComposeSheetState();
 }
 
-class _ComposeSheetState extends State<ComposeSheet> {
+class _ComposeSheetState extends State<ComposeSheet>
+    with SingleTickerProviderStateMixin {
+  /// How long the message waits before it is really sent, so it can be
+  /// taken back.
+  static const _undoSeconds = 5;
+
   late final _to = TextEditingController(text: widget.seed.to.join(', '));
   late final _cc = TextEditingController(text: widget.seed.cc.join(', '));
   final _bcc = TextEditingController();
@@ -73,16 +78,26 @@ class _ComposeSheetState extends State<ComposeSheet> {
   bool _expanded = false;
   bool _sending = false;
   bool _saving = false;
+  bool _counting = false;
   String? _error;
+  ({List<String> to, List<String> cc, List<String> bcc})? _pendingSend;
+  late final AnimationController _undo;
 
   MailboxState get _mailbox => widget.mailbox;
   MailBackend get _backend => _mailbox.backend;
-  bool get _busy => _sending || _saving;
+  bool get _busy => _sending || _saving || _counting;
   bool get _dirty => _snapshot() != _pristine;
 
   @override
   void initState() {
     super.initState();
+    _undo =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(seconds: _undoSeconds),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) unawaited(_commitSend());
+        });
     _pristine = _snapshot();
     // With someone to write to already, start in the body, above any quote.
     final startInBody = widget.seed.to.isNotEmpty;
@@ -111,6 +126,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
     }
     _toFocus.dispose();
     _bodyFocus.dispose();
+    _undo.dispose();
     super.dispose();
   }
 
@@ -154,7 +170,8 @@ class _ComposeSheetState extends State<ComposeSheet> {
     references: widget.seed.references,
   );
 
-  Future<void> _send() async {
+  void _send() {
+    if (_busy) return;
     final to = parseAddresses(_to.text),
         cc = parseAddresses(_cc.text),
         bcc = parseAddresses(_bcc.text);
@@ -168,13 +185,35 @@ class _ComposeSheetState extends State<ComposeSheet> {
       return;
     }
     setState(() {
+      _error = null;
+      _counting = true;
+      _pendingSend = (to: to.valid, cc: cc.valid, bcc: bcc.valid);
+    });
+    _undo.forward(from: 0);
+  }
+
+  /// Takes the send back while the message is still waiting.
+  void _undoSend() {
+    _undo.reset();
+    setState(() {
+      _counting = false;
+      _pendingSend = null;
+    });
+  }
+
+  Future<void> _commitSend() async {
+    final pending = _pendingSend;
+    if (pending == null) return;
+    setState(() {
+      _pendingSend = null;
+      _counting = false;
       _sending = true;
       _error = null;
     });
-    final message = _message(to: to.valid, cc: cc.valid, bcc: bcc.valid);
+    final message = _message(to: pending.to, cc: pending.cc, bcc: pending.bcc);
     try {
       final draftId = _draftId;
-      if (draftId != null && bcc.valid.isEmpty) {
+      if (draftId != null && pending.bcc.isEmpty) {
         await _backend.updateDraft(draftId, message);
         await _backend.sendDraft(draftId);
       } else {
@@ -196,6 +235,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
       unawaited(_mailbox.refresh());
     } on ApiException catch (e) {
       if (!mounted) return;
+      _undo.reset();
       setState(() {
         _sending = false;
         _error = describeError(e, host: _backend.host);
@@ -346,8 +386,8 @@ class _ComposeSheetState extends State<ComposeSheet> {
                         ),
                         const SizedBox(width: 4),
                         _SendButton(
-                          busy: _sending,
-                          onPressed: _busy ? null : () => unawaited(_send()),
+                          busy: _sending || _counting,
+                          onPressed: _busy ? null : _send,
                         ),
                       ],
                     ),
@@ -389,8 +429,10 @@ class _ComposeSheetState extends State<ComposeSheet> {
                                 ),
                               ),
                           ],
-                          onChanged: (address) =>
-                              setState(() => _from = address ?? _from),
+                          onChanged: _counting
+                              ? null
+                              : (address) =>
+                                    setState(() => _from = address ?? _from),
                         ),
                       ),
                     ),
@@ -407,7 +449,9 @@ class _ComposeSheetState extends State<ComposeSheet> {
                               ),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            onPressed: () => setState(() => _showCc = true),
+                            onPressed: _counting
+                                ? null
+                                : () => setState(() => _showCc = true),
                             child: Text(
                               'Cc',
                               style: rmText(
@@ -421,22 +465,32 @@ class _ComposeSheetState extends State<ComposeSheet> {
                       controller: _to,
                       focusNode: _toFocus,
                       hint: 'Recipient',
+                      enabled: !_counting,
                     ),
                   ),
                   if (_showCc) ...[
                     _FieldRow(
                       label: 'Cc',
-                      child: _AddressField(controller: _cc, hint: ''),
+                      child: _AddressField(
+                        controller: _cc,
+                        hint: '',
+                        enabled: !_counting,
+                      ),
                     ),
                     _FieldRow(
                       label: 'Bcc',
-                      child: _AddressField(controller: _bcc, hint: ''),
+                      child: _AddressField(
+                        controller: _bcc,
+                        hint: '',
+                        enabled: !_counting,
+                      ),
                     ),
                   ],
                   _FieldRow(
                     label: 'Subject',
                     child: TextField(
                       controller: _subject,
+                      enabled: !_counting,
                       textCapitalization: TextCapitalization.sentences,
                       textInputAction: TextInputAction.next,
                       style: rmText(15, color: c.ink, weight: FontWeight.w600),
@@ -447,6 +501,7 @@ class _ComposeSheetState extends State<ComposeSheet> {
                     child: TextField(
                       controller: _body,
                       focusNode: _bodyFocus,
+                      enabled: !_counting,
                       maxLines: null,
                       expands: true,
                       keyboardType: TextInputType.multiline,
@@ -473,28 +528,79 @@ class _ComposeSheetState extends State<ComposeSheet> {
                       color: c.surface,
                       border: Border(top: BorderSide(color: c.line)),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.lock_outline_rounded,
-                          size: 14,
-                          color: c.ink3,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Sending as $_from',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: rmText(
-                              11.5,
-                              color: c.ink3,
-                              weight: FontWeight.w600,
-                            ),
+                    child: _counting
+                        ? AnimatedBuilder(
+                            animation: _undo,
+                            builder: (context, _) {
+                              final left = (_undoSeconds * (1 - _undo.value))
+                                  .ceil()
+                                  .clamp(1, _undoSeconds);
+                              return Row(
+                                children: [
+                                  Icon(
+                                    Icons.schedule_send_rounded,
+                                    size: 14,
+                                    color: c.ink3,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Sending in ${left}s',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: rmText(
+                                        11.5,
+                                        color: c.ink3,
+                                        weight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      minimumSize: Size.zero,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: _undoSend,
+                                    child: Text(
+                                      'Undo',
+                                      style: rmText(
+                                        12.5,
+                                        color: c.accent,
+                                        weight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          )
+                        : Row(
+                            children: [
+                              Icon(
+                                Icons.lock_outline_rounded,
+                                size: 14,
+                                color: c.ink3,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Sending as $_from',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: rmText(
+                                    11.5,
+                                    color: c.ink3,
+                                    weight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -543,16 +649,19 @@ class _AddressField extends StatelessWidget {
     required this.controller,
     required this.hint,
     this.focusNode,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
   final FocusNode? focusNode;
   final String hint;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) => TextField(
     controller: controller,
     focusNode: focusNode,
+    enabled: enabled,
     keyboardType: TextInputType.emailAddress,
     autocorrect: false,
     enableSuggestions: false,

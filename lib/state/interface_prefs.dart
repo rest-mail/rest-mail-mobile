@@ -106,6 +106,46 @@ const senderTrustPanel = PanelSpec(
   options: [trustDetailOption, trustShowForOption],
 );
 
+const previewLinesOption = ChoiceOption(
+  id: 'lines',
+  label: 'Lines',
+  values: [('one', 'One line'), ('two', 'Two lines'), ('none', 'None')],
+  defaultValue: 'two',
+);
+
+const listPreviewPanel = PanelSpec(
+  id: 'list_preview',
+  area: PanelArea.list,
+  name: 'Message preview',
+  description: 'How much of the body shows under each sender.',
+  defaultOn: true,
+  options: [previewLinesOption],
+);
+
+const listAttachmentsPanel = PanelSpec(
+  id: 'list_attachments',
+  area: PanelArea.list,
+  name: 'Attachment marker',
+  description: 'A paperclip on messages that carry files.',
+  defaultOn: true,
+);
+
+const listCountPanel = PanelSpec(
+  id: 'list_count',
+  area: PanelArea.list,
+  name: 'Conversation count',
+  description: 'How many messages are in a thread, beside the sender.',
+  defaultOn: true,
+);
+
+const listFlagPanel = PanelSpec(
+  id: 'list_flag',
+  area: PanelArea.list,
+  name: 'Flag marker',
+  description: 'Show which messages you have flagged.',
+  defaultOn: true,
+);
+
 const composerCcPanel = PanelSpec(
   id: 'composer_cc',
   area: PanelArea.composer,
@@ -123,6 +163,10 @@ const composerFromPanel = PanelSpec(
 /// Everything the user can add to or remove from their client.
 const panelRegistry = <PanelSpec>[
   dateSeparatorsPanel,
+  listPreviewPanel,
+  listAttachmentsPanel,
+  listCountPanel,
+  listFlagPanel,
   senderTrustPanel,
   composerCcPanel,
   composerFromPanel,
