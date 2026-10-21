@@ -12,10 +12,7 @@ ThemeData buildTheme(ThemePack pack, Brightness brightness) {
       ? (effective == Brightness.dark ? RmColors.dark : RmColors.light)
       : pack.colors;
   final scheme =
-      ColorScheme.fromSeed(
-        seedColor: c.accent,
-        brightness: effective,
-      ).copyWith(
+      ColorScheme.fromSeed(seedColor: c.accent, brightness: effective).copyWith(
         primary: c.accent,
         onPrimary: c.accent.computeLuminance() > 0.5
             ? const Color(0xFF191204)

@@ -1190,8 +1190,7 @@ class _PackTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected)
-              Icon(Icons.check_rounded, size: 18, color: c.accent),
+            if (selected) Icon(Icons.check_rounded, size: 18, color: c.accent),
           ],
         ),
       ),

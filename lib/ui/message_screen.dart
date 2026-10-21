@@ -263,11 +263,8 @@ class _MessageScreenState extends State<MessageScreen> {
         : m.folder != StandardFolder.archive;
     void archive() => unawaited(
       _removeAndLeave(
-        (message, others) => _mailbox.move(
-          message,
-          StandardFolder.archive,
-          others: others,
-        ),
+        (message, others) =>
+            _mailbox.move(message, StandardFolder.archive, others: others),
         'Archived',
       ),
     );
@@ -299,7 +296,9 @@ class _MessageScreenState extends State<MessageScreen> {
                           )
                         : _WordAction(
                             label: 'Archive',
-                            keyHint: v.actions == ActionStyle.keyed ? 'e' : null,
+                            keyHint: v.actions == ActionStyle.keyed
+                                ? 'e'
+                                : null,
                             onPressed: archive,
                           ),
                   v.actions == ActionStyle.icons
@@ -413,7 +412,11 @@ class _MessageScreenState extends State<MessageScreen> {
                               const SizedBox(height: 2),
                               SelectableText(
                                 m.sender,
-                                style: rmText(12.5, color: c.ink3, family: family),
+                                style: rmText(
+                                  12.5,
+                                  color: c.ink3,
+                                  family: family,
+                                ),
                               ),
                               RmTrustLine(headers: m.headers),
                             ],
@@ -435,7 +438,12 @@ class _MessageScreenState extends State<MessageScreen> {
                         _recipientLine(),
                         maxLines: _allRecipients ? null : 1,
                         overflow: _allRecipients ? null : TextOverflow.ellipsis,
-                        style: rmText(12.5, color: c.ink3, height: 1.5, family: family),
+                        style: rmText(
+                          12.5,
+                          color: c.ink3,
+                          height: 1.5,
+                          family: family,
+                        ),
                       ),
                     ),
                   ),

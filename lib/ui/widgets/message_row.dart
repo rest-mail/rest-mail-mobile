@@ -68,11 +68,15 @@ class MessageRow extends StatelessWidget {
             border: switch (v.surface) {
               Surface.dividers => Border(
                 bottom: side,
-                left: rail ? BorderSide(color: c.mark, width: 3) : BorderSide.none,
+                left: rail
+                    ? BorderSide(color: c.mark, width: 3)
+                    : BorderSide.none,
               ),
               Surface.rules || Surface.dense => Border(
                 top: side,
-                left: rail ? BorderSide(color: c.mark, width: 3) : BorderSide.none,
+                left: rail
+                    ? BorderSide(color: c.mark, width: 3)
+                    : BorderSide.none,
               ),
               Surface.cards => Border.all(color: c.line),
             },

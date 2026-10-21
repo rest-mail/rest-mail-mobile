@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'tokens.dart';
@@ -132,7 +133,10 @@ class ThemePack {
       mark: Color(0xFFFFCC00),
       onMark: Color(0xFF12203A),
     ),
-    variants: RmVariants(unread: UnreadSignal.rail, identity: Identity.squircle),
+    variants: RmVariants(
+      unread: UnreadSignal.rail,
+      identity: Identity.squircle,
+    ),
   );
 
   /// Editorial paper: serif subjects, full-bleed rules, actions as words.

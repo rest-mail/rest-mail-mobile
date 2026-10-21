@@ -39,7 +39,10 @@ void main() {
 
   test('the mark always carries its own ink', () {
     for (final pack in ThemePack.all) {
-      expect(pack.colors.mark.computeLuminance(), isNot(pack.colors.onMark.computeLuminance()));
+      expect(
+        pack.colors.mark.computeLuminance(),
+        isNot(pack.colors.onMark.computeLuminance()),
+      );
     }
   });
 
