@@ -58,4 +58,59 @@ void main() {
     fake.close();
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('a new message waits, and Undo takes the send back', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final fake = FakeRestmail();
+    final state = AppState(
+      store: MemoryKeyValueStore(),
+      httpClientFactory: () => fake.client,
+    );
+    await state.start();
+    await tester.pumpWidget(RestmailApp(state: state));
+
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), FakeAccounts.email);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), FakeAccounts.password);
+    await tester.pump();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('New message'));
+    await tester.pumpAndSettle();
+    final sentBefore = fake.messagesIn(FakeAccounts.email, 'Sent').length;
+    await tester.enterText(find.byType(TextField).first, 'nadia@oakline.test');
+    await tester.pump();
+
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    expect(find.text('Sending in 5s'), findsOneWidget);
+    expect(fake.messagesIn(FakeAccounts.email, 'Sent'), hasLength(sentBefore));
+
+    await tester.tap(find.text('Undo'));
+    await tester.pump();
+    expect(find.text('Sending in 5s'), findsNothing);
+    expect(find.text('Send'), findsOneWidget);
+    expect(fake.messagesIn(FakeAccounts.email, 'Sent'), hasLength(sentBefore));
+
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Message sent'), findsOneWidget);
+    expect(
+      fake.messagesIn(FakeAccounts.email, 'Sent'),
+      hasLength(sentBefore + 1),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    state.mailbox?.dispose();
+    fake.close();
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
