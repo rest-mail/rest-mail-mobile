@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../theme/packs.dart';
 import '../../theme/tokens.dart';
 import '../../util/html_sanitizer.dart';
 
@@ -38,7 +39,12 @@ class _MessageBodyState extends State<MessageBody> {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final text = rmText(15.5, color: c.ink, height: 1.62);
+    final text = rmText(
+      15.5,
+      color: c.ink,
+      height: 1.62,
+      family: typefaceFamily(context.rmv.readerType),
+    );
     final html = widget.message.bodyHtml;
     if (html == null) {
       return SelectableText(widget.message.bodyText ?? '', style: text);

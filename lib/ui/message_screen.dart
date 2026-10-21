@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../state/mailbox_state.dart';
+import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/format.dart';
@@ -246,6 +247,8 @@ class _MessageScreenState extends State<MessageScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
+    final v = context.rmv;
+    final family = typefaceFamily(v.readerType);
     final m = _message;
     final error = _error;
     final isDraft = m.isDraft || m.folder == StandardFolder.drafts;
@@ -254,6 +257,19 @@ class _MessageScreenState extends State<MessageScreen> {
       (r) =>
           !own.contains(r.address.toLowerCase()) &&
           r.address.toLowerCase() != m.sender.toLowerCase(),
+    );
+    final canArchive = _labels
+        ? m.folder == StandardFolder.inbox
+        : m.folder != StandardFolder.archive;
+    void archive() => unawaited(
+      _removeAndLeave(
+        (message, others) => _mailbox.move(
+          message,
+          StandardFolder.archive,
+          others: others,
+        ),
+        'Archived',
+      ),
     );
     return Scaffold(
       body: SafeArea(
@@ -274,28 +290,29 @@ class _MessageScreenState extends State<MessageScreen> {
                   ),
                   const Spacer(),
                   // On Gmail, archiving is taking a message out of the inbox.
-                  if (_labels
-                      ? m.folder == StandardFolder.inbox
-                      : m.folder != StandardFolder.archive)
-                    RmIconButton(
-                      icon: Icons.archive_outlined,
-                      tooltip: 'Archive',
-                      onPressed: () => unawaited(
-                        _removeAndLeave(
-                          (message, others) => _mailbox.move(
-                            message,
-                            StandardFolder.archive,
-                            others: others,
+                  if (canArchive)
+                    v.actions == ActionStyle.icons
+                        ? RmIconButton(
+                            icon: Icons.archive_outlined,
+                            tooltip: 'Archive',
+                            onPressed: archive,
+                          )
+                        : _WordAction(
+                            label: 'Archive',
+                            keyHint: v.actions == ActionStyle.keyed ? 'e' : null,
+                            onPressed: archive,
                           ),
-                          'Archived',
+                  v.actions == ActionStyle.icons
+                      ? RmIconButton(
+                          icon: Icons.delete_outline_rounded,
+                          tooltip: 'Delete',
+                          onPressed: () => unawaited(_delete()),
+                        )
+                      : _WordAction(
+                          label: 'Delete',
+                          keyHint: v.actions == ActionStyle.keyed ? 'x' : null,
+                          onPressed: () => unawaited(_delete()),
                         ),
-                      ),
-                    ),
-                  RmIconButton(
-                    icon: Icons.delete_outline_rounded,
-                    tooltip: 'Delete',
-                    onPressed: () => unawaited(_delete()),
-                  ),
                   PopupMenuButton<_More>(
                     tooltip: 'More',
                     icon: Icon(Icons.more_vert_rounded, size: 20, color: c.ink),
@@ -341,11 +358,14 @@ class _MessageScreenState extends State<MessageScreen> {
                   SelectableText(
                     m.subject.isEmpty ? '(no subject)' : m.subject,
                     style: rmText(
-                      24,
+                      v.readerType == Typeface.serif ? 26 : 24,
                       color: c.ink,
-                      weight: FontWeight.w800,
+                      weight: v.readerType == Typeface.serif
+                          ? FontWeight.w500
+                          : FontWeight.w800,
                       height: 1.15,
-                      tracking: -0.035,
+                      tracking: v.readerType == Typeface.serif ? -0.01 : -0.035,
+                      family: family,
                     ),
                   ),
                   if (m.labels.isNotEmpty)
@@ -366,8 +386,16 @@ class _MessageScreenState extends State<MessageScreen> {
                     ),
                     child: Row(
                       children: [
-                        RmAvatar(name: m.senderLabel, seed: m.sender),
-                        const SizedBox(width: 12),
+                        if (v.identity != Identity.none) ...[
+                          RmAvatar(
+                            name: m.senderLabel,
+                            seed: m.sender,
+                            radius: v.identity == Identity.squircle
+                                ? BorderRadius.circular(12)
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,12 +407,13 @@ class _MessageScreenState extends State<MessageScreen> {
                                   color: c.ink,
                                   weight: FontWeight.w700,
                                   tracking: -0.01,
+                                  family: family,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               SelectableText(
                                 m.sender,
-                                style: rmText(12.5, color: c.ink3),
+                                style: rmText(12.5, color: c.ink3, family: family),
                               ),
                               RmTrustLine(headers: m.headers),
                             ],
@@ -392,7 +421,7 @@ class _MessageScreenState extends State<MessageScreen> {
                         ),
                         Text(
                           timeLabel(m.date),
-                          style: rmText(12, color: c.ink3),
+                          style: rmText(12, color: c.ink3, family: family),
                         ),
                       ],
                     ),
@@ -406,7 +435,7 @@ class _MessageScreenState extends State<MessageScreen> {
                         _recipientLine(),
                         maxLines: _allRecipients ? null : 1,
                         overflow: _allRecipients ? null : TextOverflow.ellipsis,
-                        style: rmText(12.5, color: c.ink3, height: 1.5),
+                        style: rmText(12.5, color: c.ink3, height: 1.5, family: family),
                       ),
                     ),
                   ),
@@ -503,11 +532,22 @@ class _MessageScreenState extends State<MessageScreen> {
                           ),
                         ],
                         const SizedBox(width: 8),
-                        RmOutlineIconButton(
-                          icon: Icons.arrow_forward_rounded,
-                          tooltip: 'Forward',
-                          onPressed: () => _compose(forwardSeed(m)),
-                        ),
+                        v.actions == ActionStyle.icons
+                            ? RmOutlineIconButton(
+                                icon: Icons.arrow_forward_rounded,
+                                tooltip: 'Forward',
+                                onPressed: () => _compose(forwardSeed(m)),
+                              )
+                            : RmOutlineButton(
+                                label: v.actions == ActionStyle.keyed
+                                    ? '[f] Forward'
+                                    : 'Forward',
+                                height: 44,
+                                radius: 11,
+                                fontSize: 14.5,
+                                color: c.ink,
+                                onPressed: () => _compose(forwardSeed(m)),
+                              ),
                       ],
                     ),
             ),
@@ -537,6 +577,67 @@ class _LabelChip extends StatelessWidget {
       child: Text(
         folderLabel(name),
         style: rmText(12, color: c.ink2, weight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// An action bar entry for packs whose action axis is not icons: a word,
+/// letter-spaced small caps for `words`, or a key hint plus the word for
+/// `keyed`.
+class _WordAction extends StatelessWidget {
+  const _WordAction({
+    required this.label,
+    required this.onPressed,
+    this.keyHint,
+  });
+
+  final String label;
+  final String? keyHint;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final words = keyHint == null;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (keyHint != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  border: Border.all(color: c.line),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  keyHint!,
+                  style: rmText(
+                    9,
+                    color: c.ink3,
+                    family: typefaceFamily(Typeface.mono),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              words ? label.toUpperCase() : label,
+              style: rmText(
+                words ? 10.5 : 12,
+                color: c.ink2,
+                weight: FontWeight.w600,
+                tracking: words ? 0.14 : 0,
+                family: typefaceFamily(context.rmv.readerType),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

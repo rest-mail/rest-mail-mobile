@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../theme/packs.dart';
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import 'avatar.dart';
 
 /// A message in a list: who, when, what, and a taste of the body. Unread
-/// ones are heavier and carry the accent dot.
+/// ones are heavier, plus whatever the active pack's unread axis adds.
 class MessageRow extends StatelessWidget {
   const MessageRow({
     super.key,
@@ -28,8 +29,12 @@ class MessageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
+    final v = context.rmv;
+    final family = typefaceFamily(v.listType);
     final unread = !message.isRead;
     final subject = message.subject.isEmpty ? '(no subject)' : message.subject;
+    final rail = v.unread == UnreadSignal.rail && unread;
+    final side = BorderSide(color: c.line);
     return Semantics(
       button: true,
       label: [
@@ -44,18 +49,47 @@ class MessageRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
+          margin: v.surface == Surface.cards
+              ? const EdgeInsets.fromLTRB(10, 4, 10, 4)
+              : null,
           padding: EdgeInsets.symmetric(
-            horizontal: 16,
+            horizontal: v.surface == Surface.cards ? 12 : 16,
             vertical: dense ? 14 : 15,
           ),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: c.line)),
+            color: v.surface == Surface.dense && unread
+                ? c.accentSoft
+                : v.surface == Surface.cards
+                ? c.surface
+                : null,
+            borderRadius: v.surface == Surface.cards
+                ? BorderRadius.circular(14)
+                : null,
+            border: switch (v.surface) {
+              Surface.dividers => Border(
+                bottom: side,
+                left: rail ? BorderSide(color: c.mark, width: 3) : BorderSide.none,
+              ),
+              Surface.rules || Surface.dense => Border(
+                top: side,
+                left: rail ? BorderSide(color: c.mark, width: 3) : BorderSide.none,
+              ),
+              Surface.cards => Border.all(color: c.line),
+            },
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RmAvatar(name: message.senderLabel, seed: message.sender),
-              const SizedBox(width: 13),
+              if (v.identity != Identity.none) ...[
+                RmAvatar(
+                  name: message.senderLabel,
+                  seed: message.sender,
+                  radius: v.identity == Identity.squircle
+                      ? BorderRadius.circular(12)
+                      : null,
+                ),
+                const SizedBox(width: 13),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,6 +115,7 @@ class MessageRow extends StatelessWidget {
                                         ? FontWeight.w800
                                         : FontWeight.w600,
                                     tracking: -0.015,
+                                    family: family,
                                   ),
                                 ),
                               ),
@@ -93,6 +128,7 @@ class MessageRow extends StatelessWidget {
                                       12.5,
                                       color: c.ink3,
                                       weight: FontWeight.w600,
+                                      family: family,
                                     ),
                                   ),
                                 ),
@@ -115,6 +151,7 @@ class MessageRow extends StatelessWidget {
                             12,
                             color: c.ink3,
                             weight: FontWeight.w500,
+                            family: family,
                           ),
                         ),
                       ],
@@ -129,6 +166,7 @@ class MessageRow extends StatelessWidget {
                         color: c.ink,
                         weight: unread ? FontWeight.w700 : FontWeight.w500,
                         height: 1.3,
+                        family: family,
                       ),
                     ),
                     if (message.preview.isNotEmpty) ...[
@@ -141,23 +179,28 @@ class MessageRow extends StatelessWidget {
                           dense ? 13 : 13.5,
                           color: c.ink3,
                           height: 1.4,
+                          family: family,
                         ),
                       ),
                     ],
-                    if (!dense && (message.hasAttachments || unread))
+                    if (!dense &&
+                        (message.hasAttachments ||
+                            (unread && v.unread == UnreadSignal.dot)))
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
                         child: Row(
                           children: [
                             if (message.hasAttachments) const _AttachmentChip(),
-                            if (message.hasAttachments && unread)
+                            if (message.hasAttachments &&
+                                unread &&
+                                v.unread == UnreadSignal.dot)
                               const SizedBox(width: 6),
-                            if (unread)
+                            if (unread && v.unread == UnreadSignal.dot)
                               Container(
                                 width: 7,
                                 height: 7,
                                 decoration: BoxDecoration(
-                                  color: c.accent,
+                                  color: c.mark,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -194,7 +237,12 @@ class _AttachmentChip extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             'Attachment',
-            style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
+            style: rmText(
+              11.5,
+              color: c.ink3,
+              weight: FontWeight.w600,
+              family: typefaceFamily(context.rmv.listType),
+            ),
           ),
         ],
       ),

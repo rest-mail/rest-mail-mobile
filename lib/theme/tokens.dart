@@ -19,6 +19,8 @@ class RmColors extends ThemeExtension<RmColors> {
     required this.accent,
     required this.accentSoft,
     required this.accentLine,
+    required this.mark,
+    required this.onMark,
   });
 
   static const _accent = Color(0xFF2B59FF);
@@ -37,6 +39,8 @@ class RmColors extends ThemeExtension<RmColors> {
     accent: _accent,
     accentSoft: Color(0x122B59FF), // 7%
     accentLine: Color(0x382B59FF), // 22%
+    mark: _accent,
+    onMark: Color(0xFFFFFFFF),
   );
 
   static const dark = RmColors(
@@ -53,6 +57,8 @@ class RmColors extends ThemeExtension<RmColors> {
     accent: _accent,
     accentSoft: Color(0x242B59FF), // 14%
     accentLine: Color(0x592B59FF), // 35%
+    mark: _accent,
+    onMark: Color(0xFFFFFFFF),
   );
 
   /// Page background.
@@ -80,6 +86,13 @@ class RmColors extends ThemeExtension<RmColors> {
   /// The accent as a border, around a focused field.
   final Color accentLine;
 
+  /// The pack's loud note: the unread rail and dot, the logo tile. Classic
+  /// keeps it on the accent; Brand spends its yellow here and nowhere else.
+  final Color mark;
+
+  /// Ink that stays readable on [mark].
+  final Color onMark;
+
   @override
   RmColors copyWith({
     Color? bg,
@@ -95,6 +108,8 @@ class RmColors extends ThemeExtension<RmColors> {
     Color? accent,
     Color? accentSoft,
     Color? accentLine,
+    Color? mark,
+    Color? onMark,
   }) => RmColors(
     bg: bg ?? this.bg,
     surface: surface ?? this.surface,
@@ -109,6 +124,8 @@ class RmColors extends ThemeExtension<RmColors> {
     accent: accent ?? this.accent,
     accentSoft: accentSoft ?? this.accentSoft,
     accentLine: accentLine ?? this.accentLine,
+    mark: mark ?? this.mark,
+    onMark: onMark ?? this.onMark,
   );
 
   @override
@@ -129,6 +146,8 @@ class RmColors extends ThemeExtension<RmColors> {
       accent: mix(accent, other.accent),
       accentSoft: mix(accentSoft, other.accentSoft),
       accentLine: mix(accentLine, other.accentLine),
+      mark: mix(mark, other.mark),
+      onMark: mix(onMark, other.onMark),
     );
   }
 }
@@ -147,8 +166,9 @@ TextStyle rmText(
   FontWeight weight = FontWeight.w400,
   double? height,
   double tracking = 0,
+  String? family,
 }) => TextStyle(
-  fontFamily: rmFontFamily,
+  fontFamily: family ?? rmFontFamily,
   fontSize: size,
   fontWeight: weight,
   color: color,

@@ -9,6 +9,7 @@ import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
 import '../state/push_state.dart';
+import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import '../version.dart';
@@ -205,19 +206,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ),
-                              RmSegmented<ThemeMode>(
-                                options: const [
-                                  (ThemeMode.system, 'System'),
-                                  (ThemeMode.light, 'Light'),
-                                  (ThemeMode.dark, 'Dark'),
-                                ],
-                                value: settings.themeMode,
-                                onChanged: (mode) => unawaited(
-                                  app.updateSettings(
-                                    settings.copyWith(themeMode: mode),
+                              if (ThemePack.byId(settings.packId).followsSystem)
+                                RmSegmented<ThemeMode>(
+                                  options: const [
+                                    (ThemeMode.system, 'System'),
+                                    (ThemeMode.light, 'Light'),
+                                    (ThemeMode.dark, 'Dark'),
+                                  ],
+                                  value: settings.themeMode,
+                                  onChanged: (mode) => unawaited(
+                                    app.updateSettings(
+                                      settings.copyWith(themeMode: mode),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  'Sets its own',
+                                  style: rmText(12, color: c.ink3),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                          child: Column(
+                            children: [
+                              for (final pack in ThemePack.all)
+                                _PackTile(
+                                  pack: pack,
+                                  selected: pack.id == settings.packId,
+                                  onTap: () => unawaited(
+                                    app.updateSettings(
+                                      settings.copyWith(packId: pack.id),
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -1101,6 +1125,73 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One theme pack in the picker: its two loudest colours, its name, what it
+/// is for, and a tick when it is the one in force.
+class _PackTile extends StatelessWidget {
+  const _PackTile({
+    required this.pack,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ThemePack pack;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: c.line),
+              ),
+              child: ClipOval(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Row(
+                    children: [
+                      Container(width: 13, height: 26, color: pack.colors.bg),
+                      Container(width: 13, height: 26, color: pack.colors.mark),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pack.name,
+                    style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    pack.tagline,
+                    style: rmText(12, color: c.ink3, height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, size: 18, color: c.accent),
           ],
         ),
       ),
