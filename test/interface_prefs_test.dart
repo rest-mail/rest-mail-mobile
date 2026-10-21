@@ -55,6 +55,7 @@ void main() {
     const prefs = InterfacePrefs();
     expect(prefs.isOn(composerCcPanel), isFalse);
     expect(prefs.isOn(composerFromPanel), isFalse);
+    expect(prefs.isOn(composerLaterPanel), isFalse);
   });
 
   test('a preset writes every panel and option at once', () {

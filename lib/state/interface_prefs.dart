@@ -160,6 +160,13 @@ const composerFromPanel = PanelSpec(
   description: 'Show which account the message goes from, even with one.',
 );
 
+const composerLaterPanel = PanelSpec(
+  id: 'composer_later',
+  area: PanelArea.composer,
+  name: 'Send later',
+  description: 'A Later button that holds the message until the time you pick.',
+);
+
 /// Everything the user can add to or remove from their client.
 const panelRegistry = <PanelSpec>[
   dateSeparatorsPanel,
@@ -170,6 +177,7 @@ const panelRegistry = <PanelSpec>[
   senderTrustPanel,
   composerCcPanel,
   composerFromPanel,
+  composerLaterPanel,
 ];
 
 /// The layout choices, kept on the device with the rest of the settings.

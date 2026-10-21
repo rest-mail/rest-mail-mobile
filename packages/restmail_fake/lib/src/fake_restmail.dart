@@ -102,8 +102,10 @@ class FakeRestmail {
   final _appPasswords = <int, FakeAppPassword>{};
   final _devices = <String, (FakePushDevice, _Session)>{};
   final _pushes = <FakePush>[];
+  final _scheduled = <int, Map<String, Object?>>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
+  var _nextScheduledId = 1;
 
   /// For domains, aliases, queue entries and the other admin records.
   var _nextRowId = 1;
@@ -125,6 +127,12 @@ class FakeRestmail {
         if (m.mailboxId == box.id && m.folder == folder) m,
     ];
   }
+
+  /// Messages waiting for the server to send them, for a test to check.
+  List<Map<String, Object?>> scheduledFrom(String address) => [
+    for (final row in _scheduled.values)
+      if (row['from'] == address && row['status'] == 'pending') row,
+  ];
 
   /// Mail arriving from outside: stored in [to]'s inbox and pushed to its
   /// open event streams.
@@ -483,6 +491,11 @@ class FakeRestmail {
         session,
         _object(bytes),
       ),
+      ('GET', ['api', 'v1', 'messages', 'scheduled']) => _listScheduled(
+        session,
+      ),
+      ('DELETE', ['api', 'v1', 'messages', 'scheduled', final id]) =>
+        _cancelScheduled(session, id),
       ('POST', ['api', 'v1', 'messages', 'draft']) => _saveDraft(
         session,
         _object(bytes),
@@ -1036,6 +1049,24 @@ class FakeRestmail {
         fields: {'to': 'at least one recipient is required'},
       );
     }
+    if (DateTime.tryParse(body['scheduled_at'] as String? ?? '')
+        case final at?) {
+      final now = _clock().toUtc().toIso8601String();
+      final row = <String, Object?>{
+        'id': _nextScheduledId++,
+        'account_id': sender.id,
+        'from': sender.address,
+        'to': [for (final recipient in to) recipient.address],
+        'subject': body['subject'] as String? ?? '',
+        'scheduled_at': at.toUtc().toIso8601String(),
+        'status': 'pending',
+        'attempts': 0,
+        'created_at': now,
+        'updated_at': now,
+      };
+      _scheduled[row['id']! as int] = row;
+      return _json({'data': row}, status: 202);
+    }
     final sent = _add(
       sender,
       FakeMessage(
@@ -1079,6 +1110,34 @@ class FakeRestmail {
       );
     }
     return _json({'data': sent.toJson()}, status: 201);
+  }
+
+  http.StreamedResponse _listScheduled(_Session session) {
+    final reach = _reach(session);
+    final rows =
+        [
+          for (final row in _scheduled.values)
+            if (reach.contains(row['account_id']) &&
+                (row['status'] == 'pending' || row['status'] == 'sending'))
+              row,
+        ]..sort(
+          (a, b) => (a['scheduled_at']! as String).compareTo(
+            b['scheduled_at']! as String,
+          ),
+        );
+    return _json({'data': rows});
+  }
+
+  http.StreamedResponse _cancelScheduled(_Session session, String id) {
+    final row = _scheduled[int.tryParse(id)];
+    if (row == null ||
+        !_reach(session).contains(row['account_id']) ||
+        row['status'] != 'pending') {
+      _fail(404, 'not_found', 'No scheduled message with that ID is waiting');
+    }
+    row['status'] = 'cancelled';
+    row['updated_at'] = _clock().toUtc().toIso8601String();
+    return _noContent();
   }
 
   http.StreamedResponse _saveDraft(

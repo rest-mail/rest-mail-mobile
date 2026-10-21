@@ -79,6 +79,7 @@ class _ComposeSheetState extends State<ComposeSheet>
   bool _sending = false;
   bool _saving = false;
   bool _counting = false;
+  bool _showLater = false;
   String? _error;
   ({List<String> to, List<String> cc, List<String> bcc})? _pendingSend;
   late final AnimationController _undo;
@@ -117,6 +118,10 @@ class _ComposeSheetState extends State<ComposeSheet>
     final prefs = AppScope.read(context).settings.interface;
     if (prefs.isOn(composerCcPanel)) _showCc = true;
     if (prefs.isOn(composerFromPanel)) _showFrom = true;
+    _showLater =
+        prefs.isOn(composerLaterPanel) &&
+        _backend.canScheduleSend &&
+        widget.seed.kind != ComposeKind.draft;
   }
 
   @override
@@ -241,6 +246,157 @@ class _ComposeSheetState extends State<ComposeSheet>
         _error = describeError(e, host: _backend.host);
       });
     }
+  }
+
+  /// Holds the message with the server until a time the user picks.
+  Future<void> _schedule() async {
+    if (_busy) return;
+    final to = parseAddresses(_to.text),
+        cc = parseAddresses(_cc.text),
+        bcc = parseAddresses(_bcc.text);
+    final invalid = [...to.invalid, ...cc.invalid, ...bcc.invalid];
+    if (invalid.isNotEmpty) {
+      setState(() => _error = 'Not an address: ${invalid.first}');
+      return;
+    }
+    if (to.valid.isEmpty && cc.valid.isEmpty && bcc.valid.isEmpty) {
+      setState(() => _error = 'Add someone to send it to.');
+      return;
+    }
+    final at = await _pickSendTime();
+    if (at == null || !mounted) return;
+    if (at.isBefore(DateTime.now().add(const Duration(minutes: 1)))) {
+      setState(() => _error = 'Pick a time at least a minute from now.');
+      return;
+    }
+    final when =
+        '${MaterialLocalizations.of(context).formatMediumDate(at)} at '
+        '${TimeOfDay.fromDateTime(at).format(context)}';
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final message = _message(to: to.valid, cc: cc.valid, bcc: bcc.valid);
+    try {
+      final scheduled = await _backend.schedule(message, at);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Scheduled for $when'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => unawaited(
+              _backend.cancelScheduledSend(scheduled.id).catchError((Object _) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not cancel the scheduled message.'),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = describeError(e, host: _backend.host);
+      });
+    }
+  }
+
+  Future<DateTime?> _pickSendTime() {
+    final now = DateTime.now();
+    DateTime tomorrowMorning() => DateTime(now.year, now.month, now.day + 1, 8);
+    DateTime mondayMorning() {
+      var day = DateTime(now.year, now.month, now.day);
+      do {
+        day = day.add(const Duration(days: 1));
+      } while (day.weekday != DateTime.monday);
+      return DateTime(day.year, day.month, day.day, 8);
+    }
+
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheet) {
+        final label = MaterialLocalizations.of(sheet);
+        String when(DateTime time) =>
+            '${label.formatMediumDate(time)} · '
+            '${TimeOfDay.fromDateTime(time).format(sheet)}';
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+                child: Text(
+                  'Send later',
+                  style: rmText(
+                    17,
+                    color: context.rm.ink,
+                    weight: FontWeight.w700,
+                    tracking: -0.02,
+                  ),
+                ),
+              ),
+              RmGroup(
+                children: [
+                  RmRow(
+                    label: 'In an hour',
+                    subtitle: when(now.add(const Duration(hours: 1))),
+                    onTap: () =>
+                        Navigator.pop(sheet, now.add(const Duration(hours: 1))),
+                  ),
+                  RmRow(
+                    label: 'Tomorrow morning',
+                    subtitle: when(tomorrowMorning()),
+                    onTap: () => Navigator.pop(sheet, tomorrowMorning()),
+                  ),
+                  RmRow(
+                    label: 'Monday morning',
+                    subtitle: when(mondayMorning()),
+                    onTap: () => Navigator.pop(sheet, mondayMorning()),
+                  ),
+                  RmRow(
+                    label: 'Pick a date and time',
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: sheet,
+                        initialDate: now.add(const Duration(hours: 1)),
+                        firstDate: now,
+                        lastDate: now.add(const Duration(days: 365)),
+                      );
+                      if (date == null || !sheet.mounted) return;
+                      final time = await showTimePicker(
+                        context: sheet,
+                        initialTime: const TimeOfDay(hour: 9, minute: 0),
+                      );
+                      if (time == null || !sheet.mounted) return;
+                      Navigator.pop(
+                        sheet,
+                        DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _saveDraft() async {
@@ -385,6 +541,28 @@ class _ComposeSheetState extends State<ComposeSheet>
                           onPressed: _busy ? null : () => unawaited(_close()),
                         ),
                         const SizedBox(width: 4),
+                        if (_showLater)
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: Size.zero,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: _busy
+                                ? null
+                                : () => unawaited(_schedule()),
+                            child: Text(
+                              'Later',
+                              style: rmText(
+                                13,
+                                color: c.accent,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         _SendButton(
                           busy: _sending || _counting,
                           onPressed: _busy ? null : _send,

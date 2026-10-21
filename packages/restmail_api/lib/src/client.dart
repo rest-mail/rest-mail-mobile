@@ -913,6 +913,32 @@ class RestmailClient {
     ),
   );
 
+  /// Leaves [message] with the server to send at [at]. Returns the stored
+  /// scheduled message rather than a sent one.
+  Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) async =>
+      ScheduledSend.fromJson(
+        _data(
+          await _authed(
+            'POST',
+            ['messages', 'send'],
+            body: {
+              ...message.toSendJson(),
+              'scheduled_at': at.toUtc().toIso8601String(),
+            },
+          ),
+        ),
+      );
+
+  /// The messages still waiting to be sent, soonest first.
+  Future<List<ScheduledSend>> scheduledSends() async => _list(
+    await _authed('GET', ['messages', 'scheduled']),
+    ScheduledSend.fromJson,
+  );
+
+  Future<void> cancelScheduledSend(int id) async {
+    await _authed('DELETE', ['messages', 'scheduled', '$id']);
+  }
+
   Future<Message> saveDraft(OutgoingMessage draft) async => Message.fromJson(
     _data(
       await _authed('POST', ['messages', 'draft'], body: draft.toDraftJson()),

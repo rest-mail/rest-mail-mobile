@@ -953,6 +953,23 @@ class ImapBackend implements MailBackend {
 
   // ── Sending and drafts ────────────────────────────────────────────────
 
+  @override
+  bool get canScheduleSend => false;
+
+  @override
+  Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) async =>
+      throw const ApiException(
+        400,
+        'not_supported',
+        'Send later needs a rest-mail account.',
+      );
+
+  @override
+  Future<List<ScheduledSend>> scheduledSends() async => const [];
+
+  @override
+  Future<void> cancelScheduledSend(int id) async {}
+
   final _drafts = <int, OutgoingMessage>{};
 
   @override

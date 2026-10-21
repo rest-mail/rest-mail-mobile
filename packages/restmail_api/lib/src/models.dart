@@ -492,6 +492,36 @@ class OutgoingMessage {
   };
 }
 
+/// A message the server is holding to send at [scheduledAt].
+class ScheduledSend {
+  const ScheduledSend({
+    required this.id,
+    required this.from,
+    required this.to,
+    required this.subject,
+    required this.scheduledAt,
+    required this.status,
+  });
+
+  factory ScheduledSend.fromJson(Map<String, dynamic> json) => ScheduledSend(
+    id: json['id'] as int,
+    from: json['from'] as String? ?? '',
+    to: [for (final value in json['to'] as List? ?? const []) '$value'],
+    subject: json['subject'] as String? ?? '',
+    scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
+    status: json['status'] as String? ?? 'pending',
+  );
+
+  final int id;
+  final String from;
+  final List<String> to;
+  final String subject;
+  final DateTime scheduledAt;
+
+  /// pending, sending, sent, failed or cancelled.
+  final String status;
+}
+
 /// Filters for a mailbox search. Every field is optional; the server ANDs
 /// whichever are given.
 class SearchQuery {
