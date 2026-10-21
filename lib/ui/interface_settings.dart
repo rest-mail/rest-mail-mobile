@@ -67,11 +67,17 @@ class InterfaceSettings extends StatelessWidget {
             children: [
               Text(option.label, style: rmText(13.5, color: c.ink2)),
               const SizedBox(height: 8),
-              RmSegmented<String>(
-                options: option.values,
-                value: prefs.choice(panel, option),
-                onChanged: (value) =>
-                    onChanged(prefs.withValue(panel.id, option.id, value)),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: RmSegmented<String>(
+                    options: option.values,
+                    value: prefs.choice(panel, option),
+                    onChanged: (value) =>
+                        onChanged(prefs.withValue(panel.id, option.id, value)),
+                  ),
+                ),
               ),
             ],
           ),
