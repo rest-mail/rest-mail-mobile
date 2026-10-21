@@ -32,6 +32,38 @@ void main() {
     expect(back.choice(dateSeparatorsPanel, dayStyleOption), 'absolute');
   });
 
+  test('the composer panels start off, so nothing opens by surprise', () {
+    const prefs = InterfacePrefs();
+    expect(prefs.isOn(composerCcPanel), isFalse);
+    expect(prefs.isOn(composerFromPanel), isFalse);
+  });
+
+  test('a preset writes every panel and option at once', () {
+    var prefs = const InterfacePrefs();
+    expect(classicPreset.prefs.matches(prefs), isTrue);
+
+    prefs = triagePreset.prefs;
+    expect(prefs.isOn(dateSeparatorsPanel), isTrue);
+    expect(prefs.choice(dateSeparatorsPanel, dayStyleOption), 'absolute');
+    expect(prefs.toggle(dateSeparatorsPanel, dayCountOption), isTrue);
+    expect(prefs.choice(senderTrustPanel, trustShowForOption), 'warnings');
+    expect(triagePreset.prefs.matches(prefs), isTrue);
+    expect(classicPreset.prefs.matches(prefs), isFalse);
+
+    prefs = readingPreset.prefs;
+    expect(prefs.isOn(composerCcPanel), isTrue);
+    expect(prefs.isOn(composerFromPanel), isFalse);
+    expect(prefs.choice(senderTrustPanel, trustDetailOption), 'receipt');
+    expect(readingPreset.prefs.matches(prefs), isTrue);
+  });
+
+  test('a preset survives storage and still matches', () {
+    final stored = AppSettings.decode(
+      const AppSettings().copyWith(interface: readingPreset.prefs).encode(),
+    ).interface;
+    expect(readingPreset.prefs.matches(stored), isTrue);
+  });
+
   test('unknown stored keys are ignored', () {
     final prefs = InterfacePrefs.decode({
       'panels': {'gone_panel': true},
