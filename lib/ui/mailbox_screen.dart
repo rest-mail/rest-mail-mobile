@@ -22,12 +22,14 @@ import 'widgets/common.dart';
 import 'widgets/day_heading.dart';
 import 'widgets/message_row.dart';
 
-/// The folder on screen, with the drawer for folders and accounts and the
-/// button to write a message.
+/// The folder on screen, with the Mailboxes screen and the button to write
+/// a message.
 class MailboxScreen extends StatefulWidget {
-  const MailboxScreen({super.key, required this.mailbox});
+  const MailboxScreen({super.key, this.mailbox});
 
-  final MailboxState mailbox;
+  /// A mailbox to show directly, for tests; the app follows the account on
+  /// screen instead, so switching accounts updates this screen in place.
+  final MailboxState? mailbox;
 
   @override
   State<MailboxScreen> createState() => _MailboxScreenState();
@@ -37,12 +39,15 @@ class _MailboxScreenState extends State<MailboxScreen> {
   final _scroll = ScrollController();
   (int?, String)? _showing;
 
+  MailboxState get _mailbox =>
+      widget.mailbox ?? AppScope.read(context).mailbox!;
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(() {
       if (_scroll.position.extentAfter < 600) {
-        unawaited(widget.mailbox.loadMore());
+        unawaited(_mailbox.loadMore());
       }
     });
   }
@@ -66,7 +71,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
 
   /// Opens a row: [conversation]'s newest message, the rest of it beside.
   Future<void> _open(List<Message> conversation) async {
-    final m = widget.mailbox;
+    final m = _mailbox;
     final message = conversation.first;
     if (m.folder == StandardFolder.drafts || message.isDraft) {
       try {
@@ -92,7 +97,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
 
   /// A swiped row goes to Trash whole, conversation and all.
   Future<void> _swipedAway(List<Message> conversation) async {
-    final m = widget.mailbox;
+    final m = _mailbox;
     final message = conversation.first;
     final permanent = message.folder == StandardFolder.trash;
     await removeWithUndo(
@@ -108,10 +113,12 @@ class _MailboxScreenState extends State<MailboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final current = widget.mailbox ?? AppScope.of(context).mailbox;
+    if (current == null) return const SizedBox.shrink();
     return ListenableBuilder(
-      listenable: widget.mailbox,
+      listenable: current,
       builder: (context, _) {
-        final m = widget.mailbox;
+        final m = current;
         final account = AppScope.of(context).current;
         final signedOut = account?.signedOut != null;
         _topOnSwitch(m);

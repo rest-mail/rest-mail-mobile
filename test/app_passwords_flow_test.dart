@@ -308,6 +308,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await tap(tester, find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
+    await tapText(tester, FakeAccounts.otherEmail);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
     await tapText(tester, 'Settings');
     await tapText(tester, FakeAccounts.otherEmail);
     expect(

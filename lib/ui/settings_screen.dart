@@ -69,7 +69,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final host = m.backend.host;
     final quota = _quota;
     final signature = settings.signature.trim();
-    final others = app.accounts.where((a) => a != app.current);
     final current = app.current;
     final administers =
         current is RestAccount &&
@@ -92,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                   children: [
-                    const SectionLabel('Accounts'),
+                    const SectionLabel('This mailbox'),
                     const SizedBox(height: 9),
                     RmGroup(
                       children: [
@@ -106,20 +105,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             primary: true,
                             onTap: () => Navigator.pop(context),
                           )
-                        else ...[
-                          for (final account in m.accounts)
-                            _AccountRow(
-                              label: account.label,
-                              address: account.address,
-                              subtitle: account.isPrimary
-                                  ? 'Signed in · $host'
-                                  : 'Mailbox of this account · $host',
-                              primary: account.isPrimary,
-                              onTap: () => _push(
-                                context,
-                                AccountScreen(mailbox: m, account: account),
-                              ),
+                        else if (m.account case final account?)
+                          _AccountRow(
+                            label: account.label,
+                            address: account.address,
+                            subtitle: account.isPrimary
+                                ? 'Primary mailbox · $host'
+                                : 'Mailbox of this account · $host',
+                            primary: account.isPrimary,
+                            onTap: () => _push(
+                              context,
+                              AccountScreen(mailbox: m, account: account),
                             ),
+                          ),
+                        if (current is RestAccount &&
+                            current.signedOut == null) ...[
                           if (creates)
                             _AddRow(
                               label: 'Create a mailbox',
@@ -138,26 +138,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _push(context, LinkAccountScreen(mailbox: m)),
                             ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-                    // Accounts of their own, each with its own session,
-                    // perhaps on another server. Tapping one puts it on
-                    // screen.
-                    const SectionLabel('Other accounts'),
-                    const SizedBox(height: 9),
-                    RmGroup(
-                      children: [
-                        for (final other in others)
-                          _AccountRow(
-                            label: other.label,
-                            address: other.address,
-                            subtitle: other.signedOut == null
-                                ? 'Signed in · ${other.host}'
-                                : 'Signed out · ${other.host}',
-                            icon: Icons.swap_horiz_rounded,
-                            onTap: () => unawaited(app.switchTo(other)),
-                          ),
+                        // Accounts of their own live on the Mailboxes screen;
+                        // Settings is for the mailbox already selected there.
                         _AddRow(
                           label: 'Add an account',
                           onTap: () => _push(context, const AddAccountScreen()),
@@ -347,7 +329,6 @@ class _AccountRow extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.primary = false,
-    this.icon = Icons.chevron_right_rounded,
   });
 
   final String label;
@@ -355,9 +336,6 @@ class _AccountRow extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool primary;
-
-  /// What tapping does: open the account, or switch to it.
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +367,7 @@ class _AccountRow extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(icon, size: 20, color: c.ink3),
+            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
           ],
         ),
       ),
