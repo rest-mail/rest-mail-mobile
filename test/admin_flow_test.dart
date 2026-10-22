@@ -48,7 +48,7 @@ void main() {
   /// Administration, from the drawer.
   Future<void> administer(WidgetTester tester) async {
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tap(tester, 'Administration');
   }
@@ -287,7 +287,7 @@ void main() {
     await tester.pumpWidget(RestmailApp(state: state));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     expect(find.text('Administration'), findsNothing);
     await tester.tapAt(const Offset(370, 400)); // close the drawer
@@ -299,7 +299,7 @@ void main() {
       password: FakeAccounts.password,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tap(tester, 'Administration');
     expect(find.text('Outbound queue'), findsOneWidget);

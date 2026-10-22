@@ -54,9 +54,9 @@ void main() {
       at.add(const Duration(hours: 1)),
     );
 
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.byTooltip('Mailbox settings'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Scheduled'),

@@ -29,9 +29,7 @@ Future<void> _signIn(WidgetTester tester) async {
 }
 
 Future<void> _openSettings(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Folders and accounts'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Settings'));
+  await tester.tap(find.byTooltip('App settings'));
   await tester.pumpAndSettle();
 }
 
@@ -116,7 +114,7 @@ void main() {
     expect(find.text('Get notified of new mail?'), findsNothing);
     await _openSettings(tester);
     expect(find.text('NOTIFICATIONS'), findsNothing);
-    expect(find.text('THIS MAILBOX'), findsOneWidget);
+    expect(find.text('THIS PHONE'), findsOneWidget);
     expect(push.prompts, 0);
 
     await finish(tester);

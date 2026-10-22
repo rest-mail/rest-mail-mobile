@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../push/push_service.dart';
 import '../state/admin_access.dart';
 import '../state/app_scope.dart';
@@ -31,16 +32,16 @@ String _storage(QuotaInfo quota) => quota.quotaBytes > 0
     ? '${sizeLabel(quota.usedBytes)} of ${sizeLabel(quota.quotaBytes)} used'
     : '${sizeLabel(quota.usedBytes)} used';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.mailbox});
+class MailboxSettingsScreen extends StatefulWidget {
+  const MailboxSettingsScreen({super.key, required this.mailbox});
 
   final MailboxState mailbox;
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<MailboxSettingsScreen> createState() => _MailboxSettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
   QuotaInfo? _quota;
 
   @override
@@ -64,11 +65,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final c = context.rm;
     final app = AppScope.of(context);
-    final settings = app.settings;
     final m = widget.mailbox;
     final host = m.backend.host;
     final quota = _quota;
-    final signature = settings.signature.trim();
     final current = app.current;
     final administers =
         current is RestAccount &&
@@ -86,11 +85,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              RmTopBar(title: 'Settings', onBack: () => Navigator.pop(context)),
+              RmTopBar(
+                title: 'Mailbox settings',
+                onBack: () => Navigator.pop(context),
+              ),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                   children: [
+                    Text(
+                      'Stored on $host',
+                      style: rmText(12, color: c.ink3, weight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 14),
                     const SectionLabel('This mailbox'),
                     const SizedBox(height: 9),
                     RmGroup(
@@ -138,16 +145,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _push(context, LinkAccountScreen(mailbox: m)),
                             ),
                         ],
-                        // Accounts of their own live on the Mailboxes screen;
-                        // Settings is for the mailbox already selected there.
-                        _AddRow(
-                          label: 'Add an account',
-                          onTap: () => _push(context, const AddAccountScreen()),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 22),
                     if (administers) ...[
+                      const SizedBox(height: 22),
                       const SectionLabel('Server'),
                       const SizedBox(height: 9),
                       RmGroup(
@@ -162,92 +163,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 22),
                     ],
-                    _NotificationsSection(app: app),
-                    InterfaceSettings(
-                      prefs: settings.interface,
-                      onChanged: (prefs) => unawaited(
-                        app.updateSettings(settings.copyWith(interface: prefs)),
-                      ),
-                    ),
-                    const SectionLabel('General'),
-                    const SizedBox(height: 9),
-                    RmGroup(
-                      children: [
-                        RmRow(
-                          label: 'Signature',
-                          value: signature.isEmpty
-                              ? 'None'
-                              : signature.split('\n').first,
-                          onTap: () => _push(context, const SignatureScreen()),
-                        ),
-                        if (m.backend.canScheduleSend)
+                    if (m.backend.canScheduleSend) ...[
+                      const SizedBox(height: 22),
+                      const SectionLabel('Sending'),
+                      const SizedBox(height: 9),
+                      RmGroup(
+                        children: [
                           RmRow(
                             label: 'Scheduled',
                             subtitle: 'Messages the server will send later',
                             onTap: () =>
                                 _push(context, ScheduledScreen(mailbox: m)),
                           ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Appearance',
-                                  style: rmText(
-                                    14.5,
-                                    color: c.ink,
-                                    weight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (ThemePack.byId(settings.packId).followsSystem)
-                                RmSegmented<ThemeMode>(
-                                  options: const [
-                                    (ThemeMode.system, 'System'),
-                                    (ThemeMode.light, 'Light'),
-                                    (ThemeMode.dark, 'Dark'),
-                                  ],
-                                  value: settings.themeMode,
-                                  onChanged: (mode) => unawaited(
-                                    app.updateSettings(
-                                      settings.copyWith(themeMode: mode),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Text(
-                                  'Sets its own',
-                                  style: rmText(12, color: c.ink3),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                          child: Column(
-                            children: [
-                              for (final pack in ThemePack.all)
-                                _PackTile(
-                                  pack: pack,
-                                  selected: pack.id == settings.packId,
-                                  onTap: () => unawaited(
-                                    app.updateSettings(
-                                      settings.copyWith(packId: pack.id),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     Text(
                       [
-                        'rest-mail for mobile $appVersion · $host',
+                        host,
                         if (quota != null)
                           '${countLabel(quota.messageCount)} messages · ${_storage(quota)}',
                       ].join('\n'),
@@ -259,6 +194,188 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What belongs to this phone rather than a mailbox: language, theme, the
+/// interface, notifications and the signature.
+class AppSettingsScreen extends StatelessWidget {
+  const AppSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final app = AppScope.of(context);
+    final settings = app.settings;
+    final signature = settings.signature.trim();
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            RmTopBar(
+              title: 'App settings',
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+                children: [
+                  const SectionLabel('This phone'),
+                  const SizedBox(height: 9),
+                  RmGroup(
+                    children: [
+                      RmRow(
+                        label: 'Language',
+                        value: languageLabel(settings.languageCode),
+                        onTap: () => _push(context, const LanguageScreen()),
+                      ),
+                      RmRow(
+                        label: 'Signature',
+                        value: signature.isEmpty
+                            ? 'None'
+                            : signature.split('\n').first,
+                        onTap: () => _push(context, const SignatureScreen()),
+                      ),
+                      _AddRow(
+                        label: 'Add an account',
+                        onTap: () => _push(context, const AddAccountScreen()),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  _NotificationsSection(app: app),
+                  const SizedBox(height: 22),
+                  const SectionLabel('Interface'),
+                  InterfaceSettings(
+                    prefs: settings.interface,
+                    onChanged: (prefs) => unawaited(
+                      app.updateSettings(settings.copyWith(interface: prefs)),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  const SectionLabel('Appearance'),
+                  const SizedBox(height: 9),
+                  RmGroup(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Brightness',
+                                style: rmText(
+                                  14.5,
+                                  color: c.ink,
+                                  weight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (ThemePack.byId(settings.packId).followsSystem)
+                              RmSegmented<ThemeMode>(
+                                options: const [
+                                  (ThemeMode.system, 'System'),
+                                  (ThemeMode.light, 'Light'),
+                                  (ThemeMode.dark, 'Dark'),
+                                ],
+                                value: settings.themeMode,
+                                onChanged: (mode) => unawaited(
+                                  app.updateSettings(
+                                    settings.copyWith(themeMode: mode),
+                                  ),
+                                ),
+                              )
+                            else
+                              Text(
+                                'Sets its own',
+                                style: rmText(12, color: c.ink3),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                        child: Column(
+                          children: [
+                            for (final pack in ThemePack.all)
+                              _PackTile(
+                                pack: pack,
+                                selected: pack.id == settings.packId,
+                                onTap: () => unawaited(
+                                  app.updateSettings(
+                                    settings.copyWith(packId: pack.id),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'rest-mail for mobile $appVersion',
+                    textAlign: TextAlign.center,
+                    style: rmText(11.5, color: c.ink3, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The language the app speaks.
+class LanguageScreen extends StatelessWidget {
+  const LanguageScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final app = AppScope.of(context);
+    final selected = app.settings.languageCode;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            RmTopBar(title: 'Language', onBack: () => Navigator.pop(context)),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+                children: [
+                  RmGroup(
+                    children: [
+                      for (final entry in languageNames.entries)
+                        RmRow(
+                          label: entry.value,
+                          trailing: entry.key == selected
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  size: 20,
+                                  color: c.accent,
+                                )
+                              : const SizedBox(width: 20),
+                          onTap: () {
+                            unawaited(
+                              app.updateSettings(
+                                app.settings.copyWith(languageCode: entry.key),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

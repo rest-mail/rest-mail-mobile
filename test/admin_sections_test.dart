@@ -52,7 +52,7 @@ void main() {
     }
     await tester.pumpWidget(RestmailApp(state: state));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Administration'));
     await tester.pumpAndSettle();

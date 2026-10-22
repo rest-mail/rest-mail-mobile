@@ -52,9 +52,10 @@ void main() {
   }
 
   Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
-    await tapText(tester, 'Settings');
+    await tester.tap(find.byTooltip('Mailbox settings'));
+    await tester.pumpAndSettle();
   }
 
   /// Settings → Create a mailbox, the local part (and name) typed in.
@@ -106,7 +107,7 @@ void main() {
     );
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
@@ -271,7 +272,7 @@ void main() {
     await snackGone(tester);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
@@ -279,7 +280,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.byTooltip('Mailbox settings'));
     await tester.pumpAndSettle();
     await tapText(tester, FakeAccounts.otherEmail);
     await tapText(tester, 'Unlink from this account');

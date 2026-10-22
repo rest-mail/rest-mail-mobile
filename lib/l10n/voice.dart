@@ -36,6 +36,19 @@ const supportedLocales = <Locale>[
   Locale('ne'),
 ];
 
+/// The languages the app offers, and what each calls itself. `system` means
+/// the phone's choice.
+const languageNames = <String, String>{
+  'system': 'System',
+  'en': 'English',
+  'de': 'Deutsch',
+  'es': 'Español',
+  'hi': 'हिन्दी',
+  'ne': 'नेपाली',
+};
+
+String languageLabel(String code) => languageNames[code] ?? 'System';
+
 /// The string for [key] in [pack]'s voice and [locale], falling back
 /// voice+locale → base+locale → voice+en → base+en.
 String voiceLine(ThemePack pack, Locale locale, String key) {
