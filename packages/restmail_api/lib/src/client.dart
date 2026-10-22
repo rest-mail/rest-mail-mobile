@@ -186,6 +186,21 @@ class RestmailClient {
     return tokens;
   }
 
+  /// Renews the session now if its access token runs out within [margin], as
+  /// when the app comes back to the foreground after a while away. It shares
+  /// any refresh already in flight, so calling it again costs nothing more.
+  ///
+  /// Throws [SessionExpiredException] when the server refuses the refresh
+  /// token, and [ApiException] when it can't be reached; then the session is
+  /// kept as it was, to be renewed by the next request.
+  Future<void> renewIfExpiring({
+    Duration margin = const Duration(minutes: 2),
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null || !tokens.expiresWithin(margin)) return;
+    await refresh();
+  }
+
   // ── Setup ────────────────────────────────────────────────────────────
 
   /// Starts enrolling an authenticator. Show the result once, then
