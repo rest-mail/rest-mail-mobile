@@ -29,6 +29,8 @@ String _keyError(ApiException error, String host) {
         .join('\n');
   }
   return switch (error.code) {
+    _ when error.statusCode == 404 =>
+      'API keys are not available for this mailbox on this server.',
     'two_factor_required' =>
       'Enable two-factor authentication, then sign in with a code to create '
           'or revoke API keys.',

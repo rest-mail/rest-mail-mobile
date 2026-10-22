@@ -57,7 +57,11 @@ class _KeyClient extends http.BaseClient {
       case 'POST':
         keys.request = jsonDecode(utf8.decode(raw)) as Map<String, dynamic>;
         if (keys.refusal case final code?) {
-          status = code == 'validation_failed' ? 422 : 403;
+          status = code == 'validation_failed'
+              ? 422
+              : code == 'http_404'
+              ? 404
+              : 403;
           body = {
             'error': {
               'code': code,
@@ -224,6 +228,7 @@ void main() {
     'two_factor_required',
     'invalid_password',
     'validation_failed',
+    'http_404',
   ]) {
     testWidgets('$code keeps the form and signed-in session', (tester) async {
       final keys = _Keys()..refusal = code;
@@ -240,6 +245,13 @@ void main() {
         expect(find.text('Sign in with a code'), findsOneWidget);
       } else if (code == 'validation_failed') {
         expect(find.text('permissions: scope invalid'), findsOneWidget);
+      } else if (code == 'http_404') {
+        expect(
+          find.text(
+            'API keys are not available for this mailbox on this server.',
+          ),
+          findsOneWidget,
+        );
       } else {
         expect(
           find.textContaining('current password of the account'),
