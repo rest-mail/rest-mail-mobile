@@ -31,11 +31,6 @@ Future<void> _signIn(
   await tester.pumpAndSettle();
 }
 
-Future<void> _openAppSettings(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('App settings'));
-  await tester.pumpAndSettle();
-}
-
 Future<void> _openMailboxSettings(WidgetTester tester) async {
   await tester.tap(find.byTooltip('Mailboxes'));
   await tester.pumpAndSettle();
@@ -77,8 +72,11 @@ void main() {
     await _signIn(tester, FakeAccounts.email);
     expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
 
-    // A second account, from App settings.
-    await _openAppSettings(tester);
+    // A second account, from the account picker on Mailboxes.
+    await tester.tap(find.byTooltip('Mailboxes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Add an account'));
     await tester.pumpAndSettle();
     // Its domain has no server of its own: it is served from the first's.
@@ -139,8 +137,6 @@ void main() {
 
     // Signing out ends only the session and keeps the account on the phone.
     await _openMailboxSettings(tester);
-    await tester.tap(find.text(FakeAccounts.otherEmail));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(
@@ -158,7 +154,6 @@ void main() {
       [FakeAccounts.email, FakeAccounts.otherEmail],
     );
     expect(state.current!.signedOut, isNotNull);
-    expect(find.text('Signed out · ${FakeAccounts.host}'), findsOneWidget);
     expect(
       find.text('Signed out of ${FakeAccounts.otherEmail}'),
       findsOneWidget,

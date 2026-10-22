@@ -14,7 +14,6 @@ import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import '../version.dart';
-import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'interface_customizer_screen.dart';
@@ -62,6 +61,70 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     }
   }
 
+  bool _busy = false;
+
+  Future<void> _remove() async {
+    final account = widget.mailbox.account;
+    if (account == null) return;
+    final host = widget.mailbox.backend.host;
+    final app = AppScope.read(context);
+    if (account.isPrimary) {
+      final signedIn = app.current;
+      final sure = await confirmAction(
+        context,
+        title: 'Sign out?',
+        message: [
+          'The session for ${account.address} ends. The account stays on this '
+              'phone, signed out. Your mail stays on $host.',
+          if (app.accounts.length > 1) 'Your other accounts stay signed in.',
+        ].join(' '),
+        action: 'Sign out',
+      );
+      if (sure && signedIn != null) await app.signOut(signedIn);
+      return;
+    }
+    final sure = await confirmAction(
+      context,
+      title: 'Unlink ${account.address}?',
+      message:
+          'This account gives up its access to it. The mailbox and its mail '
+          'are untouched. If it has no password of its own, only an '
+          'administrator can give access to it back.',
+      action: 'Unlink',
+    );
+    if (!sure || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.mailbox.backend.unlinkAccount(account.id);
+      await widget.mailbox.reloadAccounts();
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Unlinked ${account.address}')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showToast(context, describeError(e, host: host));
+    }
+  }
+
+  Future<void> _removeFromPhone() async {
+    final app = AppScope.read(context);
+    final signedIn = app.current;
+    if (signedIn == null) return;
+    final sure = await confirmAction(
+      context,
+      title: 'Remove ${signedIn.address}?',
+      message:
+          'The account and its settings are removed from this phone. '
+          'Your mail stays on ${signedIn.host}.',
+      action: 'Remove',
+    );
+    if (sure) await app.removeAccount(signedIn);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
@@ -70,6 +133,10 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     final host = m.backend.host;
     final quota = _quota;
     final current = app.current;
+    final session = switch (app.current) {
+      final RestAccount rest when identical(rest.backend, m.backend) => rest,
+      _ => null,
+    };
     final administers =
         current is RestAccount &&
         current.signedOut == null &&
@@ -103,8 +170,6 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                     const SizedBox(height: 9),
                     RmGroup(
                       children: [
-                        // Signed out, it has none of its mail to show: its
-                        // mail screen signs it in again, or removes it.
                         if (current case final out? when out.signedOut != null)
                           _AccountRow(
                             label: out.label,
@@ -113,37 +178,108 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             primary: true,
                             onTap: () => Navigator.pop(context),
                           )
-                        else if (m.account case final account?)
-                          _AccountRow(
-                            label: account.label,
-                            address: account.address,
-                            subtitle: account.isPrimary
-                                ? '${tr(context, 'settings.primaryMailbox')} · $host'
-                                : '${tr(context, 'settings.mailboxOfAccount')} · $host',
-                            primary: account.isPrimary,
-                            onTap: () => _push(
-                              context,
-                              AccountScreen(mailbox: m, account: account),
+                        else if (m.account case final account?) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                            child: Row(
+                              children: [
+                                RmAvatar(
+                                  name: account.label,
+                                  seed: account.address,
+                                  size: 40,
+                                  color: account.isPrimary ? c.accent : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        account.address,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: rmText(
+                                          15,
+                                          color: c.ink,
+                                          weight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        account.isPrimary
+                                            ? '${tr(context, 'settings.primaryMailbox')} · $host'
+                                            : '${tr(context, 'settings.mailboxOfAccount')} · $host',
+                                        style: rmText(12, color: c.ink3),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        if (current is RestAccount &&
-                            current.signedOut == null) ...[
-                          if (creates)
-                            _AddRow(
-                              label: tr(context, 'settings.createMailbox'),
+                          RmRow(
+                            label: 'Display name',
+                            value: account.displayName.isEmpty
+                                ? '—'
+                                : account.displayName,
+                          ),
+                          RmRow(label: 'Server', value: host),
+                          if (quota != null)
+                            RmRow(label: 'Storage', value: _storage(quota)),
+                          RmRow(
+                            label: 'Updates',
+                            value: m.backend.canLinkMailboxes
+                                ? 'Pushed live by the server'
+                                : 'Live while the app is open',
+                          ),
+                          if (session != null)
+                            RmRow(
+                              label: 'App passwords',
+                              subtitle: 'For mail apps and automations',
                               onTap: () => _push(
                                 context,
-                                CreateMailboxScreen(
-                                  account: current,
-                                  mailbox: m,
+                                AppPasswordsScreen(
+                                  account: session,
+                                  mailbox: account,
                                 ),
                               ),
                             ),
-                          if (m.backend.canLinkMailboxes)
-                            _AddRow(
-                              label: tr(context, 'settings.linkMailbox'),
-                              onTap: () =>
-                                  _push(context, LinkAccountScreen(mailbox: m)),
+                          if (current is RestAccount &&
+                              current.signedOut == null) ...[
+                            if (creates)
+                              _AddRow(
+                                label: tr(context, 'settings.createMailbox'),
+                                onTap: () => _push(
+                                  context,
+                                  CreateMailboxScreen(
+                                    account: current,
+                                    mailbox: m,
+                                  ),
+                                ),
+                              ),
+                            if (m.backend.canLinkMailboxes)
+                              _AddRow(
+                                label: tr(context, 'settings.linkMailbox'),
+                                onTap: () => _push(
+                                  context,
+                                  LinkAccountScreen(mailbox: m),
+                                ),
+                              ),
+                          ],
+                          RmRow(
+                            label: account.isPrimary
+                                ? 'Sign out'
+                                : 'Unlink from this account',
+                            danger: true,
+                            onTap: _busy ? null : () => unawaited(_remove()),
+                          ),
+                          if (account.isPrimary)
+                            RmRow(
+                              label: 'Remove from this phone',
+                              danger: true,
+                              onTap: _busy
+                                  ? null
+                                  : () => unawaited(_removeFromPhone()),
                             ),
                         ],
                       ],
@@ -239,10 +375,6 @@ class AppSettingsScreen extends StatelessWidget {
                             ? 'None'
                             : signature.split('\n').first,
                         onTap: () => _push(context, const SignatureScreen()),
-                      ),
-                      _AddRow(
-                        label: tr(context, 'settings.addAccount'),
-                        onTap: () => _push(context, const AddAccountScreen()),
                       ),
                     ],
                   ),
@@ -545,228 +677,6 @@ class _AddRow extends StatelessWidget {
               child: Text(
                 label,
                 style: rmText(14.5, color: c.accent, weight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AccountScreen extends StatefulWidget {
-  const AccountScreen({
-    super.key,
-    required this.mailbox,
-    required this.account,
-  });
-
-  final MailboxState mailbox;
-  final Account account;
-
-  @override
-  State<AccountScreen> createState() => _AccountScreenState();
-}
-
-class _AccountScreenState extends State<AccountScreen> {
-  QuotaInfo? _quota;
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadQuota());
-  }
-
-  Future<void> _loadQuota() async {
-    try {
-      final quota = await widget.mailbox.backend.quota(widget.account.id);
-      if (mounted) setState(() => _quota = quota);
-    } on ApiException {
-      // Storage is left off.
-    }
-  }
-
-  Future<void> _remove() async {
-    final account = widget.account;
-    final host = widget.mailbox.backend.host;
-    final app = AppScope.read(context);
-    if (account.isPrimary) {
-      // This account only: any others on the phone stay signed in.
-      final signedIn = app.current;
-      final sure = await confirmAction(
-        context,
-        title: 'Sign out?',
-        message: [
-          'The session for ${account.address} ends. The account stays on this '
-              'phone, signed out. Your mail stays on $host.',
-          if (app.accounts.length > 1) 'Your other accounts stay signed in.',
-        ].join(' '),
-        action: 'Sign out',
-      );
-      if (sure && signedIn != null) await app.signOut(signedIn);
-      return;
-    }
-    final sure = await confirmAction(
-      context,
-      title: 'Unlink ${account.address}?',
-      message:
-          'This account gives up its access to it. The mailbox and its mail '
-          'are untouched. If it has no password of its own, only an '
-          'administrator can give access to it back.',
-      action: 'Unlink',
-    );
-    if (!sure || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      await widget.mailbox.backend.unlinkAccount(account.id);
-      await widget.mailbox.reloadAccounts();
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.pop(context);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Unlinked ${account.address}')),
-      );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      showToast(context, describeError(e, host: host));
-    }
-  }
-
-  Future<void> _removeFromPhone() async {
-    final app = AppScope.read(context);
-    final signedIn = app.current;
-    if (signedIn == null) return;
-    final sure = await confirmAction(
-      context,
-      title: 'Remove ${signedIn.address}?',
-      message:
-          'The account and its settings are removed from this phone. '
-          'Your mail stays on ${signedIn.host}.',
-      action: 'Remove',
-    );
-    if (sure) await app.removeAccount(signedIn);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.rm;
-    final account = widget.account;
-    final host = widget.mailbox.backend.host;
-    final quota = _quota;
-    // App passwords are a REST Mail account's: the session's own, or one it
-    // owns, which it created or linked. Not an IMAP account's.
-    final session = switch (AppScope.of(context).current) {
-      final RestAccount rest
-          when identical(rest.backend, widget.mailbox.backend) =>
-        rest,
-      _ => null,
-    };
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            RmTopBar(title: 'Account', onBack: () => Navigator.pop(context)),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 22, 16, 40),
-                children: [
-                  Row(
-                    children: [
-                      RmAvatar(
-                        name: account.label,
-                        seed: account.address,
-                        size: 52,
-                        color: account.isPrimary ? c.accent : null,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              account.address,
-                              style: rmText(
-                                17,
-                                color: c.ink,
-                                weight: FontWeight.w700,
-                                tracking: -0.02,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${account.isPrimary ? 'Primary mailbox' : 'Mailbox of this account'} · $host',
-                              style: rmText(13, color: c.ink3),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  RmGroup(
-                    children: [
-                      RmRow(
-                        label: 'Display name',
-                        value: account.displayName.isEmpty
-                            ? '—'
-                            : account.displayName,
-                      ),
-                      RmRow(label: 'Server', value: host),
-                      if (quota != null)
-                        RmRow(label: 'Storage', value: _storage(quota)),
-                      RmRow(
-                        label: 'Updates',
-                        value: widget.mailbox.backend.canLinkMailboxes
-                            ? 'Pushed live by the server'
-                            : 'Live while the app is open',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  if (session != null) ...[
-                    RmGroup(
-                      children: [
-                        RmRow(
-                          label: 'App passwords',
-                          subtitle: 'For mail apps and automations',
-                          onTap: () => _push(
-                            context,
-                            AppPasswordsScreen(
-                              account: session,
-                              mailbox: account,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-                  ],
-                  RmGroup(
-                    children: [
-                      RmRow(
-                        label: tr(context, 'settings.signature'),
-                        onTap: () => _push(context, const SignatureScreen()),
-                      ),
-                      RmRow(
-                        label: account.isPrimary
-                            ? 'Sign out'
-                            : 'Unlink from this account',
-                        danger: true,
-                        onTap: _busy ? null : () => unawaited(_remove()),
-                      ),
-                      if (account.isPrimary)
-                        RmRow(
-                          label: 'Remove from this phone',
-                          danger: true,
-                          onTap: _busy
-                              ? null
-                              : () => unawaited(_removeFromPhone()),
-                        ),
-                    ],
-                  ),
-                ],
               ),
             ),
           ],

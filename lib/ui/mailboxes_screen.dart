@@ -10,6 +10,7 @@ import '../state/mailbox_state.dart';
 import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
+import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
@@ -143,9 +144,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                     _AccountSelector(
                       account: selected,
                       live: m.live,
-                      onTap: accounts.length < 2
-                          ? null
-                          : () => unawaited(_pickAccount(context, accounts)),
+                      onTap: () => unawaited(_pickAccount(context, accounts)),
                     ),
                   const SizedBox(height: 12),
                   _Stats(
@@ -236,7 +235,17 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (sheet) => _AccountPicker(accounts: accounts),
+      builder: (sheet) => _AccountPicker(
+        accounts: accounts,
+        onAddAccount: () {
+          Navigator.pop(sheet);
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => const AddAccountScreen()),
+          );
+        },
+      ),
     );
     if (chosen == null || !mounted) return;
     await _select(chosen);
@@ -333,9 +342,10 @@ class _AccountSelector extends StatelessWidget {
 
 /// The accounts in a sheet, one tap away from being the screen.
 class _AccountPicker extends StatelessWidget {
-  const _AccountPicker({required this.accounts});
+  const _AccountPicker({required this.accounts, required this.onAddAccount});
 
   final List<_MailboxAccount> accounts;
+  final VoidCallback onAddAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -364,6 +374,29 @@ class _AccountPicker extends StatelessWidget {
               children: [
                 for (final account in accounts)
                   _AccountChoice(account: account),
+                const SizedBox(height: 6),
+                Divider(height: 1, color: c.line),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: onAddAccount,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_rounded, size: 20, color: c.accent),
+                        const SizedBox(width: 11),
+                        Text(
+                          tr(context, 'settings.addAccount'),
+                          style: rmText(
+                            14.5,
+                            color: c.accent,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
