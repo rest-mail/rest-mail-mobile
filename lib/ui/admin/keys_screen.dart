@@ -316,6 +316,7 @@ class _CertificateScreenState extends State<CertificateScreen> {
               snapshot.error!,
               host: widget.account.server.host,
             ),
+            onRetry: () => setState(() => _cert = _load()),
           );
         }
         final cert = snapshot.data;
@@ -327,7 +328,11 @@ class _CertificateScreenState extends State<CertificateScreen> {
           onRefresh: () async {
             final next = _load();
             setState(() => _cert = next);
-            await next;
+            try {
+              await next;
+            } on ApiException {
+              // The FutureBuilder displays the refusal and its retry action.
+            }
           },
           child: ListView(
             padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),

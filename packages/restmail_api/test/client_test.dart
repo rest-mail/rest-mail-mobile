@@ -1238,9 +1238,9 @@ void main() {
       expect(cert.domain, 'a.test');
       expect(cert.certPem, pem);
       expect(cert.autoRenew, isFalse);
-      expect(cert.notAfter, DateTime.utc(2026, 12));
-      expect(cert.createdAt, DateTime.utc(2026, 9, 2, 10));
-      expect(cert.updatedAt, DateTime.utc(2026, 9, 3, 10));
+      expect(cert.notAfter.toUtc(), DateTime.utc(2026, 12));
+      expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 9, 2, 10));
+      expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 9, 3, 10));
     });
 
     test('uploads the certificate, key and domain it is given', () async {
