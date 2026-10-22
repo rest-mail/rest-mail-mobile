@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:restmail/l10n/voice.dart';
 import 'package:restmail/theme/packs.dart';
 import 'package:restmail/theme/theme.dart';
 import 'package:restmail/ui/splash_screen.dart';
@@ -22,9 +23,27 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text(pack.splashLine), findsOneWidget);
+      expect(
+        find.text(voiceLine(pack, const Locale('en'), 'splash.tagline')),
+        findsOneWidget,
+      );
     });
   }
+
+  testWidgets('the tagline speaks the device language, in the pack voice', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('de'),
+        supportedLocales: const [Locale('en'), Locale('de')],
+        theme: buildTheme(ThemePack.nightops, Brightness.light),
+        home: SplashScreen(pack: ThemePack.nightops),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.text('// öffne_deine_post'), findsOneWidget);
+  });
 
   testWidgets('the sweep keeps moving', (tester) async {
     await tester.pumpWidget(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/voice.dart';
 import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import 'widgets/avatar.dart';
@@ -91,7 +92,11 @@ class _SplashScreenState extends State<SplashScreen>
               child: Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
-                  widget.pack.splashLine,
+                  voiceLine(
+                    widget.pack,
+                    Localizations.localeOf(context),
+                    'splash.tagline',
+                  ),
                   style: rmText(
                     11,
                     color: c.ink3,

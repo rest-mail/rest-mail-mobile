@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'l10n/voice.dart';
 import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/packs.dart';
@@ -105,6 +106,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             theme: buildTheme(pack, Brightness.light),
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
+            supportedLocales: supportedLocales,
             home: booting || !_minStayDone
                 ? SplashScreen(pack: pack)
                 : switch (state.phase) {
