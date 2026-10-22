@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
@@ -51,60 +52,16 @@ class RmAvatar extends StatelessWidget {
   );
 }
 
-/// The rest-mail mark: an envelope on an accent tile.
+/// The REST Mail brand mark, exactly as the brand draws it.
 class LogoMark extends StatelessWidget {
   const LogoMark({super.key, this.size = 34});
 
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => SvgPicture.asset(
+    'assets/brand/rest-mail-icon.svg',
     width: size,
     height: size,
-    decoration: BoxDecoration(
-      color: context.rm.mark,
-      borderRadius: BorderRadius.circular(size * 9 / 34),
-    ),
-    child: CustomPaint(painter: _EnvelopePainter(color: context.rm.onMark)),
   );
-}
-
-/// The design's 18-unit envelope glyph, drawn at 18/34 of the tile.
-class _EnvelopePainter extends CustomPainter {
-  _EnvelopePainter({this.color = Colors.white});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final unit = size.width * 18 / 34 / 18;
-    final offset = (size.width - 18 * unit) / 2;
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6 * unit
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas
-      ..save()
-      ..translate(offset, offset)
-      ..drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(1.5 * unit, 3.5 * unit, 15 * unit, 11 * unit),
-          Radius.circular(2 * unit),
-        ),
-        stroke,
-      )
-      ..drawPath(
-        Path()
-          ..moveTo(2 * unit, 5 * unit)
-          ..lineTo(9 * unit, 10 * unit)
-          ..lineTo(16 * unit, 5 * unit),
-        stroke,
-      )
-      ..restore();
-  }
-
-  @override
-  bool shouldRepaint(_EnvelopePainter oldDelegate) => false;
 }

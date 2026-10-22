@@ -82,6 +82,7 @@ dependencies:
   flutter_web_auth_2: ^5.1.0
   # dart-lang, BSD-3. SHA-256 for the PKCE challenge.
   crypto: ^3.0.7
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -90,6 +91,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # The brand mark, taken whole from rest-mail-server/brand/icon; not redrawn.
+    - assets/brand/
 
   # Public Sans, the design's typeface, bundled rather than fetched so the app
   # makes no request to a font CDN. SIL Open Font License; see
