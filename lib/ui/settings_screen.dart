@@ -17,7 +17,7 @@ import '../version.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
-import 'interface_settings.dart';
+import 'interface_customizer_screen.dart';
 import 'push_offer.dart';
 import 'scheduled_screen.dart';
 import 'widgets/avatar.dart';
@@ -249,11 +249,16 @@ class AppSettingsScreen extends StatelessWidget {
                   _NotificationsSection(app: app),
                   const SizedBox(height: 22),
                   const SectionLabel('Interface'),
-                  InterfaceSettings(
-                    prefs: settings.interface,
-                    onChanged: (prefs) => unawaited(
-                      app.updateSettings(settings.copyWith(interface: prefs)),
-                    ),
+                  const SizedBox(height: 9),
+                  RmGroup(
+                    children: [
+                      RmRow(
+                        label: 'Customize screens',
+                        subtitle: 'Choose what each screen shows',
+                        onTap: () =>
+                            _push(context, const InterfaceCustomizerScreen()),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 22),
                   const SectionLabel('Appearance'),

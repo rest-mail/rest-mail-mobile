@@ -4,75 +4,49 @@ import '../state/interface_prefs.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
 
-/// Every panel in the registry, grouped by the area it belongs to, with its
-/// own options underneath. Adding a panel to the registry adds it here too.
-class InterfaceSettings extends StatelessWidget {
-  const InterfaceSettings({
+/// The panels of one screen, with their own options underneath. Adding a
+/// panel to the registry adds it here too.
+class PanelEditor extends StatelessWidget {
+  const PanelEditor({
     super.key,
+    required this.area,
     required this.prefs,
     required this.onChanged,
   });
 
+  final PanelArea area;
   final InterfacePrefs prefs;
   final ValueChanged<InterfacePrefs> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.rm;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 22),
-        const SectionLabel('Presets'),
-        const SizedBox(height: 9),
-        RmGroup(
-          children: [
-            for (final preset in interfacePresets)
-              RmRow(
-                label: preset.name,
-                subtitle: preset.description,
-                trailing: preset.prefs.matches(prefs)
-                    ? Icon(Icons.check_rounded, size: 20, color: c.accent)
-                    : const SizedBox(width: 20),
-                onTap: () => onChanged(preset.prefs),
-              ),
-          ],
-        ),
-        for (final area in PanelArea.values) ..._area(context, area),
-      ],
-    );
-  }
-
-  List<Widget> _area(BuildContext context, PanelArea area) {
     final panels = [
       for (final panel in panelRegistry)
         if (panel.area == area) panel,
     ];
-    if (panels.isEmpty) return const <Widget>[];
-    return [
-      const SizedBox(height: 22),
-      SectionLabel(_areaLabel(area)),
-      const SizedBox(height: 9),
-      RmGroup(
-        children: [
-          for (final panel in panels) ...[
-            RmRow(
+    if (panels.isEmpty) {
+      return Text(
+        'Nothing to choose on this screen yet.',
+        style: rmText(13, color: context.rm.ink3),
+      );
+    }
+    return RmGroup(
+      children: [
+        for (final panel in panels) ...[
+          RmRow(
+            label: panel.name,
+            subtitle: panel.description,
+            trailing: RmSwitch(
+              value: prefs.isOn(panel),
               label: panel.name,
-              subtitle: panel.description,
-              trailing: RmSwitch(
-                value: prefs.isOn(panel),
-                label: panel.name,
-                onChanged: (value) =>
-                    onChanged(prefs.withPanel(panel.id, value)),
-              ),
+              onChanged: (value) => onChanged(prefs.withPanel(panel.id, value)),
             ),
-            if (prefs.isOn(panel))
-              for (final option in panel.options)
-                _option(context, panel, option),
-          ],
+          ),
+          if (prefs.isOn(panel))
+            for (final option in panel.options) _option(context, panel, option),
         ],
-      ),
-    ];
+      ],
+    );
   }
 
   Widget _option(BuildContext context, PanelSpec panel, PanelOption option) {
@@ -113,10 +87,64 @@ class InterfaceSettings extends StatelessWidget {
         );
     }
   }
-
-  String _areaLabel(PanelArea area) => switch (area) {
-    PanelArea.list => 'Message list',
-    PanelArea.reader => 'Reading view',
-    PanelArea.composer => 'Composer',
-  };
 }
+
+/// The named starting points, in a sheet.
+Future<void> showInterfacePresets(
+  BuildContext context, {
+  required InterfacePrefs prefs,
+  required ValueChanged<InterfacePrefs> onChanged,
+}) => showModalBottomSheet<void>(
+  context: context,
+  useSafeArea: true,
+  clipBehavior: Clip.antiAlias,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  ),
+  builder: (sheet) {
+    final c = sheet.rm;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+            child: Text(
+              'Presets',
+              style: rmText(
+                17,
+                color: c.ink,
+                weight: FontWeight.w700,
+                tracking: -0.02,
+              ),
+            ),
+          ),
+          RmGroup(
+            children: [
+              for (final preset in interfacePresets)
+                RmRow(
+                  label: preset.name,
+                  subtitle: preset.description,
+                  trailing: preset.prefs.matches(prefs)
+                      ? Icon(Icons.check_rounded, size: 20, color: c.accent)
+                      : const SizedBox(width: 20),
+                  onTap: () {
+                    onChanged(preset.prefs);
+                    Navigator.pop(sheet);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
+      ),
+    );
+  },
+);
+
+String areaLabel(PanelArea area) => switch (area) {
+  PanelArea.list => 'Message list',
+  PanelArea.reader => 'Reading view',
+  PanelArea.composer => 'Composer',
+};
