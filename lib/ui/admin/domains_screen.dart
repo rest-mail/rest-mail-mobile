@@ -36,9 +36,8 @@ class _DomainsScreenState extends State<DomainsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(
-      widget.account.capabilities,
-    ).canRead(AdminSection.domains)) {
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.domains)) {
       unawaited(_list.reload());
     }
   }

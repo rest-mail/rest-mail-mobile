@@ -52,9 +52,8 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(
-      widget.account.capabilities,
-    ).canRead(AdminSection.suppressions)) {
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.suppressions)) {
       unawaited(_list.reload());
     }
   }
