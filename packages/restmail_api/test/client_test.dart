@@ -103,7 +103,8 @@ void main() {
               'data': {'expires_in': 900, 'user': _user},
             },
             headers: {
-              'set-cookie': 'restmail_access=a; Path=/, restmail_refresh=r; Path=/api/v1/auth',
+              'set-cookie':
+                  'restmail_access=a; Path=/, restmail_refresh=r; Path=/api/v1/auth',
             },
           ),
         ),
