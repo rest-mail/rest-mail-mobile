@@ -10,8 +10,8 @@ import 'theme/tokens.dart';
 import 'ui/mailbox_screen.dart';
 import 'ui/push_offer.dart';
 import 'ui/setup_link_handler.dart';
+import 'ui/splash_screen.dart';
 import 'ui/welcome_screen.dart';
-import 'ui/widgets/avatar.dart';
 
 class RestmailApp extends StatefulWidget {
   const RestmailApp({super.key, required this.state});
@@ -30,9 +30,18 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   var _messenger = GlobalKey<ScaffoldMessengerState>();
   Object? _messengerSession;
 
+  /// The splash stays on screen for at least this long, so a fast boot reads
+  /// as a beat rather than a flicker.
+  static const _minStay = Duration(milliseconds: 500);
+  bool _minStayDone = false;
+  late final Timer _minStayTimer;
+
   @override
   void initState() {
     super.initState();
+    _minStayTimer = Timer(_minStay, () {
+      if (mounted) setState(() => _minStayDone = true);
+    });
     // Notifications leave out the inbox on screen, and the badge takes the
     // count the app last showed.
     WidgetsBinding.instance.addObserver(this);
@@ -54,6 +63,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _minStayTimer.cancel();
     unawaited(_notices.cancel());
     super.dispose();
   }
@@ -83,6 +93,9 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
         // picking a theme in Settings must rebuild the MaterialApp.
         builder: (context, _) {
           final pack = ThemePack.byId(state.settings.packId);
+          final booting =
+              state.phase == AppPhase.starting ||
+              (state.phase == AppPhase.signedIn && state.mailbox == null);
           return MaterialApp(
             // A new session, or the end of one, starts a fresh navigator, so no
             // screen from the old session is left on the stack.
@@ -93,33 +106,25 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             theme: buildTheme(pack, Brightness.light),
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
-            home: switch (state.phase) {
-              AppPhase.starting => const _Launch(),
-              AppPhase.signedOut => const SetupLinkHandler(
-                child: WelcomeScreen(),
-              ),
-              AppPhase.signedIn => SetupLinkHandler(
-                child: PushOffer(
-                  child: switch (state.mailbox) {
-                    final mailbox? => MailboxScreen(mailbox: mailbox),
-                    null => const _Launch(),
+            home: booting || !_minStayDone
+                ? const SplashScreen()
+                : switch (state.phase) {
+                    AppPhase.starting => const SplashScreen(),
+                    AppPhase.signedOut => const SetupLinkHandler(
+                      child: WelcomeScreen(),
+                    ),
+                    AppPhase.signedIn => SetupLinkHandler(
+                      child: PushOffer(
+                        child: switch (state.mailbox) {
+                          final mailbox? => MailboxScreen(mailbox: mailbox),
+                          null => const SplashScreen(),
+                        },
+                      ),
+                    ),
                   },
-                ),
-              ),
-            },
           );
         },
       ),
     );
   }
-}
-
-class _Launch extends StatelessWidget {
-  const _Launch();
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: context.rm.bg,
-    body: const Center(child: LogoMark(size: 44)),
-  );
 }
