@@ -63,10 +63,11 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState lifecycle) => widget
-      .state
-      .push
-      .lifecycleChanged(onScreen: lifecycle == AppLifecycleState.resumed);
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    final onScreen = lifecycle == AppLifecycleState.resumed;
+    widget.state.push.lifecycleChanged(onScreen: onScreen);
+    if (onScreen) unawaited(widget.state.resumed());
+  }
 
   GlobalKey<ScaffoldMessengerState> _messengerFor(Object session) {
     if (session != _messengerSession) {

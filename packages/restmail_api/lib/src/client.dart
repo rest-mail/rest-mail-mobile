@@ -154,16 +154,37 @@ class RestmailClient {
       _uri(['auth', 'refresh']),
       body: {'refresh_token': current.refreshToken},
     );
+    // Signed out, or handed another session, while the refresh was in
+    // flight: the answer is about tokens that are no longer this session's,
+    // so it neither ends nor overwrites what took their place.
+    if (!identical(_tokens, current)) {
+      final latest = _tokens;
+      if (latest == null) throw const SessionExpiredException();
+      return latest;
+    }
     if (response.statusCode == 401 || response.statusCode == 403) {
       _setTokens(null);
       throw const SessionExpiredException();
     }
     _throwIfError(response);
     final tokens = _tokensFrom(response, _data(response));
-    // Signed out while the refresh was in flight: stay signed out.
-    if (_tokens == null) throw const SessionExpiredException();
     _setTokens(tokens);
     return tokens;
+  }
+
+  /// Renews the session now if its access token runs out within [margin], as
+  /// when the app comes back to the foreground after a while away. It shares
+  /// any refresh already in flight, so calling it again costs nothing more.
+  ///
+  /// Throws [SessionExpiredException] when the server refuses the refresh
+  /// token, and [ApiException] when it can't be reached; then the session is
+  /// kept as it was, to be renewed by the next request.
+  Future<void> renewIfExpiring({
+    Duration margin = const Duration(minutes: 2),
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null || !tokens.expiresWithin(margin)) return;
+    await refresh();
   }
 
   // ── Setup ────────────────────────────────────────────────────────────

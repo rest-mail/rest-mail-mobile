@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -1062,5 +1063,143 @@ void main() {
       expect(domains.items.single.name, 'example.test');
       expect(domains.hasMore, isFalse);
     });
+  });
+
+  group('renewal', () {
+    test('a refresh answered after sign-out neither revives the session nor '
+        'reports new tokens', () async {
+      final answer = Completer<http.Response>();
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        onTokensChanged: changes.add,
+        httpClient: MockClient(
+          (request) => _isRefresh(request)
+              ? answer.future
+              : Future.value(_json({'data': null})),
+        ),
+      );
+
+      final refreshing = client.refresh();
+      await Future<void>.delayed(Duration.zero);
+      await client.logout();
+      answer.complete(_signedIn('2'));
+
+      await expectLater(refreshing, throwsA(isA<SessionExpiredException>()));
+      expect(client.tokens, isNull);
+      expect(changes, [null]);
+    });
+
+    test(
+      'a refusal answered after sign-out does not report a second end',
+      () async {
+        final answer = Completer<http.Response>();
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient(
+            (request) => _isRefresh(request)
+                ? answer.future
+                : Future.value(_json({'data': null})),
+          ),
+        );
+
+        final refreshing = client.refresh();
+        await Future<void>.delayed(Duration.zero);
+        await client.logout();
+        answer.complete(_json(_expired, status: 401));
+
+        await expectLater(refreshing, throwsA(isA<SessionExpiredException>()));
+        expect(changes, [null]);
+      },
+    );
+
+    test('renewIfExpiring leaves a token with time left alone', () async {
+      var asked = 0;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((_) async {
+          asked++;
+          return _signedIn('2');
+        }),
+      );
+
+      await client.renewIfExpiring();
+
+      expect(asked, 0);
+      expect(client.tokens!.refreshToken, 'refresh-1');
+    });
+
+    test('renewIfExpiring renews a token about to run out, once however '
+        'often it is asked', () async {
+      var refreshes = 0;
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1', validFor: const Duration(seconds: 20)),
+        onTokensChanged: changes.add,
+        httpClient: MockClient((request) async {
+          if (_isRefresh(request)) refreshes++;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return _signedIn('2');
+        }),
+      );
+
+      await Future.wait([
+        client.renewIfExpiring(),
+        client.renewIfExpiring(),
+        client.renewIfExpiring(),
+      ]);
+
+      expect(refreshes, 1);
+      expect(client.tokens!.refreshToken, 'refresh-2');
+      expect(changes.map((t) => t?.refreshToken), ['refresh-2']);
+    });
+
+    test('renewIfExpiring with the server unreachable keeps the refresh '
+        'token', () async {
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1', validFor: Duration.zero),
+        onTokensChanged: changes.add,
+        httpClient: MockClient(
+          (_) async => throw http.ClientException('Connection refused'),
+        ),
+      );
+
+      await expectLater(
+        client.renewIfExpiring(),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'network_error'),
+        ),
+      );
+      expect(client.tokens!.refreshToken, 'refresh-1');
+      expect(changes, isEmpty);
+    });
+
+    test(
+      'renewIfExpiring with the refresh token refused ends the session',
+      () async {
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1', validFor: Duration.zero),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((_) async => _json(_expired, status: 401)),
+        );
+
+        await expectLater(
+          client.renewIfExpiring(),
+          throwsA(isA<SessionExpiredException>()),
+        );
+        expect(client.tokens, isNull);
+        expect(changes, [null]);
+      },
+    );
   });
 }
