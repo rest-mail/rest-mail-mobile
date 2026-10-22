@@ -263,28 +263,51 @@ class RestmailClient {
   Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
       _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
 
-  /// Creates a domain whose mail rest-mail serves itself. Throws
-  /// [ApiException] with code `already_exists` when it is there already.
-  /// Needs `domains:write`.
-  Future<void> createDomain(String name) async {
-    await _authed(
-      'POST',
-      ['admin', 'domains'],
-      body: {'name': name, 'server_type': 'restmail'},
-    );
-  }
+  /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
+  /// or `traditional`. A new domain is never live: going live is
+  /// [updateDomain] with `active`. Throws [ApiException] with code
+  /// `already_exists` when it is there already. Needs `domains:write`.
+  Future<AdminDomain> createDomain(
+    String name, {
+    String serverType = 'restmail',
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'domains'],
+        body: {
+          'name': name,
+          'server_type': serverType,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
 
-  /// Turns a domain's mail on or off. Needs `domains:write`.
-  Future<AdminDomain> updateDomain(int id, {bool? active}) async =>
-      AdminDomain.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'domains', '$id'],
-            body: {'active': ?active},
-          ),
-        ),
-      );
+  /// Changes what is given: whether the domain's mail is on, the quota new
+  /// mailboxes get, and its sending policy (empty clears it).
+  /// Needs `domains:write`.
+  Future<AdminDomain> updateDomain(
+    int id, {
+    bool? active,
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'domains', '$id'],
+        body: {
+          'active': ?active,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
@@ -311,6 +334,7 @@ class RestmailClient {
     String? displayName,
     String? password,
     bool? active,
+    int? quotaBytes,
   }) async => AdminMailbox.fromJson(
     _data(
       await _authed(
@@ -320,10 +344,18 @@ class RestmailClient {
           'display_name': ?displayName,
           'password': ?password,
           'active': ?active,
+          'quota_bytes': ?quotaBytes,
         },
       ),
     ),
   );
+
+  /// Signs the mailbox out everywhere: its refresh tokens are revoked and
+  /// every access token it holds is refused. Passwords and app passwords
+  /// stay. Needs `mailboxes:write`.
+  Future<void> endMailboxSessions(int id) async {
+    await _authed('DELETE', ['admin', 'mailboxes', '$id', 'sessions']);
+  }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
