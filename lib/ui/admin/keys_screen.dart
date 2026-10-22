@@ -102,9 +102,34 @@ class _DkimScreenState extends State<DkimScreen> {
 String _issuer(String name) =>
     RegExp(r'(?:^|,)\s*O=([^,]+)').firstMatch(name)?.group(1)?.trim() ?? name;
 
+/// [text] as PEM again, one block per BEGIN/END pair with its body wrapped
+/// at 64 columns. A one-line field, such as the hidden one a private key is
+/// pasted into, drops the line breaks the server's PEM reader needs.
+String pemBlocks(String text) {
+  final blocks = RegExp(
+    r'-----BEGIN ([A-Z0-9 ]+)-----(.*?)-----END \1-----',
+    dotAll: true,
+  ).allMatches(text);
+  if (blocks.isEmpty) return text.trim();
+  final pem = [
+    for (final block in blocks)
+      [
+        '-----BEGIN ${block[1]}-----',
+        for (
+          var body = block[2]!.replaceAll(RegExp(r'\s'), '');
+          body.isNotEmpty;
+          body = body.length > 64 ? body.substring(64) : ''
+        )
+          body.length > 64 ? body.substring(0, 64) : body,
+        '-----END ${block[1]}-----',
+      ].join('\n'),
+  ].join('\n');
+  return '$pem\n';
+}
+
 /// The TLS certificates each domain is served with, and when they run out.
-/// As with DKIM keys, new ones are added in the admin webmail, which takes
-/// their private key.
+/// A new one is pasted in as PEM with its private key, which the server
+/// keeps encrypted and never sends back.
 class CertificatesScreen extends StatefulWidget {
   const CertificatesScreen({super.key, required this.account});
 
@@ -136,15 +161,78 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     super.dispose();
   }
 
-  String _name(TlsCertificate cert) =>
-      cert.domain.isNotEmpty ? cert.domain : 'Domain ${cert.domainId}';
+  Future<void> _upload() async {
+    final client = widget.account.client;
+    final added = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Add a certificate',
+        intro:
+            'Paste the certificate and its private key as PEM. The server '
+            'reads who issued it and when it runs out, keeps the key '
+            'encrypted, and never shows it again.',
+        host: _host,
+        action: 'Add certificate',
+        fields: const [
+          AdminField('Domain', hint: 'example.com', email: true),
+          AdminField(
+            'Certificate',
+            hint: '-----BEGIN CERTIFICATE-----',
+            multiline: true,
+          ),
+          AdminField(
+            'Private key',
+            hint: '-----BEGIN PRIVATE KEY-----',
+            obscure: true,
+          ),
+          AdminField(
+            'Renews by itself',
+            hint: 'yes or no',
+            initial: 'yes',
+            optional: true,
+          ),
+        ],
+        submit: (values) async {
+          final cert = await client.uploadCertificate(
+            domainId: await _domainId(values[0]),
+            certPem: pemBlocks(values[1]),
+            keyPem: pemBlocks(values[2]),
+            autoRenew: switch (values[3].toLowerCase()) {
+              '' => null,
+              'yes' || 'y' || 'true' => true,
+              'no' || 'n' || 'false' => false,
+              _ => throw const ApiException(
+                400,
+                'bad_request',
+                'Renews by itself is yes or no',
+                fields: {'renews_by_itself': 'is yes or no'},
+              ),
+            },
+          );
+          if (mounted) setState(() => _added = cert);
+        },
+      ),
+    );
+    if (!added || !mounted) return;
+    showToast(context, 'Added the certificate for ${_name(_added!)}');
+    unawaited(_list.reload());
+  }
 
-  String _expiry(TlsCertificate cert) {
-    final date = DateFormat.yMMMd().format(cert.notAfter);
-    final days = cert.notAfter.difference(DateTime.now()).inDays;
-    if (days < 0) return 'Ran out $date';
-    if (days == 0) return 'Runs out today';
-    return 'Runs out $date, in ${days == 1 ? 'a day' : '$days days'}';
+  TlsCertificate? _added;
+
+  /// The id of the domain called [value], or [value] itself when it is one.
+  Future<int> _domainId(String value) async {
+    if (int.tryParse(value) case final id?) return id;
+    final names = await domainNames(widget.account);
+    for (final MapEntry(:key, value: name) in names.entries) {
+      if (name.toLowerCase() == value.toLowerCase()) return key;
+    }
+    throw const ApiException(
+      404,
+      'not_found',
+      'Domain not found',
+      fields: {'domain': "isn't one this server holds"},
+    );
   }
 
   Future<void> _delete(TlsCertificate cert) async {
@@ -155,9 +243,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
       change: () => widget.account.client.deleteCertificate(cert.id),
       confirm: (
         title: 'Delete the certificate for $name?',
-        message:
-            'The server stops using it. A new one is added in the admin '
-            'webmail.',
+        message: 'The server stops using it, and forgets its private key.',
         action: 'Delete',
       ),
     );
@@ -176,13 +262,18 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
       host: _host,
       empty: 'The server holds no certificates.',
       header: [
-        _addedElsewhere(
-          context,
-          'New certificates are added in the admin webmail.',
-        ),
+        if (access.canWrite(AdminSection.certificates))
+          AdminAddButton(
+            label: 'Add a certificate',
+            onTap: () => unawaited(_upload()),
+          ),
       ],
       row: (cert) => RmRow(
         label: _name(cert),
+        onTap: () => pushScreen(
+          context,
+          CertificateScreen(account: widget.account, id: cert.id),
+        ),
         subtitle: [
           _expiry(cert),
           if (cert.issuer.isNotEmpty) 'From ${_issuer(cert.issuer)}',
@@ -197,6 +288,102 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               )
             : null,
       ),
+    ),
+  );
+}
+
+String _name(TlsCertificate cert) =>
+    cert.domain.isNotEmpty ? cert.domain : 'Domain ${cert.domainId}';
+
+String _expiry(TlsCertificate cert) {
+  final date = DateFormat.yMMMd().format(cert.notAfter);
+  final days = cert.notAfter.difference(DateTime.now()).inDays;
+  if (days < 0) return 'Ran out $date';
+  if (days == 0) return 'Runs out today';
+  return 'Runs out $date, in ${days == 1 ? 'a day' : '$days days'}';
+}
+
+/// One certificate as the server holds it now, read fresh rather than from
+/// the list: its domain, issuer, validity and the certificate itself. Never
+/// its private key, which the server does not send.
+class CertificateScreen extends StatefulWidget {
+  const CertificateScreen({super.key, required this.account, required this.id});
+
+  final RestAccount account;
+  final int id;
+
+  @override
+  State<CertificateScreen> createState() => _CertificateScreenState();
+}
+
+class _CertificateScreenState extends State<CertificateScreen> {
+  late Future<TlsCertificate> _cert = _load();
+
+  Future<TlsCertificate> _load() =>
+      widget.account.client.certificate(widget.id);
+
+  String _when(DateTime? time) => time == null
+      ? 'Not given'
+      : DateFormat.yMMMd().add_jm().format(time.toLocal());
+
+  @override
+  Widget build(BuildContext context) => AdminPage(
+    account: widget.account,
+    section: AdminSection.certificates,
+    title: 'Certificate',
+    body: (_) => FutureBuilder<TlsCertificate>(
+      future: _cert,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return AdminMessage(
+            describeAdminError(
+              snapshot.error!,
+              host: widget.account.server.host,
+            ),
+          );
+        }
+        final cert = snapshot.data;
+        if (cert == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final c = context.rm;
+        return RefreshIndicator(
+          onRefresh: () async {
+            final next = _load();
+            setState(() => _cert = next);
+            await next;
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
+            children: [
+              RmRow(label: 'Domain', value: _name(cert)),
+              RmRow(label: 'Expiry', value: _expiry(cert)),
+              RmRow(label: 'Valid from', value: _when(cert.notBefore)),
+              RmRow(label: 'Valid until', value: _when(cert.notAfter)),
+              RmRow(
+                label: 'Issuer',
+                value: cert.issuer.isEmpty ? 'Not given' : _issuer(cert.issuer),
+                subtitle: cert.issuer.isEmpty ? null : cert.issuer,
+              ),
+              RmRow(
+                label: 'Renews by itself',
+                value: cert.autoRenew ? 'Yes' : 'No',
+              ),
+              RmRow(label: 'Added', value: _when(cert.createdAt)),
+              RmRow(label: 'Changed', value: _when(cert.updatedAt)),
+              if (cert.certPem.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const SectionLabel('Certificate'),
+                const SizedBox(height: 8),
+                SelectableText(
+                  cert.certPem.trim(),
+                  style: rmText(12, color: c.ink2, height: 1.35),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     ),
   );
 }

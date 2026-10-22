@@ -332,12 +332,17 @@ class AdminField {
     this.obscure = false,
     this.email = false,
     this.optional = false,
+    this.multiline = false,
   });
 
   final String label;
   final String? hint;
   final String initial;
   final bool obscure;
+
+  /// Several lines, for pasted text such as a PEM certificate. Not with
+  /// [obscure], which Flutter keeps to one line.
+  final bool multiline;
 
   /// An address: no autocorrect, the email keyboard.
   final bool email;
@@ -458,12 +463,20 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                           !widget.fields[i].obscure && !widget.fields[i].email,
                       keyboardType: widget.fields[i].email
                           ? TextInputType.emailAddress
+                          : widget.fields[i].multiline
+                          ? TextInputType.multiline
                           : null,
-                      textInputAction: i == widget.fields.length - 1
+                      minLines: widget.fields[i].multiline ? 4 : null,
+                      maxLines: widget.fields[i].multiline ? 8 : 1,
+                      textInputAction: widget.fields[i].multiline
+                          ? TextInputAction.newline
+                          : i == widget.fields.length - 1
                           ? TextInputAction.done
                           : TextInputAction.next,
                       onChanged: (_) => setState(() => _error = null),
-                      onSubmitted: i == widget.fields.length - 1
+                      onSubmitted:
+                          i == widget.fields.length - 1 &&
+                              !widget.fields[i].multiline
                           ? (_) => unawaited(_send())
                           : null,
                       style: rmText(16, color: c.ink),

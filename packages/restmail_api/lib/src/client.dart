@@ -512,6 +512,35 @@ class RestmailClient {
     limit,
   );
 
+  /// One certificate as the server holds it now, with its PEM. Needs
+  /// `domains:read`.
+  Future<TlsCertificate> certificate(int id) async => TlsCertificate.fromJson(
+    _data(await _authed('GET', ['admin', 'certificates', '$id'])),
+  );
+
+  /// Stores a certificate and its private key for [domainId]. The server
+  /// reads the issuer and validity from [certPem]; it renews by itself
+  /// unless [autoRenew] says not. Needs `domains:write`.
+  Future<TlsCertificate> uploadCertificate({
+    required int domainId,
+    required String certPem,
+    required String keyPem,
+    bool? autoRenew,
+  }) async => TlsCertificate.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'certificates'],
+        body: {
+          'domain_id': domainId,
+          'cert_pem': certPem,
+          'key_pem': keyPem,
+          'auto_renew': ?autoRenew,
+        },
+      ),
+    ),
+  );
+
   /// Needs `domains:write`, as the server asks.
   Future<void> deleteCertificate(int id) async {
     await _authed('DELETE', ['admin', 'certificates', '$id']);

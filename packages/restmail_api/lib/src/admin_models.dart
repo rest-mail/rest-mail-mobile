@@ -604,7 +604,8 @@ class DkimKey {
 }
 
 /// A TLS certificate the server holds for one of its domains. The server
-/// never shows its private key.
+/// never shows its private key; it sends the certificate itself only when
+/// asked for the one.
 class TlsCertificate {
   const TlsCertificate({
     required this.id,
@@ -614,6 +615,9 @@ class TlsCertificate {
     required this.notAfter,
     this.domain = '',
     this.autoRenew = false,
+    this.certPem = '',
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory TlsCertificate.fromJson(Map<String, dynamic> json) => TlsCertificate(
@@ -627,6 +631,9 @@ class TlsCertificate {
     notBefore: _time(json['not_before']) ?? DateTime.now(),
     notAfter: _time(json['not_after']) ?? DateTime.now(),
     autoRenew: json['auto_renew'] as bool? ?? false,
+    certPem: json['cert_pem'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
 
   final int id;
@@ -640,6 +647,11 @@ class TlsCertificate {
 
   /// Whether the server renews it before it runs out.
   final bool autoRenew;
+
+  /// The certificate as PEM; empty in a list, which leaves it out.
+  final String certPem;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 /// One filter in a pipeline.
