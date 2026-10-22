@@ -632,6 +632,62 @@ class RestmailClient {
     ]);
   }
 
+  /// How [domainId]'s outgoing mail leaves the server. Needs
+  /// `domains:read`.
+  Future<DomainRelay> domainRelay(int domainId) async => DomainRelay.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'relay'])),
+  );
+
+  /// Replaces [domainId]'s outbound transport. For a relay, [host], [port]
+  /// and [tlsMode] are needed. A [password] left out keeps the stored one;
+  /// an empty one clears it. Needs `domains:write` on every domain, as the
+  /// server asks.
+  Future<DomainRelay> setDomainRelay(
+    int domainId, {
+    required OutboundTransport transport,
+    String host = '',
+    int? port,
+    RelayTlsMode? tlsMode,
+    String username = '',
+    String? password,
+  }) async => DomainRelay.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'domains', '$domainId', 'relay'],
+        body: {
+          'transport': transport.value,
+          if (transport == OutboundTransport.relay) ...{
+            'host': host,
+            'port': ?port,
+            'tls_mode': ?tlsMode?.value,
+            'username': username,
+            'password': ?password,
+          },
+        },
+      ),
+    ),
+  );
+
+  /// The recipients [domainId]'s mail is no longer sent to, most recently
+  /// bounced first. Needs `domains:read`.
+  Future<List<Suppression>> suppressions(int domainId) async => _list(
+    await _authed('GET', ['admin', 'domains', '$domainId', 'suppressions']),
+    Suppression.fromJson,
+  );
+
+  /// Clears a suppression, so mail to the address is tried again. Needs
+  /// `domains:write`.
+  Future<void> clearSuppression(int domainId, int id) async {
+    await _authed('DELETE', [
+      'admin',
+      'domains',
+      '$domainId',
+      'suppressions',
+      '$id',
+    ]);
+  }
+
   /// [domainId]'s MTA-STS policy; none when it has none. Needs
   /// `domains:read`.
   Future<MtaStsPolicy?> mtaStsPolicy(int domainId) async {
