@@ -6,7 +6,6 @@ import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/packs.dart';
 import 'theme/theme.dart';
-import 'theme/tokens.dart';
 import 'ui/mailbox_screen.dart';
 import 'ui/push_offer.dart';
 import 'ui/setup_link_handler.dart';
@@ -107,9 +106,9 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
             home: booting || !_minStayDone
-                ? const SplashScreen()
+                ? SplashScreen(pack: pack)
                 : switch (state.phase) {
-                    AppPhase.starting => const SplashScreen(),
+                    AppPhase.starting => SplashScreen(pack: pack),
                     AppPhase.signedOut => const SetupLinkHandler(
                       child: WelcomeScreen(),
                     ),
@@ -117,7 +116,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
                       child: PushOffer(
                         child: switch (state.mailbox) {
                           final mailbox? => MailboxScreen(mailbox: mailbox),
-                          null => const SplashScreen(),
+                          null => SplashScreen(pack: pack),
                         },
                       ),
                     ),

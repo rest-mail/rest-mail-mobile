@@ -10,7 +10,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildTheme(pack, Brightness.light),
-          home: const SplashScreen(),
+          home: SplashScreen(pack: pack),
         ),
       );
       // Let the rise finish so every faded-in piece is present.
@@ -22,7 +22,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('// opening_your_mail'), findsOneWidget);
+      expect(find.text(pack.splashLine), findsOneWidget);
     });
   }
 
@@ -30,7 +30,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(ThemePack.classic, Brightness.light),
-        home: const SplashScreen(),
+        home: SplashScreen(pack: pack),
       ),
     );
     await tester.pump(const Duration(milliseconds: 700));

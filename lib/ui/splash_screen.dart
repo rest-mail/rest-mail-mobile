@@ -9,7 +9,10 @@ import 'widgets/avatar.dart';
 /// settles. `app.dart` keeps it on screen for at least a beat, so a fast boot
 /// reads as an intention rather than a flicker.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({super.key, required this.pack});
+
+  /// Whose voice the tagline speaks in.
+  final ThemePack pack;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -43,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final v = context.rmv;
+    final v = widget.pack.variants;
     final family = typefaceFamily(v.listType);
     final weight = switch (v.listType) {
       Typeface.serif => FontWeight.w500,
@@ -88,8 +91,13 @@ class _SplashScreenState extends State<SplashScreen>
               child: Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
-                  '// opening_your_mail',
-                  style: rmText(11, color: c.ink3, family: family),
+                  widget.pack.splashLine,
+                  style: rmText(
+                    11,
+                    color: c.ink3,
+                    family: family,
+                    italic: v.listType == Typeface.serif,
+                  ),
                 ),
               ),
             ),

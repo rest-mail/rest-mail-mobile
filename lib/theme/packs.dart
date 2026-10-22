@@ -87,6 +87,7 @@ class ThemePack {
     required this.tagline,
     required this.colors,
     required this.variants,
+    required this.splashLine,
     this.followsSystem = false,
     this.brightness = Brightness.light,
   });
@@ -96,6 +97,9 @@ class ThemePack {
   final String tagline;
   final RmColors colors;
   final RmVariants variants;
+
+  /// The splash's tagline, in the pack's own voice.
+  final String splashLine;
 
   /// Classic follows the system light/dark choice; the others are their own.
   final bool followsSystem;
@@ -108,6 +112,7 @@ class ThemePack {
     tagline: 'The design as shipped. Follows system light and dark.',
     colors: RmColors.light,
     variants: RmVariants(),
+    splashLine: 'Opening your mail',
     followsSystem: true,
   );
 
@@ -169,6 +174,7 @@ class ThemePack {
       readerType: Typeface.serif,
       actions: ActionStyle.words,
     ),
+    splashLine: 'Opening the day\'s correspondence.',
   );
 
   /// Terminal dark: dense rows, amber rail, key hints on the actions.
@@ -202,6 +208,7 @@ class ThemePack {
       readerType: Typeface.mono,
       actions: ActionStyle.keyed,
     ),
+    splashLine: '// opening_your_mail',
   );
 
   static const all = [classic, brand, ledger, nightops];
