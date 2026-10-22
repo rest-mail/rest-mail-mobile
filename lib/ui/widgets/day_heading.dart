@@ -24,17 +24,17 @@ class RmDayHeading extends StatelessWidget {
             child: Text(
               label.toUpperCase(),
               style: rmText(
-                10.5,
-                color: c.ink3,
-                weight: FontWeight.w700,
-                tracking: 0.09,
+                14,
+                color: c.ink2,
+                weight: FontWeight.w800,
+                tracking: 0.06,
               ),
             ),
           ),
           if (count != null)
             Text(
               '$count',
-              style: rmText(10.5, color: c.ink3, weight: FontWeight.w600),
+              style: rmText(13, color: c.ink3, weight: FontWeight.w600),
             ),
         ],
       ),
