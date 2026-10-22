@@ -46,12 +46,16 @@ void main() {
       const Locale('de'),
     );
     expect(find.text('Deutsch'), findsOneWidget);
+    expect(find.text('Sprache'), findsOneWidget);
+    expect(find.text('DIESES TELEFON'), findsOneWidget);
 
-    await tester.tap(find.text('Language'));
+    await tester.tap(find.text('Sprache'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('System'));
     await tester.pumpAndSettle();
     expect(state.settings.languageCode, 'system');
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('THIS PHONE'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     state.mailbox?.dispose();

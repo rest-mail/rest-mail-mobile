@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/interface_prefs.dart';
+import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
@@ -168,7 +169,11 @@ class _MailboxScreenState extends State<MailboxScreen> {
                       onChanged: _searchChanged,
                       onSubmitted: (text) => unawaited(_runSearch(text)),
                       style: rmText(15.5, color: c.ink),
-                      decoration: bareInput(context, 'Search mail', size: 15.5),
+                      decoration: bareInput(
+                        context,
+                        tr(context, 'mail.search'),
+                        size: 15.5,
+                      ),
                     ),
                   ),
                   if (_searching)
@@ -186,7 +191,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
           if (query.isNotEmpty || _searching)
             RmIconButton(
               icon: Icons.close_rounded,
-              tooltip: 'Close search',
+              tooltip: tr(context, 'mail.closeSearch'),
               color: c.ink3,
               onPressed: _clearSearch,
             )
@@ -447,7 +452,9 @@ class _Header extends StatelessWidget {
     final m = mailbox;
     final address = m.account?.address ?? account?.address;
     final signedOut = account?.signedOut != null;
-    final status = signedOut ? 'Signed out' : liveLabel(m.live);
+    final status = signedOut
+        ? tr(context, 'status.signedOut')
+        : liveLabelOf(context, m.live);
     return Container(
       padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
       decoration: BoxDecoration(
@@ -458,7 +465,7 @@ class _Header extends StatelessWidget {
         children: [
           Expanded(
             child: Tooltip(
-              message: 'Mailboxes',
+              message: tr(context, 'mail.mailboxes'),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => unawaited(
@@ -480,7 +487,7 @@ class _Header extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              folderLabel(m.folder),
+                              folderLabelOf(context, m.folder),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: rmText(
@@ -526,13 +533,13 @@ class _Header extends StatelessWidget {
           if (!signedOut) ...[
             RmIconButton(
               icon: Icons.refresh_rounded,
-              tooltip: 'Refresh',
+              tooltip: tr(context, 'mail.refresh'),
               color: c.ink2,
               onPressed: () => unawaited(m.retry()),
             ),
             RmIconButton(
               icon: Icons.settings_outlined,
-              tooltip: 'App settings',
+              tooltip: tr(context, 'mail.appSettings'),
               color: c.ink2,
               onPressed: () => Navigator.push(
                 context,
@@ -568,7 +575,7 @@ class _Footer extends StatelessWidget {
         ),
       );
     }
-    final label = folderLabel(m.folder);
+    final label = folderLabelOf(context, m.folder);
     final String text;
     if (m.messages.isEmpty) {
       text = 'Nothing in $label';

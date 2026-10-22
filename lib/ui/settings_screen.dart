@@ -86,7 +86,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
           child: Column(
             children: [
               RmTopBar(
-                title: 'Mailbox settings',
+                title: tr(context, 'settings.mailboxTitle'),
                 onBack: () => Navigator.pop(context),
               ),
               Expanded(
@@ -94,11 +94,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                   children: [
                     Text(
-                      'Stored on $host',
+                      '${tr(context, 'settings.storedOn')} $host',
                       style: rmText(12, color: c.ink3, weight: FontWeight.w600),
                     ),
                     const SizedBox(height: 14),
-                    const SectionLabel('This mailbox'),
+                    SectionLabel(tr(context, 'settings.thisMailbox')),
                     const SizedBox(height: 9),
                     RmGroup(
                       children: [
@@ -117,8 +117,8 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             label: account.label,
                             address: account.address,
                             subtitle: account.isPrimary
-                                ? 'Primary mailbox · $host'
-                                : 'Mailbox of this account · $host',
+                                ? '${tr(context, 'settings.primaryMailbox')} · $host'
+                                : '${tr(context, 'settings.mailboxOfAccount')} · $host',
                             primary: account.isPrimary,
                             onTap: () => _push(
                               context,
@@ -129,7 +129,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             current.signedOut == null) ...[
                           if (creates)
                             _AddRow(
-                              label: 'Create a mailbox',
+                              label: tr(context, 'settings.createMailbox'),
                               onTap: () => _push(
                                 context,
                                 CreateMailboxScreen(
@@ -140,7 +140,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           if (m.backend.canLinkMailboxes)
                             _AddRow(
-                              label: 'Link another mailbox',
+                              label: tr(context, 'settings.linkMailbox'),
                               onTap: () =>
                                   _push(context, LinkAccountScreen(mailbox: m)),
                             ),
@@ -149,12 +149,12 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                     ),
                     if (administers) ...[
                       const SizedBox(height: 22),
-                      const SectionLabel('Server'),
+                      SectionLabel(tr(context, 'settings.server')),
                       const SizedBox(height: 9),
                       RmGroup(
                         children: [
                           RmRow(
-                            label: 'Administration',
+                            label: tr(context, 'settings.administration'),
                             subtitle: 'What this session may run on $host',
                             onTap: () => _push(
                               context,
@@ -166,13 +166,13 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                     ],
                     if (m.backend.canScheduleSend) ...[
                       const SizedBox(height: 22),
-                      const SectionLabel('Sending'),
+                      SectionLabel(tr(context, 'settings.sending')),
                       const SizedBox(height: 9),
                       RmGroup(
                         children: [
                           RmRow(
-                            label: 'Scheduled',
-                            subtitle: 'Messages the server will send later',
+                            label: tr(context, 'settings.scheduled'),
+                            subtitle: tr(context, 'settings.scheduledSubtitle'),
                             onTap: () =>
                                 _push(context, ScheduledScreen(mailbox: m)),
                           ),
@@ -216,31 +216,31 @@ class AppSettingsScreen extends StatelessWidget {
         child: Column(
           children: [
             RmTopBar(
-              title: 'App settings',
+              title: tr(context, 'settings.appTitle'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                 children: [
-                  const SectionLabel('This phone'),
+                  SectionLabel(tr(context, 'settings.thisPhone')),
                   const SizedBox(height: 9),
                   RmGroup(
                     children: [
                       RmRow(
-                        label: 'Language',
+                        label: tr(context, 'settings.language'),
                         value: languageLabel(settings.languageCode),
                         onTap: () => _push(context, const LanguageScreen()),
                       ),
                       RmRow(
-                        label: 'Signature',
+                        label: tr(context, 'settings.signature'),
                         value: signature.isEmpty
                             ? 'None'
                             : signature.split('\n').first,
                         onTap: () => _push(context, const SignatureScreen()),
                       ),
                       _AddRow(
-                        label: 'Add an account',
+                        label: tr(context, 'settings.addAccount'),
                         onTap: () => _push(context, const AddAccountScreen()),
                       ),
                     ],
@@ -248,20 +248,20 @@ class AppSettingsScreen extends StatelessWidget {
                   const SizedBox(height: 22),
                   _NotificationsSection(app: app),
                   const SizedBox(height: 22),
-                  const SectionLabel('Interface'),
+                  SectionLabel(tr(context, 'settings.interface')),
                   const SizedBox(height: 9),
                   RmGroup(
                     children: [
                       RmRow(
-                        label: 'Customize screens',
-                        subtitle: 'Choose what each screen shows',
+                        label: tr(context, 'settings.customizeScreens'),
+                        subtitle: tr(context, 'settings.customizeSubtitle'),
                         onTap: () =>
                             _push(context, const InterfaceCustomizerScreen()),
                       ),
                     ],
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Appearance'),
+                  SectionLabel(tr(context, 'settings.appearance')),
                   const SizedBox(height: 9),
                   RmGroup(
                     children: [
@@ -271,7 +271,7 @@ class AppSettingsScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                'Brightness',
+                                tr(context, 'settings.brightness'),
                                 style: rmText(
                                   14.5,
                                   color: c.ink,
@@ -281,10 +281,19 @@ class AppSettingsScreen extends StatelessWidget {
                             ),
                             if (ThemePack.byId(settings.packId).followsSystem)
                               RmSegmented<ThemeMode>(
-                                options: const [
-                                  (ThemeMode.system, 'System'),
-                                  (ThemeMode.light, 'Light'),
-                                  (ThemeMode.dark, 'Dark'),
+                                options: [
+                                  (
+                                    ThemeMode.system,
+                                    tr(context, 'settings.system'),
+                                  ),
+                                  (
+                                    ThemeMode.light,
+                                    tr(context, 'settings.light'),
+                                  ),
+                                  (
+                                    ThemeMode.dark,
+                                    tr(context, 'settings.dark'),
+                                  ),
                                 ],
                                 value: settings.themeMode,
                                 onChanged: (mode) => unawaited(
@@ -349,7 +358,10 @@ class LanguageScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            RmTopBar(title: 'Language', onBack: () => Navigator.pop(context)),
+            RmTopBar(
+              title: tr(context, 'settings.language'),
+              onBack: () => Navigator.pop(context),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
@@ -411,7 +423,7 @@ class _NotificationsSection extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionLabel('Notifications'),
+          SectionLabel(tr(context, 'settings.notifications')),
           const SizedBox(height: 9),
           RmGroup(
             children: [
@@ -723,7 +735,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   RmGroup(
                     children: [
                       RmRow(
-                        label: 'Signature',
+                        label: tr(context, 'settings.signature'),
                         onTap: () => _push(context, const SignatureScreen()),
                       ),
                       RmRow(

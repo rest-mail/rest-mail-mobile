@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:restmail_api/restmail_api.dart';
 
+import '../state/app_scope.dart';
+import '../state/mailbox_state.dart';
 import '../theme/packs.dart';
 import 'strings_de.dart';
 import 'strings_en.dart';
@@ -49,6 +52,39 @@ const languageNames = <String, String>{
 
 String languageLabel(String code) => languageNames[code] ?? 'System';
 
+/// The UI string [key] in the language the app is set to and the current
+/// theme's voice.
+String tr(BuildContext context, String key) {
+  final app = AppScope.of(context);
+  return voiceLine(
+    ThemePack.byId(app.settings.packId),
+    Localizations.localeOf(context),
+    key,
+  );
+}
+
+/// A standard folder's name in the current language; custom folders keep
+/// their own name.
+const _folderKeys = <String, String>{
+  StandardFolder.inbox: 'folder.inbox',
+  StandardFolder.drafts: 'folder.drafts',
+  StandardFolder.sent: 'folder.sent',
+  StandardFolder.archive: 'folder.archive',
+  StandardFolder.spam: 'folder.spam',
+  StandardFolder.trash: 'folder.trash',
+};
+
+String folderLabelOf(BuildContext context, String name) {
+  final key = _folderKeys[name];
+  return key == null ? name : tr(context, key);
+}
+
+String liveLabelOf(BuildContext context, LiveStatus status) => switch (status) {
+  LiveStatus.live => tr(context, 'status.live'),
+  LiveStatus.connecting => tr(context, 'status.connecting'),
+  LiveStatus.offline => tr(context, 'status.offline'),
+};
+
 /// The string for [key] in [pack]'s voice and [locale], falling back
 /// voice+locale → base+locale → voice+en → base+en.
 String voiceLine(ThemePack pack, Locale locale, String key) {
@@ -58,5 +94,6 @@ String voiceLine(ThemePack pack, Locale locale, String key) {
   return inLang?[pack.id]?[key] ??
       inLang?['classic']?[key] ??
       inEn[pack.id]?[key] ??
-      inEn['classic']![key]!;
+      inEn['classic']?[key] ??
+      key;
 }
