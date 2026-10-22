@@ -160,6 +160,22 @@ enum AdminSection {
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
+  ),
+  relay(
+    'Outgoing mail',
+    'Sent straight to other servers, or through a relay',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  suppressions(
+    'Suppressed recipients',
+    'Addresses no longer sent to, after mail to them bounced',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
   );
 
   const AdminSection(
