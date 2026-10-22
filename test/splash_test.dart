@@ -49,7 +49,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(ThemePack.classic, Brightness.light),
-        home: SplashScreen(pack: pack),
+        home: SplashScreen(pack: ThemePack.classic),
       ),
     );
     await tester.pump(const Duration(milliseconds: 700));
