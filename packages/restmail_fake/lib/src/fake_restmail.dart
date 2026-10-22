@@ -2219,6 +2219,13 @@ class FakeRestmail {
         return _json({
           'data': {...counts, 'total': _queue.length},
         });
+      case ('POST', ['queue', final operation])
+          when operation == 'bulk-retry' || operation == 'bulk-bounce':
+        need('queue:manage');
+        return _bulkQueue(operation, _object(bytes));
+      case ('DELETE', ['queue', 'bulk-delete']):
+        need('queue:manage');
+        return _bulkQueue('bulk-delete', _object(bytes));
       case ('GET', ['queue', final id]):
         need('queue:read');
         return _json({'data': _queueJson(_queueEntry(id))});
@@ -2561,12 +2568,28 @@ class FakeRestmail {
 
   http.StreamedResponse _queueList(Map<String, String> query) {
     final status = query['status'];
+    if (status != null &&
+        !{
+          'pending',
+          'delivering',
+          'deferred',
+          'delivered',
+          'bounced',
+          'expired',
+        }.contains(status)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {
+          'status':
+              'must be one of pending, delivering, deferred, delivered, bounced, expired',
+        },
+      );
+    }
     final (limit, offset) = _paging(query);
-    final all =
-        _queue.values
-            .where((e) => status == null || e.status == status)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final all = _queue.values.where((e) => _queueMatches(e, query)).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return _json({
       'data': {
         'items': [for (final e in all.skip(offset).take(limit)) _queueJson(e)],
@@ -2574,6 +2597,74 @@ class FakeRestmail {
         'limit': limit,
         'offset': offset,
       },
+    });
+  }
+
+  bool _queueMatches(FakeQueueEntry entry, Map<String, dynamic> filter) {
+    bool contains(String value, Object? part) =>
+        part == null ||
+        part == '' ||
+        value.toLowerCase().contains((part as String).toLowerCase());
+    return (filter['status'] == null ||
+            filter['status'] == '' ||
+            entry.status == filter['status']) &&
+        (filter['domain'] == null ||
+            filter['domain'] == '' ||
+            entry.domain == filter['domain']) &&
+        contains(entry.sender, filter['sender']) &&
+        contains(entry.recipient, filter['recipient']);
+  }
+
+  http.StreamedResponse _bulkQueue(
+    String operation,
+    Map<String, dynamic> body,
+  ) {
+    final ids = body['ids'];
+    final filter = body['filter'];
+    if ((ids != null && ids is! List<Object?>) ||
+        (filter != null && filter is! Map<String, dynamic>)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    final values = ids as List<Object?>? ?? const <Object?>[];
+    if (filter is Map<String, dynamic> &&
+        filter.values.any((value) => value != null && value is! String)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.any((id) => id is! int || id < 0)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.length > 1000) {
+      _fail(400, 'bad_request', 'max 1000 IDs per request');
+    }
+    if (values.isEmpty && filter == null) {
+      _fail(400, 'bad_request', 'ids or filter required');
+    }
+    final selected = _queue.values
+        .where(
+          (entry) => values.isNotEmpty
+              ? values.contains(entry.id)
+              : _queueMatches(entry, filter as Map<String, dynamic>),
+        )
+        .toList();
+    var affected = 0;
+    for (final entry in selected) {
+      switch (operation) {
+        case 'bulk-retry':
+          if (!{'pending', 'deferred'}.contains(entry.status)) continue;
+          entry.status = 'pending';
+        case 'bulk-bounce':
+          if (!{'pending', 'deferred', 'delivering'}.contains(entry.status)) {
+            continue;
+          }
+          entry.status = 'bounced';
+          entry.lastError = 'manually bounced by admin (bulk)';
+        case 'bulk-delete':
+          _queue.remove(entry.id);
+      }
+      affected++;
+    }
+    return _json({
+      'data': {'affected': affected},
     });
   }
 

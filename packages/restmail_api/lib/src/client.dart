@@ -230,6 +230,9 @@ class RestmailClient {
   /// [status]. Needs `queue:read`.
   Future<OffsetPage<QueueEntry>> queue({
     QueueStatus? status,
+    String? domain,
+    String? sender,
+    String? recipient,
     int offset = 0,
     int limit = 50,
   }) async {
@@ -239,6 +242,9 @@ class RestmailClient {
         ['admin', 'queue'],
         query: {
           'status': ?status?.name,
+          'domain': ?domain,
+          'sender': ?sender,
+          'recipient': ?recipient,
           'limit': '$limit',
           'offset': '$offset',
         },
@@ -278,6 +284,35 @@ class RestmailClient {
   /// Drops an entry without telling its sender. Needs `queue:manage`.
   Future<void> deleteQueueEntry(int id) async {
     await _authed('DELETE', ['admin', 'queue', '$id']);
+  }
+
+  /// Retry pending/deferred entries in the selection. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkRetryQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-retry', selection);
+
+  /// Bounce entries still in flight. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkBounceQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-bounce', selection);
+
+  /// Delete matching entries without notification. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkDeleteQueue(QueueSelection selection) =>
+      _bulkQueue('DELETE', 'bulk-delete', selection);
+
+  Future<BulkQueueResult> _bulkQueue(
+    String method,
+    String operation,
+    QueueSelection selection,
+  ) async {
+    final response = await _authed(method, [
+      'admin',
+      'queue',
+      operation,
+    ], body: selection.toJson());
+    try {
+      return BulkQueueResult.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
   }
 
   /// Needs `domains:read`.
