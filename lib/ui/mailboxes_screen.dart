@@ -7,6 +7,7 @@ import '../state/admin_access.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
+import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
 import 'admin/admin_screen.dart';
@@ -77,7 +78,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
           child: Column(
             children: [
               RmTopBar(
-                title: 'Mailboxes',
+                title: tr(context, 'mailboxes.title'),
                 onBack: () => Navigator.pop(context),
               ),
               const Expanded(
@@ -117,12 +118,12 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Mailboxes',
+              title: tr(context, 'mailboxes.title'),
               onBack: () => Navigator.pop(context),
               actions: [
                 RmIconButton(
                   icon: Icons.settings_outlined,
-                  tooltip: 'Mailbox settings',
+                  tooltip: tr(context, 'settings.mailboxTitle'),
                   onPressed: () => unawaited(
                     Navigator.pushReplacement(
                       context,
@@ -154,7 +155,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                     signedOut: signedOut,
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Folders'),
+                  SectionLabel(tr(context, 'mailboxes.folders')),
                   const SizedBox(height: 9),
                   _Folders(
                     folders: m.folders,
@@ -259,7 +260,7 @@ class _AccountSelector extends StatelessWidget {
     final c = context.rm;
     final a = account;
     return Tooltip(
-      message: 'Switch account',
+      message: tr(context, 'mailboxes.switch'),
       child: Material(
         color: c.surface,
         borderRadius: BorderRadius.circular(16),
@@ -308,7 +309,7 @@ class _AccountSelector extends StatelessWidget {
                 ),
                 if (a.signedOut)
                   Text(
-                    'Signed out',
+                    tr(context, 'status.signedOut'),
                     style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
                   )
                 else ...[
@@ -347,7 +348,7 @@ class _AccountPicker extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
             child: Text(
-              'Switch account',
+              tr(context, 'mailboxes.switch'),
               style: rmText(
                 17,
                 color: c.ink,
@@ -414,7 +415,9 @@ class _AccountChoice extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      a.signedOut ? '${a.address} · Signed out' : a.address,
+                      a.signedOut
+                          ? '${a.address} · ${tr(context, 'status.signedOut')}'
+                          : a.address,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: rmText(12, color: c.ink3),
@@ -458,7 +461,7 @@ class _Stats extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(
-          'This account is signed out. Sign in again to load its folders.',
+          tr(context, 'mailboxes.signedOutNote'),
           style: rmText(12.5, color: c.ink3, height: 1.4),
         ),
       );
@@ -480,14 +483,23 @@ class _Stats extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (loading && folders.isEmpty)
-            Text('Loading this account…', style: rmText(12.5, color: c.ink3))
+            Text(
+              tr(context, 'mailboxes.loading'),
+              style: rmText(12.5, color: c.ink3),
+            )
           else
             Row(
               children: [
-                _Stat(value: inbox?.unread ?? 0, label: 'Inbox unread'),
-                _Stat(value: unread, label: 'Unread'),
-                _Stat(value: total, label: 'Messages'),
-                _Stat(value: folders.length, label: 'Folders'),
+                _Stat(
+                  value: inbox?.unread ?? 0,
+                  label: tr(context, 'mailboxes.inboxUnread'),
+                ),
+                _Stat(value: unread, label: tr(context, 'mailboxes.unread')),
+                _Stat(value: total, label: tr(context, 'mailboxes.messages')),
+                _Stat(
+                  value: folders.length,
+                  label: tr(context, 'mailboxes.folders'),
+                ),
               ],
             ),
           if (q != null && q.quotaBytes > 0) ...[
@@ -495,7 +507,7 @@ class _Stats extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Storage',
+                  tr(context, 'mailboxes.storage'),
                   style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
                 ),
                 const Spacer(),
@@ -648,7 +660,7 @@ class _FolderTile extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  folderLabel(folder.name),
+                  folderLabelOf(context, folder.name),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: rmText(

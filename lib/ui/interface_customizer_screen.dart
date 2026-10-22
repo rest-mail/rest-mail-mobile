@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../state/interface_prefs.dart';
 import '../theme/tokens.dart';
@@ -61,9 +62,9 @@ class _InterfaceCustomizerScreenState extends State<InterfaceCustomizerScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Interface',
+              title: tr(context, 'interface.title'),
               onBack: () => Navigator.pop(context),
-              trailingText: 'Presets',
+              trailingText: tr(context, 'interface.presets'),
               onTrailing: () => unawaited(
                 showInterfacePresets(context, prefs: prefs, onChanged: _update),
               ),
@@ -75,10 +76,10 @@ class _InterfaceCustomizerScreenState extends State<InterfaceCustomizerScreen> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: RmSegmented<PanelArea>(
-                    options: const [
-                      (PanelArea.list, 'List'),
-                      (PanelArea.reader, 'Reader'),
-                      (PanelArea.composer, 'Composer'),
+                    options: [
+                      (PanelArea.list, tr(context, 'interface.list')),
+                      (PanelArea.reader, tr(context, 'interface.reader')),
+                      (PanelArea.composer, tr(context, 'interface.composer')),
                     ],
                     value: _screens[_index],
                     onChanged: (area) => _go(_screens.indexOf(area)),
@@ -99,7 +100,13 @@ class _InterfaceCustomizerScreenState extends State<InterfaceCustomizerScreen> {
                     children: [
                       _PreviewFrame(area: area, prefs: prefs),
                       const SizedBox(height: 22),
-                      SectionLabel(areaLabel(area)),
+                      SectionLabel(
+                        tr(context, switch (area) {
+                          PanelArea.list => 'interface.messageList',
+                          PanelArea.reader => 'interface.readingView',
+                          PanelArea.composer => 'interface.composerTitle',
+                        }),
+                      ),
                       const SizedBox(height: 9),
                       PanelEditor(area: area, prefs: prefs, onChanged: _update),
                     ],
