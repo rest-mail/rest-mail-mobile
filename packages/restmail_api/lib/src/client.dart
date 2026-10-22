@@ -155,14 +155,33 @@ class RestmailClient {
       _uri(['auth', 'refresh']),
       body: {'refresh_token': current.refreshToken},
     );
+    // Signed out, or handed another session, while the refresh was in
+    // flight: the answer is about tokens that are no longer this session's,
+    // so it neither ends nor overwrites what took their place.
+    final latest = _tokens;
+    if (latest == null ||
+        latest.accessToken != current.accessToken ||
+        latest.refreshToken != current.refreshToken) {
+      if (latest == null) throw const SessionExpiredException();
+      return latest;
+    }
     if (response.statusCode == 401 || response.statusCode == 403) {
       _setTokens(null);
       throw const SessionExpiredException();
     }
     _throwIfError(response);
-    final tokens = _tokensFrom(response, _data(response));
-    // Signed out while the refresh was in flight: stay signed out.
-    if (_tokens == null) throw const SessionExpiredException();
+    final renewed = _tokensFrom(response, _data(response));
+    // An escalation may have updated only capabilities while this request
+    // was in flight. Keep that newer metadata and still persist the rotated
+    // credentials; ignoring the rotation would leave a spent refresh token.
+    final tokens = identical(latest, current)
+        ? renewed
+        : SessionTokens(
+            accessToken: renewed.accessToken,
+            refreshToken: renewed.refreshToken,
+            accessExpiresAt: renewed.accessExpiresAt,
+            capabilities: latest.capabilities,
+          );
     _setTokens(tokens);
     return tokens;
   }

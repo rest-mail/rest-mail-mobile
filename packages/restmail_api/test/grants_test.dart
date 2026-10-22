@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -590,6 +591,39 @@ void main() {
         throwsA(isA<TotpRequiredException>()),
       );
       expect(jsonDecode(sent.body), <String, Object?>{});
+    });
+
+    test('an escalation during refresh keeps rotated credentials and newer '
+        'capabilities', () async {
+      final answer = Completer<http.Response>();
+      final client = _client((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) return answer.future;
+        return _json({
+          'data': {
+            'grant': _grant(activation: _activation),
+            'capabilities': ['*'],
+          },
+        }, status: 201);
+      });
+      final refreshing = client.refresh();
+      await Future<void>.delayed(Duration.zero);
+
+      await client.activateGrant(9, reason: 'Maintenance', totpCode: '123456');
+      answer.complete(
+        _json({
+          'data': {
+            'access_token': 'access-2',
+            'refresh_token': 'refresh-2',
+            'expires_in': 900,
+            'capabilities': ['users:read'],
+          },
+        }),
+      );
+      await refreshing;
+
+      expect(client.tokens!.accessToken, 'access-2');
+      expect(client.tokens!.refreshToken, 'refresh-2');
+      expect(client.tokens!.capabilities.names, {'*'});
     });
 
     test('an escalation answer with no grant is unreadable', () async {
