@@ -507,33 +507,74 @@ void _sessionRefreshTests() {
     expect(store.values.containsKey('account:$key'), isFalse);
   });
 
-  test('coming back on screen renews a session about to run out, once',
-      () async {
-    issued = 0;
-    var refreshes = 0;
-    final store = MemoryKeyValueStore();
-    await saveSession(store, const Duration(seconds: 10));
-    final state = AppState(
-      store: store,
-      httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.endsWith('/auth/refresh')) refreshes++;
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        return renewed();
-      }),
-    );
-    addTearDown(state.dispose);
-    await state.start();
-    refreshes = 0;
+  test(
+    'an old Keychain write cannot overwrite a replacement sign-in',
+    () async {
+      issued = 0;
+      final store = _SlowStore()..slowWhen = (value) => value.contains('"r1"');
+      await saveSession(store, const Duration(minutes: 15));
+      final state = AppState(
+        store: store,
+        httpClientFactory: () => MockClient((_) async => renewed()),
+      );
+      addTearDown(state.dispose);
+      await state.start();
+      final old = state.current! as RestAccount;
+      await old.client.refresh();
 
-    await Future.wait([state.resumed(), state.resumed()]);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      await state.keep(
+        Uri.parse('https://mail.example.test'),
+        old.user,
+        SessionTokens(
+          accessToken: 'replacement-access',
+          refreshToken: 'replacement-refresh',
+          accessExpiresAt: DateTime.now().add(const Duration(minutes: 15)),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    expect(refreshes, lessThanOrEqualTo(1));
-    expect(state.current!.signedOut, isNull);
-    expect((state.current! as RestAccount).client.tokens!.expiresWithin(
-      const Duration(minutes: 2),
-    ), isFalse);
-  });
+      expect(savedRefreshToken(store), 'replacement-refresh');
+      expect(
+        (state.current! as RestAccount).client.tokens!.refreshToken,
+        'replacement-refresh',
+      );
+    },
+  );
+
+  test(
+    'coming back on screen renews a session about to run out, once',
+    () async {
+      issued = 0;
+      var refreshes = 0;
+      final store = MemoryKeyValueStore();
+      // Startup's 30-second margin leaves this token alone, while resume's
+      // two-minute margin must renew it.
+      await saveSession(store, const Duration(seconds: 90));
+      final state = AppState(
+        store: store,
+        httpClientFactory: () => MockClient((request) async {
+          if (request.url.path.endsWith('/auth/refresh')) refreshes++;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return renewed();
+        }),
+      );
+      addTearDown(state.dispose);
+      await state.start();
+      refreshes = 0;
+
+      await Future.wait([state.resumed(), state.resumed()]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(refreshes, 1);
+      expect(state.current!.signedOut, isNull);
+      expect(
+        (state.current! as RestAccount).client.tokens!.expiresWithin(
+          const Duration(minutes: 2),
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('coming back on screen with the server unreachable keeps the session '
       'and its refresh token', () async {

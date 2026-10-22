@@ -328,8 +328,15 @@ class AppState extends ChangeNotifier {
   /// it on screen. Whatever signed in hands it over and uses it no more.
   Future<void> keep(Uri server, User user, SessionTokens tokens) async {
     final saved = _SavedSession(server, user, tokens);
-    await store.write(_accountKey(saved.key), saved.encode());
-    await _add(_openRest(saved));
+    final account = _openRest(saved);
+    await _add(account);
+    await _queueWrite(account, () async {
+      if (!accounts.contains(account) ||
+          !identical(account.client.tokens, tokens)) {
+        return;
+      }
+      await store.write(_accountKey(saved.key), saved.encode());
+    });
   }
 
   /// Adds a Gmail or other IMAP account, or renews it if it is already
@@ -685,7 +692,7 @@ class AppState extends ChangeNotifier {
 
   /// The Keychain writes still to land for each account, in the order they
   /// were asked for.
-  final _pendingWrites = <SignedInAccount, Future<void>>{};
+  final _pendingWrites = <String, Future<void>>{};
 
   /// Writes to [account]'s entry one after another, so an older session can
   /// never land on top of a newer one, whatever order the Keychain finishes
@@ -694,7 +701,7 @@ class AppState extends ChangeNotifier {
     SignedInAccount account,
     Future<void> Function() write,
   ) {
-    final previous = _pendingWrites[account];
+    final previous = _pendingWrites[account.key];
     final next = () async {
       if (previous != null) {
         try {
@@ -705,7 +712,7 @@ class AppState extends ChangeNotifier {
       }
       await write();
     }();
-    _pendingWrites[account] = next;
+    _pendingWrites[account.key] = next;
     return next;
   }
 
@@ -836,14 +843,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     account.close();
     // A write already under way lands before the entry goes, not after.
-    if (_pendingWrites.remove(account) case final pending?) {
-      try {
-        await pending;
-      } on Object {
-        // The entry is deleted all the same.
-      }
-    }
-    await store.delete(_accountKey(account.key));
+    await _queueWrite(account, () async {
+      // A new sign-in may have replaced the account while an older write
+      // was finishing. Its entry belongs to the new session now.
+      if (accounts.any((kept) => kept.key == account.key)) return;
+      await store.delete(_accountKey(account.key));
+    });
     await push.forget(account);
     await _writeIndex();
   }
