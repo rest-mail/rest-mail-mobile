@@ -139,9 +139,11 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.byTooltip('Close search'));
   await tester.pumpAndSettle();
 
-  // A second account, added from App settings. Its domain has no server of
-  // its own, so the server is chosen by hand.
-  await tester.tap(find.byTooltip('App settings'));
+  // A second account, added from the account picker. Its domain has no
+  // server of its own, so the server is chosen by hand.
+  await tester.tap(find.byTooltip('Mailboxes'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Switch account'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Add an account'));
   await tester.pumpAndSettle();
@@ -175,7 +177,9 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
 
   // The administrator beside them: an account like the others, signed in
   // with a code, which reaches Administration from Mailboxes.
-  await tester.tap(find.byTooltip('App settings'));
+  await tester.tap(find.byTooltip('Mailboxes'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Switch account'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Add an account'));
   await tester.pumpAndSettle();
