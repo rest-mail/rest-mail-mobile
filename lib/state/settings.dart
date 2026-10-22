@@ -25,6 +25,7 @@ class AppSettings {
     this.notifications = NotificationChoice.undecided,
     this.interface = const InterfacePrefs(),
     this.languageCode = 'system',
+    this.lastSeenVersion = '',
   });
 
   factory AppSettings.decode(String? raw) {
@@ -42,6 +43,7 @@ class AppSettings {
             NotificationChoice.undecided,
         interface: InterfacePrefs.decode(json['interface']),
         languageCode: json['language'] as String? ?? 'system',
+        lastSeenVersion: json['last_seen_version'] as String? ?? '',
       );
     } on Object {
       return const AppSettings();
@@ -71,6 +73,10 @@ class AppSettings {
   /// phone.
   final String languageCode;
 
+  /// The app version whose What's New screen has been shown. Empty until one
+  /// has been.
+  final String lastSeenVersion;
+
   String encode() => jsonEncode({
     'theme': themeMode.name,
     'pack': packId,
@@ -79,6 +85,7 @@ class AppSettings {
     'notifications': notifications.name,
     'interface': interface.toJson(),
     'language': languageCode,
+    'last_seen_version': lastSeenVersion,
   });
 
   AppSettings copyWith({
@@ -89,6 +96,7 @@ class AppSettings {
     NotificationChoice? notifications,
     InterfacePrefs? interface,
     String? languageCode,
+    String? lastSeenVersion,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     packId: packId ?? this.packId,
@@ -97,5 +105,6 @@ class AppSettings {
     notifications: notifications ?? this.notifications,
     interface: interface ?? this.interface,
     languageCode: languageCode ?? this.languageCode,
+    lastSeenVersion: lastSeenVersion ?? this.lastSeenVersion,
   );
 }

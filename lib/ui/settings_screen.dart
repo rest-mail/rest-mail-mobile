@@ -18,6 +18,7 @@ import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'interface_customizer_screen.dart';
+import 'whats_new_screen.dart';
 import 'push_offer.dart';
 import 'scheduled_screen.dart';
 import 'widgets/avatar.dart';
@@ -326,6 +327,16 @@ class AppSettingsScreen extends StatelessWidget {
                               ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  RmGroup(
+                    children: [
+                      RmRow(
+                        label: tr(context, 'settings.whatsNew'),
+                        subtitle: tr(context, 'settings.whatsNewSubtitle'),
+                        onTap: () => _push(context, const WhatsNewScreen()),
                       ),
                     ],
                   ),
