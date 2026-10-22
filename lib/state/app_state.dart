@@ -673,8 +673,69 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     // The one on screen says so in place of its mail.
     if (!identical(account, current)) _notices.add(account.signedOut!);
-    unawaited(store.write(_accountKey(saved.key), saved.encode()));
+    unawaited(
+      _queueWrite(account, () async {
+        // Taken off the phone while this waited: it is not brought back.
+        if (!accounts.contains(account)) return;
+        await store.write(_accountKey(saved.key), saved.encode());
+      }),
+    );
     if (account is RestAccount) unawaited(push.forget(account));
+  }
+
+  /// The Keychain writes still to land for each account, in the order they
+  /// were asked for.
+  final _pendingWrites = <SignedInAccount, Future<void>>{};
+
+  /// Writes to [account]'s entry one after another, so an older session can
+  /// never land on top of a newer one, whatever order the Keychain finishes
+  /// them in.
+  Future<void> _queueWrite(
+    SignedInAccount account,
+    Future<void> Function() write,
+  ) {
+    final previous = _pendingWrites[account];
+    final next = () async {
+      if (previous != null) {
+        try {
+          await previous;
+        } on Object {
+          // Reported to whoever asked for it; this write goes ahead.
+        }
+      }
+      await write();
+    }();
+    _pendingWrites[account] = next;
+    return next;
+  }
+
+  /// Sessions that renewal is under way for, so a second resume while the
+  /// first is still renewing waits on it rather than asking again.
+  Future<void>? _renewing;
+
+  /// The app is back on screen: each signed-in REST Mail account whose access
+  /// token ran out, or is about to, while it was away is renewed now, rather
+  /// than by the first request to be refused.
+  ///
+  /// A server that can't be reached leaves the session, and its refresh
+  /// token, as they were; only a refresh the server refuses signs the account
+  /// out.
+  Future<void> resumed() =>
+      _renewing ??= _renewAll().whenComplete(() => _renewing = null);
+
+  Future<void> _renewAll() => Future.wait([
+    for (final account in accounts)
+      if (account is RestAccount && account.signedOut == null) _renew(account),
+  ]);
+
+  Future<void> _renew(RestAccount account) async {
+    try {
+      await account.client.renewIfExpiring();
+    } on SessionExpiredException {
+      // Already signed out, through the client's onTokensChanged.
+    } on ApiException {
+      // Unreachable for now: the next request tries again.
+    }
   }
 
   /// Gives a refresh token back, where the provider takes them back
@@ -730,10 +791,19 @@ class AppState extends ChangeNotifier {
     if (!accounts.contains(account)) return;
     if (tokens != null) {
       unawaited(
-        store.write(
-          _accountKey(account.key),
-          _SavedSession(account.server, account.user, tokens).encode(),
-        ),
+        _queueWrite(account, () async {
+          // A newer pair, or the end of the session, came in while this one
+          // waited its turn, or the account was taken off the phone: what
+          // the Keychain keeps is whatever came last.
+          if (!accounts.contains(account) ||
+              !identical(account.client.tokens, tokens)) {
+            return;
+          }
+          await store.write(
+            _accountKey(account.key),
+            _SavedSession(account.server, account.user, tokens).encode(),
+          );
+        }),
       );
       // The server re-reads the grants at every refresh: what it took away
       // goes from the screens now.
@@ -765,6 +835,14 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     account.close();
+    // A write already under way lands before the entry goes, not after.
+    if (_pendingWrites.remove(account) case final pending?) {
+      try {
+        await pending;
+      } on Object {
+        // The entry is deleted all the same.
+      }
+    }
     await store.delete(_accountKey(account.key));
     await push.forget(account);
     await _writeIndex();

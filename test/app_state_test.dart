@@ -9,6 +9,8 @@ import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 void main() {
+  group('session renewal', _sessionRefreshTests);
+
   test('a saved session the server will not renew signs the account out, and '
       'keeps it, with nothing to renew the next time', () async {
     final store = MemoryKeyValueStore();
@@ -416,6 +418,158 @@ Future<void> _settle() =>
     Future<void>.delayed(const Duration(milliseconds: 50));
 
 /// Passes requests on, noting each one's path.
+void _sessionRefreshTests() {
+  const key = 'https://mail.example.test|ada@example.test';
+
+  Future<void> saveSession(MemoryKeyValueStore store, Duration validFor) async {
+    await store.write(
+      'accounts',
+      jsonEncode({
+        'order': [key],
+        'current': key,
+      }),
+    );
+    await store.write(
+      'account:$key',
+      jsonEncode({
+        'kind': 'rest',
+        'server': 'https://mail.example.test',
+        'user': {'id': 1, 'email': 'ada@example.test', 'display_name': 'Ada'},
+        'tokens': {
+          'access_token': 'a',
+          'refresh_token': 'r',
+          'access_expires_at': DateTime.now()
+              .add(validFor)
+              .toUtc()
+              .toIso8601String(),
+        },
+      }),
+    );
+  }
+
+  String? savedRefreshToken(MemoryKeyValueStore store) {
+    final entry = store.values['account:$key'];
+    if (entry == null) return null;
+    final tokens = (jsonDecode(entry) as Map<String, dynamic>)['tokens'];
+    return (tokens as Map<String, dynamic>?)?['refresh_token'] as String?;
+  }
+
+  var issued = 0;
+  http.Response renewed() => http.Response(
+    jsonEncode({
+      'data': {
+        'access_token': 'a${++issued}',
+        'refresh_token': 'r$issued',
+        'expires_in': 900,
+      },
+    }),
+    200,
+    headers: {'content-type': 'application/json'},
+  );
+
+  test('rotated tokens are kept in the order the server issued them, '
+      'however slowly the Keychain writes the older pair', () async {
+    issued = 0;
+    final store = _SlowStore()..slowWhen = (value) => value.contains('"r1"');
+    await saveSession(store, const Duration(minutes: 15));
+    final state = AppState(
+      store: store,
+      httpClientFactory: () => MockClient((_) async => renewed()),
+    );
+    addTearDown(state.dispose);
+    await state.start();
+    final account = state.current! as RestAccount;
+
+    await account.client.refresh();
+    await account.client.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(savedRefreshToken(store), 'r2');
+  });
+
+  test('a renewal that lands after the account is removed does not bring '
+      'it back', () async {
+    issued = 0;
+    final store = _SlowStore()..slowWhen = (value) => value.contains('"r1"');
+    await saveSession(store, const Duration(minutes: 15));
+    final state = AppState(
+      store: store,
+      httpClientFactory: () => MockClient((_) async => renewed()),
+    );
+    addTearDown(state.dispose);
+    await state.start();
+    final account = state.current! as RestAccount;
+
+    await account.client.refresh();
+    await state.removeAccount(account);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(store.values.containsKey('account:$key'), isFalse);
+  });
+
+  test('coming back on screen renews a session about to run out, once',
+      () async {
+    issued = 0;
+    var refreshes = 0;
+    final store = MemoryKeyValueStore();
+    await saveSession(store, const Duration(seconds: 10));
+    final state = AppState(
+      store: store,
+      httpClientFactory: () => MockClient((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) refreshes++;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return renewed();
+      }),
+    );
+    addTearDown(state.dispose);
+    await state.start();
+    refreshes = 0;
+
+    await Future.wait([state.resumed(), state.resumed()]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(refreshes, lessThanOrEqualTo(1));
+    expect(state.current!.signedOut, isNull);
+    expect((state.current! as RestAccount).client.tokens!.expiresWithin(
+      const Duration(minutes: 2),
+    ), isFalse);
+  });
+
+  test('coming back on screen with the server unreachable keeps the session '
+      'and its refresh token', () async {
+    final store = MemoryKeyValueStore();
+    await saveSession(store, Duration.zero);
+    final state = AppState(
+      store: store,
+      httpClientFactory: () => MockClient(
+        (_) async => throw http.ClientException('Connection refused'),
+      ),
+    );
+    addTearDown(state.dispose);
+    await state.start();
+
+    await state.resumed();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(state.current!.signedOut, isNull);
+    expect(savedRefreshToken(store), 'r');
+  });
+}
+
+/// A Keychain that takes its time over the writes [slowWhen] picks, so a
+/// later write can finish first.
+class _SlowStore extends MemoryKeyValueStore {
+  bool Function(String value) slowWhen = (_) => false;
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (slowWhen(value)) {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+    }
+    await super.write(key, value);
+  }
+}
+
 class _Logged extends http.BaseClient {
   _Logged(this._inner, this._paths);
 
