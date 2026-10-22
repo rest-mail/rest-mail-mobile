@@ -505,9 +505,10 @@ class AppState extends ChangeNotifier {
   Future<void> switchTo(
     SignedInAccount account, {
     String folder = StandardFolder.inbox,
+    bool keepNavigator = false,
   }) async {
     if (identical(account, current) || !accounts.contains(account)) return;
-    _show(account, folder: folder);
+    _show(account, folder: folder, keepNavigator: keepNavigator);
     notifyListeners();
     await _writeIndex();
   }
@@ -695,7 +696,11 @@ class AppState extends ChangeNotifier {
   }
 
   /// Starts [account]'s mail, at [folder], and stops the previous account's.
-  void _show(SignedInAccount account, {String folder = StandardFolder.inbox}) {
+  void _show(
+    SignedInAccount account, {
+    String folder = StandardFolder.inbox,
+    bool keepNavigator = false,
+  }) {
     final previous = mailbox;
     final previousAccount = current;
     current = account;
@@ -703,8 +708,15 @@ class AppState extends ChangeNotifier {
     // Signed out, it has nothing to load until it signs in again.
     if (account.signedOut == null) unawaited(next.start());
     phase = AppPhase.signedIn;
-    _sessions++;
-    previous?.dispose();
+    if (!keepNavigator) _sessions++;
+    // Keeping the navigator means the screen that asked is still on it, so
+    // the old mailbox is let go after that screen has rebuilt with the new
+    // one.
+    if (keepNavigator) {
+      Future<void>.delayed(Duration.zero, () => previous?.dispose());
+    } else {
+      previous?.dispose();
+    }
     // An IMAP account off screen keeps no connection open; it reconnects
     // when it is shown again.
     if (previousAccount is ImapAccount && previousAccount != account) {

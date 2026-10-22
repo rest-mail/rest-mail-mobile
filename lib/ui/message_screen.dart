@@ -21,7 +21,7 @@ import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, labels, spam, notSpam }
+enum _More { markUnread, flag, note, labels, spam, notSpam }
 
 /// One message, read in full, with reply, reply all and forward along the
 /// bottom. On Gmail, with its labels, and the rest of its conversation
@@ -55,6 +55,10 @@ class _MessageScreenState extends State<MessageScreen> {
   List<Attachment> _attachments = const [];
   bool _allRecipients = false;
 
+  /// A private note, kept on this phone, under this account and message.
+  String? _note;
+  bool _noteRequested = false;
+
   /// Every message in its conversation, wherever filed, oldest first.
   List<Message> _conversation = const [];
 
@@ -67,6 +71,50 @@ class _MessageScreenState extends State<MessageScreen> {
   void initState() {
     super.initState();
     unawaited(_load());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_noteRequested) return;
+    _noteRequested = true;
+    unawaited(_loadNote());
+  }
+
+  String get _noteKey {
+    final account = _mailbox.account?.address ?? _mailbox.backend.host;
+    return 'note:$account:${widget.message.id}';
+  }
+
+  Future<void> _loadNote() async {
+    final raw = await AppScope.read(context).store.read(_noteKey);
+    if (!mounted) return;
+    setState(() {
+      final note = raw?.trim();
+      _note = note == null || note.isEmpty ? null : note;
+    });
+  }
+
+  Future<void> _editNote() async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _NoteEditor(initial: _note),
+    );
+    if (result == null || !mounted) return;
+    final trimmed = result.trim();
+    final store = AppScope.read(context).store;
+    if (trimmed.isEmpty) {
+      await store.delete(_noteKey);
+    } else {
+      await store.write(_noteKey, trimmed);
+    }
+    if (mounted) setState(() => _note = trimmed.isEmpty ? null : trimmed);
   }
 
   Future<void> _load() async {
@@ -207,6 +255,8 @@ class _MessageScreenState extends State<MessageScreen> {
           if (mounted) {
             setState(() => _message = _message.copyWith(isFlagged: flagged));
           }
+        case _More.note:
+          await _editNote();
         case _More.labels:
           await _editLabels();
         case _More.spam:
@@ -341,6 +391,10 @@ class _MessageScreenState extends State<MessageScreen> {
                           (false, false) => 'Flag',
                         }),
                       ),
+                      PopupMenuItem(
+                        value: _More.note,
+                        child: Text(_note == null ? 'Add note' : 'Edit note'),
+                      ),
                       if (_labels)
                         const PopupMenuItem(
                           value: _More.labels,
@@ -460,6 +514,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                     ),
                   ),
+                  if (_note != null) _NoteCard(note: _note!, onEdit: _editNote),
                   if (!_loaded)
                     const Padding(
                       padding: EdgeInsets.only(top: 24),
@@ -574,6 +629,155 @@ class _MessageScreenState extends State<MessageScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The sheet a private note is written in. It owns its controller, so the
+/// field survives the sheet's closing animation.
+class _NoteEditor extends StatefulWidget {
+  const _NoteEditor({required this.initial});
+
+  final String? initial;
+
+  @override
+  State<_NoteEditor> createState() => _NoteEditorState();
+}
+
+class _NoteEditorState extends State<_NoteEditor> {
+  late final _text = TextEditingController(text: widget.initial ?? '');
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+              child: Text(
+                'Private note',
+                style: rmText(
+                  17,
+                  color: c.ink,
+                  weight: FontWeight.w700,
+                  tracking: -0.02,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: Text(
+                'Only you can see this. It stays on this phone.',
+                style: rmText(12.5, color: c.ink3, height: 1.35),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: TextField(
+                controller: _text,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 8,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                style: rmText(15, color: c.ink, height: 1.45),
+                decoration: const InputDecoration(hintText: 'Write a note…'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: Row(
+                children: [
+                  if (widget.initial != null)
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, ''),
+                      child: Text('Remove', style: rmText(14, color: c.danger)),
+                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel', style: rmText(14, color: c.ink2)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, _text.text),
+                    child: Text(
+                      'Save',
+                      style: rmText(
+                        14,
+                        color: c.accent,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A note only this phone has: not sent, not part of the message.
+class _NoteCard extends StatelessWidget {
+  const _NoteCard({required this.note, required this.onEdit});
+
+  final String note;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.sticky_note_2_outlined, size: 18, color: c.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'NOTE',
+                  style: rmText(
+                    10.5,
+                    color: c.ink3,
+                    weight: FontWeight.w700,
+                    tracking: 0.06,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(note, style: rmText(13.5, color: c.ink2, height: 1.4)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Edit note',
+            icon: Icon(Icons.edit_outlined, size: 18, color: c.ink3),
+            onPressed: onEdit,
+          ),
+        ],
       ),
     );
   }

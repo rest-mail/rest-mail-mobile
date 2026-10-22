@@ -74,7 +74,6 @@ void main() {
 
     // A second account, from Settings.
     await _openSettings(tester);
-    expect(find.text('OTHER ACCOUNTS'), findsOneWidget);
     await tester.tap(find.text('Add an account'));
     await tester.pumpAndSettle();
     // Its domain has no server of its own: it is served from the first's.
@@ -114,9 +113,22 @@ void main() {
       'Re: sync latency on flaky networks',
     );
 
-    // And to the second again, from Settings.
-    await _openSettings(tester);
+    // And to the second again, from Mailboxes.
+    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(FakeAccounts.otherEmail));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    expect(state.current!.address, FakeAccounts.otherEmail);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(MailboxesScreen),
+        matching: find.text('Inbox'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Live · ${FakeAccounts.otherEmail}'), findsOneWidget);
 

@@ -116,10 +116,9 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
                     ),
                     AppPhase.signedIn => SetupLinkHandler(
                       child: PushOffer(
-                        child: switch (state.mailbox) {
-                          final mailbox? => MailboxScreen(mailbox: mailbox),
-                          null => SplashScreen(pack: pack),
-                        },
+                        child: state.mailbox != null
+                            ? const MailboxScreen()
+                            : SplashScreen(pack: pack),
                       ),
                     ),
                   },
