@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
+import 'grants_models.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -659,6 +660,149 @@ class RestmailClient {
   Future<DnsCheck> dnsCheck(int domainId) async => DnsCheck.fromJson(
     _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
   );
+
+  // ── Roles, grants and escalation ─────────────────────────────────────
+  //
+  // Changing grants needs `users:write` and a session signed in with a second
+  // factor; the server also refuses a role, or a scope, wider than the
+  // granter's own. Each account's own grants, and switching its eligible ones
+  // on and off, need no capability.
+
+  /// The roles that can be granted, each with its capabilities. Needs
+  /// `users:read`.
+  Future<List<AdminRole>> roles() async =>
+      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
+
+  /// Every capability the server checks, by name. Needs `users:read`.
+  Future<List<CapabilityDefinition>> capabilityDefinitions() async => _list(
+    await _authed('GET', ['admin', 'capabilities']),
+    CapabilityDefinition.fromJson,
+  );
+
+  /// One page of grants, oldest first: only [holder]'s, or only those at
+  /// [scope], when given. Needs `users:read`.
+  Future<OffsetPage<Grant>> grants({
+    GrantHolder? holder,
+    String? scope,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'grants'],
+    Grant.fromJson,
+    offset,
+    limit,
+    {
+      'holder_kind': ?holder?.kind,
+      'holder_id': ?holder?.id.toString(),
+      'scope': ?scope,
+    },
+  );
+
+  /// Grants [role] to [holder] at [scope] (`*`, `domain:<name>` or
+  /// `mailbox:<address>`): [GrantMode.active] when [mode] is not given, until
+  /// [expiresAt] or until removed. Throws [ApiException] with a
+  /// [GrantErrorCode], or `validation_failed` naming the field. Needs
+  /// `users:write`.
+  Future<Grant> createGrant({
+    required GrantHolder holder,
+    required String role,
+    required String scope,
+    GrantMode? mode,
+    DateTime? expiresAt,
+  }) async => Grant.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'grants'],
+        body: {
+          'holder': holder.toJson(),
+          'role': role,
+          'scope': scope,
+          'mode': ?(mode == null || mode == GrantMode.unknown
+              ? null
+              : mode.name),
+          'expires_at': ?expiresAt?.toUtc().toIso8601String(),
+        },
+      ),
+    ),
+  );
+
+  /// Removes a grant. Needs `users:write`.
+  Future<void> deleteGrant(int id) async {
+    await _authed('DELETE', ['admin', 'grants', '$id']);
+  }
+
+  /// The signed-in account's own grants, each with any activation running
+  /// now.
+  Future<List<Grant>> myGrants() async =>
+      _list(await _authed('GET', ['admin', 'grants', 'mine']), Grant.fromJson);
+
+  /// Switches one of the account's own eligible grants on for [minutes] (the
+  /// server's 60 when not given, at most 240), saying why. Needs a fresh
+  /// [totpCode] from the authenticator, or an unused [recoveryCode]: without
+  /// either it throws [TotpRequiredException], and a wrong one is
+  /// [GrantErrorCode.invalidTotp]. The session's capabilities become the ones
+  /// the server answers with.
+  Future<Escalation> activateGrant(
+    int id, {
+    required String reason,
+    int? minutes,
+    String? totpCode,
+    String? recoveryCode,
+  }) async => _escalated(
+    await _authed(
+      'POST',
+      ['admin', 'grants', '$id', 'activate'],
+      body: {
+        'reason': reason,
+        'minutes': ?minutes,
+        'totp_code': ?totpCode,
+        'recovery_code': ?recoveryCode,
+      },
+    ),
+  );
+
+  /// Switches one of the account's own grants off before its activation runs
+  /// out. The session's capabilities become the ones the server answers with.
+  Future<Escalation> deactivateGrant(int id) async => _escalated(
+    await _authed('POST', ['admin', 'grants', '$id', 'deactivate']),
+  );
+
+  /// Makes one of the account's own active grants eligible: from then on it
+  /// gives nothing until switched on. Needs a fresh code, as [activateGrant]
+  /// does. The session's capabilities become the ones the server answers
+  /// with.
+  Future<Escalation> makeGrantEligible(
+    int id, {
+    String? totpCode,
+    String? recoveryCode,
+  }) async => _escalated(
+    await _authed(
+      'POST',
+      ['admin', 'grants', '$id', 'make-eligible'],
+      body: {'totp_code': ?totpCode, 'recovery_code': ?recoveryCode},
+    ),
+  );
+
+  /// Reads a step of escalation, and keeps what it says the account now
+  /// holds as the session's capabilities until the next refresh brings them.
+  Escalation _escalated(http.Response response) {
+    final data = _data(response);
+    if (data['grant'] is! Map<String, dynamic>) throw _unreadable(response);
+    final step = Escalation.fromJson(data);
+    final tokens = _tokens;
+    if (tokens != null) {
+      _setTokens(
+        SessionTokens(
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          accessExpiresAt: tokens.accessExpiresAt,
+          capabilities: step.capabilities,
+        ),
+      );
+    }
+    return step;
+  }
 
   // ── Accounts and folders ─────────────────────────────────────────────
 
