@@ -57,7 +57,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     final access = AdminAccess(widget.account.capabilities);
     if (access.canRead(AdminSection.permissions)) {
       unawaited(_list.reload());
-      _catalog = _loadCatalog();
     }
     if (access.canRead(AdminSection.mailboxes)) unawaited(_loadAddresses());
   }
@@ -135,7 +134,10 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             child: RmSegmented<_Tab>(
               options: [for (final t in _Tab.values) (t, t.label)],
               value: _tab,
-              onChanged: (tab) => setState(() => _tab = tab),
+              onChanged: (tab) => setState(() {
+                _tab = tab;
+                if (tab != _Tab.grants) _catalog ??= _loadCatalog();
+              }),
             ),
           ),
         ),
