@@ -586,6 +586,8 @@ class DkimKey {
     required this.domain,
     required this.selector,
     required this.hasKey,
+    this.createdAt,
+    this.ageSeconds,
   });
 
   factory DkimKey.fromJson(Map<String, dynamic> json) => DkimKey(
@@ -593,6 +595,8 @@ class DkimKey {
     domain: json['domain'] as String? ?? '',
     selector: json['selector'] as String? ?? '',
     hasKey: json['has_key'] as bool? ?? false,
+    createdAt: _time(json['created_at']),
+    ageSeconds: (json['age_seconds'] as num?)?.toDouble(),
   );
 
   final int domainId;
@@ -601,6 +605,32 @@ class DkimKey {
   /// Where the public key is published: `<selector>._domainkey.<domain>`.
   final String selector;
   final bool hasKey;
+
+  /// When the key was set, or null when the server does not know.
+  final DateTime? createdAt;
+
+  /// How old the key is, in seconds, as the server counts it.
+  final double? ageSeconds;
+}
+
+/// How often a domain's DKIM key is due to be replaced.
+class DkimRotation {
+  const DkimRotation({required this.domainId, required this.intervalDays});
+
+  factory DkimRotation.fromJson(Map<String, dynamic> json) => DkimRotation(
+    domainId: _int(json['domain_id']),
+    intervalDays: _int(json['rotation_interval_days']),
+  );
+
+  /// The most days the server accepts between rotations.
+  static const maxIntervalDays = 3650;
+
+  final int domainId;
+
+  /// Days between rotations; 0 means the key is never rotated.
+  final int intervalDays;
+
+  bool get enabled => intervalDays > 0;
 }
 
 /// A TLS certificate the server holds for one of its domains. The server

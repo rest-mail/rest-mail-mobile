@@ -996,6 +996,82 @@ void main() {
       expect(result.tokens.capabilities.isEmpty, isTrue);
     });
 
+    test('sets a DKIM key and reads and changes its rotation', () async {
+      final seen = <String>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          seen.add('${request.method} ${request.url.path}');
+          if (request.url.path == '/api/v1/admin/dkim/4' &&
+              request.method == 'PUT') {
+            expect(jsonDecode(request.body), {
+              'selector': 'mail2026',
+              'private_key': 'PEM',
+            });
+            return _json({
+              'data': {
+                'domain_id': 4,
+                'domain': 'example.test',
+                'selector': 'mail2026',
+                'has_key': true,
+                'created_at': '2026-10-20T00:00:00Z',
+                'age_seconds': 86400.5,
+              },
+            });
+          }
+          if (request.url.path == '/api/v1/admin/dkim/4/rotation') {
+            if (request.method == 'PUT') {
+              expect(jsonDecode(request.body), {'rotation_interval_days': 0});
+              return _json({
+                'data': {'domain_id': 4, 'rotation_interval_days': 0},
+              });
+            }
+            return _json({
+              'data': {'domain_id': 4, 'rotation_interval_days': 90},
+            });
+          }
+          return _json({
+            'error': {
+              'code': 'validation_failed',
+              'message': 'Invalid DKIM rotation interval',
+            },
+          }, status: 422);
+        }),
+      );
+
+      final key = await client.setDkimKey(
+        4,
+        selector: 'mail2026',
+        privateKey: 'PEM',
+      );
+      expect(key.domainId, 4);
+      expect(key.selector, 'mail2026');
+      expect(key.hasKey, isTrue);
+      expect(key.createdAt, DateTime.utc(2026, 10, 20).toLocal());
+      expect(key.ageSeconds, 86400.5);
+
+      final rotation = await client.dkimRotation(4);
+      expect(rotation.domainId, 4);
+      expect(rotation.intervalDays, 90);
+      expect(rotation.enabled, isTrue);
+
+      final off = await client.setDkimRotation(4, 0);
+      expect(off.intervalDays, 0);
+      expect(off.enabled, isFalse);
+
+      await expectLater(
+        client.setDkimRotation(5, 9999),
+        throwsA(isA<ApiException>()),
+      );
+      expect(seen, [
+        'PUT /api/v1/admin/dkim/4',
+        'GET /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/5/rotation',
+      ]);
+    });
+
     test('reads the queue page and the domain list as the server sends '
         'them', () async {
       final client = RestmailClient(

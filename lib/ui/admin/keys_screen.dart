@@ -16,10 +16,24 @@ Widget _addedElsewhere(BuildContext context, String text) => Padding(
   child: Text(text, style: rmText(13, color: context.rm.ink3, height: 1.4)),
 );
 
+/// A PEM private key as it was before a one-line field folded its lines
+/// into spaces: the BEGIN and END lines on their own, the body rewrapped.
+String _pem(String pasted) {
+  final match = RegExp(
+    r'(-----BEGIN [A-Z ]+-----)([\s\S]*?)(-----END [A-Z ]+-----)',
+  ).firstMatch(pasted.trim());
+  if (match == null) return pasted.trim();
+  final body = match.group(2)!.replaceAll(RegExp(r'\s'), '');
+  final lines = [
+    for (var i = 0; i < body.length; i += 64)
+      body.substring(i, i + 64 > body.length ? body.length : i + 64),
+  ];
+  return [match.group(1)!, ...lines, match.group(3)!, ''].join('\n');
+}
+
 /// The domains whose outgoing mail is signed, and the selector each key is
-/// published under. The keys themselves never leave the server. A key is
-/// set in the admin webmail: pasting a private key on a phone would put it
-/// on the clipboard, where other apps can read it.
+/// published under. The keys themselves never leave the server: one is
+/// sent once, when it is set or replaced, and never shown again.
 class DkimScreen extends StatefulWidget {
   const DkimScreen({super.key, required this.account});
 
@@ -51,6 +65,34 @@ class _DkimScreenState extends State<DkimScreen> {
     super.dispose();
   }
 
+  /// Tapping a key: its rotation, or with `domains:write` the choice of
+  /// rotation or a replacement key.
+  Future<void> _rotationOrKey(DkimKey key, AdminAccess access) async {
+    if (!access.canWrite(AdminSection.dkim)) return _rotation(key, access);
+    final choice = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.schedule_rounded),
+              title: const Text('Key rotation'),
+              onTap: () => Navigator.pop(sheet, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.key_rounded),
+              title: Text(key.hasKey ? 'Replace the key' : 'Set a key'),
+              onTap: () => Navigator.pop(sheet, false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    return choice ? _rotation(key, access) : _setKey(key: key);
+  }
+
   Future<void> _remove(DkimKey key) async {
     final ok = await runAdminChange(
       context,
@@ -60,7 +102,7 @@ class _DkimScreenState extends State<DkimScreen> {
         title: 'Stop signing mail from ${key.domain}?',
         message:
             'Its key is deleted from the server, and its mail goes out '
-            'unsigned until a new key is set in the admin webmail. Servers '
+            'unsigned until a new key is set. Servers '
             'that check DMARC may turn it away.',
         action: 'Remove key',
       ),
@@ -68,6 +110,141 @@ class _DkimScreenState extends State<DkimScreen> {
     if (!ok || !mounted) return;
     showToast(context, 'Removed the key for ${key.domain}');
     unawaited(_list.reload());
+  }
+
+  /// Sets or replaces a domain's key. [domain] is null to pick one.
+  Future<void> _setKey({AdminDomain? domain, DkimKey? key}) async {
+    var target = domain;
+    if (target == null && key == null) {
+      final List<AdminDomain> domains;
+      try {
+        domains = (await widget.account.client.domains()).items;
+      } on ApiException catch (e) {
+        if (mounted) showToast(context, describeAdminError(e, host: _host));
+        return;
+      }
+      if (!mounted) return;
+      target = await showModalBottomSheet<AdminDomain>(
+        context: context,
+        builder: (sheet) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final d in domains)
+                ListTile(
+                  title: Text(d.name),
+                  subtitle: d.dkimSelector.isEmpty
+                      ? null
+                      : Text('Signs as ${d.dkimSelector}'),
+                  onTap: () => Navigator.pop(sheet, d),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (target == null || !mounted) return;
+    }
+    final domainId = key?.domainId ?? target!.id;
+    final name = key?.domain ?? target!.name;
+    final selector = key?.selector ?? target?.dkimSelector ?? '';
+    DkimKey? saved;
+    final sent = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: key?.hasKey ?? false ? 'Replace the key' : 'Set a key',
+        intro:
+            'Mail from $name is signed with this key. Publish its public '
+            'key at <selector>._domainkey.$name first. The key is sent once '
+            'and never shown again.',
+        fields: [
+          AdminField('Selector', hint: 'mail', initial: selector),
+          const AdminField(
+            'Private key',
+            hint: '-----BEGIN PRIVATE KEY-----',
+            obscure: true,
+          ),
+        ],
+        action: key?.hasKey ?? false ? 'Replace key' : 'Set key',
+        host: _host,
+        submit: (values) async {
+          saved = await widget.account.client.setDkimKey(
+            domainId,
+            selector: values[0],
+            privateKey: _pem(values[1]),
+          );
+        },
+      ),
+    );
+    if (!sent || !mounted) return;
+    final s = saved;
+    showToast(
+      context,
+      s == null
+          ? 'Set the key for $name'
+          : 'Signing ${s.domain} as ${s.selector}._domainkey.${s.domain}',
+    );
+    unawaited(_list.reload());
+  }
+
+  /// Reads a domain's rotation and, with `domains:write`, changes it.
+  Future<void> _rotation(DkimKey key, AdminAccess access) async {
+    final DkimRotation current;
+    try {
+      current = await widget.account.client.dkimRotation(key.domainId);
+    } on ApiException catch (e) {
+      if (mounted) showToast(context, describeAdminError(e, host: _host));
+      return;
+    }
+    if (!mounted) return;
+    final now = current.enabled
+        ? 'Rotated every ${current.intervalDays} days.'
+        : 'Never rotated.';
+    if (!access.canWrite(AdminSection.dkim)) {
+      showToast(context, '${key.domain}: $now');
+      return;
+    }
+    DkimRotation? saved;
+    final sent = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Key rotation',
+        intro:
+            '$now How many days ${key.domain} keeps its key before a new '
+            'one is due: 0 never rotates it, at most '
+            '${DkimRotation.maxIntervalDays}.',
+        fields: [
+          AdminField(
+            'Days between rotations',
+            hint: '0 to ${DkimRotation.maxIntervalDays}',
+            initial: '${current.intervalDays}',
+          ),
+        ],
+        action: 'Save',
+        host: _host,
+        submit: (values) async {
+          // Anything but a whole number goes as -1, which the server
+          // refuses with the range it takes.
+          saved = await widget.account.client.setDkimRotation(
+            key.domainId,
+            int.tryParse(values[0]) ?? -1,
+          );
+        },
+      ),
+    );
+    if (!sent || !mounted) return;
+    final s = saved;
+    showToast(
+      context,
+      s == null || !s.enabled
+          ? '${key.domain}: never rotated'
+          : '${key.domain}: rotated every ${s.intervalDays} days',
+    );
+  }
+
+  String _age(DkimKey key) {
+    final created = key.createdAt;
+    if (created == null) return '';
+    return ' · set ${DateFormat.yMMMd().format(created)}';
   }
 
   @override
@@ -80,11 +257,25 @@ class _DkimScreenState extends State<DkimScreen> {
       host: _host,
       empty: 'No domain signs its mail.',
       header: [
-        _addedElsewhere(context, 'New keys are set in the admin webmail.'),
+        if (access.canWrite(AdminSection.dkim))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Set a key for a domain'),
+                onPressed: () => unawaited(_setKey()),
+              ),
+            ),
+          )
+        else
+          _addedElsewhere(context, 'Setting a key needs domains:write.'),
       ],
       row: (key) => RmRow(
         label: key.domain,
-        subtitle: '${key.selector}._domainkey.${key.domain}',
+        subtitle: '${key.selector}._domainkey.${key.domain}${_age(key)}',
+        onTap: () => unawaited(_rotationOrKey(key, access)),
         trailing: access.canDelete(AdminSection.dkim)
             ? RmIconButton(
                 icon: Icons.close_rounded,
