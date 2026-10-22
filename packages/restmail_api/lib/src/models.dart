@@ -185,6 +185,105 @@ class NewAppPassword {
   String toString() => 'NewAppPassword(${appPassword.publicId})';
 }
 
+/// One thing an API key may do: a capability, held only within [scope].
+class APIKeyPermission {
+  const APIKeyPermission({required this.capability, required this.scope});
+
+  factory APIKeyPermission.fromJson(Map<String, dynamic> json) =>
+      APIKeyPermission(
+        capability: json['capability'] as String? ?? '',
+        scope: json['scope'] as String? ?? '',
+      );
+
+  final String capability;
+  final String scope;
+
+  Map<String, dynamic> toJson() => {'capability': capability, 'scope': scope};
+
+  @override
+  bool operator ==(Object other) =>
+      other is APIKeyPermission &&
+      other.capability == capability &&
+      other.scope == scope;
+
+  @override
+  int get hashCode => Object.hash(capability, scope);
+
+  @override
+  String toString() => 'APIKeyPermission($capability, $scope)';
+}
+
+/// An API key, as its owner sees it: never its token, which the server
+/// shows once, when it makes it.
+class APIKey {
+  const APIKey({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.publicId,
+    required this.createdAt,
+    this.lastUsedAt,
+    this.expiresAt,
+    required this.permissions,
+  });
+
+  factory APIKey.fromJson(Map<String, dynamic> json) => APIKey(
+    id: _int(json['id']),
+    name: json['name'] as String? ?? '',
+    kind: json['kind'] as String? ?? '',
+    publicId: json['public_id'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    lastUsedAt: _optionalTime(json['last_used_at']),
+    expiresAt: _optionalTime(json['expires_at']),
+    permissions: [
+      for (final permission in json['permissions'] as List? ?? const [])
+        APIKeyPermission.fromJson(permission as Map<String, dynamic>),
+    ],
+  );
+
+  final int id;
+  final String name;
+
+  /// `api_key`.
+  final String kind;
+
+  /// Names the key in the server's audit log.
+  final String publicId;
+  final DateTime createdAt;
+
+  /// Null if it has never been used.
+  final DateTime? lastUsedAt;
+
+  /// Null if it never expires.
+  final DateTime? expiresAt;
+  final List<APIKeyPermission> permissions;
+
+  bool isExpiredAt(DateTime now) => switch (expiresAt) {
+    final expires? => !expires.isAfter(now),
+    null => false,
+  };
+}
+
+/// An API key just made, with its token, which the server shows this once.
+class CreatedAPIKey {
+  const CreatedAPIKey({required this.key, required this.token});
+
+  factory CreatedAPIKey.fromJson(Map<String, dynamic> json) {
+    final token = json['token'];
+    if (token is! String || token.isEmpty) {
+      throw const FormatException('The new API key has no token');
+    }
+    return CreatedAPIKey(key: APIKey.fromJson(json), token: token);
+  }
+
+  final APIKey key;
+  final String token;
+
+  /// Never the token, so it can't reach a log by accident.
+  @override
+  String toString() => 'CreatedAPIKey(${key.publicId})';
+}
+
 /// The folders rest-mail creates for every mailbox.
 abstract final class StandardFolder {
   static const inbox = 'INBOX';
