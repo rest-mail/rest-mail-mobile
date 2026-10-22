@@ -47,7 +47,7 @@ class RmTopBar extends StatelessWidget {
           else
             const SizedBox(width: 12),
           if (title != null)
-            Flexible(
+            Expanded(
               child: Text(
                 title,
                 maxLines: 1,
@@ -59,8 +59,9 @@ class RmTopBar extends StatelessWidget {
                   tracking: -0.02,
                 ),
               ),
-            ),
-          const Spacer(),
+            )
+          else
+            const Spacer(),
           ...actions,
           if (trailingText != null)
             TextButton(
