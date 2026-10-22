@@ -114,12 +114,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Folders and accounts'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(MailboxesScreen),
-        matching: find.text(_chris),
-      ),
-    );
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(_chris));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(

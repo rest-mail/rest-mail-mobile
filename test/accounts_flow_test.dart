@@ -91,12 +91,11 @@ void main() {
     // Back to the first, from the drawer.
     await tester.tap(find.byTooltip('Folders and accounts'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(MailboxesScreen),
-        matching: find.text(FakeAccounts.email),
-      ),
-    );
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(FakeAccounts.email));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
@@ -244,7 +243,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MailboxesScreen), findsOneWidget);
-    expect(find.text('THIS ACCOUNT'), findsOneWidget);
+    expect(find.text('FOLDERS'), findsOneWidget);
     expect(find.text(FakeAccounts.email), findsWidgets);
     expect(find.text('Inbox unread'), findsOneWidget);
     expect(find.text('Messages'), findsOneWidget);

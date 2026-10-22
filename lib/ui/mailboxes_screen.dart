@@ -14,141 +14,153 @@ import 'settings_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 
-/// Every account down the side, each with its inbox's unread count, and
-/// opened out, its folders with theirs; then settings.
+/// The accounts this phone knows, and one of them opened up: its numbers,
+/// its folders and its storage. Picking another account changes everything
+/// below the selector; tapping a folder opens that account's mail there.
 class MailboxesScreen extends StatefulWidget {
-  const MailboxesScreen({super.key, required this.mailbox});
-
-  final MailboxState mailbox;
+  const MailboxesScreen({super.key});
 
   @override
   State<MailboxesScreen> createState() => _MailboxesScreenState();
 }
 
+typedef _AccountLoad = ({List<Folder> folders, QuotaInfo? quota});
+
 class _MailboxesScreenState extends State<MailboxesScreen> {
-  /// The folders of the accounts not on screen, as they come in.
-  final _folders = <String, List<Folder>>{};
+  /// The account the screen is showing. The one on screen in the app until
+  /// another is picked.
+  String? _selectedKey;
 
-  /// Those whose folders could not be loaded.
-  final _failed = <String>{};
+  List<Folder>? _previewFolders;
+  QuotaInfo? _previewQuota;
+  bool _previewLoading = false;
+  Object? _previewError;
+  int _generation = 0;
 
-  final _requested = <String>{};
-
-  /// The account opened out to show its folders, one at a time; the one on
-  /// screen to begin with.
-  String? _open;
-  bool _opened = false;
-
-  /// One entry per account, in the order they were added, so switching
-  /// doesn't reshuffle them. The one on screen stands in for its linked
-  /// mailboxes; signed out, its mail isn't loaded and it shows as it was
-  /// saved.
-  List<_MailboxAccount> _accounts(AppState app) {
-    final m = widget.mailbox;
-    final account = m.account;
-    return [
-      for (final other in app.accounts)
-        if (other != app.current)
-          _MailboxAccount(
-            key: other.key,
-            label: other.label,
-            address: other.address,
-            selected: false,
-            open: (folder) => app.switchTo(other, folder: folder),
-            load: other.signedOut == null ? () => app.folders(other) : null,
-          )
-        else if (m.accounts.isEmpty)
-          _MailboxAccount(
-            key: other.key,
-            label: other.label,
-            address: other.address,
-            selected: true,
-            signedOut: other.signedOut != null,
-            open: m.selectFolder,
-          )
-        else
-          for (final linked in m.accounts)
-            _MailboxAccount(
-              key: '${other.key}#${linked.id}',
-              label: linked.label,
-              address: linked.address,
-              selected: linked.id == account?.id,
-              open: (folder) => m.selectAccount(linked, folder: folder),
-              load: linked.id == account?.id
-                  ? null
-                  : () async => sortFolders(await m.backend.folders(linked.id)),
-            ),
-    ];
-  }
-
-  /// Asks every account not on screen for its folders, once, for the
-  /// unread counts.
-  void _load(List<_MailboxAccount> accounts) {
-    for (final a in accounts) {
-      final load = a.load;
-      if (load == null || !_requested.add(a.key)) continue;
-      unawaited(
-        load().then(
-          (folders) {
-            if (mounted) setState(() => _folders[a.key] = folders);
-          },
-          onError: (Object _) {
-            if (mounted) setState(() => _failed.add(a.key));
-          },
-        ),
-      );
-    }
-  }
+  QuotaInfo? _currentQuota;
+  int? _currentQuotaFor;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_loadQuota());
+      if (mounted) unawaited(_loadCurrentQuota());
     });
   }
 
-  QuotaInfo? _quota;
-
-  /// The storage summary is an extra, not a requirement: a backend that
-  /// cannot answer (IMAP, or a signed-out account) leaves it out.
-  Future<void> _loadQuota() async {
-    final account = widget.mailbox.account;
-    if (account == null) return;
-    if (AppScope.read(context).current?.signedOut != null) return;
+  Future<void> _loadCurrentQuota() async {
+    final app = AppScope.read(context);
+    final m = app.mailbox;
+    final account = m?.account;
+    if (m == null || account == null || app.current?.signedOut != null) {
+      if (mounted) setState(() => _currentQuota = null);
+      return;
+    }
+    if (_currentQuotaFor == account.id) return;
+    setState(() {
+      _currentQuotaFor = account.id;
+      _currentQuota = null;
+    });
     try {
-      final quota = await widget.mailbox.backend.quota(account.id);
-      if (mounted) setState(() => _quota = quota);
+      final quota = await m.backend.quota(account.id);
+      if (mounted && _currentQuotaFor == account.id) {
+        setState(() => _currentQuota = quota);
+      }
     } on ApiException {
-      // The summary leaves storage out.
+      // The stats leave storage out.
+    }
+  }
+
+  Future<void> _select(_MailboxAccount account) async {
+    if (account.key == _selectedKey) return;
+    final generation = ++_generation;
+    setState(() {
+      _selectedKey = account.key;
+      _previewFolders = null;
+      _previewQuota = null;
+      _previewError = null;
+      _previewLoading = true;
+    });
+    if (account.current) {
+      await _loadCurrentQuota();
+      if (!mounted || generation != _generation) return;
+      setState(() => _previewLoading = false);
+      return;
+    }
+    final load = account.load;
+    if (load == null) {
+      if (mounted) setState(() => _previewLoading = false);
+      return;
+    }
+    try {
+      final result = await load();
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _previewFolders = result.folders;
+        _previewQuota = result.quota;
+        _previewLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _previewError = e;
+        _previewLoading = false;
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.mailbox,
-    builder: (context, _) => _screen(context),
-  );
-
-  Widget _screen(BuildContext context) {
-    final c = context.rm;
-    final m = widget.mailbox;
+  Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final current = app.current;
-    final signedOut = current?.signedOut != null;
-    final administers =
-        current is RestAccount &&
-        !signedOut &&
-        AdminAccess(current.capabilities).any;
-    final accounts = _accounts(app);
-    _load(accounts);
-    if (!_opened) {
-      _opened = true;
-      _open = accounts
-          .where((a) => a.selected && !a.signedOut)
-          .firstOrNull
-          ?.key;
+    final m = app.mailbox;
+    if (m == null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              RmTopBar(
+                title: 'Mailboxes',
+                onBack: () => Navigator.pop(context),
+              ),
+              const Expanded(
+                child: Center(child: Text('No accounts are signed in.')),
+              ),
+            ],
+          ),
+        ),
+      );
     }
+    return ListenableBuilder(
+      listenable: m,
+      builder: (context, _) {
+        if (_currentQuotaFor != m.account?.id) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(_loadCurrentQuota());
+          });
+        }
+        return _screen(context, app, m);
+      },
+    );
+  }
+
+  Widget _screen(BuildContext context, AppState app, MailboxState m) {
+    final c = context.rm;
+    final accounts = _accounts(app, m);
+    if (_selectedKey == null ||
+        !accounts.any((account) => account.key == _selectedKey)) {
+      _selectedKey =
+          accounts.where((account) => account.current).firstOrNull?.key ??
+          accounts.firstOrNull?.key;
+    }
+    final selected = accounts.firstWhere(
+      (account) => account.key == _selectedKey,
+      orElse: () => accounts.first,
+    );
+    final folders = selected.current ? m.folders : _previewFolders;
+    final quota = selected.current ? _currentQuota : _previewQuota;
+    final loading = selected.current
+        ? m.loading && m.folders.isEmpty
+        : _previewLoading;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -170,57 +182,67 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
-                  const SectionLabel('This account'),
-                  const SizedBox(height: 9),
-                  _summary(context, m, signedOut),
+                  _AccountSelector(
+                    account: selected,
+                    onTap: accounts.isEmpty
+                        ? null
+                        : () => unawaited(_pickAccount(context, accounts)),
+                  ),
+                  const SizedBox(height: 12),
+                  _Stats(
+                    folders: folders,
+                    quota: quota,
+                    loading: loading,
+                    signedOut: selected.signedOut,
+                    unread: _previewError == null,
+                  ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Accounts'),
+                  const SectionLabel('Folders'),
                   const SizedBox(height: 9),
-                  for (final a in accounts) ...[
-                    _MailboxAccountRow(
-                      account: a,
-                      folders: a.selected ? m.folders : _folders[a.key],
-                      expandable: _expandable(a),
-                      expanded: _open == a.key,
-                      // Like an accordion: it opens, and the one open closes.
-                      // One with no folders to show, signed out, is put on
-                      // screen to be signed in again.
-                      onTap: () {
-                        if (_expandable(a)) {
-                          setState(() => _open = _open == a.key ? null : a.key);
-                        } else {
-                          Navigator.pop(context);
-                          if (!a.selected) {
-                            unawaited(a.open(StandardFolder.inbox));
-                          }
-                        }
-                      },
-                    ),
-                    if (_expandable(a))
-                      _Fold(
-                        open: _open == a.key,
-                        children: _accountFolders(
-                          a,
-                          a.selected ? m.folders : _folders[a.key],
+                  _Folders(
+                    folders: folders,
+                    currentFolder: selected.current ? m.folder : null,
+                    loading: loading,
+                    error: selected.current ? null : _previewError,
+                    onOpen: (folder) {
+                      Navigator.pop(context);
+                      unawaited(selected.open(folder.name));
+                    },
+                  ),
+                  if (selected.administers &&
+                      selected.adminAccount != null) ...[
+                    const SizedBox(height: 22),
+                    RmGroup(
+                      children: [
+                        _LinkRow(
+                          icon: Icons.admin_panel_settings_outlined,
+                          label: 'Administration',
+                          screen: AdministrationScreen(
+                            account: selected.adminAccount!,
+                          ),
                         ),
-                      ),
-                  ],
-                  const _SectionRule(),
-                  if (administers)
-                    _LinkRow(
-                      icon: Icons.admin_panel_settings_outlined,
-                      label: 'Administration',
-                      screen: AdministrationScreen(account: current),
+                      ],
                     ),
+                  ],
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+                    padding: const EdgeInsets.fromLTRB(12, 18, 12, 0),
                     child: Row(
                       children: [
-                        SyncDot(signedOut ? LiveStatus.offline : m.live),
+                        selected.current
+                            ? SyncDot(m.live)
+                            : Icon(
+                                Icons.visibility_outlined,
+                                size: 12,
+                                color: c.ink3,
+                              ),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            signedOut ? 'Signed out' : liveLabel(m.live),
+                            selected.current
+                                ? (selected.signedOut
+                                      ? 'Signed out'
+                                      : liveLabel(m.live))
+                                : 'Tap a folder to open this account',
                             style: rmText(
                               11.5,
                               color: c.ink3,
@@ -240,167 +262,394 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
     );
   }
 
-  /// The account on screen, with the numbers a drawer had no room for: the
-  /// inbox waiting on you, the rest of the unread mail, the size of the
-  /// mailbox, and how much of its storage is used.
-  Widget _summary(BuildContext context, MailboxState m, bool signedOut) {
-    final c = context.rm;
+  /// One entry per account or mailbox this phone can show, in the order the
+  /// app added them. Linking a mailbox puts it under its signed-in account.
+  List<_MailboxAccount> _accounts(AppState app, MailboxState m) {
     final account = m.account;
-    if (account == null) return const SizedBox.shrink();
-    final inbox = m.folders
-        .where((f) => f.name == StandardFolder.inbox)
-        .firstOrNull;
-    final unread = m.folders.fold<int>(0, (sum, f) => sum + f.unread);
-    final total = m.folders.fold<int>(0, (sum, f) => sum + f.total);
-    final quota = _quota;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.surface,
-        border: Border.all(color: c.line),
-        borderRadius: BorderRadius.circular(16),
+    final admin = app.current;
+    final administers =
+        admin is RestAccount &&
+        admin.signedOut == null &&
+        AdminAccess(admin.capabilities).any;
+    return [
+      for (final other in app.accounts)
+        if (other != app.current)
+          _MailboxAccount(
+            key: other.key,
+            label: other.label,
+            address: other.address,
+            current: false,
+            signedOut: other.signedOut != null,
+            administers:
+                other is RestAccount &&
+                other.signedOut == null &&
+                AdminAccess(other.capabilities).any,
+            adminAccount: other is RestAccount ? other : null,
+            open: (folder) => app.switchTo(other, folder: folder),
+            load: () => _loadAccount(app, other),
+          )
+        else if (m.accounts.isEmpty)
+          _MailboxAccount(
+            key: other.key,
+            label: other.label,
+            address: other.address,
+            current: true,
+            signedOut: other.signedOut != null,
+            administers: administers,
+            adminAccount: admin is RestAccount ? admin : null,
+            open: m.selectFolder,
+          )
+        else
+          for (final linked in m.accounts)
+            _MailboxAccount(
+              key: '${other.key}#${linked.id}',
+              label: linked.label,
+              address: linked.address,
+              current: linked.id == account?.id,
+              signedOut: other.signedOut != null,
+              administers: administers,
+              adminAccount: admin is RestAccount ? admin : null,
+              open: (folder) => m.selectAccount(linked, folder: folder),
+              load: () => _loadLinked(m, linked),
+            ),
+    ];
+  }
+
+  Future<_AccountLoad> _loadAccount(
+    AppState app,
+    SignedInAccount account,
+  ) async {
+    final folders = await app.folders(account);
+    QuotaInfo? quota;
+    if (account is RestAccount) {
+      try {
+        final boxes = await account.backend.accounts();
+        final primary = boxes.firstWhere(
+          (box) => box.isPrimary,
+          orElse: () => boxes.first,
+        );
+        quota = await account.backend.quota(primary.id);
+      } on ApiException {
+        // Leave storage out.
+      }
+    }
+    return (folders: folders, quota: quota);
+  }
+
+  Future<_AccountLoad> _loadLinked(MailboxState m, Account linked) async {
+    final folders = sortFolders(await m.backend.folders(linked.id));
+    QuotaInfo? quota;
+    try {
+      quota = await m.backend.quota(linked.id);
+    } on ApiException {
+      // Leave storage out.
+    }
+    return (folders: folders, quota: quota);
+  }
+
+  Future<void> _pickAccount(
+    BuildContext context,
+    List<_MailboxAccount> accounts,
+  ) async {
+    final chosen = await showModalBottomSheet<_MailboxAccount>(
+      context: context,
+      useSafeArea: true,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (sheet) =>
+          _AccountPicker(accounts: accounts, selectedKey: _selectedKey),
+    );
+    if (chosen == null || !mounted) return;
+    await _select(chosen);
+  }
+}
+
+/// The account the screen is showing, opening the accounts this phone knows.
+class _AccountSelector extends StatelessWidget {
+  const _AccountSelector({required this.account, required this.onTap});
+
+  final _MailboxAccount account;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final a = account;
+    return Tooltip(
+      message: 'Switch account',
+      child: Material(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: c.line),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                RmAvatar(
+                  name: a.label.isEmpty ? '?' : a.label,
+                  seed: a.address,
+                  size: 42,
+                  color: c.accent,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        a.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: rmText(
+                          16,
+                          color: c.ink,
+                          weight: FontWeight.w700,
+                          tracking: -0.02,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        a.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: rmText(12.5, color: c.ink3),
+                      ),
+                    ],
+                  ),
+                ),
+                if (a.signedOut)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text(
+                      'Signed out',
+                      style: rmText(
+                        11.5,
+                        color: c.ink3,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                Icon(Icons.expand_more_rounded, size: 22, color: c.ink3),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The accounts in a sheet, one tap away from changing the screen.
+class _AccountPicker extends StatelessWidget {
+  const _AccountPicker({required this.accounts, required this.selectedKey});
+
+  final List<_MailboxAccount> accounts;
+  final String? selectedKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return SafeArea(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+            child: Text(
+              'Switch account',
+              style: rmText(
+                17,
+                color: c.ink,
+                weight: FontWeight.w700,
+                tracking: -0.02,
+              ),
+            ),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+              children: [
+                for (final account in accounts)
+                  _AccountChoice(
+                    account: account,
+                    selected: account.key == selectedKey,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountChoice extends StatelessWidget {
+  const _AccountChoice({required this.account, required this.selected});
+
+  final _MailboxAccount account;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final a = account;
+    return Material(
+      color: selected ? c.accentSoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.pop(context, a),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          child: Row(
             children: [
               RmAvatar(
-                name: account.label.isEmpty ? '?' : account.label,
-                seed: account.address,
-                size: 44,
-                color: c.accent,
+                name: a.label.isEmpty ? '?' : a.label,
+                seed: a.address,
+                size: 32,
+                color: selected ? c.accent : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      account.label,
+                      a.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: rmText(
-                        16,
+                        14.5,
                         color: c.ink,
-                        weight: FontWeight.w700,
-                        tracking: -0.02,
+                        weight: selected ? FontWeight.w700 : FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
-                      account.address,
+                      a.signedOut ? '${a.address} · Signed out' : a.address,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: rmText(12.5, color: c.ink3),
+                      style: rmText(12, color: c.ink3),
                     ),
                   ],
                 ),
               ),
-              SyncDot(signedOut ? LiveStatus.offline : m.live),
-              const SizedBox(width: 6),
-              Text(
-                signedOut ? 'Signed out' : liveLabel(m.live),
-                style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
-              ),
+              if (selected)
+                Icon(Icons.check_rounded, size: 20, color: c.accent),
             ],
           ),
-          if (signedOut) ...[
-            const SizedBox(height: 14),
-            Text(
-              'This account is signed out. Open it in the list below to sign '
-              'in again.',
-              style: rmText(12.5, color: c.ink3, height: 1.4),
+        ),
+      ),
+    );
+  }
+}
+
+/// The numbers a drawer had no room for: what is waiting, what is stored.
+class _Stats extends StatelessWidget {
+  const _Stats({
+    required this.folders,
+    required this.quota,
+    required this.loading,
+    required this.signedOut,
+    required this.unread,
+  });
+
+  final List<Folder>? folders;
+  final QuotaInfo? quota;
+  final bool loading;
+  final bool signedOut;
+  final bool unread;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    if (signedOut) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          'This account is signed out. Sign in again to load its folders.',
+          style: rmText(12.5, color: c.ink3, height: 1.4),
+        ),
+      );
+    }
+    final list = folders ?? const <Folder>[];
+    final inbox = list
+        .where((folder) => folder.name == StandardFolder.inbox)
+        .firstOrNull;
+    final unreadCount = list.fold<int>(0, (sum, f) => sum + f.unread);
+    final total = list.fold<int>(0, (sum, f) => sum + f.total);
+    final q = quota;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (loading && list.isEmpty)
+            Text('Loading this account…', style: rmText(12.5, color: c.ink3))
+          else
+            Row(
+              children: [
+                _Stat(
+                  value: unread ? (inbox?.unread ?? 0) : 0,
+                  label: 'Inbox unread',
+                ),
+                _Stat(value: unread ? unreadCount : 0, label: 'Unread'),
+                _Stat(value: total, label: 'Messages'),
+                _Stat(value: list.length, label: 'Folders'),
+              ],
             ),
-          ] else ...[
+          if (q != null && q.quotaBytes > 0) ...[
             const SizedBox(height: 16),
             Row(
               children: [
-                _Stat(value: inbox?.unread ?? 0, label: 'Inbox unread'),
-                _Stat(value: unread, label: 'Unread'),
-                _Stat(value: total, label: 'Messages'),
-                _Stat(value: m.folders.length, label: 'Folders'),
+                Text(
+                  'Storage',
+                  style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Text(
+                  '${sizeLabel(q.usedBytes)} of ${sizeLabel(q.quotaBytes)}',
+                  style: rmText(12, color: c.ink3),
+                ),
               ],
             ),
-            if (quota != null && quota.quotaBytes > 0) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Text(
-                    'Storage',
-                    style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${sizeLabel(quota.usedBytes)} of '
-                    '${sizeLabel(quota.quotaBytes)}',
-                    style: rmText(12, color: c.ink3),
-                  ),
-                ],
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: (q.percentUsed / 100).clamp(0, 1),
+                minHeight: 6,
+                backgroundColor: c.line,
+                valueColor: AlwaysStoppedAnimation<Color>(c.accent),
               ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: (quota.percentUsed / 100).clamp(0, 1),
-                  minHeight: 6,
-                  backgroundColor: c.line,
-                  valueColor: AlwaysStoppedAnimation<Color>(c.accent),
-                ),
-              ),
-            ],
+            ),
           ],
         ],
       ),
     );
   }
-
-  /// Whether [account] has folders to open out to.
-  bool _expandable(_MailboxAccount account) =>
-      !account.signedOut && (account.selected || account.load != null);
-
-  /// [account]'s folders under its row; tapping one puts the account on
-  /// screen there.
-  List<Widget> _accountFolders(_MailboxAccount account, List<Folder>? folders) {
-    final m = widget.mailbox;
-    final c = context.rm;
-    final counted = folders != null && folders.isNotEmpty;
-    if (folders == null || folders.isEmpty) {
-      final failed = _failed.contains(account.key);
-      // The one on screen has at least the folder it shows.
-      if (account.selected) {
-        folders = [Folder(name: m.folder, total: 0, unread: 0)];
-      } else {
-        return [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(46, 8, 12, 10),
-            child: Text(
-              failed ? 'Couldn’t load its folders' : 'Loading folders…',
-              style: rmText(12.5, color: c.ink3),
-            ),
-          ),
-        ];
-      }
-    }
-    return [
-      for (final folder in folders)
-        Padding(
-          padding: const EdgeInsets.only(left: 22),
-          child: _MailboxFolderRow(
-            folder: folder,
-            counted: counted,
-            selected: account.selected && folder.name == m.folder,
-            onTap: () {
-              Navigator.pop(context);
-              unawaited(account.open(folder.name));
-            },
-          ),
-        ),
-    ];
-  }
 }
 
-/// One number in the account summary.
 class _Stat extends StatelessWidget {
   const _Stat({required this.value, required this.label});
 
@@ -436,95 +685,175 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// [children] sliding open and shut beneath an account's row.
-class _Fold extends StatefulWidget {
-  const _Fold({required this.open, required this.children});
-
-  final bool open;
-  final List<Widget> children;
-
-  @override
-  State<_Fold> createState() => _FoldState();
-}
-
-class _FoldState extends State<_Fold> with SingleTickerProviderStateMixin {
-  late final _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-    value: widget.open ? 1 : 0,
-  )..addStatusListener((_) => setState(() {}));
-
-  late final _size = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeInOut,
-  );
-
-  @override
-  void didUpdateWidget(_Fold old) {
-    super.didUpdateWidget(old);
-    if (widget.open != old.open) {
-      unawaited(widget.open ? _controller.forward() : _controller.reverse());
-    }
-  }
-
-  @override
-  void dispose() {
-    _size.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  // Shut, the folders aren't there at all, so nothing finds them hidden.
-  @override
-  Widget build(BuildContext context) => _controller.isDismissed
-      ? const SizedBox.shrink()
-      : SizeTransition(
-          sizeFactor: _size,
-          alignment: Alignment.topCenter,
-          child: Column(children: widget.children),
-        );
-}
-
-/// An account in the drawer, on screen or not.
-class _MailboxAccount {
-  const _MailboxAccount({
-    required this.key,
-    required this.label,
-    required this.address,
-    required this.selected,
-    required this.open,
-    this.load,
-    this.signedOut = false,
+/// The selected account's folders, as one card of icon rows.
+class _Folders extends StatelessWidget {
+  const _Folders({
+    required this.folders,
+    required this.currentFolder,
+    required this.loading,
+    required this.error,
+    required this.onOpen,
   });
 
-  final String key;
-  final String label;
-  final String address;
-
-  /// On screen.
-  final bool selected;
-  final bool signedOut;
-
-  /// Puts it on screen at a folder.
-  final Future<void> Function(String folder) open;
-
-  /// Its folders, for one not on screen and signed in.
-  final Future<List<Folder>> Function()? load;
-}
-
-/// The line between the drawer's accounts, folders and links.
-class _SectionRule extends StatelessWidget {
-  const _SectionRule();
+  final List<Folder>? folders;
+  final String? currentFolder;
+  final bool loading;
+  final Object? error;
+  final ValueChanged<Folder> onOpen;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 1,
-    color: context.rm.line,
-    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-  );
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final list = folders;
+    if (error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          'Could not load this account’s folders.',
+          style: rmText(12.5, color: c.ink3),
+        ),
+      );
+    }
+    if (list == null || list.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          loading ? 'Loading folders…' : 'No folders yet.',
+          style: rmText(12.5, color: c.ink3),
+        ),
+      );
+    }
+    return RmGroup(
+      children: [
+        for (final folder in list)
+          _FolderTile(
+            folder: folder,
+            selected: folder.name == currentFolder,
+            onTap: () => onOpen(folder),
+          ),
+      ],
+    );
+  }
 }
 
-/// A row at the foot of the drawer that opens [screen].
+class _FolderTile extends StatelessWidget {
+  const _FolderTile({
+    required this.folder,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Folder folder;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final drafts = folder.name == StandardFolder.drafts;
+    final unread = drafts ? 0 : folder.unread;
+    final tint = selected
+        ? c.accent
+        : switch (folder.name) {
+            StandardFolder.inbox => c.accent,
+            _ when StandardFolder.ordered.contains(folder.name) => c.ink2,
+            _ => folder.isLabel ? c.tintPurple : c.ink2,
+          };
+    return Material(
+      color: selected ? c.accentSoft : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: selected ? 0.16 : 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _folderIcon(folder.name, folder.isLabel),
+                  size: 18,
+                  color: tint,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  folderLabel(folder.name),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: rmText(
+                    14.5,
+                    color: selected ? c.accent : c.ink,
+                    weight: selected || unread > 0
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    tracking: -0.01,
+                  ),
+                ),
+              ),
+              if (unread > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.accent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    countLabel(unread),
+                    style: rmText(
+                      11.5,
+                      color: Colors.white,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  countLabel(folder.total),
+                  style: rmText(
+                    12.5,
+                    color: selected ? c.accent : c.ink3,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+IconData _folderIcon(String name, bool isLabel) => switch (name) {
+  StandardFolder.inbox => Icons.inbox_rounded,
+  StandardFolder.drafts => Icons.edit_note_rounded,
+  StandardFolder.sent => Icons.send_rounded,
+  StandardFolder.archive => Icons.archive_outlined,
+  StandardFolder.spam => Icons.report_gmailerrorred_rounded,
+  StandardFolder.trash => Icons.delete_outline_rounded,
+  _ => isLabel ? Icons.label_outline_rounded : Icons.folder_outlined,
+};
+
+/// A row that opens [screen], with the Mailboxes route replaced so Back
+/// returns to the mail.
 class _LinkRow extends StatelessWidget {
   const _LinkRow({
     required this.icon,
@@ -540,25 +869,25 @@ class _LinkRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.rm;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        unawaited(
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute<void>(builder: (_) => screen),
-          ),
-        );
-      },
+      onTap: () => unawaited(
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute<void>(builder: (_) => screen),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
             Icon(icon, size: 18, color: c.ink2),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
+            Expanded(
+              child: Text(
+                label,
+                style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
+              ),
             ),
+            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
           ],
         ),
       ),
@@ -566,174 +895,33 @@ class _LinkRow extends StatelessWidget {
   }
 }
 
-/// An account or mailbox in the drawer, by name and address, with its
-/// inbox's number: the same one as the Inbox row under it. Tapping it opens
-/// out its folders.
-class _MailboxAccountRow extends StatelessWidget {
-  const _MailboxAccountRow({
-    required this.account,
-    required this.folders,
-    required this.expandable,
-    required this.expanded,
-    required this.onTap,
+/// An account or mailbox in the picker, and the thing that puts it on screen.
+class _MailboxAccount {
+  const _MailboxAccount({
+    required this.key,
+    required this.label,
+    required this.address,
+    required this.current,
+    required this.open,
+    this.signedOut = false,
+    this.administers = false,
+    this.adminAccount,
+    this.load,
   });
 
-  final _MailboxAccount account;
+  final String key;
+  final String label;
+  final String address;
 
-  /// Its folders, or null until they come in.
-  final List<Folder>? folders;
+  /// The account the app is on, whose folders are live.
+  final bool current;
+  final bool signedOut;
+  final bool administers;
+  final RestAccount? adminAccount;
 
-  /// Has folders to open out to.
-  final bool expandable;
-  final bool expanded;
-  final VoidCallback onTap;
+  /// Puts it on screen at a folder.
+  final Future<void> Function(String folder) open;
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.rm;
-    final a = account;
-    final inbox = folders
-        ?.where((f) => f.name == StandardFolder.inbox)
-        .firstOrNull;
-    return Material(
-      color: a.selected ? c.accentSoft : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 9, 0, 9),
-          child: Row(
-            children: [
-              RmAvatar(
-                name: a.label.isEmpty ? '?' : a.label,
-                seed: a.address,
-                size: 32,
-                color: a.selected ? c.accent : null,
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      a.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: rmText(
-                        14.5,
-                        color: c.ink,
-                        weight: a.selected ? FontWeight.w700 : FontWeight.w600,
-                        tracking: -0.01,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      a.address,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: rmText(12, color: c.ink3),
-                    ),
-                  ],
-                ),
-              ),
-              if (inbox != null)
-                Text(
-                  countLabel(inbox.total),
-                  style: rmText(
-                    12.5,
-                    color: a.selected ? c.accent : c.ink3,
-                    weight: FontWeight.w700,
-                  ),
-                ),
-              if (expandable)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: Icon(Icons.expand_more, size: 20, color: c.ink3),
-                  ),
-                )
-              else
-                const SizedBox(width: 12),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A folder, with how many messages it holds.
-class _MailboxFolderRow extends StatelessWidget {
-  const _MailboxFolderRow({
-    required this.folder,
-    required this.selected,
-    required this.onTap,
-    this.counted = true,
-  });
-
-  final Folder folder;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// False while its count hasn't come in, rather than show it as none.
-  final bool counted;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.rm;
-    final dot = switch (folder.name) {
-      StandardFolder.inbox => c.accent,
-      _ when StandardFolder.ordered.contains(folder.name) => c.ink3,
-      _ => c.tintPurple,
-    };
-    return Material(
-      color: selected ? c.accentSoft : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: dot,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  folderLabel(folder.name),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: rmText(
-                    14.5,
-                    color: c.ink,
-                    weight: selected ? FontWeight.w700 : FontWeight.w500,
-                    tracking: -0.01,
-                  ),
-                ),
-              ),
-              if (counted)
-                Text(
-                  countLabel(folder.total),
-                  style: rmText(
-                    12.5,
-                    color: selected ? c.accent : c.ink3,
-                    weight: FontWeight.w700,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  /// Its folders and storage, for one not on screen.
+  final Future<_AccountLoad> Function()? load;
 }
