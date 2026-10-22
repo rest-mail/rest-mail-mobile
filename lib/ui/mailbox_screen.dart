@@ -257,7 +257,7 @@ class _Header extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => MailboxesScreen(mailbox: m),
+                  builder: (_) => const MailboxesScreen(),
                 ),
               ),
             ),

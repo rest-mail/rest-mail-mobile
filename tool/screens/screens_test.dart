@@ -155,16 +155,12 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.byTooltip('Folders and accounts'));
   await tester.pumpAndSettle();
   await _shot(tester, '10-accounts$suffix');
-  // The other account opened out, its folders with their counts, and the
-  // one on screen shut.
-  final other = find.descendant(
-    of: find.byType(MailboxesScreen),
-    matching: find.text(FakeAccounts.email),
-  );
-  await tester.tap(other);
-  await _shot(tester, '10-accounts-open$suffix');
-  await tester.tap(other);
+  // The picker, then the first account previewed with its own folders.
+  await tester.tap(find.byTooltip('Switch account'));
   await tester.pumpAndSettle();
+  await _shot(tester, '10-accounts-picker$suffix');
+  await tester.tap(find.text(FakeAccounts.email));
+  await _shot(tester, '10-accounts-open$suffix');
   await tester.tap(find.text('Settings'));
   await _shot(tester, '11-accounts-settings$suffix');
 
