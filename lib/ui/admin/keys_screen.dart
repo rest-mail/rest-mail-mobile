@@ -102,31 +102,6 @@ class _DkimScreenState extends State<DkimScreen> {
 String _issuer(String name) =>
     RegExp(r'(?:^|,)\s*O=([^,]+)').firstMatch(name)?.group(1)?.trim() ?? name;
 
-/// [text] as PEM again, one block per BEGIN/END pair with its body wrapped
-/// at 64 columns. A one-line field, such as the hidden one a private key is
-/// pasted into, drops the line breaks the server's PEM reader needs.
-String pemBlocks(String text) {
-  final blocks = RegExp(
-    r'-----BEGIN ([A-Z0-9 ]+)-----(.*?)-----END \1-----',
-    dotAll: true,
-  ).allMatches(text);
-  if (blocks.isEmpty) return text.trim();
-  final pem = [
-    for (final block in blocks)
-      [
-        '-----BEGIN ${block[1]}-----',
-        for (
-          var body = block[2]!.replaceAll(RegExp(r'\s'), '');
-          body.isNotEmpty;
-          body = body.length > 64 ? body.substring(64) : ''
-        )
-          body.length > 64 ? body.substring(0, 64) : body,
-        '-----END ${block[1]}-----',
-      ].join('\n'),
-  ].join('\n');
-  return '$pem\n';
-}
-
 /// The TLS certificates each domain is served with, and when they run out.
 /// A new one is pasted in as PEM with its private key, which the server
 /// keeps encrypted and never sends back.
@@ -184,6 +159,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
             'Private key',
             hint: '-----BEGIN PRIVATE KEY-----',
             obscure: true,
+            pasteOnly: true,
           ),
           AdminField(
             'Renews by itself',
@@ -195,8 +171,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
         submit: (values) async {
           final cert = await client.uploadCertificate(
             domainId: await _domainId(values[0]),
-            certPem: pemBlocks(values[1]),
-            keyPem: pemBlocks(values[2]),
+            certPem: values[1],
+            keyPem: values[2],
             autoRenew: switch (values[3].toLowerCase()) {
               '' => null,
               'yes' || 'y' || 'true' => true,

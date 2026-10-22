@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../../state/admin_access.dart';
@@ -333,6 +334,7 @@ class AdminField {
     this.email = false,
     this.optional = false,
     this.multiline = false,
+    this.pasteOnly = false,
   });
 
   final String label;
@@ -343,6 +345,9 @@ class AdminField {
   /// Several lines, for pasted text such as a PEM certificate. Not with
   /// [obscure], which Flutter keeps to one line.
   final bool multiline;
+
+  /// Paste exact text, preserving line breaks in an obscured field.
+  final bool pasteOnly;
 
   /// An address: no autocorrect, the email keyboard.
   final bool email;
@@ -433,6 +438,28 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
     }
   }
 
+  Future<void> _paste(int index) async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      if (!mounted) return;
+      final text = data?.text;
+      setState(() {
+        if (text == null || text.isEmpty) {
+          _error = 'The clipboard has no text to paste.';
+        } else {
+          _controllers[index].text = text;
+          _error = null;
+        }
+      });
+    } on PlatformException {
+      if (mounted) {
+        setState(
+          () => _error = 'Could not read the clipboard. Try pasting again.',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
@@ -456,6 +483,8 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _controllers[i],
+                      readOnly: widget.fields[i].pasteOnly,
+                      enableInteractiveSelection: !widget.fields[i].pasteOnly,
                       obscureText: widget.fields[i].obscure,
                       autocorrect:
                           !widget.fields[i].obscure && !widget.fields[i].email,
@@ -482,6 +511,14 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                       style: rmText(16, color: c.ink),
                       decoration: InputDecoration(
                         hintText: widget.fields[i].hint,
+                        suffixIcon: widget.fields[i].pasteOnly
+                            ? TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => unawaited(_paste(i)),
+                                child: const Text('Paste'),
+                              )
+                            : null,
                       ),
                     ),
                   ],
