@@ -94,6 +94,17 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.text('Continue'));
   await _shot(tester, '03-inbox$suffix');
 
+  await tester.tap(find.byTooltip('App settings'));
+  await tester.pumpAndSettle();
+  await _shot(tester, '03-app-settings$suffix');
+  await tester.tap(find.text('Customize screens'));
+  await tester.pumpAndSettle();
+  await _shot(tester, '03-interface$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
+
   await tester.tap(find.byTooltip('Mailboxes'));
   await _shot(tester, '04-folders$suffix');
   await tester.tap(find.byTooltip('Mailbox settings'));
