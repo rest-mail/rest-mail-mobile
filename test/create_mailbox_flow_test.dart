@@ -95,14 +95,8 @@ void main() {
     expect(fake.hasMailbox(_chris), isTrue);
     expect(fake.passwordOf(_chris), isNull);
     expect(fake.ownedBy(FakeAccounts.adminEmail), [_chris]);
-    // In Settings, as a mailbox of this account.
-    expect(find.text(_chris), findsOneWidget);
-    expect(
-      find.text('Mailbox of this account · ${FakeAccounts.host}'),
-      findsOneWidget,
-    );
+    // Mail arrives for it; it is a mailbox of this account, in Mailboxes.
 
-    // Mail arrives for it; switch to it from the drawer and reply.
     fake.deliver(
       to: _chris,
       from: 'tom@ryeworks.test',
@@ -116,6 +110,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
+    expect(find.text(_chris), findsOneWidget);
     await tester.tap(find.text(_chris));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 500));
@@ -272,8 +267,20 @@ void main() {
       FakeAccounts.otherEmail,
     ]);
 
-    // And unlinked again.
+    // And unlinked again, from its own Settings.
     await snackGone(tester);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Switch account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(FakeAccounts.otherEmail));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
     await tapText(tester, FakeAccounts.otherEmail);
     await tapText(tester, 'Unlink from this account');
     await tapText(tester, 'Unlink');

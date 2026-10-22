@@ -116,7 +116,7 @@ void main() {
     expect(find.text('Get notified of new mail?'), findsNothing);
     await _openSettings(tester);
     expect(find.text('NOTIFICATIONS'), findsNothing);
-    expect(find.text('ACCOUNTS'), findsOneWidget);
+    expect(find.text('THIS MAILBOX'), findsOneWidget);
     expect(push.prompts, 0);
 
     await finish(tester);
