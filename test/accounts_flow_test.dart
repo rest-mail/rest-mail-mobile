@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/app.dart';
+import 'package:restmail/ui/mailboxes_screen.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -92,13 +93,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
-        of: find.byType(Drawer),
+        of: find.byType(MailboxesScreen),
         matching: find.text(FakeAccounts.email),
       ),
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(Drawer), matching: find.text('Inbox')),
+      find.descendant(
+        of: find.byType(MailboxesScreen),
+        matching: find.text('Inbox'),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
@@ -212,6 +216,45 @@ void main() {
     expect(state.accounts, isEmpty);
     expect(state.phase, AppPhase.signedOut);
     expect(find.text('Add an account'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    state.dispose();
+    fake.close();
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('the mailboxes screen shows the account at a glance, and Back '
+      'returns to its mail', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final fake = FakeRestmail();
+    final state = AppState(
+      store: MemoryKeyValueStore(),
+      httpClientFactory: () => fake.client,
+    );
+    await state.start();
+    await tester.pumpWidget(RestmailApp(state: state));
+
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+    await _signIn(tester, FakeAccounts.email);
+
+    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MailboxesScreen), findsOneWidget);
+    expect(find.text('THIS ACCOUNT'), findsOneWidget);
+    expect(find.text(FakeAccounts.email), findsWidgets);
+    expect(find.text('Inbox unread'), findsOneWidget);
+    expect(find.text('Messages'), findsOneWidget);
+    expect(find.text('Storage'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MailboxesScreen), findsNothing);
+    expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     state.dispose();
