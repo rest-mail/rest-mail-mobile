@@ -11,13 +11,15 @@ import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/day_sections.dart';
 import '../util/format.dart';
+import '../util/search_parser.dart';
 import 'add_account_screen.dart';
 import 'imap_account_screen.dart';
 import 'compose_sheet.dart';
 import 'mail_actions.dart';
 import 'mailboxes_screen.dart';
 import 'message_screen.dart';
-import 'search_screen.dart';
+import 'settings_screen.dart';
+import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/day_heading.dart';
 import 'widgets/message_row.dart';
@@ -39,6 +41,16 @@ class _MailboxScreenState extends State<MailboxScreen> {
   final _scroll = ScrollController();
   (int?, String)? _showing;
 
+  /// The inline search over the list below the header.
+  final _search = TextEditingController();
+  final _searchFocus = FocusNode();
+  Timer? _searchDebounce;
+  int _searchRuns = 0;
+  bool _searching = false;
+  Paged<Message>? _searchResults;
+  ApiException? _searchError;
+  int _searchMs = 0;
+
   MailboxState get _mailbox =>
       widget.mailbox ?? AppScope.read(context).mailbox!;
 
@@ -54,8 +66,192 @@ class _MailboxScreenState extends State<MailboxScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _search.dispose();
+    _searchFocus.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Clears the query and closes the results, returning to the folder.
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchRuns++;
+    _search.clear();
+    _searchFocus.unfocus();
+    setState(() {
+      _searching = false;
+      _searchResults = null;
+      _searchError = null;
+    });
+  }
+
+  void _searchChanged(String text) {
+    _searchDebounce?.cancel();
+    _searchRuns++;
+    if (text.trim().isEmpty) {
+      setState(() {
+        _searchResults = null;
+        _searchError = null;
+        _searching = false;
+      });
+      return;
+    }
+    setState(() {});
+    // A second of quiet, so a half-written word never becomes a request.
+    _searchDebounce = Timer(
+      const Duration(seconds: 1),
+      () => unawaited(_runSearch(text)),
+    );
+  }
+
+  Future<void> _runSearch(String text) async {
+    final account = _mailbox.account;
+    final query = text.trim();
+    if (account == null || query.isEmpty) return;
+    _searchDebounce?.cancel();
+    final run = ++_searchRuns;
+    setState(() {
+      _searching = true;
+      _searchError = null;
+    });
+    final watch = Stopwatch()..start();
+    try {
+      final page = await _mailbox.backend.search(
+        account.id,
+        parseSearch(query),
+      );
+      if (!mounted || run != _searchRuns) return;
+      setState(() {
+        _searchResults = page;
+        _searchMs = watch.elapsedMilliseconds;
+        _searching = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted || run != _searchRuns) return;
+      setState(() {
+        _searchError = e;
+        _searching = false;
+      });
+    }
+  }
+
+  Widget _searchBar(BuildContext context) {
+    final c = context.rm;
+    final query = _search.text.trim();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border.all(color: c.accentLine, width: 1.5),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search_rounded, size: 18, color: c.ink3),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _search,
+                      focusNode: _searchFocus,
+                      autocorrect: false,
+                      textInputAction: TextInputAction.search,
+                      onChanged: _searchChanged,
+                      onSubmitted: (text) => unawaited(_runSearch(text)),
+                      style: rmText(15.5, color: c.ink),
+                      decoration: bareInput(context, 'Search mail', size: 15.5),
+                    ),
+                  ),
+                  if (_searching)
+                    SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.6,
+                        color: c.ink3,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (query.isNotEmpty || _searching)
+            RmIconButton(
+              icon: Icons.close_rounded,
+              tooltip: 'Close search',
+              color: c.ink3,
+              onPressed: _clearSearch,
+            )
+          else
+            const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _searchList(BuildContext context, MailboxState m) {
+    final c = context.rm;
+    final error = _searchError, results = _searchResults;
+    final query = _search.text.trim();
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 110),
+      children: [
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: ErrorText(describeError(error, host: m.backend.host)),
+          )
+        else if (_searching && results == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 44),
+            child: Center(
+              child: SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (results != null && results.items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
+            child: Text(
+              'No messages match “$query”.',
+              textAlign: TextAlign.center,
+              style: rmText(14, color: c.ink3, height: 1.5),
+            ),
+          )
+        else if (results != null) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Text(
+              '${countLabel(results.items.length)}${results.hasMore ? '+' : ''} '
+              '${results.items.length == 1 ? 'result' : 'results'} · '
+              '$_searchMs ms',
+              style: rmText(12, color: c.ink3, weight: FontWeight.w600),
+            ),
+          ),
+          for (final message in results.items)
+            MessageRow(
+              message: message,
+              dense: true,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => MessageScreen(mailbox: m, message: message),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
   }
 
   /// A different folder or account starts at the top, not wherever the last
@@ -128,9 +324,12 @@ class _MailboxScreenState extends State<MailboxScreen> {
             child: Column(
               children: [
                 _Header(mailbox: m, account: account),
+                if (account != null && !signedOut) _searchBar(context),
                 Expanded(
                   child: account != null && signedOut
                       ? _SignedOut(account: account)
+                      : _search.text.trim().isNotEmpty
+                      ? _searchList(context, m)
                       : _list(context, m),
                 ),
               ],
@@ -257,54 +456,71 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RmIconButton(
-            icon: Icons.menu_rounded,
-            tooltip: 'Folders and accounts',
-            onPressed: () => unawaited(
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const MailboxesScreen(),
-                ),
-              ),
-            ),
-          ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  folderLabel(m.folder),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: rmText(
-                    19,
-                    color: c.ink,
-                    weight: FontWeight.w800,
-                    tracking: -0.03,
+            child: Tooltip(
+              message: 'Mailboxes',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => unawaited(
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MailboxesScreen(),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 1),
-                Row(
-                  children: [
-                    SyncDot(signedOut ? LiveStatus.offline : m.live),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        address == null ? status : '$status · $address',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: rmText(
-                          11.5,
-                          color: c.ink3,
-                          weight: FontWeight.w600,
-                          tracking: -0.01,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+                  child: Row(
+                    children: [
+                      LogoMark(size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              folderLabel(m.folder),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: rmText(
+                                19,
+                                color: c.ink,
+                                weight: FontWeight.w800,
+                                tracking: -0.03,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Row(
+                              children: [
+                                SyncDot(
+                                  signedOut ? LiveStatus.offline : m.live,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    address == null
+                                        ? status
+                                        : '$status · $address',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: rmText(
+                                      11.5,
+                                      color: c.ink3,
+                                      weight: FontWeight.w600,
+                                      tracking: -0.01,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
           if (!signedOut) ...[
@@ -315,12 +531,13 @@ class _Header extends StatelessWidget {
               onPressed: () => unawaited(m.retry()),
             ),
             RmIconButton(
-              icon: Icons.search_rounded,
-              tooltip: 'Search',
+              icon: Icons.settings_outlined,
+              tooltip: 'App settings',
+              color: c.ink2,
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => SearchScreen(mailbox: m),
+                  builder: (_) => const AppSettingsScreen(),
                 ),
               ),
             ),

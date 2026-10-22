@@ -5,6 +5,7 @@ import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/interface_prefs.dart';
 import 'package:restmail/state/settings.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/compose_sheet.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 void main() {
@@ -88,7 +89,15 @@ void main() {
     await tester.tap(find.byTooltip('New message'));
     await tester.pumpAndSettle();
     final sentBefore = fake.messagesIn(FakeAccounts.email, 'Sent').length;
-    await tester.enterText(find.byType(TextField).first, 'nadia@oakline.test');
+    await tester.enterText(
+      find
+          .descendant(
+            of: find.byType(ComposeSheet),
+            matching: find.byType(TextField),
+          )
+          .first,
+      'nadia@oakline.test',
+    );
     await tester.pump();
 
     await tester.tap(find.text('Send'));
@@ -147,7 +156,15 @@ void main() {
     await tester.tap(find.byTooltip('New message'));
     await tester.pumpAndSettle();
     final sentBefore = fake.messagesIn(FakeAccounts.email, 'Sent').length;
-    await tester.enterText(find.byType(TextField).first, 'nadia@oakline.test');
+    await tester.enterText(
+      find
+          .descendant(
+            of: find.byType(ComposeSheet),
+            matching: find.byType(TextField),
+          )
+          .first,
+      'nadia@oakline.test',
+    );
     await tester.pump();
 
     await tester.tap(find.text('Later'));

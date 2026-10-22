@@ -119,15 +119,20 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             RmTopBar(
               title: 'Mailboxes',
               onBack: () => Navigator.pop(context),
-              trailingText: 'Settings',
-              onTrailing: () => unawaited(
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => SettingsScreen(mailbox: m),
+              actions: [
+                RmIconButton(
+                  icon: Icons.settings_outlined,
+                  tooltip: 'Mailbox settings',
+                  onPressed: () => unawaited(
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => MailboxSettingsScreen(mailbox: m),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
             Expanded(
               child: ListView(

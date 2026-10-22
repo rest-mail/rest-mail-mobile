@@ -24,6 +24,7 @@ class AppSettings {
     this.signReplies = false,
     this.notifications = NotificationChoice.undecided,
     this.interface = const InterfacePrefs(),
+    this.languageCode = 'system',
   });
 
   factory AppSettings.decode(String? raw) {
@@ -40,6 +41,7 @@ class AppSettings {
             NotificationChoice.values.asNameMap()[json['notifications']] ??
             NotificationChoice.undecided,
         interface: InterfacePrefs.decode(json['interface']),
+        languageCode: json['language'] as String? ?? 'system',
       );
     } on Object {
       return const AppSettings();
@@ -65,6 +67,10 @@ class AppSettings {
   /// Which optional components are on, and the options inside them.
   final InterfacePrefs interface;
 
+  /// The language the app speaks: a language code, or `system` to follow the
+  /// phone.
+  final String languageCode;
+
   String encode() => jsonEncode({
     'theme': themeMode.name,
     'pack': packId,
@@ -72,6 +78,7 @@ class AppSettings {
     'sign_replies': signReplies,
     'notifications': notifications.name,
     'interface': interface.toJson(),
+    'language': languageCode,
   });
 
   AppSettings copyWith({
@@ -81,6 +88,7 @@ class AppSettings {
     bool? signReplies,
     NotificationChoice? notifications,
     InterfacePrefs? interface,
+    String? languageCode,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     packId: packId ?? this.packId,
@@ -88,5 +96,6 @@ class AppSettings {
     signReplies: signReplies ?? this.signReplies,
     notifications: notifications ?? this.notifications,
     interface: interface ?? this.interface,
+    languageCode: languageCode ?? this.languageCode,
   );
 }

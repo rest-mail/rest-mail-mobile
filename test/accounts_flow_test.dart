@@ -31,10 +31,15 @@ Future<void> _signIn(
   await tester.pumpAndSettle();
 }
 
-Future<void> _openSettings(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Folders and accounts'));
+Future<void> _openAppSettings(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('App settings'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Settings'));
+}
+
+Future<void> _openMailboxSettings(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Mailboxes'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Mailbox settings'));
   await tester.pumpAndSettle();
 }
 
@@ -72,8 +77,8 @@ void main() {
     await _signIn(tester, FakeAccounts.email);
     expect(find.text('Live · ${FakeAccounts.email}'), findsOneWidget);
 
-    // A second account, from Settings.
-    await _openSettings(tester);
+    // A second account, from App settings.
+    await _openAppSettings(tester);
     await tester.tap(find.text('Add an account'));
     await tester.pumpAndSettle();
     // Its domain has no server of its own: it is served from the first's.
@@ -88,7 +93,7 @@ void main() {
     );
 
     // Back to the first, from the drawer.
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
@@ -114,7 +119,7 @@ void main() {
     );
 
     // And to the second again, from Mailboxes.
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
@@ -133,7 +138,7 @@ void main() {
     expect(find.text('Live · ${FakeAccounts.otherEmail}'), findsOneWidget);
 
     // Signing out ends only the session and keeps the account on the phone.
-    await _openSettings(tester);
+    await _openMailboxSettings(tester);
     await tester.tap(find.text(FakeAccounts.otherEmail));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
@@ -251,7 +256,7 @@ void main() {
     await tester.pumpAndSettle();
     await _signIn(tester, FakeAccounts.email);
 
-    await tester.tap(find.byTooltip('Folders and accounts'));
+    await tester.tap(find.byTooltip('Mailboxes'));
     await tester.pumpAndSettle();
 
     expect(find.byType(MailboxesScreen), findsOneWidget);
@@ -260,7 +265,7 @@ void main() {
     expect(find.text('Inbox unread'), findsOneWidget);
     expect(find.text('Messages'), findsOneWidget);
     expect(find.text('Storage'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.byTooltip('Mailbox settings'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();

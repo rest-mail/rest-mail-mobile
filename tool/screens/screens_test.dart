@@ -94,9 +94,9 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.text('Continue'));
   await _shot(tester, '03-inbox$suffix');
 
-  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.tap(find.byTooltip('Mailboxes'));
   await _shot(tester, '04-folders$suffix');
-  await tester.tap(find.text('Settings'));
+  await tester.tap(find.byTooltip('Mailbox settings'));
   await _shot(tester, '05-settings$suffix');
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
@@ -114,27 +114,23 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.scrollUntilVisible(
     find.text(newsletter),
     300,
-    scrollable: find.byType(Scrollable).first,
+    scrollable: find.byType(Scrollable).last,
   );
   await tester.tap(find.text(newsletter));
   await _shot(tester, '08-html-message$suffix');
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
 
-  await tester.tap(find.byTooltip('Search'));
-  await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField), 'latency');
-  await tester.pump(const Duration(milliseconds: 500));
+  await tester.pump(const Duration(milliseconds: 1100));
+  await tester.pumpAndSettle();
   await _shot(tester, '09-search$suffix');
-  await tester.tap(find.text('Done'));
+  await tester.tap(find.byTooltip('Close search'));
   await tester.pumpAndSettle();
 
-  // A second account, added from Settings. Its domain has no server of its
-  // own, so the server is chosen by hand.
-  await tester.tap(find.byTooltip('Folders and accounts'));
-  await tester.pumpAndSettle();
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Settings'));
+  // A second account, added from App settings. Its domain has no server of
+  // its own, so the server is chosen by hand.
+  await tester.tap(find.byTooltip('App settings'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Add an account'));
   await tester.pumpAndSettle();
@@ -152,7 +148,7 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pump();
   await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.tap(find.byTooltip('Mailboxes'));
   await tester.pumpAndSettle();
   await _shot(tester, '10-accounts$suffix');
   // The picker, then the first account previewed with its own folders.
@@ -161,11 +157,15 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await _shot(tester, '10-accounts-picker$suffix');
   await tester.tap(find.text(FakeAccounts.email));
   await _shot(tester, '10-accounts-open$suffix');
-  await tester.tap(find.text('Settings'));
+  await tester.tap(find.byTooltip('Mailbox settings'));
   await _shot(tester, '11-accounts-settings$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
 
   // The administrator beside them: an account like the others, signed in
-  // with a code, which reaches Administration from the drawer.
+  // with a code, which reaches Administration from Mailboxes.
+  await tester.tap(find.byTooltip('App settings'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Add an account'));
   await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField).at(0), FakeAccounts.adminEmail);
@@ -182,7 +182,7 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await _shot(tester, '12-admin-sign-in$suffix');
   await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.tap(find.byTooltip('Mailboxes'));
   await tester.pumpAndSettle();
   await tester.scrollUntilVisible(
     find.text('Administration'),
@@ -295,10 +295,9 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   }
 
   // A mailbox the administrator creates, owned by it, from Settings.
-  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.tap(find.byTooltip('Mailboxes'));
   await tester.pumpAndSettle();
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Settings'));
+  await tester.tap(find.byTooltip('Mailbox settings'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Create a mailbox'));
   await tester.pumpAndSettle();

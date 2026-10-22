@@ -50,8 +50,8 @@ void main() {
 
   /// Settings → the account → App passwords.
   Future<void> openAppPasswords(WidgetTester tester) async {
-    await tap(tester, find.byTooltip('Folders and accounts'));
-    await tapText(tester, 'Settings');
+    await tap(tester, find.byTooltip('Mailboxes'));
+    await tap(tester, find.byTooltip('Mailbox settings'));
     await tapText(tester, FakeAccounts.email);
     await tapText(tester, 'App passwords');
   }
@@ -307,14 +307,14 @@ void main() {
     await state.mailbox!.reloadAccounts();
     await tester.pumpAndSettle();
 
-    await tap(tester, find.byTooltip('Folders and accounts'));
+    await tap(tester, find.byTooltip('Mailboxes'));
     await tester.tap(find.byTooltip('Switch account'));
     await tester.pumpAndSettle();
     await tapText(tester, FakeAccounts.otherEmail);
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
-    await tapText(tester, 'Settings');
+    await tap(tester, find.byTooltip('Mailbox settings'));
     await tapText(tester, FakeAccounts.otherEmail);
     expect(
       find.text('Mailbox of this account · ${FakeAccounts.host}'),
