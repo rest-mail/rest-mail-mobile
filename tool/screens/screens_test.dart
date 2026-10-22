@@ -10,6 +10,7 @@ import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/settings.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/mailboxes_screen.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 final _out = '${Directory.current.path}/build/screens';
@@ -93,7 +94,7 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.text('Continue'));
   await _shot(tester, '03-inbox$suffix');
 
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.tap(find.byTooltip('Folders and accounts'));
   await _shot(tester, '04-folders$suffix');
   await tester.tap(find.text('Settings'));
   await _shot(tester, '05-settings$suffix');
@@ -130,7 +131,8 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
 
   // A second account, added from Settings. Its domain has no server of its
   // own, so the server is chosen by hand.
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.pumpAndSettle();
   await tester.pumpAndSettle();
   await tester.tap(find.text('Settings'));
   await tester.pumpAndSettle();
@@ -150,12 +152,13 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.pump();
   await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.pumpAndSettle();
   await _shot(tester, '10-accounts$suffix');
   // The other account opened out, its folders with their counts, and the
   // one on screen shut.
   final other = find.descendant(
-    of: find.byType(Drawer),
+    of: find.byType(MailboxesScreen),
     matching: find.text(FakeAccounts.email),
   );
   await tester.tap(other);
@@ -183,8 +186,18 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await _shot(tester, '12-admin-sign-in$suffix');
   await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.tap(find.byTooltip('Folders and accounts'));
   await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text('Administration'),
+    200,
+    scrollable: find
+        .descendant(
+          of: find.byType(MailboxesScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
   await tester.tap(find.text('Administration'));
   await _shot(tester, '13-administration$suffix');
   await tester.tap(find.text('Outbound queue'));
@@ -286,7 +299,8 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   }
 
   // A mailbox the administrator creates, owned by it, from Settings.
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+  await tester.tap(find.byTooltip('Folders and accounts'));
+  await tester.pumpAndSettle();
   await tester.pumpAndSettle();
   await tester.tap(find.text('Settings'));
   await tester.pumpAndSettle();
