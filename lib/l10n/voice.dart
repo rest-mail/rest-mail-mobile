@@ -63,6 +63,15 @@ String tr(BuildContext context, String key) {
   );
 }
 
+/// [key] with `{name}` placeholders replaced by [args].
+String trArgs(BuildContext context, String key, Map<String, String> args) {
+  var text = tr(context, key);
+  for (final entry in args.entries) {
+    text = text.replaceAll('{${entry.key}}', entry.value);
+  }
+  return text;
+}
+
 /// A standard folder's name in the current language; custom folders keep
 /// their own name.
 const _folderKeys = <String, String>{

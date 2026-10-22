@@ -1,4 +1,7 @@
 import 'package:intl/intl.dart';
+
+import 'format.dart';
+
 import 'package:restmail_api/restmail_api.dart';
 
 /// A row in the message list: either a day heading or a conversation.
@@ -63,7 +66,7 @@ List<ListEntry> buildListEntries(
 /// word that changes meaning tomorrow.
 String dayHeading(DateTime day, {bool absolute = false, DateTime? now}) {
   if (absolute) {
-    return DateFormat('EEEE d MMMM yyyy').format(day);
+    return DateFormat.yMMMMEEEEd().format(day);
   }
   final today = dayOf(now ?? DateTime.now());
   final target = dayOf(day);
@@ -74,9 +77,9 @@ String dayHeading(DateTime day, {bool absolute = false, DateTime? now}) {
     today.month,
     today.day,
   ).difference(DateTime.utc(target.year, target.month, target.day)).inDays;
-  if (days == 0) return 'Today';
-  if (days == 1) return 'Yesterday';
-  if (days > 1 && days < 7) return DateFormat('EEEE').format(target);
-  if (target.year == today.year) return DateFormat('d MMMM').format(target);
-  return DateFormat('d MMMM yyyy').format(target);
+  if (days == 0) return relativeDayLabel('today');
+  if (days == 1) return relativeDayLabel('yesterday');
+  if (days > 1 && days < 7) return DateFormat.EEEE().format(target);
+  if (target.year == today.year) return DateFormat.MMMMd().format(target);
+  return DateFormat.yMMMMd().format(target);
 }

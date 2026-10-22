@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../util/secret_clipboard.dart';
@@ -14,9 +15,12 @@ import 'widgets/common.dart';
 
 String _day(DateTime when) => DateFormat.yMMMd().format(when);
 
-String _lastUsed(DateTime when, DateTime now) => DateUtils.isSameDay(when, now)
-    ? 'Last used today at ${DateFormat.Hm().format(when)}'
-    : 'Last used ${_day(when)}';
+String _lastUsed(BuildContext context, DateTime when, DateTime now) =>
+    DateUtils.isSameDay(when, now)
+    ? trArgs(context, 'date.lastUsedToday', {
+        'time': DateFormat.Hm().format(when),
+      })
+    : trArgs(context, 'date.lastUsed', {'date': _day(when)});
 
 /// What a refused request says, its fields named as a person would.
 String _describe(ApiException e, String host) {
@@ -227,8 +231,8 @@ class _AppPasswordRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Created ${_day(item.createdAt)} · '
-                  '${lastUsed == null ? 'Never used' : _lastUsed(lastUsed, now)}',
+                  '${trArgs(context, 'date.created', {'date': _day(item.createdAt)})} · '
+                  '${lastUsed == null ? tr(context, 'date.neverUsed') : _lastUsed(context, lastUsed, now)}',
                   style: rmText(12.5, color: c.ink3, height: 1.35),
                 ),
                 Text(
