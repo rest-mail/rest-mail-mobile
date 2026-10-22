@@ -15,6 +15,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The delegates behind supportedLocales: without them a phone set to
+  # German would get our strings and no Material ones.
+  flutter_localizations:
+    sdk: flutter
 
   # The REST client, kept in this repo as a plain Dart package so it has no
   # Flutter in it and can be tested on its own.

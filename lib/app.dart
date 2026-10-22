@@ -1,17 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'l10n/voice.dart';
 import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/packs.dart';
 import 'theme/theme.dart';
-import 'theme/tokens.dart';
 import 'ui/mailbox_screen.dart';
 import 'ui/push_offer.dart';
 import 'ui/setup_link_handler.dart';
+import 'ui/splash_screen.dart';
 import 'ui/welcome_screen.dart';
-import 'ui/widgets/avatar.dart';
 
 class RestmailApp extends StatefulWidget {
   const RestmailApp({super.key, required this.state});
@@ -93,8 +94,14 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             theme: buildTheme(pack, Brightness.light),
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: supportedLocales,
             home: switch (state.phase) {
-              AppPhase.starting => const _Launch(),
+              AppPhase.starting => SplashScreen(pack: pack),
               AppPhase.signedOut => const SetupLinkHandler(
                 child: WelcomeScreen(),
               ),
@@ -102,7 +109,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
                 child: PushOffer(
                   child: state.mailbox != null
                       ? const MailboxScreen()
-                      : const _Launch(),
+                      : SplashScreen(pack: pack),
                 ),
               ),
             },
@@ -111,14 +118,4 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
       ),
     );
   }
-}
-
-class _Launch extends StatelessWidget {
-  const _Launch();
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: context.rm.bg,
-    body: const Center(child: LogoMark(size: 44)),
-  );
 }

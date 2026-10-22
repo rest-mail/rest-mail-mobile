@@ -167,6 +167,7 @@ TextStyle rmText(
   double? height,
   double tracking = 0,
   String? family,
+  bool italic = false,
 }) => TextStyle(
   fontFamily: family ?? rmFontFamily,
   fontSize: size,
@@ -174,6 +175,7 @@ TextStyle rmText(
   color: color,
   height: height,
   letterSpacing: size * tracking,
+  fontStyle: italic ? FontStyle.italic : null,
 );
 
 /// `#RRGGBB`, for the CSS handed to the HTML renderer.
