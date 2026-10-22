@@ -17,6 +17,7 @@ import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'interface_customizer_screen.dart';
+import 'my_permissions_screen.dart';
 import 'whats_new_screen.dart';
 import 'push_offer.dart';
 import 'scheduled_screen.dart';
@@ -284,18 +285,34 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                         ],
                       ],
                     ),
-                    if (administers) ...[
+                    // Every signed-in REST session reaches its own grants:
+                    // one whose roles are all eligible holds nothing that
+                    // shows Administration until it switches one on there.
+                    if (current is RestAccount &&
+                        current.signedOut == null) ...[
                       const SizedBox(height: 22),
                       SectionLabel(tr(context, 'settings.server')),
                       const SizedBox(height: 9),
                       RmGroup(
                         children: [
+                          if (administers)
+                            RmRow(
+                              label: tr(context, 'settings.administration'),
+                              subtitle: 'What this session may run on $host',
+                              onTap: () => _push(
+                                context,
+                                AdministrationScreen(account: current),
+                              ),
+                            ),
                           RmRow(
-                            label: tr(context, 'settings.administration'),
-                            subtitle: 'What this session may run on $host',
+                            label: tr(context, 'settings.myPermissions'),
+                            subtitle: tr(
+                              context,
+                              'settings.myPermissionsSubtitle',
+                            ),
                             onTap: () => _push(
                               context,
-                              AdministrationScreen(account: current),
+                              MyPermissionsScreen(account: current),
                             ),
                           ),
                         ],

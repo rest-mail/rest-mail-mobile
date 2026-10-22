@@ -46,6 +46,17 @@ enum AdminSection {
     delete: Capability.bansDelete,
   ),
 
+  /// Who holds which role, and where. The server removes a grant with
+  /// `users:write`, not `users:delete`, and checks each change against what
+  /// the granter holds itself.
+  permissions(
+    'Permissions',
+    'Who holds which role, and where',
+    read: Capability.usersRead,
+    write: Capability.usersWrite,
+    delete: Capability.usersWrite,
+  ),
+
   overview.readOnly(
     'Overview',
     'Mail volume, the queue and TLS at a glance',
