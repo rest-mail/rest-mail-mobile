@@ -2410,7 +2410,7 @@ class FakeRestmail {
         return _noContent();
 
       case ('GET', ['stats']):
-        // The real server asks no capability of this one, only an admin.
+        need('domains:read');
         return _stats();
 
       case ('GET', ['bans']):

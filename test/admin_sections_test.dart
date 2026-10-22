@@ -657,19 +657,17 @@ void main() {
     await close(tester, fake, state);
   });
 
-  testWidgets('with observability:read alone, the overview, traces and '
-      'pipeline analytics, and no pipeline log', (tester) async {
+  testWidgets('with observability:read alone, traces and pipeline '
+      'analytics, and no overview, which needs domains:read, or pipeline log', (
+    tester,
+  ) async {
     final (fake, state) = await open(
       tester,
       name: 'watcher',
       capabilities: {Capability.observabilityRead},
     );
 
-    expect(await shown(tester), [
-      'Overview',
-      'Message trace',
-      'Pipeline analytics',
-    ]);
+    expect(await shown(tester), ['Message trace', 'Pipeline analytics']);
 
     await close(tester, fake, state);
   });
