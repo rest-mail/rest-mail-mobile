@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/voice.dart';
 import 'state/app_scope.dart';
@@ -30,18 +31,9 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   var _messenger = GlobalKey<ScaffoldMessengerState>();
   Object? _messengerSession;
 
-  /// The splash stays on screen for at least this long, so a fast boot reads
-  /// as a beat rather than a flicker.
-  static const _minStay = Duration(milliseconds: 500);
-  bool _minStayDone = false;
-  late final Timer _minStayTimer;
-
   @override
   void initState() {
     super.initState();
-    _minStayTimer = Timer(_minStay, () {
-      if (mounted) setState(() => _minStayDone = true);
-    });
     // Notifications leave out the inbox on screen, and the badge takes the
     // count the app last showed.
     WidgetsBinding.instance.addObserver(this);
@@ -63,7 +55,6 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _minStayTimer.cancel();
     unawaited(_notices.cancel());
     super.dispose();
   }
@@ -93,9 +84,6 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
         // picking a theme in Settings must rebuild the MaterialApp.
         builder: (context, _) {
           final pack = ThemePack.byId(state.settings.packId);
-          final booting =
-              state.phase == AppPhase.starting ||
-              (state.phase == AppPhase.signedIn && state.mailbox == null);
           return MaterialApp(
             // A new session, or the end of one, starts a fresh navigator, so no
             // screen from the old session is left on the stack.
@@ -106,22 +94,22 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             theme: buildTheme(pack, Brightness.light),
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
+            localizationsDelegates:
+                GlobalMaterialLocalizations.localizationsDelegates,
             supportedLocales: supportedLocales,
-            home: booting || !_minStayDone
-                ? SplashScreen(pack: pack)
-                : switch (state.phase) {
-                    AppPhase.starting => SplashScreen(pack: pack),
-                    AppPhase.signedOut => const SetupLinkHandler(
-                      child: WelcomeScreen(),
-                    ),
-                    AppPhase.signedIn => SetupLinkHandler(
-                      child: PushOffer(
-                        child: state.mailbox != null
-                            ? const MailboxScreen()
-                            : SplashScreen(pack: pack),
-                      ),
-                    ),
-                  },
+            home: switch (state.phase) {
+              AppPhase.starting => SplashScreen(pack: pack),
+              AppPhase.signedOut => const SetupLinkHandler(
+                child: WelcomeScreen(),
+              ),
+              AppPhase.signedIn => SetupLinkHandler(
+                child: PushOffer(
+                  child: state.mailbox != null
+                      ? const MailboxScreen()
+                      : SplashScreen(pack: pack),
+                ),
+              ),
+            },
           );
         },
       ),

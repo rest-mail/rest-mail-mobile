@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/l10n/voice.dart';
 import 'package:restmail/theme/packs.dart';
@@ -36,6 +37,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('de'),
+        localizationsDelegates:
+            GlobalMaterialLocalizations.localizationsDelegates,
         supportedLocales: const [Locale('en'), Locale('de')],
         theme: buildTheme(ThemePack.nightops, Brightness.light),
         home: SplashScreen(pack: ThemePack.nightops),
