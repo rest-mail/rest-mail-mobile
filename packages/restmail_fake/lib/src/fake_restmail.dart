@@ -2993,7 +2993,9 @@ class FakeRestmail {
     if (_domains.containsKey(name)) {
       _fail(409, 'already_exists', 'Domain already exists');
     }
+    // As on the server, a new domain is not live until it is turned on.
     final domain = _domainNamed(name)
+      ..active = false
       ..serverType = body['server_type'] as String
       ..sendingPolicy = policy;
     if (body['default_quota_bytes'] case final num quota) {
