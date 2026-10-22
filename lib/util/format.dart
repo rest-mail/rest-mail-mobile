@@ -1,6 +1,21 @@
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
+/// The relative day words, keyed by language. DateFormat handles every
+/// other date; these two are words, not a date pattern.
+const _relativeDayWords = <String, Map<String, String>>{
+  'en': {'today': 'Today', 'yesterday': 'Yesterday'},
+  'de': {'today': 'Heute', 'yesterday': 'Gestern'},
+  'es': {'today': 'Hoy', 'yesterday': 'Ayer'},
+  'hi': {'today': 'आज', 'yesterday': 'कल'},
+  'ne': {'today': 'आज', 'yesterday': 'हिजो'},
+};
+
+String relativeDayLabel(String key) {
+  final language = (Intl.defaultLocale ?? 'en').split(RegExp(r'[-_]')).first;
+  return _relativeDayWords[language]?[key] ?? _relativeDayWords['en']![key]!;
+}
+
 /// A list row's time: the clock today, then "Yesterday", the weekday within
 /// a week, and a date after that.
 String timeLabel(DateTime when, {DateTime? now}) {
@@ -13,14 +28,13 @@ String timeLabel(DateTime when, {DateTime? now}) {
     today.day,
   ).difference(DateTime.utc(when.year, when.month, when.day)).inDays;
   if (days <= 0) return DateFormat.Hm().format(when);
-  if (days == 1) return 'Yesterday';
+  if (days == 1) return relativeDayLabel('yesterday');
   if (days < 7) return DateFormat.E().format(when);
   if (when.year == today.year) return DateFormat.MMMd().format(when);
   return DateFormat.yMMMd().format(when);
 }
 
-String longDate(DateTime when) =>
-    DateFormat('EEE d MMM yyyy, HH:mm').format(when);
+String longDate(DateTime when) => DateFormat.yMMMEd().add_Hm().format(when);
 
 String sizeLabel(int bytes) {
   if (bytes < 1024) return '$bytes B';

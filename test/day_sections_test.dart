@@ -39,13 +39,13 @@ void main() {
     expect(dayHeading(DateTime(2026, 10, 20), now: now), 'Today');
     expect(dayHeading(DateTime(2026, 10, 19), now: now), 'Yesterday');
     expect(dayHeading(DateTime(2026, 10, 15), now: now), 'Thursday');
-    expect(dayHeading(DateTime(2025, 12, 1), now: now), '1 December 2025');
+    expect(dayHeading(DateTime(2025, 12, 1), now: now), 'December 1, 2025');
   });
 
   test('absolute headings always write the date', () {
     expect(
       dayHeading(DateTime(2026, 10, 20), absolute: true),
-      'Tuesday 20 October 2026',
+      'Tuesday, October 20, 2026',
     );
   });
 }

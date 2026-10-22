@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../state/interface_prefs.dart';
 import '../state/mail_backend.dart';
@@ -284,7 +285,9 @@ class _ComposeSheetState extends State<ComposeSheet>
       Navigator.pop(context);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Scheduled for $when'),
+          content: Text(
+            trArgs(context, 'compose.scheduledFor', {'when': when}),
+          ),
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () => unawaited(
@@ -723,7 +726,9 @@ class _ComposeSheetState extends State<ComposeSheet>
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      'Sending in ${left}s',
+                                      trArgs(context, 'compose.sendingIn', {
+                                        'seconds': '$left',
+                                      }),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: rmText(

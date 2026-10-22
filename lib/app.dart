@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 
 import 'l10n/voice.dart';
 import 'state/app_scope.dart';
@@ -86,6 +87,13 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
         // picking a theme in Settings must rebuild the MaterialApp.
         builder: (context, _) {
           final pack = ThemePack.byId(state.settings.packId);
+          final requested = state.settings.languageCode == 'system'
+              ? WidgetsBinding.instance.platformDispatcher.locale.languageCode
+              : state.settings.languageCode;
+          Intl.defaultLocale =
+              supportedLocales.any((locale) => locale.languageCode == requested)
+              ? requested
+              : 'en';
           return MaterialApp(
             // A new session, or the end of one, starts a fresh navigator, so no
             // screen from the old session is left on the stack.

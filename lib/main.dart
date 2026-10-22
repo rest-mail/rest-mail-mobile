@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 import 'app.dart';
@@ -15,6 +16,7 @@ import 'state/storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting();
   final state = sampleMode
       ? _sampleState()
       : AppState(
