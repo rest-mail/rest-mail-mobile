@@ -521,17 +521,40 @@ class _Stats extends StatelessWidget {
               style: rmText(12.5, color: c.ink3),
             )
           else
-            Row(
+            Column(
               children: [
-                _Stat(
-                  value: inbox?.unread ?? 0,
-                  label: tr(context, 'mailboxes.inboxUnread'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Stat(
+                        value: inbox?.unread ?? 0,
+                        label: tr(context, 'mailboxes.inboxUnread'),
+                      ),
+                    ),
+                    Expanded(
+                      child: _Stat(
+                        value: unread,
+                        label: tr(context, 'mailboxes.unread'),
+                      ),
+                    ),
+                  ],
                 ),
-                _Stat(value: unread, label: tr(context, 'mailboxes.unread')),
-                _Stat(value: total, label: tr(context, 'mailboxes.messages')),
-                _Stat(
-                  value: folders.length,
-                  label: tr(context, 'mailboxes.folders'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Stat(
+                        value: total,
+                        label: tr(context, 'mailboxes.messages'),
+                      ),
+                    ),
+                    Expanded(
+                      child: _Stat(
+                        value: folders.length,
+                        label: tr(context, 'mailboxes.folders'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -576,28 +599,26 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            countLabel(value),
-            style: rmText(
-              20,
-              color: c.ink,
-              weight: FontWeight.w800,
-              tracking: -0.03,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          countLabel(value),
+          style: rmText(
+            20,
+            color: c.ink,
+            weight: FontWeight.w800,
+            tracking: -0.03,
           ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 1),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

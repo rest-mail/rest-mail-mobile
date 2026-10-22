@@ -216,7 +216,7 @@ class RmRow extends StatelessWidget {
                   child: Text(
                     value,
                     textAlign: TextAlign.end,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: rmText(13.5, color: c.ink3),
                   ),

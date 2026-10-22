@@ -29,8 +29,8 @@ class RmColors extends ThemeExtension<RmColors> {
     bg: Color(0xFFFFFFFF),
     surface: Color(0xFFF7F7F8),
     ink: Color(0xFF0B0B0C),
-    ink2: Color(0xFF585A5F),
-    ink3: Color(0xFF8B8E94),
+    ink2: Color(0xFF44474D),
+    ink3: Color(0xFF63676F),
     line: Color(0xFFE4E5E8),
     good: Color(0xFF0F9E6E),
     danger: Color(0xFFD2402C),
@@ -47,8 +47,8 @@ class RmColors extends ThemeExtension<RmColors> {
     bg: Color(0xFF0C0D0F),
     surface: Color(0xFF15171A),
     ink: Color(0xFFF4F5F6),
-    ink2: Color(0xFFA3A7AE),
-    ink3: Color(0xFF767A82),
+    ink2: Color(0xFFB7BBC3),
+    ink3: Color(0xFF9AA0A9),
     line: Color(0xFF242730),
     good: Color(0xFF3BC495),
     danger: Color(0xFFF4715C),
@@ -168,15 +168,21 @@ TextStyle rmText(
   double tracking = 0,
   String? family,
   bool italic = false,
-}) => TextStyle(
-  fontFamily: family ?? rmFontFamily,
-  fontSize: size,
-  fontWeight: weight,
-  color: color,
-  height: height,
-  letterSpacing: size * tracking,
-  fontStyle: italic ? FontStyle.italic : null,
-);
+}) {
+  // Small type needs a larger lift than headings: a 12px label at 1.08 is
+  // still 12.96, while a heading only needs a little more room. This is the
+  // app's default reading size, not a zoom.
+  final scaled = size < 13 ? size + 1.5 : size * 1.08;
+  return TextStyle(
+    fontFamily: family ?? rmFontFamily,
+    fontSize: scaled,
+    fontWeight: weight,
+    color: color,
+    height: height,
+    letterSpacing: scaled * tracking,
+    fontStyle: italic ? FontStyle.italic : null,
+  );
+}
 
 /// `#RRGGBB`, for the CSS handed to the HTML renderer.
 String cssColor(Color color) =>

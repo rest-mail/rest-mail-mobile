@@ -138,8 +138,13 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pump();
     expect(shownSecret(tester), isNull);
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, 400));
+    await tester.pumpAndSettle();
     expect(
-      find.text('Hidden while REST Mail is in the background'),
+      find.text(
+        'Hidden while REST Mail is in the background',
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -231,6 +236,11 @@ void main() {
     expect(state.accounts, hasLength(1));
 
     // Signing in again, with the address filled in, replaces the session.
+    await tester.scrollUntilVisible(
+      find.text('Sign in again'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tapText(tester, 'Sign in again');
     expect(find.text('Add account'), findsOneWidget);
     expect(find.text(FakeAccounts.email), findsOneWidget);
