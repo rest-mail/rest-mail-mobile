@@ -55,9 +55,9 @@ String languageLabel(String code) => languageNames[code] ?? 'System';
 /// The UI string [key] in the language the app is set to and the current
 /// theme's voice.
 String tr(BuildContext context, String key) {
-  final app = AppScope.of(context);
+  final app = context.dependOnInheritedWidgetOfExactType<AppScope>()?.notifier;
   return voiceLine(
-    ThemePack.byId(app.settings.packId),
+    ThemePack.byId(app?.settings.packId ?? 'classic'),
     Localizations.localeOf(context),
     key,
   );

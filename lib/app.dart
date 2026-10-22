@@ -13,6 +13,8 @@ import 'ui/push_offer.dart';
 import 'ui/setup_link_handler.dart';
 import 'ui/splash_screen.dart';
 import 'ui/welcome_screen.dart';
+import 'ui/whats_new_screen.dart';
+import 'version.dart';
 
 class RestmailApp extends StatefulWidget {
   const RestmailApp({super.key, required this.state});
@@ -111,7 +113,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
               AppPhase.signedIn => SetupLinkHandler(
                 child: PushOffer(
                   child: state.mailbox != null
-                      ? const MailboxScreen()
+                      ? const _WhatsNewGate(child: MailboxScreen())
                       : SplashScreen(pack: pack),
                 ),
               ),
@@ -121,4 +123,45 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
       ),
     );
   }
+}
+
+/// Release builds open What's New once for a new version. It sits inside the
+/// navigator, so it needs no global key, and debug/test builds never push it
+/// in front of what they are doing.
+class _WhatsNewGate extends StatefulWidget {
+  const _WhatsNewGate({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_WhatsNewGate> createState() => _WhatsNewGateState();
+}
+
+class _WhatsNewGateState extends State<_WhatsNewGate> {
+  static const _announceUpdates = bool.fromEnvironment('dart.vm.product');
+  bool _checked = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_checked) return;
+    _checked = true;
+    final state = AppScope.read(context);
+    if (!_announceUpdates ||
+        appVersion == 'dev' ||
+        state.settings.lastSeenVersion == appVersion) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const WhatsNewScreen(markSeen: true),
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
