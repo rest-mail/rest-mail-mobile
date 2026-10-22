@@ -100,6 +100,7 @@ void main() {
     'Mailboxes',
     'Aliases',
     'Bans',
+    'Permissions',
     'Overview',
     'Delivery log',
     'Activity',
