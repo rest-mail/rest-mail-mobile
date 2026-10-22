@@ -94,8 +94,11 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
             theme: buildTheme(pack, Brightness.light),
             darkTheme: buildTheme(pack, Brightness.dark),
             themeMode: state.settings.themeMode,
-            localizationsDelegates:
-                GlobalMaterialLocalizations.localizationsDelegates,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             supportedLocales: supportedLocales,
             home: switch (state.phase) {
               AppPhase.starting => SplashScreen(pack: pack),

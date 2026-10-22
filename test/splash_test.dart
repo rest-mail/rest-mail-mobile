@@ -37,8 +37,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('de'),
-        localizationsDelegates:
-            GlobalMaterialLocalizations.localizationsDelegates,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         supportedLocales: const [Locale('en'), Locale('de')],
         theme: buildTheme(ThemePack.nightops, Brightness.light),
         home: SplashScreen(pack: ThemePack.nightops),
