@@ -467,6 +467,11 @@ void _sessionRefreshTests() {
     headers: {'content-type': 'application/json'},
   );
 
+  http.Response respond(http.Request request) =>
+      request.url.path.endsWith('/auth/refresh')
+      ? renewed()
+      : http.Response('{"data":[]}', 200);
+
   test('rotated tokens are kept in the order the server issued them, '
       'however slowly the Keychain writes the older pair', () async {
     issued = 0;
@@ -474,7 +479,7 @@ void _sessionRefreshTests() {
     await saveSession(store, const Duration(minutes: 15));
     final state = AppState(
       store: store,
-      httpClientFactory: () => MockClient((_) async => renewed()),
+      httpClientFactory: () => MockClient((request) async => respond(request)),
     );
     addTearDown(state.dispose);
     await state.start();
@@ -494,7 +499,7 @@ void _sessionRefreshTests() {
     await saveSession(store, const Duration(minutes: 15));
     final state = AppState(
       store: store,
-      httpClientFactory: () => MockClient((_) async => renewed()),
+      httpClientFactory: () => MockClient((request) async => respond(request)),
     );
     addTearDown(state.dispose);
     await state.start();
@@ -515,7 +520,8 @@ void _sessionRefreshTests() {
       await saveSession(store, const Duration(minutes: 15));
       final state = AppState(
         store: store,
-        httpClientFactory: () => MockClient((_) async => renewed()),
+        httpClientFactory: () =>
+            MockClient((request) async => respond(request)),
       );
       addTearDown(state.dispose);
       await state.start();
@@ -555,7 +561,7 @@ void _sessionRefreshTests() {
         httpClientFactory: () => MockClient((request) async {
           if (request.url.path.endsWith('/auth/refresh')) refreshes++;
           await Future<void>.delayed(const Duration(milliseconds: 10));
-          return renewed();
+          return respond(request);
         }),
       );
       addTearDown(state.dispose);
