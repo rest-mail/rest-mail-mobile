@@ -84,6 +84,63 @@ const Map<String, Map<String, String>> stringsEn = {
     'compose.sendingIn': 'Sending in {seconds}s',
     'compose.scheduledFor': 'Scheduled for {when}',
     'date.created': 'Created {date}',
+    'admin.title': 'Administration',
+    'admin.empty': "This account can't administer anything on {host}.",
+    'admin.group.logs': 'Logs and reports',
+    'admin.group.setup': 'Signing and filtering',
+    'admin.section.queue.title': 'Outbound queue',
+    'admin.section.queue.subtitle': 'Mail waiting to go to other servers',
+    'admin.section.domains.title': 'Domains',
+    'admin.section.domains.subtitle': 'The domains this server holds mail for',
+    'admin.section.mailboxes.title': 'Mailboxes',
+    'admin.section.mailboxes.subtitle': 'Who has mail here',
+    'admin.section.aliases.title': 'Aliases',
+    'admin.section.aliases.subtitle': 'Addresses that deliver to another',
+    'admin.section.bans.title': 'Bans',
+    'admin.section.bans.subtitle': 'Addresses kept out of SMTP, IMAP and POP3',
+    'admin.section.overview.title': 'Overview',
+    'admin.section.overview.subtitle':
+        'Mail volume, the queue and TLS at a glance',
+    'admin.section.deliveryLog.title': 'Delivery log',
+    'admin.section.deliveryLog.subtitle':
+        'What went out to other servers, and how it went',
+    'admin.section.activity.title': 'Activity',
+    'admin.section.activity.subtitle':
+        'What was done on the server, and by whom',
+    'admin.section.trace.title': 'Message trace',
+    'admin.section.trace.subtitle': 'Each filter a message went through',
+    'admin.section.pipelineLog.title': 'Pipeline log',
+    'admin.section.pipelineLog.subtitle':
+        'Each message the filters handled, and how it ended',
+    'admin.section.pipelineAnalytics.title': 'Pipeline analytics',
+    'admin.section.pipelineAnalytics.subtitle':
+        'What the filters did with a day or a week of mail',
+    'admin.section.tlsReports.title': 'TLS reports',
+    'admin.section.tlsReports.subtitle':
+        'How other servers fare reaching this one over TLS',
+    'admin.section.audit.title': 'Audit log',
+    'admin.section.audit.subtitle':
+        'Every sign-in and change, chained so tampering shows',
+    'admin.section.dkim.title': 'DKIM keys',
+    'admin.section.dkim.subtitle':
+        'The keys mail from each domain is signed with',
+    'admin.section.certificates.title': 'Certificates',
+    'admin.section.certificates.subtitle':
+        'The TLS certificates each domain is served with',
+    'admin.section.pipelines.title': 'Pipelines',
+    'admin.section.pipelines.subtitle':
+        'The filters mail goes through, in order',
+    'admin.section.customFilters.title': 'Custom filters',
+    'admin.section.customFilters.subtitle': 'Filters written for this server',
+    'admin.section.dnsCheck.title': 'DNS check',
+    'admin.section.dnsCheck.subtitle':
+        'Which records are right, and which are missing',
+    'admin.section.senderLists.title': 'Sender lists',
+    'admin.section.senderLists.subtitle':
+        'Senders turned away, and senders let in',
+    'admin.section.mtaSts.title': 'MTA-STS',
+    'admin.section.mtaSts.subtitle':
+        'Whether other servers must send here over TLS',
   },
   'brand': {'splash.tagline': 'Mail that keeps up with you.'},
   'ledger': {'splash.tagline': "Opening the day's correspondence."},

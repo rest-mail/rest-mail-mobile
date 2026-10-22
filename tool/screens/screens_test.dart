@@ -209,8 +209,15 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
         )
         .first,
   );
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Administration'));
+  await tester.pumpAndSettle();
   await _shot(tester, '13-administration$suffix');
+  await tester.scrollUntilVisible(
+    find.text('Outbound queue'),
+    200,
+    scrollable: find.byType(Scrollable).last,
+  );
   await tester.tap(find.text('Outbound queue'));
   await _shot(tester, '14-queue$suffix');
   await tester.tap(find.text('tom@ryeworks.test'));

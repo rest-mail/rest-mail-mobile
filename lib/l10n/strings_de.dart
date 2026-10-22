@@ -78,6 +78,66 @@ const Map<String, Map<String, String>> stringsDe = {
     'compose.sendingIn': 'Senden in {seconds}s',
     'compose.scheduledFor': 'Geplant für {when}',
     'date.created': 'Erstellt am {date}',
+    'admin.title': 'Verwaltung',
+    'admin.empty': 'Dieses Konto kann auf {host} nichts verwalten.',
+    'admin.group.logs': 'Protokolle und Berichte',
+    'admin.group.setup': 'Signierung und Filterung',
+    'admin.section.queue.title': 'Ausgangswarteschlange',
+    'admin.section.queue.subtitle': 'Nachrichten, die auf andere Server warten',
+    'admin.section.domains.title': 'Domains',
+    'admin.section.domains.subtitle':
+        'Die Domains, f\u00fcr die dieser Server Mail h\u00e4lt',
+    'admin.section.mailboxes.title': 'Postf\u00e4cher',
+    'admin.section.mailboxes.subtitle': 'Wer hier Mail hat',
+    'admin.section.aliases.title': 'Aliasse',
+    'admin.section.aliases.subtitle': 'Adressen, die an eine andere zustellen',
+    'admin.section.bans.title': 'Sperren',
+    'admin.section.bans.subtitle':
+        'Adressen, die von SMTP, IMAP und POP3 ausgeschlossen sind',
+    'admin.section.overview.title': '\u00dcbersicht',
+    'admin.section.overview.subtitle':
+        'Mailvolumen, Warteschlange und TLS auf einen Blick',
+    'admin.section.deliveryLog.title': 'Zustellprotokoll',
+    'admin.section.deliveryLog.subtitle':
+        'Was an andere Server ging und wie es lief',
+    'admin.section.activity.title': 'Aktivit\u00e4t',
+    'admin.section.activity.subtitle':
+        'Was auf dem Server getan wurde und von wem',
+    'admin.section.trace.title': 'Nachrichten-Trace',
+    'admin.section.trace.subtitle':
+        'Jeder Filter, den eine Nachricht durchlief',
+    'admin.section.pipelineLog.title': 'Pipeline-Protokoll',
+    'admin.section.pipelineLog.subtitle':
+        'Jede Nachricht, die die Filter verarbeiteten, und wie sie endete',
+    'admin.section.pipelineAnalytics.title': 'Pipeline-Analyse',
+    'admin.section.pipelineAnalytics.subtitle':
+        'Was die Filter mit einem Tag oder einer Woche Mail machten',
+    'admin.section.tlsReports.title': 'TLS-Berichte',
+    'admin.section.tlsReports.subtitle':
+        'Wie andere Server diesen \u00fcber TLS erreichen',
+    'admin.section.audit.title': 'Audit-Protokoll',
+    'admin.section.audit.subtitle': 'Jede Anmeldung und \u00c4nderung, verkettet, damit Manipulation sichtbar wird',
+    'admin.section.dkim.title': 'DKIM-Schl\u00fcssel',
+    'admin.section.dkim.subtitle':
+        'Die Schl\u00fcssel, mit denen Mail jeder Domain signiert wird',
+    'admin.section.certificates.title': 'Zertifikate',
+    'admin.section.certificates.subtitle':
+        'Die TLS-Zertifikate, mit denen jede Domain ausgeliefert wird',
+    'admin.section.pipelines.title': 'Pipelines',
+    'admin.section.pipelines.subtitle':
+        'Die Filter, die Mail durchl\u00e4uft, in Reihenfolge',
+    'admin.section.customFilters.title': 'Benutzerdefinierte Filter',
+    'admin.section.customFilters.subtitle':
+        'Filter, die f\u00fcr diesen Server geschrieben wurden',
+    'admin.section.dnsCheck.title': 'DNS-Pr\u00fcfung',
+    'admin.section.dnsCheck.subtitle':
+        'Welche Eintr\u00e4ge richtig sind und welche fehlen',
+    'admin.section.senderLists.title': 'Absenderlisten',
+    'admin.section.senderLists.subtitle':
+        'Abgewiesene und zugelassene Absender',
+    'admin.section.mtaSts.title': 'MTA-STS',
+    'admin.section.mtaSts.subtitle':
+        'Ob andere Server hierher \u00fcber TLS senden m\u00fcssen',
   },
   'brand': {'splash.tagline': 'Post, die mit Ihnen Schritt hält.'},
   'ledger': {'splash.tagline': 'Die Korrespondenz des Tages schlägt auf.'},

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/voice.dart';
 import '../../state/admin_access.dart';
 import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
@@ -61,7 +62,7 @@ class AdministrationScreen extends StatelessWidget {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Administration',
+              title: tr(context, 'admin.title'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -75,22 +76,28 @@ class AdministrationScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   if (sections.isEmpty)
                     AdminMessage(
-                      "This account can't administer anything on $host.",
+                      trArgs(context, 'admin.empty', {'host': host}),
                     ),
                   for (final group in AdminGroup.values)
                     if (sections.where((s) => s.group == group).toList()
                         case final inGroup when inGroup.isNotEmpty) ...[
-                      if (group.title case final title?) ...[
+                      if (group.title != null) ...[
                         const SizedBox(height: 22),
-                        SectionLabel(title),
+                        SectionLabel(tr(context, 'admin.group.${group.name}')),
                         const SizedBox(height: 9),
                       ],
                       RmGroup(
                         children: [
                           for (final section in inGroup)
                             RmRow(
-                              label: section.title,
-                              subtitle: section.subtitle,
+                              label: tr(
+                                context,
+                                'admin.section.${section.name}.title',
+                              ),
+                              subtitle: tr(
+                                context,
+                                'admin.section.${section.name}.subtitle',
+                              ),
                               onTap: () =>
                                   pushScreen(context, _screenFor(section)),
                             ),
