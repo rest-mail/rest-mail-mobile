@@ -480,7 +480,7 @@ class _Header extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
                   child: Row(
                     children: [
-                      LogoMark(size: 28),
+                      const LogoMark(size: 40),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
