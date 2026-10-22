@@ -236,7 +236,8 @@ class APIKey {
     lastUsedAt: _optionalTime(json['last_used_at']),
     expiresAt: _optionalTime(json['expires_at']),
     permissions: [
-      for (final permission in json['permissions'] as List? ?? const [])
+      for (final permission
+          in json['permissions'] as List<Object?>? ?? const [])
         APIKeyPermission.fromJson(permission as Map<String, dynamic>),
     ],
   );
