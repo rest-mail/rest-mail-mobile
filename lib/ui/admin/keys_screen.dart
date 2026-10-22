@@ -16,21 +16,6 @@ Widget _addedElsewhere(BuildContext context, String text) => Padding(
   child: Text(text, style: rmText(13, color: context.rm.ink3, height: 1.4)),
 );
 
-/// A PEM private key as it was before a one-line field folded its lines
-/// into spaces: the BEGIN and END lines on their own, the body rewrapped.
-String _pem(String pasted) {
-  final match = RegExp(
-    r'(-----BEGIN [A-Z ]+-----)([\s\S]*?)(-----END [A-Z ]+-----)',
-  ).firstMatch(pasted.trim());
-  if (match == null) return pasted.trim();
-  final body = match.group(2)!.replaceAll(RegExp(r'\s'), '');
-  final lines = [
-    for (var i = 0; i < body.length; i += 64)
-      body.substring(i, i + 64 > body.length ? body.length : i + 64),
-  ];
-  return [match.group(1)!, ...lines, match.group(3)!, ''].join('\n');
-}
-
 /// The domains whose outgoing mail is signed, and the selector each key is
 /// published under. The keys themselves never leave the server: one is
 /// sent once, when it is set or replaced, and never shown again.
@@ -116,9 +101,18 @@ class _DkimScreenState extends State<DkimScreen> {
   Future<void> _setKey({AdminDomain? domain, DkimKey? key}) async {
     var target = domain;
     if (target == null && key == null) {
-      final List<AdminDomain> domains;
+      final domains = <AdminDomain>[];
       try {
-        domains = (await widget.account.client.domains()).items;
+        var offset = 0;
+        while (true) {
+          final page = await widget.account.client.domains(
+            offset: offset,
+            limit: 200,
+          );
+          domains.addAll(page.items);
+          if (!page.hasMore || page.items.isEmpty) break;
+          offset = page.next;
+        }
       } on ApiException catch (e) {
         if (mounted) showToast(context, describeAdminError(e, host: _host));
         return;
@@ -162,6 +156,7 @@ class _DkimScreenState extends State<DkimScreen> {
             'Private key',
             hint: '-----BEGIN PRIVATE KEY-----',
             obscure: true,
+            pasteOnly: true,
           ),
         ],
         action: key?.hasKey ?? false ? 'Replace key' : 'Set key',
@@ -170,7 +165,7 @@ class _DkimScreenState extends State<DkimScreen> {
           saved = await widget.account.client.setDkimKey(
             domainId,
             selector: values[0],
-            privateKey: _pem(values[1]),
+            privateKey: values[1],
           );
         },
       ),
