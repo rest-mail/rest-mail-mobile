@@ -37,10 +37,15 @@ class PermissionsScreen extends StatefulWidget {
 
 class _PermissionsScreenState extends State<PermissionsScreen> {
   final _scopeFilter = TextEditingController();
+  final _holderFilter = TextEditingController();
+  GrantHolder? _holderQuery;
+  String? _scopeQuery;
+  String? _filterError;
   late final _list = AdminList<Grant>(
     (offset) => widget.account.client.grants(
       offset: offset,
-      scope: _scopeFilter.text.trim().isEmpty ? null : _scopeFilter.text.trim(),
+      holder: _holderQuery,
+      scope: _scopeQuery,
     ),
   );
   var _tab = _Tab.grants;
@@ -65,6 +70,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   void dispose() {
     _list.dispose();
     _scopeFilter.dispose();
+    _holderFilter.dispose();
     super.dispose();
   }
 
@@ -75,11 +81,19 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
 
   Future<void> _loadAddresses() async {
     try {
-      final page = await widget.account.client.mailboxes(limit: 200);
+      final addresses = <int, String>{};
+      var offset = 0;
+      while (true) {
+        final page = await widget.account.client.mailboxes(
+          limit: 200,
+          offset: offset,
+        );
+        addresses.addAll({for (final m in page.items) m.id: m.address});
+        if (!page.hasMore || page.items.isEmpty) break;
+        offset = page.next;
+      }
       if (!mounted) return;
-      setState(
-        () => _addresses = {for (final m in page.items) m.id: m.address},
-      );
+      setState(() => _addresses = addresses);
     } on ApiException {
       // The rows fall back to the account's id.
     }
@@ -87,6 +101,27 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
 
   String _holder(GrantHolder holder) =>
       _addresses[holder.id] ?? 'Account #${holder.id}';
+
+  void _applyFilters({bool clear = false}) {
+    if (clear) {
+      _holderFilter.clear();
+      _scopeFilter.clear();
+    }
+    final text = _holderFilter.text.trim();
+    final id = int.tryParse(text);
+    if (text.isNotEmpty && (id == null || id < 0 || id > 0xffffffff)) {
+      setState(() => _filterError = 'Enter a valid account number.');
+      return;
+    }
+    final scope = _scopeFilter.text.trim().toLowerCase();
+    setState(() {
+      _filterError = null;
+      _holderQuery = text.isEmpty ? null : GrantHolder.account(id!);
+      _scopeQuery = scope.isEmpty ? null : scope;
+    });
+    _list.items = const [];
+    unawaited(_list.reload());
+  }
 
   Future<void> _add() async {
     final added = await Navigator.push<bool>(
@@ -167,23 +202,45 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     return AdminListView(
       list: _list,
       host: _host,
-      empty: _scopeFilter.text.trim().isEmpty
+      empty: _scopeQuery == null && _holderQuery == null
           ? 'Nobody holds a role.'
-          : 'Nobody holds a role at that scope.',
+          : 'No grants match these filters.',
       header: [
         if (access.canWrite(AdminSection.permissions))
           AdminAddButton(label: 'Grant a role', onTap: () => unawaited(_add())),
         TextField(
+          key: const ValueKey('grant-scope-filter'),
           controller: _scopeFilter,
           autocorrect: false,
           enableSuggestions: false,
           textInputAction: TextInputAction.search,
-          onSubmitted: (_) => unawaited(_list.reload()),
+          onSubmitted: (_) => _applyFilters(),
           style: rmText(15, color: c.ink),
           decoration: const InputDecoration(
             hintText: 'Only at a scope: *, domain:a.com, mailbox:x@a.com',
             prefixIcon: Icon(Icons.filter_list_rounded),
           ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          key: const ValueKey('grant-holder-filter'),
+          controller: _holderFilter,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.search,
+          onChanged: (_) => setState(() => _filterError = null),
+          onSubmitted: (_) => _applyFilters(),
+          style: rmText(15, color: c.ink),
+          decoration: InputDecoration(
+            labelText: 'Only for account number',
+            hintText: 'All accounts',
+            errorText: _filterError,
+          ),
+        ),
+        const SizedBox(height: 10),
+        RmOutlineButton(label: 'Filter grants', onPressed: _applyFilters),
+        TextButton(
+          onPressed: () => _applyFilters(clear: true),
+          child: const Text('Clear filters'),
         ),
         const SizedBox(height: 14),
       ],
@@ -330,6 +387,7 @@ class _GrantFormState extends State<_GrantForm> {
   final _scopeName = TextEditingController();
   late final Future<List<AdminRole>> _roles = widget.account.client.roles();
   int? _holder;
+  late var _manualHolder = widget.addresses.isEmpty;
   String? _role;
   var _scope = _ScopeKind.everywhere;
   var _mode = GrantMode.active;
@@ -346,7 +404,7 @@ class _GrantFormState extends State<_GrantForm> {
   }
 
   int? get _holderId =>
-      widget.addresses.isEmpty ? int.tryParse(_accountId.text.trim()) : _holder;
+      _manualHolder ? int.tryParse(_accountId.text.trim()) : _holder;
 
   String get _scopeValue => switch (_scope) {
     _ScopeKind.everywhere => '*',
@@ -452,8 +510,9 @@ class _GrantFormState extends State<_GrantForm> {
                   const SizedBox(height: 18),
                   const SectionLabel('Account'),
                   const SizedBox(height: 8),
-                  if (addresses.isEmpty)
+                  if (_manualHolder)
                     TextField(
+                      key: const ValueKey('grant-holder-id'),
                       controller: _accountId,
                       keyboardType: TextInputType.number,
                       onChanged: (_) => _changed(),
@@ -478,6 +537,18 @@ class _GrantFormState extends State<_GrantForm> {
                         _holder = id;
                         _error = null;
                       }),
+                    ),
+                  if (addresses.isNotEmpty)
+                    TextButton(
+                      onPressed: () => setState(() {
+                        _manualHolder = !_manualHolder;
+                        _error = null;
+                      }),
+                      child: Text(
+                        _manualHolder
+                            ? 'Choose from accounts'
+                            : 'Enter an account number',
+                      ),
                     ),
                   const SizedBox(height: 18),
                   const SectionLabel('Role'),
@@ -553,6 +624,7 @@ class _GrantFormState extends State<_GrantForm> {
                   if (_scope != _ScopeKind.everywhere) ...[
                     const SizedBox(height: 10),
                     TextField(
+                      key: const ValueKey('grant-scope-name'),
                       controller: _scopeName,
                       autocorrect: false,
                       enableSuggestions: false,

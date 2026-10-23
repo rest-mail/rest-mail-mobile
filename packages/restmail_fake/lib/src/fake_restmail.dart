@@ -206,16 +206,12 @@ class FakeRestmail {
     String? password = FakeAccounts.adminPassword,
     Set<String> capabilities = const {},
     bool twoFactor = true,
+    bool twoFactorRequired = false,
     String name = '',
   }) {
-    _addMailbox(
-      address,
-      name,
-      password: password,
-      twoFactor: twoFactor,
-    ).capabilities = {
-      ...capabilities,
-    };
+    _addMailbox(address, name, password: password, twoFactor: twoFactor)
+      ..capabilities = {...capabilities}
+      ..owesTwoFactor = twoFactorRequired;
   }
 
   /// What the `admin` role carries, as the real server seeds it: everything
@@ -624,6 +620,9 @@ class FakeRestmail {
       }
       if (code != box.totpCode && recovery != box.recoveryCode) {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
+      }
+      if (code != box.totpCode && recovery == box.recoveryCode) {
+        box.recoveryCode = null;
       }
     }
     // The real server marks a session that took the second factor, and a
@@ -2154,10 +2153,20 @@ class FakeRestmail {
     List<String> path,
     List<int> bytes,
   ) {
+    if (method == 'GET' && path.join('/') == 'api/v1/auth/2fa') {
+      final box = _mailboxes[_sessionOf(request).primary]!;
+      return _json({
+        'data': {
+          'enabled': box.totpCode != null,
+          'pending': box.totpPending && box.totpCode == null,
+        },
+      });
+    }
     if (method != 'POST') return null;
     final route = switch (path) {
       ['api', 'v1', 'auth', '2fa', 'enroll'] => 'enroll',
       ['api', 'v1', 'auth', '2fa', 'confirm'] => 'confirm',
+      ['api', 'v1', 'auth', '2fa', 'disable'] => 'disable',
       ['api', 'v1', 'auth', 'password'] => 'password',
       _ => null,
     };
@@ -2166,6 +2175,46 @@ class FakeRestmail {
     final body = _object(bytes);
 
     switch (route) {
+      case 'disable':
+        final code = body['totp_code'] as String? ?? '';
+        final recovery = body['recovery_code'] as String? ?? '';
+        if (code.isEmpty && recovery.isEmpty) {
+          _fail(
+            422,
+            'validation_failed',
+            'Request body failed validation',
+            fields: {'totp_code': 'required unless recovery_code is sent'},
+          );
+        }
+        if (box.totpCode == null) {
+          _fail(400, 'bad_request', 'Two-factor authentication is not enabled');
+        }
+        final validCode = code.isNotEmpty && code == box.totpCode;
+        final validRecovery =
+            recovery.isNotEmpty && recovery == box.recoveryCode;
+        if (!validCode && !validRecovery) {
+          _fail(
+            403,
+            code.isEmpty ? 'invalid_recovery_code' : 'invalid_totp',
+            code.isEmpty
+                ? 'Invalid or already used recovery code'
+                : 'Invalid two-factor authentication code',
+          );
+        }
+        if (!validCode) box.recoveryCode = null;
+        if (box.owesTwoFactor) {
+          _fail(
+            403,
+            'two_factor_required',
+            'Two-factor authentication is required for this account and cannot be disabled',
+          );
+        }
+        box
+          ..totpCode = null
+          ..totpPending = false
+          ..recoveryCode = null;
+        revokeSessionsOf(box.address);
+        return _noContent();
       case 'enroll':
         if (box.totpCode != null) {
           _fail(

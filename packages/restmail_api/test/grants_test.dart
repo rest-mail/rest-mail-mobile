@@ -69,6 +69,69 @@ RestmailClient _client(
 );
 
 void main() {
+  group('grant deadlines', () {
+    final before = DateTime.utc(2026, 10, 23, 10, 30);
+    final deadline = DateTime.utc(2026, 10, 23, 11);
+
+    test('an active role without a deadline remains in force', () {
+      final grant = Grant.fromJson(_grant(mode: 'active'));
+      expect(grant.isExpiredAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isTrue);
+    });
+
+    test('an active role ends at its exact grant deadline', () {
+      final grant = Grant.fromJson(
+        _grant(mode: 'active', expiresAt: deadline.toIso8601String()),
+      );
+      expect(grant.isInForceAt(before), isTrue);
+      expect(grant.isExpiredAt(deadline), isTrue);
+      expect(grant.isInForceAt(deadline), isFalse);
+      expect(
+        grant.isInForceAt(deadline.add(const Duration(seconds: 1))),
+        isFalse,
+      );
+    });
+
+    test('an eligible role without an activation is off', () {
+      final grant = Grant.fromJson(_grant());
+      expect(grant.isInForceAt(before), isFalse);
+    });
+
+    test('an eligible activation ends at its exact deadline', () {
+      final grant = Grant.fromJson(_grant(activation: _activation));
+      expect(grant.activation!.isActiveAt(before), isTrue);
+      expect(grant.isInForceAt(before), isTrue);
+      expect(grant.activation!.isActiveAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isFalse);
+    });
+
+    test('a grant deadline can end an activation earlier', () {
+      final grant = Grant.fromJson(
+        _grant(activation: _activation, expiresAt: before.toIso8601String()),
+      );
+      expect(grant.activation!.isActiveAt(before), isTrue);
+      expect(grant.isInForceAt(before), isFalse);
+    });
+
+    test('an activation deadline can end a longer grant', () {
+      final grant = Grant.fromJson(
+        _grant(
+          activation: _activation,
+          expiresAt: deadline.add(const Duration(days: 1)).toIso8601String(),
+        ),
+      );
+      expect(grant.isExpiredAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isFalse);
+    });
+
+    test('the current-time getter excludes an expired active role', () {
+      final grant = Grant.fromJson(
+        _grant(mode: 'active', expiresAt: '2001-01-01T00:00:00Z'),
+      );
+      expect(grant.isInForce, isFalse);
+    });
+  });
+
   group('roles and capabilities', () {
     test('lists the roles, each with its capabilities', () async {
       late http.Request sent;
@@ -192,12 +255,15 @@ void main() {
       expect(always.grantedAt.toUtc(), DateTime.utc(2026, 10, 1, 9));
       expect(always.expiresAt!.toUtc(), DateTime.utc(2026, 12, 31));
       expect(always.activation, isNull);
-      expect(always.isInForce, isTrue);
+      expect(always.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)), isTrue);
 
       final switchedOn = page.items.last;
       expect(switchedOn.mode, GrantMode.eligible);
       expect(switchedOn.expiresAt, isNull);
-      expect(switchedOn.isInForce, isTrue);
+      expect(
+        switchedOn.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)),
+        isTrue,
+      );
       final activation = switchedOn.activation!;
       expect(activation.id, 4);
       expect(activation.activatedAt.toUtc(), DateTime.utc(2026, 10, 23, 10));
@@ -377,6 +443,138 @@ void main() {
   });
 
   group('escalation', () {
+    for (final operation in ['activate', 'deactivate', 'make-eligible']) {
+      Future<Escalation> act(RestmailClient client) => switch (operation) {
+        'activate' => client.activateGrant(
+          9,
+          reason: 'Maintenance',
+          totpCode: '123456',
+        ),
+        'deactivate' => client.deactivateGrant(9),
+        _ => client.makeGrantEligible(9, totpCode: '123456'),
+      };
+      final status = operation == 'activate' ? 201 : 200;
+      http.Response result() => _json({
+        'data': {
+          'grant': _grant(activation: _activation),
+          'capabilities': ['*'],
+        },
+      }, status: status);
+
+      for (final change in ['logout', 'replacement login']) {
+        test('late $operation answer cannot alter $change', () async {
+          final started = Completer<void>();
+          final answer = Completer<http.Response>();
+          final changes = <SessionTokens?>[];
+          final client = _client((request) async {
+            if (request.url.path.endsWith('/$operation')) {
+              started.complete();
+              return answer.future;
+            }
+            if (request.url.path.endsWith('/auth/logout')) {
+              return http.Response('', 204);
+            }
+            if (request.url.path.endsWith('/auth/login')) {
+              return _json({
+                'data': {
+                  'access_token': 'replacement-access',
+                  'refresh_token': 'replacement-refresh',
+                  'expires_in': 900,
+                  'capabilities': ['mailboxes:read'],
+                  'user': {
+                    'id': 77,
+                    'email': 'new@example.test',
+                    'display_name': 'New',
+                  },
+                },
+              });
+            }
+            fail('Unexpected request: ${request.url.path}');
+          }, onTokensChanged: changes.add);
+          addTearDown(client.close);
+          final pending = act(client);
+          await started.future;
+          if (change == 'logout') {
+            await client.logout();
+          } else {
+            await client.login(email: 'new@example.test', password: 'password');
+          }
+          final count = changes.length;
+          answer.complete(result());
+          expect((await pending).grant.id, 9);
+          expect(changes.length, count);
+          if (change == 'logout') {
+            expect(client.tokens, isNull);
+          } else {
+            expect(client.tokens!.accessToken, 'replacement-access');
+            expect(client.tokens!.refreshToken, 'replacement-refresh');
+            expect(client.tokens!.capabilities.names, {'mailboxes:read'});
+          }
+        });
+      }
+
+      test(
+        '$operation answer applies to a normally rotated token pair',
+        () async {
+          final started = Completer<void>();
+          final answer = Completer<http.Response>();
+          final changes = <SessionTokens?>[];
+          final client = _client((request) async {
+            if (request.url.path.endsWith('/auth/refresh')) {
+              return _json({
+                'data': {
+                  'access_token': 'access-2',
+                  'refresh_token': 'refresh-2',
+                  'expires_in': 900,
+                  'capabilities': ['users:read'],
+                },
+              });
+            }
+            expect(request.url.path, endsWith('/$operation'));
+            started.complete();
+            return answer.future;
+          }, onTokensChanged: changes.add);
+          addTearDown(client.close);
+          final pending = act(client);
+          await started.future;
+          await client.refresh();
+          answer.complete(result());
+          await pending;
+          expect(client.tokens!.accessToken, 'access-2');
+          expect(client.tokens!.refreshToken, 'refresh-2');
+          expect(client.tokens!.capabilities.names, {'*'});
+          expect(changes, hasLength(2));
+          expect(changes.last!.refreshToken, 'refresh-2');
+        },
+      );
+
+      test(
+        '$operation rejects unexpected success without changing metadata',
+        () async {
+          final changes = <SessionTokens?>[];
+          final client = _client(
+            (_) async => _json({
+              'data': {
+                'grant': _grant(),
+                'capabilities': ['*'],
+              },
+            }, status: 202),
+            onTokensChanged: changes.add,
+          );
+          addTearDown(client.close);
+          await expectLater(
+            act(client),
+            throwsA(
+              isA<ApiException>().having((e) => e.code, 'code', 'bad_response'),
+            ),
+          );
+          expect(changes, isEmpty);
+          expect(client.tokens!.capabilities.names, {'users:read'});
+          expect(client.tokens!.refreshToken, 'refresh-1');
+        },
+      );
+    }
+
     test(
       'switches a grant on and takes the capabilities it answers with',
       () async {
@@ -407,7 +605,10 @@ void main() {
           'totp_code': '123456',
         });
         expect(step.grant.id, 9);
-        expect(step.grant.isInForce, isTrue);
+        expect(
+          step.grant.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)),
+          isTrue,
+        );
         expect(step.grant.activation!.reason, 'rotate DKIM');
         expect(
           step.grant.activation!.expiresAt.toUtc(),
