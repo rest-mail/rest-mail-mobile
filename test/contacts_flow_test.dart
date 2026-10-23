@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/compose_sheet.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 void main() {
@@ -167,6 +168,54 @@ void main() {
     expect(blocked['email'], 'nadia@oakline.test');
     expect(blocked['trust_level'], 'blocked');
     await settleToast(tester);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('contacts are suggested in the address fields, '
+      'the blocked left out', (tester) async {
+    final (fake, state) = await open(tester);
+    fake
+      ..addContact(FakeAccounts.email, 'nadia@oakline.test', name: 'Nadia Osei')
+      ..addContact(
+        FakeAccounts.email,
+        'nadia@deals.test',
+        name: 'Nadia deals',
+        trustLevel: 'blocked',
+      );
+    await tester.tap(find.byTooltip('New message'));
+    await tester.pumpAndSettle();
+    final to = find
+        .descendant(
+          of: find.byType(ComposeSheet),
+          matching: find.byType(TextField),
+        )
+        .first;
+
+    await tester.enterText(to, 'n');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('nadia@oakline.test'), findsNothing);
+
+    await tester.enterText(to, 'nad');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.text('Nadia Osei · nadia@oakline.test'), findsOneWidget);
+    expect(find.textContaining('nadia@deals.test'), findsNothing);
+
+    await tester.tap(find.text('Nadia Osei · nadia@oakline.test'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(to).controller!.text,
+      'Nadia Osei <nadia@oakline.test>, ',
+    );
+    expect(find.text('Nadia Osei · nadia@oakline.test'), findsNothing);
+
+    // One already in the field is not offered again.
+    await tester.enterText(to, 'Nadia Osei <nadia@oakline.test>, nad');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.text('Nadia Osei · nadia@oakline.test'), findsNothing);
 
     await close(tester, fake, state);
   });

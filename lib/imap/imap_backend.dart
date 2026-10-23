@@ -1024,6 +1024,10 @@ class ImapBackend implements MailBackend {
   Future<Contact> blockSender(int accountId, String email) =>
       throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
 
+  @override
+  Future<List<Contact>> suggestContacts(int accountId, String query) async =>
+      const [];
+
   final _drafts = <int, OutgoingMessage>{};
 
   @override

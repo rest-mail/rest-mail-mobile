@@ -147,6 +147,10 @@ abstract interface class MailBackend {
   /// Refuses mail from [email] from now on.
   Future<Contact> blockSender(int accountId, String email);
 
+  /// Up to ten of [accountId]'s contacts whose address or name contains
+  /// [query], blocked ones left out, for the address fields of a message.
+  Future<List<Contact>> suggestContacts(int accountId, String query);
+
   Future<Message> saveDraft(OutgoingMessage draft);
 
   Future<Message> updateDraft(int id, OutgoingMessage draft);
@@ -341,6 +345,10 @@ class RestBackend implements MailBackend {
   @override
   Future<Contact> blockSender(int accountId, String email) =>
       client.blockSender(accountId, email);
+
+  @override
+  Future<List<Contact>> suggestContacts(int accountId, String query) =>
+      client.suggestContacts(accountId, query);
 
   @override
   Future<Message> saveDraft(OutgoingMessage draft) => client.saveDraft(draft);
