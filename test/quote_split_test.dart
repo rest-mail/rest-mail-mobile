@@ -112,7 +112,7 @@ void main() {
       expect(split.quote, contains('Noon?'));
     });
 
-    test("a top-posted Outlook reply folds from its rule and header on", () {
+    test('a top-posted Outlook reply folds from its rule and header on', () {
       const html =
           '<div>Approved.</div><div id="appendonsend"></div><hr>'
           '<div id="divRplyFwdMsg"><b>From:</b> Ann</div>'
