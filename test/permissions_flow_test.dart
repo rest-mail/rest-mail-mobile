@@ -205,7 +205,7 @@ void main() {
       expect(find.text('Grant a role'), findsNothing);
       expect(
         find.byWidgetPredicate(
-          (w) => w is Tooltip && w.message.startsWith('Remove '),
+          (w) => w is Tooltip && (w.message ?? '').startsWith('Remove '),
         ),
         findsNothing,
       );
