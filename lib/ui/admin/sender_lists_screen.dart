@@ -46,8 +46,10 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.senderLists)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.senderLists)) {
       unawaited(_list.reload());
     }
   }
@@ -128,6 +130,7 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
     final c = context.rm;
     final block = _shown == SenderList.block;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.senderLists,
       title: 'Sender lists',

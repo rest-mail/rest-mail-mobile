@@ -211,7 +211,10 @@ class Escalation {
 
   factory Escalation.fromJson(Map<String, dynamic> json) => Escalation(
     grant: Grant.fromJson(json['grant'] as Map<String, dynamic>),
-    capabilities: Capabilities.fromJson(json['capabilities']),
+    capabilities: Capabilities.fromJson(
+      json['capabilities'],
+      scoped: json['scoped_capabilities'],
+    ),
   );
 
   final Grant grant;

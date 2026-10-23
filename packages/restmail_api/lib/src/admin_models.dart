@@ -219,7 +219,9 @@ class AdminMailbox {
     lastLoginAt: _time(json['last_login_at']),
     localPart: json['local_part'] as String? ?? '',
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },
@@ -271,7 +273,9 @@ class AdminAlias {
     destination: json['destination_address'] as String,
     active: json['active'] as bool? ?? false,
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },

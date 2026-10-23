@@ -44,8 +44,10 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.dnsCheck)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.dnsCheck)) {
       unawaited(_load());
     }
   }
@@ -73,6 +75,7 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
     final check = _check, error = _error;
     final selector = widget.domain.dkimSelector;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.dnsCheck,
       title: 'DNS check',

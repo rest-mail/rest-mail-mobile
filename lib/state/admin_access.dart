@@ -240,27 +240,85 @@ enum AdminGroup {
 
 /// What a session's capabilities let it see and do in Administration.
 class AdminAccess {
-  const AdminAccess(this.capabilities);
+  const AdminAccess(this.capabilities, {this.scope, this.collection = false});
 
   final Capabilities capabilities;
+  final String? scope;
+  final bool collection;
 
-  bool canRead(AdminSection section) => capabilities.allows(section.read);
-  bool canWrite(AdminSection section) => capabilities.allows(section.write);
-  bool canDelete(AdminSection section) => capabilities.allows(section.delete);
+  bool canRead(AdminSection section) {
+    if (collection || scope == null) return canList(section);
+    if (_resourceSection(section)) {
+      return capabilities.allows(section.read, scope: scope!);
+    }
+    return capabilities.allows(section.read);
+  }
 
-  /// The sections to show, in the order a phone wants them.
+  /// Lists return only resources at scopes the session holds. A mailbox grant
+  /// may list its mailbox, but cannot list domains or aliases of its parent.
+  bool canList(AdminSection section) => switch (section) {
+    AdminSection.domains ||
+    AdminSection.aliases => capabilities.allowsSomewhere(
+      section.read,
+      within: scope,
+      domainsOnly: true,
+    ),
+    AdminSection.mailboxes => capabilities.allowsSomewhere(
+      section.read,
+      within: scope,
+    ),
+    _ =>
+      scope != null && section.group == AdminGroup.domain
+          ? capabilities.allows(section.read, scope: scope!)
+          : capabilities.allows(section.read),
+  };
+
+  bool canWrite(AdminSection section) {
+    // Relay transport is installation configuration even on a domain URL.
+    if (section == AdminSection.relay) {
+      return capabilities.allows(section.write);
+    }
+    if (scope != null && !collection && _resourceSection(section)) {
+      return capabilities.allows(section.write, scope: scope!);
+    }
+    // Adding a mailbox/alias needs a covering domain, not an existing mailbox.
+    if (section == AdminSection.mailboxes || section == AdminSection.aliases) {
+      if (scope != null) {
+        return capabilities.allows(section.write, scope: scope!);
+      }
+      return capabilities.allowsSomewhere(section.write, domainsOnly: true);
+    }
+    if (scope != null && section.group == AdminGroup.domain) {
+      return capabilities.allows(section.write, scope: scope!);
+    }
+    return capabilities.allows(section.write);
+  }
+
+  bool canDelete(AdminSection section) {
+    if (section == AdminSection.relay) {
+      return capabilities.allows(section.delete);
+    }
+    if (scope != null && _resourceSection(section)) {
+      return capabilities.allows(section.delete, scope: scope!);
+    }
+    return capabilities.allows(section.delete);
+  }
+
+  static bool _resourceSection(AdminSection section) =>
+      section == AdminSection.domains ||
+      section == AdminSection.mailboxes ||
+      section == AdminSection.aliases ||
+      section.group == AdminGroup.domain;
+
   List<AdminSection> get sections => [
     for (final section in AdminSection.values)
       if (section.group != AdminGroup.domain && canRead(section)) section,
   ];
 
-  /// The sections to show in a domain's own screen.
   List<AdminSection> get domainSections => [
     for (final section in AdminSection.values)
       if (section.group == AdminGroup.domain && canRead(section)) section,
   ];
 
-  /// Whether to show the way into Administration: only when there is
-  /// something in it this session may see.
   bool get any => sections.isNotEmpty;
 }

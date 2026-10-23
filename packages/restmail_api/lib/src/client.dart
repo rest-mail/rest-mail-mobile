@@ -1596,7 +1596,10 @@ class RestmailClient {
       accessToken: access,
       refreshToken: refresh,
       accessExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
-      capabilities: Capabilities.fromJson(data['capabilities']),
+      capabilities: Capabilities.fromJson(
+        data['capabilities'],
+        scoped: data['scoped_capabilities'],
+      ),
     );
   }
 
