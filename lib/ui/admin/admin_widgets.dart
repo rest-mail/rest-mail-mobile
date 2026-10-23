@@ -521,6 +521,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                       )
                     else
                       TextField(
+                        key: ValueKey('admin-field-$i'),
                         controller: _controllers[i],
                         obscureText: widget.fields[i].obscure,
                         autocorrect:
