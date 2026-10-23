@@ -1563,6 +1563,131 @@ class RestmailClient {
     _data(await _authed('GET', ['accounts', '$accountId', 'quota'])),
   );
 
+  // ── Contacts ─────────────────────────────────────────────────────────
+  //
+  // An account's contacts: reading them needs mail:read on it, changing
+  // them mail:write, and the server answers 403 forbidden otherwise.
+
+  /// One page of the account's contacts, by address. [search] keeps those
+  /// whose address contains it; [trustLevel] those trusted that far.
+  Future<OffsetPage<Contact>> contacts(
+    int accountId, {
+    String? search,
+    TrustLevel? trustLevel,
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['accounts', '$accountId', 'contacts'],
+    Contact.fromJson,
+    offset,
+    limit,
+    {
+      if (search != null && search.isNotEmpty) 'search': search,
+      'trust_level': ?trustLevel?.value,
+    },
+  );
+
+  /// Adds a contact, trusted unless [trustLevel] says otherwise. An address
+  /// that is already a contact is refused 409 `already_exists`; one that is
+  /// not a bare address 422 on `email`.
+  Future<Contact> createContact(
+    int accountId, {
+    required String email,
+    String? name,
+    TrustLevel? trustLevel,
+  }) async => _contact(
+    await _authed(
+      'POST',
+      ['accounts', '$accountId', 'contacts'],
+      body: {
+        'email': email,
+        if (name != null && name.isNotEmpty) 'name': name,
+        'trust_level': ?trustLevel?.value,
+      },
+    ),
+  );
+
+  /// Changes a contact's name or trust level; what is left out stays.
+  Future<Contact> updateContact(
+    int accountId,
+    int contactId, {
+    String? name,
+    TrustLevel? trustLevel,
+  }) async => _contact(
+    await _authed(
+      'PATCH',
+      ['accounts', '$accountId', 'contacts', '$contactId'],
+      body: {'name': ?name, 'trust_level': ?trustLevel?.value},
+    ),
+  );
+
+  Future<void> deleteContact(int accountId, int contactId) async {
+    await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'contacts',
+      '$contactId',
+    ]);
+  }
+
+  /// Blocks [email]: a contact made for it, or the existing one changed, so
+  /// the inbound filters refuse its mail from now on.
+  Future<Contact> blockSender(int accountId, String email) async => _contact(
+    await _authed(
+      'POST',
+      ['accounts', '$accountId', 'contacts', 'block'],
+      body: {'email': email},
+    ),
+  );
+
+  /// Adds [contacts] in one go, as an address and an optional name each, and
+  /// returns how many were new. The server checks every address before it
+  /// adds any: a bad one is refused 422 on `contacts[i].email`.
+  Future<int> importContacts(
+    int accountId,
+    List<({String email, String? name})> contacts,
+  ) async {
+    final response = await _authed(
+      'POST',
+      ['accounts', '$accountId', 'contacts', 'import'],
+      body: {
+        'contacts': [
+          for (final contact in contacts)
+            {
+              'email': contact.email,
+              if (contact.name case final name? when name.isNotEmpty)
+                'name': name,
+            },
+        ],
+      },
+    );
+    final imported = _data(response)['imported'];
+    if (imported is! num) throw _unreadable(response);
+    return imported.toInt();
+  }
+
+  /// Up to ten contacts whose address or name contains [query], for the
+  /// address fields of a message; blocked ones are left out.
+  Future<List<Contact>> suggestContacts(int accountId, String query) async {
+    if (query.isEmpty) return const [];
+    return _list(
+      await _authed(
+        'GET',
+        ['accounts', '$accountId', 'contacts', 'suggest'],
+        query: {'q': query},
+      ),
+      Contact.fromJson,
+    );
+  }
+
+  Contact _contact(http.Response response) {
+    try {
+      return Contact.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
   // ── App passwords ────────────────────────────────────────────────────
   //
   // For the session's own account, or one it owns (created or linked):
