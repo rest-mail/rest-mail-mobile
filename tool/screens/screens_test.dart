@@ -109,16 +109,13 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await _shot(tester, '04-folders$suffix');
   await tester.tap(find.byTooltip('Mailbox settings'));
   await _shot(tester, '05-settings$suffix');
-  await tester.tap(find.text(FakeAccounts.email));
-  await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Two-factor sign-in'));
   await tester.tap(find.text('Two-factor sign-in'));
   await _shot(tester, '05-two-factor-status$suffix');
   await tester.tap(find.text('Set up authenticator'));
   // Only fixed public fake secrets are present in screen artifacts.
   await _shot(tester, '05-two-factor-enrollment$suffix');
-  await tester.tap(find.byTooltip('Back'));
-  await tester.pumpAndSettle();
+  // Settings replaces the Mailboxes route: close 2FA, then Settings.
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
   await tester.tap(find.byTooltip('Back'));
