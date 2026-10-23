@@ -102,9 +102,25 @@ void main() {
   }
 
   Future<void> reveal(WidgetTester tester, Finder finder) async {
-    for (final delta in [-300.0, 300.0]) {
-      for (var i = 0; i < 20 && finder.evaluate().isEmpty; i++) {
-        await tester.drag(find.byType(ListView).last, Offset(0, delta));
+    if (finder.evaluate().isEmpty) {
+      // The list is moved by its position, not dragged: a drag can land on a
+      // multiline field, which scrolls itself and leaves the list where it is.
+      final list = tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(ListView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position;
+      for (
+        var offset = 0.0;
+        finder.evaluate().isEmpty && offset <= list.maxScrollExtent;
+        offset += 300
+      ) {
+        list.jumpTo(offset);
         await tester.pumpAndSettle();
       }
     }
