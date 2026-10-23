@@ -292,10 +292,11 @@ void main() {
       await tap(tester, 'Pipeline log');
       await tap(tester, 'Filters');
       await tester.enterText(find.byKey(const ValueKey('admin-field-0')), '0');
-      // The form's own list: every text field holds a Scrollable of its own.
+      // The form's own list, found from the list itself: every text field
+      // holds a Scrollable of its own, and a field scrolled away is gone.
       final form = find
-          .ancestor(
-            of: find.byKey(const ValueKey('admin-field-0')),
+          .descendant(
+            of: find.byType(ListView).last,
             matching: find.byType(Scrollable),
           )
           .first;
