@@ -639,6 +639,88 @@ class ScheduledSend {
   final String status;
 }
 
+/// An account's out-of-office reply: sent once per sender to mail that
+/// arrives while it is on, between [startDate] and [endDate] when they are
+/// set.
+class VacationReply {
+  const VacationReply({
+    required this.enabled,
+    this.subject = '',
+    this.body = '',
+    this.startDate,
+    this.endDate,
+  });
+
+  factory VacationReply.fromJson(Map<String, dynamic> json) => VacationReply(
+    enabled: json['enabled'] as bool? ?? false,
+    subject: json['subject'] as String? ?? '',
+    body: json['body'] as String? ?? '',
+    startDate: _optionalTime(json['start_date']),
+    endDate: _optionalTime(json['end_date']),
+  );
+
+  final bool enabled;
+  final String subject;
+  final String body;
+  final DateTime? startDate;
+  final DateTime? endDate;
+}
+
+/// An account's Sieve script (RFC 5228), which files, forwards or refuses
+/// its mail. With none stored it is the empty script, inactive, with no id.
+class SieveScript {
+  const SieveScript({
+    required this.mailboxId,
+    required this.script,
+    required this.active,
+    this.id,
+    this.scriptHash,
+    this.validatedAt,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory SieveScript.fromJson(Map<String, dynamic> json) => SieveScript(
+    id: (json['id'] as num?)?.toInt(),
+    mailboxId: (json['mailbox_id'] as num).toInt(),
+    script: json['script'] as String,
+    active: json['active'] as bool? ?? false,
+    scriptHash: _optionalString(json['script_hash']),
+    validatedAt: _optionalTime(json['validated_at']),
+    createdAt: _optionalTime(json['created_at']),
+    updatedAt: _optionalTime(json['updated_at']),
+  );
+
+  /// Null when none is stored.
+  final int? id;
+  final int mailboxId;
+  final String script;
+  final bool active;
+
+  /// The SHA-256 of the script as it was checked when it was saved.
+  final String? scriptHash;
+  final DateTime? validatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  bool get stored => id != null;
+}
+
+/// Whether a Sieve script would be saved, and if not, why: the parser's
+/// message, with its line and column, or the dry run's.
+class SieveValidation {
+  const SieveValidation({required this.valid, required this.message});
+
+  factory SieveValidation.fromJson(Map<String, dynamic> json) =>
+      SieveValidation(
+        valid: json['valid'] as bool,
+        message: json['message'] as String? ?? '',
+      );
+
+  final bool valid;
+  final String message;
+}
+
 /// A message the account's filters held back instead of delivering, waiting
 /// to be released into the inbox or deleted. REST Mail only.
 class QuarantinedMessage {
