@@ -182,7 +182,35 @@ void main() {
       );
       await expectLater(
         client.setDkimKey(domain.id, selector: '', privateKey: ''),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 400)),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, 'status', 422).having(
+            (e) => e.fields,
+            'fields',
+            {
+              'selector':
+                  'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
+              'private_key': 'required',
+            },
+          ),
+        ),
+      );
+      final transport = fake.client;
+      addTearDown(transport.close);
+      final unknown = await transport.put(
+        Uri.parse(
+          'https://${fake.host}/api/v1/admin/dkim/${domain.id}/rotation',
+        ),
+        headers: {
+          'authorization': 'Bearer ${client.tokens!.accessToken}',
+          'content-type': 'application/json',
+        },
+        body: '{"rotation_interval_days":30,"private_key":"x"}',
+      );
+      expect(unknown.statusCode, 422);
+      expect(
+        (jsonDecode(unknown.body)
+            as Map<String, dynamic>)['error']['details']['fields'],
+        {'private_key': 'not allowed'},
       );
       await expectLater(
         client.dkimRotation(999999),

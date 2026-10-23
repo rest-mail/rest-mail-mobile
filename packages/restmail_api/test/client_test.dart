@@ -1211,7 +1211,13 @@ void main() {
           return _json({
             'error': {
               'code': 'validation_failed',
-              'message': 'Invalid DKIM rotation interval',
+              'message': 'Request body failed validation',
+              'details': {
+                'fields': {
+                  'rotation_interval_days':
+                      'Must be an integer between 0 and 3650 days; 0 disables rotation',
+                },
+              },
             },
           }, status: 422);
         }),
@@ -1876,10 +1882,13 @@ void main() {
         server: _server,
         tokens: _tokens('1'),
         httpClient: MockClient(
-          (_) async => _json(status: 400, {
+          (_) async => _json(status: 422, {
             'error': {
-              'code': 'bad_request',
-              'message': 'Invalid certificate PEM',
+              'code': 'validation_failed',
+              'message': 'Request body failed validation',
+              'details': {
+                'fields': {'cert_pem': 'Invalid certificate PEM'},
+              },
             },
           }),
         ),
@@ -1887,9 +1896,11 @@ void main() {
       await expectLater(
         client.uploadCertificate(domainId: 7, certPem: 'x', keyPem: 'y'),
         throwsA(
-          isA<ApiException>()
-              .having((e) => e.statusCode, 'status', 400)
-              .having((e) => e.message, 'message', 'Invalid certificate PEM'),
+          isA<ApiException>().having((e) => e.statusCode, 'status', 422).having(
+            (e) => e.fields,
+            'fields',
+            {'cert_pem': 'Invalid certificate PEM'},
+          ),
         ),
       );
     });

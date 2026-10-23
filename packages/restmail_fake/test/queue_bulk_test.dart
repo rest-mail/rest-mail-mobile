@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 import 'package:test/test.dart';
@@ -114,6 +117,66 @@ void main() {
       expect((await client.queue()).total, 0);
       client.close();
       fake.close();
+    },
+  );
+
+  test(
+    'bulk bodies are bound as the server binds them, and a missing entry is 404',
+    () async {
+      final fake = FakeRestmail();
+      addTearDown(fake.close);
+      final client = await _login(fake);
+      addTearDown(client.close);
+      final transport = fake.client;
+      addTearDown(transport.close);
+      Future<http.Response> bulk(String body) => transport
+          .send(
+            http.Request(
+                'DELETE',
+                Uri.parse(
+                  'https://${fake.host}/api/v1/admin/queue/bulk-delete',
+                ),
+              )
+              ..headers['authorization'] =
+                  'Bearer ${client.tokens!.accessToken}'
+              ..headers['content-type'] = 'application/json'
+              ..body = body,
+          )
+          .then(http.Response.fromStream);
+      Object? fields(http.Response response) =>
+          (jsonDecode(response.body)
+              as Map<String, dynamic>)['error']['details']['fields'];
+      final cases = {
+        '{"ids":"1"}': {'ids': 'must be an array'},
+        '{"ids":[-1,2]}': {'ids[0]': 'must be a non-negative integer'},
+        jsonEncode({'ids': List.filled(1001, 1)}): {
+          'ids': 'max 1000 IDs per request',
+        },
+        '{"filter":[]}': {'filter': 'must be an object'},
+        '{"filter":{"status":1,"colour":"red"}}': {
+          'filter.status': 'must be a string',
+          'filter.colour': 'not allowed',
+        },
+        '{"ids":[1],"everything":true}': {'everything': 'not allowed'},
+      };
+      for (final MapEntry(key: body, value: want) in cases.entries) {
+        final response = await bulk(body);
+        expect(response.statusCode, 422, reason: body);
+        expect(fields(response), want, reason: body);
+      }
+      for (final body in ['{}', '{"ids":[]}', '{"filter":null}']) {
+        final response = await bulk(body);
+        expect(response.statusCode, 400, reason: body);
+        expect(response.body, contains('ids or filter required'), reason: body);
+      }
+      await expectLater(
+        client.deleteQueueEntry(999999),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 404)
+              .having((e) => e.code, 'code', 'not_found'),
+        ),
+      );
     },
   );
 

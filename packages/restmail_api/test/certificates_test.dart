@@ -159,8 +159,8 @@ void main() {
                 404,
               )
             : http.Response(
-                '{"error":{"code":"bad_request","message":"Invalid certificate PEM"}}',
-                400,
+                '{"error":{"code":"validation_failed","message":"Request body failed validation","details":{"fields":{"cert_pem":"Invalid certificate PEM"}}}}',
+                422,
               ),
       );
       addTearDown(client.close);
@@ -175,11 +175,9 @@ void main() {
           keyPem: testCertificateKey,
         ),
         throwsA(
-          isA<ApiException>().having(
-            (e) => e.message,
-            'message',
-            'Invalid certificate PEM',
-          ),
+          isA<ApiException>().having((e) => e.fields, 'fields', {
+            'cert_pem': 'Invalid certificate PEM',
+          }),
         ),
       );
       expect(client.tokens, same(_tokens));

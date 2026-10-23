@@ -2566,7 +2566,7 @@ class FakeRestmail {
         });
       case ('DELETE', ['queue', final id]):
         need('queue:manage');
-        _queue.remove(int.tryParse(id));
+        _queue.remove(_queueEntry(id).id);
         return _noContent();
 
       case ('GET', ['domains']):
@@ -2948,27 +2948,34 @@ class FakeRestmail {
         });
       case ('PUT', ['dkim', final id]):
         need('domains:write');
-        final domain = _domain(id), body = _object(bytes);
-        final selector = body['selector'] as String? ?? '',
-            key = body['private_key'] as String? ?? '';
-        if (selector.isEmpty || key.isEmpty) {
-          _fail(400, 'bad_request', 'selector and private_key are required');
+        final body = _object(bytes);
+        final problems = _undeclared(body, const {'selector', 'private_key'});
+        final selector = _requiredString(
+          body,
+          'selector',
+          problems,
+          broken:
+              'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
+          valid: (s) =>
+              s.length <= 63 &&
+              s
+                  .split('.')
+                  .every(
+                    (label) => RegExp(
+                      r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
+                    ).hasMatch(label),
+                  ),
+        );
+        final key = _requiredString(
+          body,
+          'private_key',
+          problems,
+          broken: 'required',
+        );
+        if (problems.isNotEmpty || selector == null || key == null) {
+          _invalid(problems);
         }
-        if (selector.length > 63 ||
-            !selector
-                .split('.')
-                .every(
-                  (s) => RegExp(
-                    r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
-                  ).hasMatch(s),
-                )) {
-          _fail(
-            422,
-            'validation_failed',
-            'Invalid selector',
-            fields: {'selector': 'must be DNS labels, at most 63 characters'},
-          );
-        }
+        final domain = _domain(id);
         // Demo validation only. Real RSA/Ed25519 signing and verification stay
         // on the production server; this fake checks the PEM envelope and DER.
         final pem = RegExp(
@@ -2983,14 +2990,7 @@ class FakeRestmail {
           der = null;
         }
         if (der == null || der.isEmpty || der.first != 0x30) {
-          _fail(
-            422,
-            'validation_failed',
-            'Invalid DKIM private key',
-            fields: {
-              'private_key': 'must be a PEM-encoded RSA or Ed25519 private key',
-            },
-          );
+          _invalid({'private_key': 'is not a PEM-encoded private key'});
         }
         if (_dkimSecrets[domain.id] != key) {
           _dkimInstalledAt[domain.id] = _clock();
@@ -3003,22 +3003,21 @@ class FakeRestmail {
         return _json({'data': _rotationJson(_domain(id))});
       case ('PUT', ['dkim', final id, 'rotation']):
         need('domains:write');
-        final domain = _domain(id), body = _object(bytes);
-        if (body.keys.any((k) => k != 'rotation_interval_days')) {
-          _fail(400, 'bad_request', 'Invalid request body');
-        }
+        final body = _object(bytes);
+        final problems = _undeclared(body, const {'rotation_interval_days'});
         final days = body['rotation_interval_days'];
-        if (days is! int || days < 0 || days > 3650) {
-          _fail(
-            422,
-            'validation_failed',
-            'Invalid DKIM rotation interval',
-            fields: {
-              'rotation_interval_days':
-                  'Must be an integer between 0 and 3650 days; 0 disables rotation',
-            },
-          );
+        if (!body.containsKey('rotation_interval_days')) {
+          problems['rotation_interval_days'] = 'required';
+        } else if (days == null) {
+          problems['rotation_interval_days'] = 'must not be null';
+        } else if (days is! int) {
+          problems['rotation_interval_days'] = 'must be an integer';
+        } else if (days < 0 || days > 3650) {
+          problems['rotation_interval_days'] =
+              'Must be an integer between 0 and 3650 days; 0 disables rotation';
         }
+        if (problems.isNotEmpty || days is! int) _invalid(problems);
+        final domain = _domain(id);
         _dkimIntervals[domain.id] = days;
         return _json({'data': _rotationJson(domain)});
       case ('DELETE', ['dkim', final id]):
@@ -3285,23 +3284,39 @@ class FakeRestmail {
     String operation,
     Map<String, dynamic> body,
   ) {
+    final problems = _undeclared(body, const {'ids', 'filter'});
     final ids = body['ids'];
+    var values = const <Object?>[];
+    if (body.containsKey('ids') && ids == null) {
+      problems['ids'] = 'must not be null';
+    } else if (ids != null && ids is! List<Object?>) {
+      problems['ids'] = 'must be an array';
+    } else if (ids is List<Object?>) {
+      values = ids;
+      for (var i = 0; i < ids.length; i++) {
+        final id = ids[i];
+        if (id is! int || id < 0) {
+          problems['ids[$i]'] = 'must be a non-negative integer';
+        }
+      }
+      if (ids.length > 1000) problems['ids'] = 'max 1000 IDs per request';
+    }
+    const filterFields = {'status', 'domain', 'sender', 'recipient'};
     final filter = body['filter'];
-    if ((ids != null && ids is! List<Object?>) ||
-        (filter != null && filter is! Map<String, dynamic>)) {
-      _fail(400, 'bad_request', 'Invalid request body');
+    if (filter != null && filter is! Map<String, dynamic>) {
+      problems['filter'] = 'must be an object';
+    } else if (filter is Map<String, dynamic>) {
+      problems.addAll(_undeclared(filter, filterFields, 'filter.'));
+      for (final MapEntry(:key, :value) in filter.entries) {
+        if (!filterFields.contains(key)) continue;
+        if (value == null) {
+          problems['filter.$key'] = 'must not be null';
+        } else if (value is! String) {
+          problems['filter.$key'] = 'must be a string';
+        }
+      }
     }
-    final values = ids as List<Object?>? ?? const <Object?>[];
-    if (filter is Map<String, dynamic> &&
-        filter.values.any((value) => value != null && value is! String)) {
-      _fail(400, 'bad_request', 'Invalid request body');
-    }
-    if (values.any((id) => id is! int || id < 0)) {
-      _fail(400, 'bad_request', 'Invalid request body');
-    }
-    if (values.length > 1000) {
-      _fail(400, 'bad_request', 'max 1000 IDs per request');
-    }
+    if (problems.isNotEmpty) _invalid(problems);
     if (values.isEmpty && filter == null) {
       _fail(400, 'bad_request', 'ids or filter required');
     }
@@ -3749,22 +3764,30 @@ class FakeRestmail {
   };
 
   http.StreamedResponse _createCertificate(Map<String, dynamic> body) {
+    final problems = _undeclared(body, const {
+      'domain_id',
+      'cert_pem',
+      'key_pem',
+      'auto_renew',
+    });
     final domainId = body['domain_id'];
-    final pem = body['cert_pem'],
-        key = body['key_pem'],
-        renew = body['auto_renew'];
-    if (domainId is! int ||
-        domainId < 1 ||
-        pem is! String ||
-        pem.isEmpty ||
-        key is! String ||
-        key.isEmpty ||
-        (renew != null && renew is! bool)) {
-      _fail(
-        400,
-        'bad_request',
-        'domain_id, cert_pem, and key_pem are required',
-      );
+    if (!body.containsKey('domain_id')) {
+      problems['domain_id'] = 'required';
+    } else if (domainId == null) {
+      problems['domain_id'] = 'must not be null';
+    } else if (domainId is! int || domainId < 0) {
+      problems['domain_id'] = 'must be a non-negative integer';
+    } else if (domainId < 1) {
+      problems['domain_id'] = 'required';
+    }
+    final pem = _requiredString(body, 'cert_pem', problems, broken: 'required');
+    final key = _requiredString(body, 'key_pem', problems, broken: 'required');
+    final renew = body['auto_renew'];
+    if (renew != null && renew is! bool) {
+      problems['auto_renew'] = 'must be a boolean';
+    }
+    if (problems.isNotEmpty || domainId is! int || pem == null || key == null) {
+      _invalid(problems);
     }
     final domain =
         _domains.values.where((d) => d.id == domainId).firstOrNull ??
@@ -3775,10 +3798,10 @@ class FakeRestmail {
     try {
       parsed = X509Utils.x509CertificateFromPem(pem);
     } catch (_) {
-      _fail(400, 'bad_request', 'Invalid certificate PEM');
+      _invalid({'cert_pem': 'Invalid certificate PEM'});
     }
     final tbs = parsed.tbsCertificate;
-    if (tbs == null) _fail(400, 'bad_request', 'Failed to parse certificate');
+    if (tbs == null) _invalid({'cert_pem': 'Failed to parse certificate'});
     const names = {
       '2.5.4.3': 'CN',
       '2.5.4.6': 'C',
@@ -4625,6 +4648,51 @@ Map<String, dynamic> _object(List<int> bytes) {
   final decoded = jsonDecode(utf8.decode(bytes));
   if (decoded is Map<String, dynamic>) return decoded;
   _fail(400, 'bad_request', 'Invalid request body');
+}
+
+/// What request binding answers for a body that breaks its type's rules:
+/// every field at once, named the way the server names them.
+Never _invalid(Map<String, String> fields) => _fail(
+  422,
+  'validation_failed',
+  'Request body failed validation',
+  fields: fields,
+);
+
+/// A field of [body] its request type does not declare, each refused:
+/// request bodies are closed.
+Map<String, String> _undeclared(
+  Map<String, dynamic> body,
+  Set<String> declared, [
+  String prefix = '',
+]) => {
+  for (final key in body.keys)
+    if (!declared.contains(key)) '$prefix$key': 'not allowed',
+};
+
+/// A required string field as binding reads it: absent is "required", null
+/// or another type says what it must be, and an empty value or one [valid]
+/// refuses breaks its rule, worded [broken]. Null when it is refused.
+String? _requiredString(
+  Map<String, dynamic> body,
+  String name,
+  Map<String, String> problems, {
+  required String broken,
+  bool Function(String value)? valid,
+}) {
+  final value = body[name];
+  if (!body.containsKey(name)) {
+    problems[name] = 'required';
+  } else if (value == null) {
+    problems[name] = 'must not be null';
+  } else if (value is! String) {
+    problems[name] = 'must be a string';
+  } else if (value.isEmpty || !(valid?.call(value) ?? true)) {
+    problems[name] = broken;
+  } else {
+    return value;
+  }
+  return null;
 }
 
 /// 64 hex digits that change with [entry]'s contents and the hash before
