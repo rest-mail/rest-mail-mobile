@@ -259,7 +259,7 @@ class TraceDetails extends StatelessWidget {
                 RmRow(
                   label: stage.filter,
                   subtitle: [
-                    if (_stageNote(stage) case final note?) note,
+                    ?_stageNote(stage),
                     if (stage.filterType.isNotEmpty) stage.filterType,
                     '${stage.durationMilliseconds} ms',
                   ].join(' · '),
