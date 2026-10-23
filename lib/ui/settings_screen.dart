@@ -16,6 +16,7 @@ import '../util/format.dart';
 import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'api_keys_screen.dart';
 import 'two_factor_screen.dart';
 import 'interface_customizer_screen.dart';
 import 'my_permissions_screen.dart';
@@ -252,6 +253,18 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                               onTap: () => _push(
                                 context,
                                 AppPasswordsScreen(
+                                  account: session,
+                                  mailbox: account,
+                                ),
+                              ),
+                            ),
+                          if (session != null)
+                            RmRow(
+                              label: 'API keys',
+                              subtitle: 'Scoped permissions for automations',
+                              onTap: () => _push(
+                                context,
+                                APIKeysScreen(
                                   account: session,
                                   mailbox: account,
                                 ),

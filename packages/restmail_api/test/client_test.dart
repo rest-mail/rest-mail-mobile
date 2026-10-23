@@ -787,6 +787,183 @@ void main() {
     });
   });
 
+  group('API keys', () {
+    const token = 'rm_ak9Lm2Qx7Pz_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
+    const permission = {'capability': 'mail.read', 'scope': 'account:7'};
+    const key = {
+      'id': 12,
+      'name': 'n8n',
+      'kind': 'api_key',
+      'public_id': 'ak9Lm2Qx7Pz',
+      'created_at': '2026-10-20T08:00:00Z',
+      'last_used_at': '2026-10-21T10:30:00Z',
+      'expires_at': '2027-01-18T08:00:00Z',
+      'permissions': [permission],
+    };
+
+    test('lists, creates and revokes on the account', () async {
+      final sent = <http.Request>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent.add(request);
+          return switch (request.method) {
+            'GET' => _json({
+              'data': [key],
+            }),
+            'POST' => _json({
+              'data': {...key, 'token': token},
+            }, status: 201),
+            _ => http.Response('', 204),
+          };
+        }),
+      );
+
+      final listed = (await client.apiKeys(7)).single;
+      final created = await client.createAPIKey(
+        7,
+        name: 'n8n',
+        password: 'current password',
+        permissions: const [
+          APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+        ],
+        expiresAt: DateTime.parse('2027-01-18T09:00:00+01:00'),
+      );
+      await client.revokeAPIKey(7, 12);
+
+      expect(listed.id, 12);
+      expect(listed.kind, 'api_key');
+      expect(listed.publicId, 'ak9Lm2Qx7Pz');
+      expect(listed.createdAt.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(listed.lastUsedAt?.toUtc(), DateTime.utc(2026, 10, 21, 10, 30));
+      expect(listed.expiresAt?.toUtc(), DateTime.utc(2027, 1, 18, 8));
+      expect(listed.permissions, const [
+        APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+      ]);
+      expect(created.token, token);
+      expect(created.key.publicId, 'ak9Lm2Qx7Pz');
+      expect('$created', isNot(contains(token)));
+      expect(
+        [for (final r in sent) '${r.method} ${r.url.path}'],
+        [
+          'GET /api/v1/accounts/7/api-keys',
+          'POST /api/v1/accounts/7/api-keys',
+          'DELETE /api/v1/accounts/7/api-keys/12',
+        ],
+      );
+      expect(sent.last.body, isEmpty);
+      expect(jsonDecode(sent[1].body), {
+        'name': 'n8n',
+        'password': 'current password',
+        'permissions': [permission],
+        'expires_at': '2027-01-18T08:00:00.000Z',
+      });
+    });
+
+    test('metadata without a use or an expiry, and no token', () {
+      final listed = APIKey.fromJson({
+        ...key,
+        'last_used_at': null,
+        'expires_at': null,
+      });
+
+      expect(listed.lastUsedAt, isNull);
+      expect(listed.expiresAt, isNull);
+      expect(listed.isExpiredAt(DateTime.utc(3000)), isFalse);
+      expect(
+        () => CreatedAPIKey.fromJson(key),
+        throwsA(isA<FormatException>()),
+      );
+      expect(APIKeyPermission.fromJson(permission).toJson(), permission);
+    });
+
+    test('create leaves out an expiry it was not given', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {...key, 'token': token},
+          }, status: 201);
+        }),
+      );
+
+      await client.createAPIKey(
+        7,
+        name: 'n8n',
+        password: 'pw',
+        permissions: const [
+          APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+          APIKeyPermission(capability: 'mail.send', scope: 'account:7'),
+        ],
+      );
+
+      expect(jsonDecode(sent.body), {
+        'name': 'n8n',
+        'password': 'pw',
+        'permissions': [
+          permission,
+          {'capability': 'mail.send', 'scope': 'account:7'},
+        ],
+      });
+    });
+
+    for (final code in [
+      'reauth_required',
+      'invalid_password',
+      'two_factor_required',
+      'forbidden',
+    ]) {
+      test('403 $code is the request\'s own refusal: no refresh, and the '
+          'session stays', () async {
+        final seen = <String>[];
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            seen.add('${request.method} ${request.url.path}');
+            if (_isRefresh(request)) return _signedIn('2');
+            return _json({
+              'error': {'code': code, 'message': 'Refused'},
+            }, status: 403);
+          }),
+        );
+
+        await expectLater(
+          client.createAPIKey(
+            7,
+            name: 'n8n',
+            password: 'wrong',
+            permissions: const [
+              APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+            ],
+          ),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 403)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+        await expectLater(
+          client.revokeAPIKey(7, 12),
+          throwsA(isA<ApiException>()),
+        );
+
+        expect(seen, [
+          'POST /api/v1/accounts/7/api-keys',
+          'DELETE /api/v1/accounts/7/api-keys/12',
+        ]);
+        expect(changes, isEmpty);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
+  });
+
   group('push devices', () {
     test('lists, registers and removes this session\'s devices', () async {
       final sent = <http.Request>[];
