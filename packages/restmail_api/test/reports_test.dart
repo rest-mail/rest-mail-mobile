@@ -184,7 +184,7 @@ void main() {
                 'filter_name': 'custom',
                 'filter_type': 'action',
                 'action': 'defer',
-                'duration_ms': 18500000,
+                'duration_ms': 18,
                 'log': {
                   'result': {'nested': true},
                   'detail': [1, 2],
@@ -212,8 +212,7 @@ void main() {
       expect(trace.expiresAt!.toUtc(), DateTime.utc(2026, 10, 24));
       expect(trace.durationMs, 18);
       final step = trace.stages.single;
-      expect(step.durationNanos, 18500000);
-      expect(step.durationMilliseconds, 18.5);
+      expect(step.durationMs, 18);
       expect(step.filterType, 'action');
       expect(step.log['extra'], {'count': 1.25});
       expect(step.result, '{"nested":true}');

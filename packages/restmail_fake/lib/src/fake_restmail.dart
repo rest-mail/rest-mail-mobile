@@ -2053,8 +2053,7 @@ class FakeRestmail {
             'filter_type': 'action',
             'action': action,
             'log': {'filter': filter, 'result': result},
-            // Go writes a time.Duration as nanoseconds, whatever the name.
-            'duration_ms': 18000000,
+            'duration_ms': 18,
           },
       ],
       'sampled': true,
@@ -3160,7 +3159,9 @@ class FakeRestmail {
         return _json({'data': _pipelineJson(pipeline)});
       case ('DELETE', ['pipelines', final id]):
         need('pipelines:delete');
-        _pipelines.remove(int.tryParse(id));
+        if (_pipelines.remove(int.tryParse(id)) == null) {
+          _fail(404, 'not_found', 'Pipeline not found');
+        }
         return _json({
           'data': {'status': 'deleted'},
         });
@@ -3221,7 +3222,9 @@ class FakeRestmail {
         return _json({'data': _customFilterJson(filter)});
       case ('DELETE', ['custom-filters', final id]):
         need('pipelines:delete');
-        _customFilters.remove(int.tryParse(id));
+        if (_customFilters.remove(int.tryParse(id)) == null) {
+          _fail(404, 'not_found', 'Custom filter not found');
+        }
         return _json({
           'data': {'status': 'deleted'},
         });
@@ -4249,10 +4252,21 @@ class FakeRestmail {
       );
     }
     if (!name.contains('.')) {
-      _fail(400, 'invalid_domain', 'Invalid domain name: $name');
+      // A name that is not a domain name is refused on the field, as the
+      // server's other validation failures are.
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'name': 'Invalid domain name: $name'},
+      );
     }
-    if (body['server_type'] != 'restmail' &&
-        body['server_type'] != 'traditional') {
+    // Left out, empty or null, the server type is traditional.
+    final serverType = switch (body['server_type']) {
+      null || '' => 'traditional',
+      final Object type => type,
+    };
+    if (serverType != 'restmail' && serverType != 'traditional') {
       _fail(
         422,
         'validation_failed',
@@ -4269,7 +4283,7 @@ class FakeRestmail {
     final domain = _domainNamed(name)
       ..active = false
       ..dkimSelector = ''
-      ..serverType = body['server_type'] as String
+      ..serverType = serverType as String
       ..sendingPolicy = policy;
     if (body['default_quota_bytes'] case final num quota) {
       domain.defaultQuotaBytes = quota.toInt();

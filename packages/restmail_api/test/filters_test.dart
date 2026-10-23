@@ -282,14 +282,14 @@ void main() {
       expect(result.finalEmail, _email);
       expect(result.finalAction, 'reject');
       expect(result.rejectMessage, 'blocked');
-      expect(result.duration, 100);
+      expect(result.durationMs, 100);
       final step = result.steps.single;
       expect(step.filterName, 'sieve');
       expect(step.filterType, 'transform');
       expect(step.skipped, isTrue);
       expect(step.skipReason, 'earlier');
       expect(step.error, 'example');
-      expect(step.duration, 50);
+      expect(step.durationMs, 50);
       expect(result.authResults.single['result'], 'pass');
     },
   );

@@ -513,7 +513,7 @@ class TraceStage {
     this.detail = '',
     this.error = '',
     this.filterType = '',
-    this.durationNanos = 0,
+    this.durationMs = 0,
     this.log = const {},
   });
 
@@ -528,7 +528,7 @@ class TraceStage {
       detail: _logText(log['detail']),
       log: Map.unmodifiable(log),
       filterType: json['filter_type'] as String? ?? '',
-      durationNanos: _int(json['duration_ms'] ?? 0),
+      durationMs: _int(json['duration_ms'] ?? 0),
       error: json['error'] as String? ?? '',
     );
   }
@@ -546,9 +546,8 @@ class TraceStage {
   final String error;
   final String filterType;
 
-  /// StepResult uses Go time.Duration: nanoseconds despite its JSON key.
-  final int durationNanos;
-  double get durationMilliseconds => durationNanos / 1000000;
+  /// How long the step took, in whole milliseconds.
+  final int durationMs;
   final Map<String, dynamic> log;
 }
 

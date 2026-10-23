@@ -53,6 +53,15 @@ void main() {
       (await client.pipelines()).items.any((p) => p.id == created.id),
       isFalse,
     );
+    // As on the server, deleting it again finds nothing to delete.
+    await expectLater(
+      client.deletePipeline(created.id),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.statusCode, 'status', 404)
+            .having((e) => e.code, 'code', 'not_found'),
+      ),
+    );
   });
   test(
     'custom definition create, direct GET, full edit, filter and delete',
@@ -96,6 +105,14 @@ void main() {
       await expectLater(
         client.customFilter(created.id),
         throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
+      );
+      await expectLater(
+        client.deleteCustomFilter(created.id),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 404)
+              .having((e) => e.code, 'code', 'not_found'),
+        ),
       );
     },
   );
