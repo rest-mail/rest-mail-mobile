@@ -54,8 +54,16 @@ Future<Map<int, String>> domainNames(RestAccount account) async {
     return const {};
   }
   try {
-    final domains = await account.client.domains(limit: 200);
-    return {for (final d in domains.items) d.id: d.name};
+    final names = <int, String>{};
+    var offset = 0;
+    while (true) {
+      final page = await account.client.domains(offset: offset, limit: 200);
+      for (final domain in page.items) {
+        names[domain.id] = domain.name;
+      }
+      if (!page.hasMore || page.items.isEmpty) return names;
+      offset = page.next;
+    }
   } on ApiException {
     return const {};
   }

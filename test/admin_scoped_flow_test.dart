@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/settings_screen.dart';
+import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 void main() {
@@ -115,6 +118,35 @@ void main() {
       await close(tester, fake, state);
     },
   );
+
+  testWidgets('mailbox creation starts on a writable grant domain', (
+    tester,
+  ) async {
+    final (fake, state, _, _) = await open(tester, mailboxOnly: false);
+    final account = state.current! as RestAccount;
+    account.capabilities = Capabilities.fromJson(
+      [],
+      scoped: [
+        {'capability': 'mailboxes:write', 'scope': 'domain:managed.test'},
+      ],
+    );
+    unawaited(
+      tester
+          .state<NavigatorState>(find.byType(Navigator).first)
+          .push<void>(
+            MaterialPageRoute(
+              builder: (_) => CreateMailboxScreen(
+                account: account,
+                mailbox: state.mailbox!,
+              ),
+            ),
+          ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('@managed.test'), findsOneWidget);
+    expect(find.text('@${FakeAccounts.host}'), findsNothing);
+    await close(tester, fake, state);
+  });
 
   testWidgets(
     'an app restart retains the scoped snapshot without globalizing it',

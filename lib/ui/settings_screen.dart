@@ -147,7 +147,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     final creates =
         current is RestAccount &&
         identical(current.backend, m.backend) &&
-        current.capabilities.allows(Capability.mailboxesWrite);
+        AdminAccess(current.capabilities).canWrite(AdminSection.mailboxes);
     return ListenableBuilder(
       listenable: m,
       builder: (context, _) => Scaffold(
@@ -1019,10 +1019,10 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
   final _localPart = TextEditingController();
   final _displayName = TextEditingController();
 
-  /// The account's own domain first, then any other the session may read
-  /// (`domains:read`); the server says which it may create on.
-  late List<String> _domains = [_ownDomain];
-  late String _domain = _ownDomain;
+  /// Known writable domains include explicit scoped grants even when the
+  /// account cannot list domain configuration.
+  late List<String> _domains = _initialDomains();
+  late String _domain = _domains.first;
   bool _busy = false;
   String? _error;
 
@@ -1033,15 +1033,36 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
 
   String get _address => '${_localPart.text.trim().toLowerCase()}@$_domain';
 
+  List<String> _initialDomains() {
+    final caps = widget.account.capabilities;
+    final names = <String>{
+      if (caps.allows(
+        Capability.mailboxesWrite,
+        scope: CapabilityScope.domain(_ownDomain),
+      ))
+        _ownDomain,
+      for (final entry in caps.scoped)
+        if (entry.scope.startsWith('domain:') &&
+            caps.allows(Capability.mailboxesWrite, scope: entry.scope))
+          entry.scope.substring(7),
+    }.toList();
+    return names.isEmpty ? [_ownDomain] : names;
+  }
+
   bool get _ready =>
       !_busy &&
+      widget.account.capabilities.allows(
+        Capability.mailboxesWrite,
+        scope: CapabilityScope.domain(_domain),
+      ) &&
       _localPart.text.trim().isNotEmpty &&
       !_localPart.text.contains('@');
 
   @override
   void initState() {
     super.initState();
-    if (widget.account.capabilities.allows(Capability.domainsRead)) {
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.domains)) {
       unawaited(_loadDomains());
     }
   }
@@ -1055,15 +1076,26 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
 
   Future<void> _loadDomains() async {
     try {
-      final page = await widget.account.client.domains();
+      final names = <String>{..._initialDomains()};
+      var offset = 0;
+      while (true) {
+        final page = await widget.account.client.domains(
+          offset: offset,
+          limit: 200,
+        );
+        for (final domain in page.items) {
+          if (widget.account.capabilities.allows(
+            Capability.mailboxesWrite,
+            scope: CapabilityScope.domain(domain.name),
+          )) {
+            names.add(domain.name.toLowerCase());
+          }
+        }
+        if (!page.hasMore || page.items.isEmpty) break;
+        offset = page.next;
+      }
       if (!mounted) return;
-      setState(
-        () => _domains = [
-          _ownDomain,
-          for (final d in page.items)
-            if (d.name.toLowerCase() != _ownDomain) d.name.toLowerCase(),
-        ],
-      );
+      setState(() => _domains = names.toList());
     } on ApiException {
       // The account's own domain is still there to choose.
     }
