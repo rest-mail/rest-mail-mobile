@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
+import 'report_filters.dart';
 
 String _policyLabel(String type) => switch (type) {
   'sts' => 'MTA-STS',
@@ -38,8 +39,15 @@ class TlsReportsScreen extends StatefulWidget {
 }
 
 class _TlsReportsScreenState extends State<TlsReportsScreen> {
+  Map<String, String> _filters = {};
   late final _list = AdminList<TlsReport>(
-    (offset) => widget.account.client.tlsReports(offset: offset),
+    (offset) => widget.account.client.tlsReports(
+      offset: offset,
+      domainId: reportInt(_filters, 'domain_id'),
+      policyType: _filters['policy_type'],
+      reportingOrg: _filters['reporting_org'],
+      limit: reportInt(_filters, 'limit') ?? 50,
+    ),
   );
 
   @override
@@ -65,7 +73,33 @@ class _TlsReportsScreenState extends State<TlsReportsScreen> {
     body: (_) => AdminListView(
       list: _list,
       host: widget.account.server.host,
-      empty: 'No server has sent a report yet.',
+      empty: 'No reports match.',
+      header: [
+        ReportFiltersBar(
+          host: widget.account.server.host,
+          values: _filters,
+          intro: 'Leave fields empty to include every report. Domain number is the number shown on the domain’s detail screen.',
+          fields: const [
+            ReportField('domain_id', 'Domain number', number: true),
+            ReportField(
+              'policy_type',
+              'Policy',
+              choices: [
+                ('', 'All'),
+                ('sts', 'MTA-STS'),
+                ('tlsa', 'DANE'),
+                ('no-policy', 'No policy'),
+              ],
+            ),
+            ReportField('reporting_org', 'Reporting organisation contains'),
+            reportPageSize,
+          ],
+          onChanged: (values) {
+            setState(() => _filters = values);
+            unawaited(_list.reload());
+          },
+        ),
+      ],
       row: (report) => RmRow(
         label: report.reportingOrg,
         subtitle: [
@@ -116,7 +150,7 @@ class TlsReportScreen extends StatelessWidget {
               RmRow(label: 'Received', value: longDate(report.receivedAt)),
             ],
           ),
-          if (details is List && details.isNotEmpty) ...[
+          if (details != null) ...[
             const SizedBox(height: 22),
             const SectionLabel('What failed'),
             const SizedBox(height: 9),
@@ -125,6 +159,28 @@ class TlsReportScreen extends StatelessWidget {
               style: rmText(13, color: c.ink2, height: 1.45),
             ),
           ],
+          if (report.rawReport.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            const SectionLabel('Original report'),
+            const SizedBox(height: 9),
+            SelectableText(
+              report.rawReport,
+              style: rmText(13, color: c.ink2, height: 1.45),
+            ),
+          ],
+          const SizedBox(height: 22),
+          RmGroup(
+            children: [
+              RmRow(label: 'Report', value: '${report.id}'),
+              RmRow(label: 'Domain number', value: '${report.domainId}'),
+              if (report.domain case final domain?)
+                RmRow(label: 'Domain name', value: domain.name),
+              if (report.createdAt case final at?)
+                RmRow(label: 'Added', value: longDate(at)),
+              RmRow(label: 'Starts', value: longDate(report.startDate)),
+              RmRow(label: 'Ends', value: longDate(report.endDate)),
+            ],
+          ),
         ],
       ),
     );

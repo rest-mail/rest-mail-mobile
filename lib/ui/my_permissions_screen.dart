@@ -324,16 +324,24 @@ class _StepSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final names = step.capabilities.toJson();
+    final scoped = <String, List<String>>{};
+    for (final entry in step.capabilities.scopedToJson()) {
+      (scoped[entry['scope']!] ??= []).add(entry['capability']!);
+    }
     return RmGroup(
       children: [
         RmRow(
           label: title,
           subtitle: names.isEmpty
-              ? 'This session now holds no admin capabilities.'
+              ? scoped.isEmpty
+                    ? 'This session now holds no capabilities.'
+                    : 'This session now holds capabilities at the scopes below.'
               : names.contains(Capabilities.all)
               ? 'This session now holds every capability.'
               : 'This session now holds: ${names.join(', ')}',
         ),
+        for (final entry in scoped.entries)
+          RmRow(label: scopeLabel(entry.key), subtitle: entry.value.join(', ')),
       ],
     );
   }

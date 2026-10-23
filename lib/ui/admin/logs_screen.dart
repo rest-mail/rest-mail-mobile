@@ -10,6 +10,7 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'queue_screen.dart';
+import 'report_filters.dart';
 import 'trace_screen.dart';
 
 /// Everything that went out to other servers, newest first, delivered or
@@ -25,10 +26,20 @@ class DeliveryLogScreen extends StatefulWidget {
 }
 
 class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
-  QueueStatus? _status;
+  Map<String, String> _filters = {};
+  QueueStatus? get _status =>
+      _filters['status'] == null ? null : QueueStatus.parse(_filters['status']);
   late final _list = AdminList<QueueEntry>(
-    (offset) =>
-        widget.account.client.deliveryLog(status: _status, offset: offset),
+    (offset) => widget.account.client.deliveryLog(
+      status: _status,
+      offset: offset,
+      domain: _filters['domain'],
+      sender: _filters['sender'],
+      recipient: _filters['recipient'],
+      since: reportDate(_filters, 'since'),
+      until: reportDate(_filters, 'until'),
+      limit: reportInt(_filters, 'limit') ?? 50,
+    ),
   );
 
   @override
@@ -58,6 +69,31 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
           ? 'Nothing has gone out yet.'
           : 'Nothing ${queueStatusLabel(_status!).toLowerCase()}.',
       header: [
+        ReportFiltersBar(
+          host: widget.account.server.host,
+          values: _filters,
+          fields: [
+            ReportField(
+              'status',
+              'Status',
+              choices: [
+                ('', 'All'),
+                for (final s in QueueStatus.values)
+                  if (s != QueueStatus.unknown) (s.name, queueStatusLabel(s)),
+              ],
+            ),
+            const ReportField('domain', 'Destination domain'),
+            const ReportField('sender', 'Sender contains'),
+            const ReportField('recipient', 'Recipient contains'),
+            reportSince,
+            reportUntil,
+            reportPageSize,
+          ],
+          onChanged: (values) {
+            setState(() => _filters = values);
+            unawaited(_list.reload());
+          },
+        ),
         Align(
           alignment: Alignment.centerLeft,
           child: SingleChildScrollView(
@@ -68,10 +104,14 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
                 (QueueStatus.delivered, 'Delivered'),
                 (QueueStatus.deferred, 'Deferred'),
                 (QueueStatus.bounced, 'Bounced'),
+                (QueueStatus.pending, 'Pending'),
+                (QueueStatus.delivering, 'Delivering'),
+                (QueueStatus.expired, 'Expired'),
               ],
               value: _status,
               onChanged: (status) {
-                setState(() => _status = status);
+                setState(() => _filters = {..._filters}..remove('status'));
+                if (status != null) _filters['status'] = status.name;
                 unawaited(_list.reload());
               },
             ),
@@ -119,7 +159,10 @@ class DeliveryScreen extends StatelessWidget {
               RmRow(label: 'To', value: entry.recipient),
               RmRow(label: 'From', value: entry.sender),
               RmRow(label: 'Status', value: queueStatusLabel(entry.status)),
-              RmRow(label: 'Attempts', value: '${entry.attempts}'),
+              RmRow(
+                label: 'Attempts',
+                value: '${entry.attempts} of ${entry.maxRetries}',
+              ),
               RmRow(label: 'Sent', value: longDate(entry.createdAt)),
               if (last != null) RmRow(label: 'Last try', value: longDate(last)),
             ],
@@ -148,6 +191,25 @@ class DeliveryScreen extends StatelessWidget {
               ],
             ),
           ],
+          const SizedBox(height: 22),
+          RmGroup(
+            children: [
+              RmRow(label: 'Entry', value: '${entry.id}'),
+              if (entry.messageId case final id?)
+                RmRow(label: 'Message', value: '$id'),
+              RmRow(label: 'Destination domain', value: entry.domain),
+              if (entry.bodyType.isNotEmpty)
+                RmRow(label: 'Body type', value: entry.bodyType),
+              if (entry.lastErrorCode != 0)
+                RmRow(label: 'Reply code', value: '${entry.lastErrorCode}'),
+              if (entry.failureCategory.isNotEmpty)
+                RmRow(label: 'Failure category', value: entry.failureCategory),
+              if (entry.nextAttempt case final at?)
+                RmRow(label: 'Next try', value: longDate(at)),
+              if (entry.expiresAt case final at?)
+                RmRow(label: 'Expires', value: longDate(at)),
+            ],
+          ),
         ],
       ),
     );

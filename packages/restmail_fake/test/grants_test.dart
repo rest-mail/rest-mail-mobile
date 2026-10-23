@@ -27,9 +27,37 @@ void main() {
     final admin = await _signIn(fake, FakeAccounts.adminEmail);
 
     final roles = await admin.roles();
-    expect(roles.map((r) => r.name), ['superadmin', 'admin']);
+    expect(roles.map((r) => r.name), [
+      'superadmin',
+      'admin',
+      'readonly',
+      'owner',
+    ]);
+    expect(
+      roles.firstWhere((r) => r.name == 'admin').capabilities,
+      contains('users:read'),
+    );
+    expect(roles.firstWhere((r) => r.name == 'readonly').capabilities.toSet(), {
+      'domains:read',
+      'mailboxes:read',
+      'pipelines:read',
+      'users:read',
+      'messages:read',
+      'queue:read',
+      'bans:read',
+      'observability:read',
+    });
+    expect(roles.firstWhere((r) => r.name == 'owner').capabilities.toSet(), {
+      'mail:read',
+      'mail:write',
+      'mail:send',
+      'mailbox:manage',
+    });
     final definitions = await admin.capabilityDefinitions();
-    expect(definitions.map((d) => d.name), contains('users:write'));
+    expect(
+      definitions.map((d) => d.name),
+      containsAll(['*', 'users:write', 'messages:send_bulk', 'mailbox:manage']),
+    );
 
     final dana = (await admin.mailboxes(
       limit: 200,
@@ -101,7 +129,7 @@ void main() {
       ..addAccount('eve@${FakeAccounts.host}')
       ..addGrant('eve@${FakeAccounts.host}', 'admin', mode: 'eligible');
     final eve = await _signIn(fake, 'eve@${FakeAccounts.host}');
-    expect(eve.tokens!.capabilities.isEmpty, isTrue);
+    expect(eve.tokens!.capabilities.names.isEmpty, isTrue);
 
     final mine = await eve.myGrants();
     expect(mine.single.mode, GrantMode.eligible);
@@ -146,8 +174,8 @@ void main() {
 
     final off = await eve.deactivateGrant(mine.single.id);
     expect(off.grant.activation, isNull);
-    expect(off.capabilities.isEmpty, isTrue);
-    expect(eve.tokens!.capabilities.isEmpty, isTrue);
+    expect(off.capabilities.names.isEmpty, isTrue);
+    expect(eve.tokens!.capabilities.names.isEmpty, isTrue);
     await expectLater(
       eve.deactivateGrant(mine.single.id),
       throwsA(_refused(409, GrantErrorCode.notActive)),
@@ -174,7 +202,7 @@ void main() {
       recoveryCode: FakeAccounts.recoveryCode,
     );
     expect(step.grant.mode, GrantMode.eligible);
-    expect(step.capabilities.isEmpty, isTrue);
+    expect(step.capabilities.names.isEmpty, isTrue);
     await expectLater(
       eve.makeGrantEligible(evesGrant, recoveryCode: FakeAccounts.recoveryCode),
       throwsA(_refused(403, GrantErrorCode.invalidTotp)),

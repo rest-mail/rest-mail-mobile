@@ -20,7 +20,10 @@ class SessionTokens {
     accessToken: json['access_token'] as String,
     refreshToken: json['refresh_token'] as String,
     accessExpiresAt: DateTime.parse(json['access_expires_at'] as String),
-    capabilities: Capabilities.fromJson(json['capabilities']),
+    capabilities: Capabilities.fromJson(
+      json['capabilities'],
+      scoped: json['scoped_capabilities'],
+    ),
   );
 
   final String accessToken;
@@ -40,7 +43,9 @@ class SessionTokens {
     'access_token': accessToken,
     'refresh_token': refreshToken,
     'access_expires_at': accessExpiresAt.toUtc().toIso8601String(),
-    if (!capabilities.isEmpty) 'capabilities': capabilities.toJson(),
+    if (capabilities.names.isNotEmpty) 'capabilities': capabilities.toJson(),
+    if (capabilities.scoped.isNotEmpty)
+      'scoped_capabilities': capabilities.scopedToJson(),
   };
 }
 

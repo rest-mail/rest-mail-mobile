@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
+import 'filter_models.dart';
 import 'grants_models.dart';
 import 'models.dart';
 import 'push.dart';
@@ -293,6 +294,9 @@ class RestmailClient {
   /// [status]. Needs `queue:read`.
   Future<OffsetPage<QueueEntry>> queue({
     QueueStatus? status,
+    String? domain,
+    String? sender,
+    String? recipient,
     int offset = 0,
     int limit = 50,
   }) async {
@@ -302,6 +306,9 @@ class RestmailClient {
         ['admin', 'queue'],
         query: {
           'status': ?status?.name,
+          'domain': ?domain,
+          'sender': ?sender,
+          'recipient': ?recipient,
           'limit': '$limit',
           'offset': '$offset',
         },
@@ -329,18 +336,61 @@ class RestmailClient {
   );
 
   /// Tries a waiting entry again now. Needs `queue:manage`.
-  Future<void> retryQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'retry']);
-  }
+  Future<QueueActionResult> retryQueueEntry(int id) =>
+      _queueAction(id, 'retry', 'retrying');
 
   /// Gives up on an entry and bounces it to its sender. Needs `queue:manage`.
-  Future<void> bounceQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'bounce']);
+  Future<QueueActionResult> bounceQueueEntry(int id) =>
+      _queueAction(id, 'bounce', 'bounced');
+
+  Future<QueueActionResult> _queueAction(
+    int id,
+    String action,
+    String expectedStatus,
+  ) async {
+    final response = await _authed('POST', ['admin', 'queue', '$id', action]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      final result = QueueActionResult.fromJson(_data(response));
+      if (result.status != expectedStatus) throw _unreadable(response);
+      return result;
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Drops an entry without telling its sender. Needs `queue:manage`.
   Future<void> deleteQueueEntry(int id) async {
     await _authed('DELETE', ['admin', 'queue', '$id']);
+  }
+
+  /// Retry pending/deferred entries in the selection. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkRetryQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-retry', selection);
+
+  /// Bounce entries still in flight. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkBounceQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-bounce', selection);
+
+  /// Delete matching entries without notification. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkDeleteQueue(QueueSelection selection) =>
+      _bulkQueue('DELETE', 'bulk-delete', selection);
+
+  Future<BulkQueueResult> _bulkQueue(
+    String method,
+    String operation,
+    QueueSelection selection,
+  ) async {
+    final response = await _authed(method, [
+      'admin',
+      'queue',
+      operation,
+    ], body: selection.toJson());
+    try {
+      return BulkQueueResult.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
   }
 
   /// Needs `domains:read`.
@@ -514,42 +564,81 @@ class RestmailClient {
   Future<ServerStats> stats() async =>
       ServerStats.fromJson(_data(await _authed('GET', ['admin', 'stats'])));
 
-  /// The bans in force. Needs `bans:read`.
-  Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);
+  /// Global `bans:read`. By default only unexpired bans are returned.
+  /// [active] false includes both current and expired bans. [protocol]
+  /// includes bans on that protocol plus bans on all protocols.
+  Future<OffsetPage<Ban>> bans({
+    String? protocol,
+    bool? active,
+    String? ip,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'bans'],
+    Ban.fromJson,
+    offset,
+    limit,
+    {'protocol': ?protocol, 'active': ?active?.toString(), 'ip': ?ip},
+  );
 
-  /// Keeps [ip] out of [protocol] (`all` of them unless named) for
-  /// [duration], or for good. Needs `bans:write`.
-  Future<void> createBan({
+  /// Creates or replaces a ban by IP. The server requires [createdBy]; the
+  /// mobile form supplies the signed-in address. Needs global `bans:write`.
+  /// Omit both durations for a permanent ban. [durationText] accepts the
+  /// server's complete Go duration syntax; it cannot be combined with [duration].
+  Future<Ban> createBan({
     required String ip,
     required String createdBy,
     String reason = '',
     String protocol = 'all',
     Duration? duration,
+    String? durationText,
   }) async {
-    await _authed(
-      'POST',
-      ['admin', 'bans'],
-      body: {
-        'ip': ip,
-        'reason': reason,
-        'protocol': protocol,
-        'created_by': createdBy,
-        if (duration != null) 'duration': '${duration.inMinutes}m',
-      },
+    if (duration != null && durationText != null) {
+      throw ArgumentError('Supply duration or durationText, not both.');
+    }
+    final wireDuration =
+        durationText ??
+        (duration == null
+            ? null
+            : duration.inMicroseconds % Duration.microsecondsPerMinute == 0
+            ? '${duration.inMinutes}m'
+            : '${duration.inMicroseconds}us');
+    return Ban.fromJson(
+      _data(
+        await _authed(
+          'POST',
+          ['admin', 'bans'],
+          body: {
+            'ip': ip,
+            'reason': reason,
+            'protocol': protocol,
+            'created_by': createdBy,
+            'duration': ?wireDuration,
+          },
+        ),
+      ),
     );
   }
 
-  /// Lifts a ban. Needs `bans:delete`.
+  /// Lifts a ban. Needs global `bans:delete`.
   Future<void> deleteBan(int id) async {
     await _authed('DELETE', ['admin', 'bans', '$id']);
+  }
+
+  /// Removes a ban by its exact IPv4 or IPv6 address; answers 404 if absent.
+  Future<void> unbanIP(String ip) async {
+    await _authed('DELETE', ['admin', 'bans', 'ip', ip]);
   }
 
   /// Mail sent to other servers, newest first, with how each went: the
   /// outbound queue's history. Needs `messages:read`.
   Future<OffsetPage<QueueEntry>> deliveryLog({
     QueueStatus? status,
+    String? domain,
+    String? sender,
     String? recipient,
+    DateTime? since,
+    DateTime? until,
     int offset = 0,
     int limit = 50,
   }) => _offsetPage(
@@ -557,7 +646,14 @@ class RestmailClient {
     QueueEntry.fromJson,
     offset,
     limit,
-    {'status': ?status?.name, 'recipient': ?recipient},
+    {
+      'status': ?status?.name,
+      'domain': ?domain,
+      'sender': ?sender,
+      'recipient': ?recipient,
+      'since': ?since?.toUtc().toIso8601String(),
+      'until': ?until?.toUtc().toIso8601String(),
+    },
   );
 
   /// How the message stored as [messageId] went through the filters. Throws
@@ -571,8 +667,23 @@ class RestmailClient {
       );
 
   /// The TLS reports other servers sent, newest first. Needs `domains:read`.
-  Future<OffsetPage<TlsReport>> tlsReports({int offset = 0, int limit = 50}) =>
-      _offsetPage(['admin', 'tls-reports'], TlsReport.fromJson, offset, limit);
+  Future<OffsetPage<TlsReport>> tlsReports({
+    int? domainId,
+    String? policyType,
+    String? reportingOrg,
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['admin', 'tls-reports'],
+    TlsReport.fromJson,
+    offset,
+    limit,
+    {
+      'domain_id': ?domainId?.toString(),
+      'policy_type': ?policyType,
+      'reporting_org': ?reportingOrg,
+    },
+  );
 
   /// The audit log, newest first, a page at a time: hand the page's cursor
   /// back as [before] for the next. Only entries with [outcome] or by an
@@ -582,6 +693,11 @@ class RestmailClient {
     String? before,
     String? outcome,
     String? actorKind,
+    int? actorId,
+    String? actor,
+    String? action,
+    DateTime? since,
+    DateTime? until,
     int limit = 50,
   }) async => _cursorPage(
     await _authed(
@@ -591,6 +707,11 @@ class RestmailClient {
         'before_seq': ?before,
         'outcome': ?outcome,
         'actor_kind': ?actorKind,
+        'actor_id': ?actorId?.toString(),
+        'actor': ?actor,
+        'action': ?action,
+        'since': ?since?.toUtc().toIso8601String(),
+        'until': ?until?.toUtc().toIso8601String(),
         'limit': '$limit',
       },
     ),
@@ -599,8 +720,14 @@ class RestmailClient {
 
   /// Has the server walk the whole audit log and check its chain. Needs
   /// `audit:read`.
-  Future<AuditCheck> verifyAudit() async => AuditCheck.fromJson(
-    _data(await _authed('GET', ['admin', 'audit', 'verify'])),
+  Future<AuditCheck> verifyAudit({String? anchor}) async => AuditCheck.fromJson(
+    _data(
+      await _authed(
+        'GET',
+        ['admin', 'audit', 'verify'],
+        query: {'anchor': ?anchor},
+      ),
+    ),
   );
 
   /// The domains that sign their mail. Needs `domains:read`.
@@ -695,29 +822,95 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'certificates', '$id']);
   }
 
-  /// Needs `pipelines:read`.
-  Future<OffsetPage<Pipeline>> pipelines({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'pipelines'], Pipeline.fromJson, offset, limit);
+  /// Needs global `pipelines:read`. The server filters before pagination.
+  Future<OffsetPage<Pipeline>> pipelines({
+    int? domainId,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'pipelines'],
+    Pipeline.fromJson,
+    offset,
+    limit,
+    {'domain_id': ?domainId?.toString()},
+  );
 
-  /// Turns a pipeline on or off. Needs `pipelines:write`.
-  Future<Pipeline> updatePipeline(int id, {bool? active}) async =>
-      Pipeline.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'pipelines', '$id'],
-            body: {'active': ?active},
-          ),
-        ),
-      );
+  /// Needs global `pipelines:write`. Omitted active defaults to true.
+  Future<Pipeline> createPipeline({
+    required int domainId,
+    required String direction,
+    required List<PipelineFilter> filters,
+    bool? active,
+  }) async => Pipeline.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines'],
+        body: {
+          'domain_id': domainId,
+          'direction': direction,
+          'filters': [for (final filter in filters) filter.toJson()],
+          'active': ?active,
+        },
+      ),
+    ),
+  );
+
+  /// Only supplied fields change. An empty filter list clears all steps.
+  Future<Pipeline> updatePipeline(
+    int id, {
+    bool? active,
+    List<PipelineFilter>? filters,
+  }) async => Pipeline.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'pipelines', '$id'],
+        body: {
+          'active': ?active,
+          if (filters != null)
+            'filters': [for (final filter in filters) filter.toJson()],
+        },
+      ),
+    ),
+  );
 
   /// Needs `pipelines:delete`.
-  Future<void> deletePipeline(int id) async {
-    await _authed('DELETE', ['admin', 'pipelines', '$id']);
-  }
+  Future<void> deletePipeline(int id) async =>
+      _expectDeleted(await _authed('DELETE', ['admin', 'pipelines', '$id']));
 
-  /// Needs `pipelines:read`.
+  /// Executes the saved pipeline. Requires global `pipelines:write`.
+  Future<PipelineTestResult> testPipeline(
+    int id, {
+    required Map<String, dynamic> email,
+  }) async => PipelineTestResult.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines', 'test'],
+        body: {'pipeline_id': id, 'email': email},
+      ),
+    ),
+  );
+
+  /// Tests one built-in filter with its complete config and canonical email.
+  Future<FilterTestResult> testFilter({
+    required String filterName,
+    required Map<String, dynamic> config,
+    required Map<String, dynamic> email,
+  }) async => FilterTestResult.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines', 'test-filter'],
+        body: {'filter_name': filterName, 'config': config, 'email': email},
+      ),
+    ),
+  );
+
+  /// Needs global `pipelines:read`.
   Future<OffsetPage<CustomFilter>> customFilters({
+    int? domainId,
     int offset = 0,
     int limit = 100,
   }) => _offsetPage(
@@ -725,31 +918,119 @@ class RestmailClient {
     CustomFilter.fromJson,
     offset,
     limit,
+    {'domain_id': ?domainId?.toString()},
   );
 
-  /// Turns a custom filter on or off. Needs `pipelines:write`.
-  Future<CustomFilter> updateCustomFilter(int id, {bool? enabled}) async =>
-      CustomFilter.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'custom-filters', '$id'],
-            body: {'enabled': ?enabled},
-          ),
-        ),
-      );
+  Future<CustomFilter> customFilter(int id) async => CustomFilter.fromJson(
+    _data(await _authed('GET', ['admin', 'custom-filters', '$id'])),
+  );
+
+  Future<CustomFilter> createCustomFilter({
+    required int domainId,
+    required String name,
+    required String filterType,
+    required String direction,
+    required Map<String, dynamic> config,
+    String? description,
+    bool? enabled,
+  }) async => CustomFilter.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters'],
+        body: {
+          'domain_id': domainId,
+          'name': name,
+          'filter_type': filterType,
+          'direction': direction,
+          'config': config,
+          'description': ?description,
+          'enabled': ?enabled,
+        },
+      ),
+    ),
+  );
+
+  /// Omitted fields are unchanged, including config. Empty objects are sent.
+  Future<CustomFilter> updateCustomFilter(
+    int id, {
+    String? name,
+    String? description,
+    String? filterType,
+    String? direction,
+    Map<String, dynamic>? config,
+    bool? enabled,
+  }) async => CustomFilter.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'custom-filters', '$id'],
+        body: {
+          'name': ?name,
+          'description': ?description,
+          'filter_type': ?filterType,
+          'direction': ?direction,
+          'config': ?config,
+          'enabled': ?enabled,
+        },
+      ),
+    ),
+  );
+
+  /// These sidecar endpoints return bare objects, without a data envelope.
+  Future<FilterValidation> validateCustomFilter(
+    String script, {
+    Map<String, dynamic>? email,
+  }) async => FilterValidation.fromJson(
+    _envelope(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters', 'validate'],
+        body: {'script': script, 'email': ?email},
+      ),
+    ),
+  );
+
+  Future<ScriptTestResult> testCustomFilter(
+    int id, {
+    Map<String, dynamic>? email,
+  }) async => ScriptTestResult.fromJson(
+    _envelope(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters', '$id', 'test'],
+        body: {'email': ?email},
+      ),
+    ),
+  );
 
   /// Needs `pipelines:delete`.
-  Future<void> deleteCustomFilter(int id) async {
-    await _authed('DELETE', ['admin', 'custom-filters', '$id']);
+  Future<void> deleteCustomFilter(int id) async => _expectDeleted(
+    await _authed('DELETE', ['admin', 'custom-filters', '$id']),
+  );
+
+  /// A pipeline or custom filter is gone only when the server says so: 200
+  /// and `{"data": {"status": "deleted"}}`. Anything else is not taken as
+  /// done.
+  void _expectDeleted(http.Response response) {
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      if (_data(response)['status'] != 'deleted') throw _unreadable(response);
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Each message the filters handled, newest first, delivered or not: the
   /// pipeline log. Only those that went [direction] or ended in [outcome],
   /// when given. Needs `pipelines:read`.
   Future<OffsetPage<MessageTrace>> pipelineLog({
+    int? pipelineId,
     String? direction,
+    String? action,
+    String? rfcMessageId,
     String? outcome,
+    String? reasonCode,
     int offset = 0,
     int limit = 50,
   }) => _offsetPage(
@@ -757,19 +1038,38 @@ class RestmailClient {
     MessageTrace.fromJson,
     offset,
     limit,
-    {'direction': ?direction, 'outcome': ?outcome},
+    {
+      'pipeline_id': ?pipelineId?.toString(),
+      'direction': ?direction,
+      'action': ?action,
+      'rfc_message_id': ?rfcMessageId,
+      'outcome': ?outcome,
+      'reason_code': ?reasonCode,
+    },
   );
 
-  /// What the filters did over the last [window]. Needs
-  /// `observability:read`.
+  /// Windowed analytics plus optional cumulative counters. [since] takes
+  /// precedence; [windowText] accepts a Go duration, including subsecond units.
+  /// Needs `observability:read`.
   Future<PipelineAnalytics> pipelineAnalytics({
     Duration window = const Duration(days: 1),
+    String? windowText,
+    DateTime? since,
   }) async => PipelineAnalytics.fromJson(
     _data(
       await _authed(
         'GET',
         ['admin', 'pipelines', 'analytics'],
-        query: {'window': '${window.inHours}h'},
+        query: {
+          if (since != null)
+            'since': since.toUtc().toIso8601String()
+          else
+            'window':
+                windowText ??
+                (window.inMicroseconds % Duration.microsecondsPerHour == 0
+                    ? '${window.inHours}h'
+                    : '${window.inMicroseconds}us'),
+        },
       ),
     ),
   );
@@ -1800,7 +2100,10 @@ class RestmailClient {
       accessToken: access,
       refreshToken: refresh,
       accessExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
-      capabilities: Capabilities.fromJson(data['capabilities']),
+      capabilities: Capabilities.fromJson(
+        data['capabilities'],
+        scoped: data['scoped_capabilities'],
+      ),
     );
   }
 

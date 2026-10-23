@@ -159,8 +159,10 @@ class _DomainScreenState extends State<DomainScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.domains)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.domains)) {
       unawaited(_reload());
     }
   }
@@ -297,6 +299,7 @@ class _DomainScreenState extends State<DomainScreen> {
   Widget build(BuildContext context) {
     final domain = _domain;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.domains,
       title: domain.name,
@@ -352,12 +355,12 @@ class _DomainScreenState extends State<DomainScreen> {
                   RmRow(label: 'Changed', value: longDate(at)),
               ],
             ),
-            if (access.canRead(AdminSection.mailboxes) ||
-                access.canRead(AdminSection.aliases)) ...[
+            if (access.canList(AdminSection.mailboxes) ||
+                access.canList(AdminSection.aliases)) ...[
               const SizedBox(height: 22),
               RmGroup(
                 children: [
-                  if (access.canRead(AdminSection.mailboxes))
+                  if (access.canList(AdminSection.mailboxes))
                     RmRow(
                       label: 'Mailboxes',
                       onTap: () => pushScreen(
@@ -368,7 +371,7 @@ class _DomainScreenState extends State<DomainScreen> {
                         ),
                       ),
                     ),
-                  if (access.canRead(AdminSection.aliases))
+                  if (access.canList(AdminSection.aliases))
                     RmRow(
                       label: 'Aliases',
                       onTap: () => pushScreen(

@@ -347,11 +347,11 @@ class FakeCustomFilter {
 
   final int id;
   final String domain;
-  final String name;
-  final String description;
-  final String filterType;
-  final String direction;
-  final Map<String, Object?> config;
+  String name;
+  String description;
+  String filterType;
+  String direction;
+  Map<String, Object?> config;
   bool enabled = true;
 }
 

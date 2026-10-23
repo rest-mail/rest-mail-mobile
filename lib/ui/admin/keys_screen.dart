@@ -35,6 +35,13 @@ class DkimScreen extends StatefulWidget {
 class _DkimScreenState extends State<DkimScreen> {
   AdminSection get _section =>
       widget.domain == null ? AdminSection.dkim : AdminSection.domainDkim;
+  String? get _scope => widget.domain == null
+      ? null
+      : CapabilityScope.domain(widget.domain!.name);
+  AdminAccess _keyAccess(DkimKey key) => AdminAccess(
+    widget.account.capabilities,
+    scope: CapabilityScope.domain(key.domain),
+  );
   late final _list = AdminList<DkimKey>((offset) async {
     if (widget.domain case final domain?) {
       final fresh = await widget.account.client.domain(domain.id);
@@ -55,7 +62,10 @@ class _DkimScreenState extends State<DkimScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities).canRead(_section)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: _scope,
+    ).canRead(_section)) {
       unawaited(_list.reload());
     }
   }
@@ -69,7 +79,9 @@ class _DkimScreenState extends State<DkimScreen> {
   /// Tapping a key: its rotation, or with `domains:write` the choice of
   /// rotation or a replacement key.
   Future<void> _rotationOrKey(DkimKey key, AdminAccess access) async {
-    if (!access.canWrite(_section)) return _rotation(key, access);
+    if (!access.canWrite(AdminSection.domainDkim)) {
+      return _rotation(key, access);
+    }
     final choice = await showModalBottomSheet<bool>(
       context: context,
       builder: (sheet) => SafeArea(
@@ -125,7 +137,14 @@ class _DkimScreenState extends State<DkimScreen> {
             offset: offset,
             limit: 200,
           );
-          domains.addAll(page.items);
+          domains.addAll(
+            page.items.where(
+              (d) => widget.account.capabilities.allows(
+                Capability.domainsWrite,
+                scope: CapabilityScope.domain(d.name),
+              ),
+            ),
+          );
           if (!page.hasMore || page.items.isEmpty) break;
           offset = page.next;
         }
@@ -134,6 +153,10 @@ class _DkimScreenState extends State<DkimScreen> {
         return;
       }
       if (!mounted) return;
+      if (domains.isEmpty) {
+        showToast(context, noPermission);
+        return;
+      }
       target = await showModalBottomSheet<AdminDomain>(
         context: context,
         builder: (sheet) => SafeArea(
@@ -210,7 +233,7 @@ class _DkimScreenState extends State<DkimScreen> {
     final now = current.enabled
         ? 'Rotated every ${current.intervalDays} days.'
         : 'Never rotated.';
-    if (!access.canWrite(_section)) {
+    if (!access.canWrite(AdminSection.domainDkim)) {
       await showDialog<void>(
         context: context,
         builder: (dialog) => AlertDialog(
@@ -274,13 +297,19 @@ class _DkimScreenState extends State<DkimScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: _section,
+    scope: _scope,
     title: widget.domain == null ? 'DKIM keys' : 'DKIM signing',
     body: (access) => AdminListView(
       list: _list,
       host: _host,
       empty: 'No domain signs its mail.',
       header: [
-        if (access.canWrite(_section))
+        if (widget.domain == null
+            ? widget.account.capabilities.allowsSomewhere(
+                Capability.domainsWrite,
+                domainsOnly: true,
+              )
+            : access.canWrite(AdminSection.domainDkim))
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Align(
@@ -304,8 +333,9 @@ class _DkimScreenState extends State<DkimScreen> {
         subtitle: key.hasKey
             ? '${key.selector}._domainkey.${key.domain}${_age(key)}'
             : 'No signing selector is configured',
-        onTap: () => unawaited(_rotationOrKey(key, access)),
-        trailing: key.hasKey && access.canDelete(_section)
+        onTap: () => unawaited(_rotationOrKey(key, _keyAccess(key))),
+        trailing:
+            key.hasKey && _keyAccess(key).canDelete(AdminSection.domainDkim)
             ? RmIconButton(
                 icon: Icons.close_rounded,
                 tooltip: 'Remove the key for ${key.domain}',

@@ -67,7 +67,10 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities).canRead(AdminSection.mtaSts)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.mtaSts)) {
       unawaited(_load());
     }
   }
@@ -152,6 +155,7 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
     final c = context.rm;
     final policy = _policy, error = _error;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.mtaSts,
       title: 'MTA-STS',
@@ -364,6 +368,7 @@ class _MtaStsFormState extends State<_MtaStsForm> {
     final c = context.rm;
     final error = _error;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.mtaSts,
       title: widget.policy == null ? 'Set up MTA-STS' : 'MTA-STS',
