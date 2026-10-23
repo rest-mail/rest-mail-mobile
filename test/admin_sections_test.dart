@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
@@ -10,6 +11,8 @@ import 'package:restmail/ui/admin/admin_widgets.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
+
+import '../packages/restmail_fake/test/fixtures/dkim_key.dart';
 
 final _server = Uri.parse('https://${FakeAccounts.host}');
 
@@ -104,6 +107,7 @@ void main() {
     'Mailboxes',
     'Aliases',
     'Bans',
+    'Permissions',
     'Overview',
     'Delivery log',
     'Activity',
@@ -255,6 +259,187 @@ void main() {
 
     await close(tester, fake, state);
   });
+
+  Future<void> pickDkimDomain(WidgetTester tester, String name) async {
+    // The global list remains behind the sheet and may have the same name.
+    final tile = find.widgetWithText(ListTile, name);
+    await tester.scrollUntilVisible(
+      tile,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+  }
+
+  void clipboard(WidgetTester tester, String text) {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') return {'text': text};
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+  }
+
+  testWidgets(
+    'domain DKIM management never calls the global list and preserves pasted PEM',
+    (tester) async {
+      late _DkimTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) =>
+            transport = _DkimTransport(inner)..denyGlobal = true,
+      );
+      clipboard(tester, testDkimKey);
+      await tap(tester, 'Domains');
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'DKIM signing');
+      await tap(tester, 'Install or replace key');
+      await tester.enterText(find.byType(TextField).first, 'mobile2026');
+      await tap(tester, 'Paste');
+      // Hidden multiline input retains its bytes and never renders a PEM label.
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).obscureText,
+        isTrue,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Text && (w.data?.contains('MC4CAQAwBQYDK2Vw') ?? false),
+        ),
+        findsNothing,
+      );
+      await tap(tester, 'Set key');
+      expect(transport.installedKey, testDkimKey);
+      expect(transport.globalLists, 0);
+      expect(
+        fake.domains
+            .firstWhere((d) => d.name == FakeAccounts.host)
+            .dkimSelector,
+        'mobile2026',
+      );
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'Key rotation');
+      await tester.enterText(find.byType(TextField), '4000');
+      await tap(tester, 'Save');
+      expect(find.textContaining('between 0 and 3650'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '91');
+      await tap(tester, 'Save');
+      final account = state.current! as RestAccount;
+      final domain = fake.domains.firstWhere(
+        (d) => d.name == FakeAccounts.host,
+      );
+      expect((await account.client.dkimRotation(domain.id)).intervalDays, 91);
+      await tester.tap(
+        find.byTooltip('Remove the key for ${FakeAccounts.host}'),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, 'Cancel');
+      expect(domain.signs, isTrue);
+      await tester.tap(
+        find.byTooltip('Remove the key for ${FakeAccounts.host}'),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, 'Remove key');
+      expect(domain.signs, isFalse);
+      expect(find.text('No signing selector is configured'), findsOneWidget);
+      expect((await account.client.dkimRotation(domain.id)).intervalDays, 91);
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets('a previously unsigned domain can install a key', (tester) async {
+    final (fake, state) = await open(tester);
+    final account = state.current! as RestAccount;
+    final domain = await account.client.createDomain('unsigned.test');
+    clipboard(tester, testDkimKey);
+    await tap(tester, 'DKIM keys');
+    await tap(tester, 'Set a key for a domain');
+    await pickDkimDomain(tester, 'unsigned.test');
+    await tester.enterText(find.byType(TextField).first, 'newkey');
+    await tap(tester, 'Paste');
+    await tap(tester, 'Set key');
+    expect((await account.client.domain(domain.id)).dkimSelector, 'newkey');
+    expect(find.text('unsigned.test'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets('DKIM field refusals remain on the form and preserve login', (
+    tester,
+  ) async {
+    final (fake, state) = await open(tester);
+    clipboard(tester, testDkimKey);
+    await tap(tester, 'DKIM keys');
+    await tap(tester, 'Set a key for a domain');
+    await pickDkimDomain(tester, FakeAccounts.host);
+    await tester.enterText(find.byType(TextField).first, 'bad_selector');
+    await tap(tester, 'Paste');
+    await tap(tester, 'Set key');
+    expect(find.textContaining('must be DNS labels'), findsOneWidget);
+    expect((state.current! as RestAccount).client.tokens, isNotNull);
+    await tester.enterText(find.byType(TextField).first, 'valid');
+    await tap(tester, 'Set key');
+    expect(
+      fake.domains.firstWhere((d) => d.name == FakeAccounts.host).dkimSelector,
+      'valid',
+    );
+    await close(tester, fake, state);
+  });
+
+  testWidgets('read-only DKIM rotation opens without mutation controls', (
+    tester,
+  ) async {
+    final (fake, state) = await open(
+      tester,
+      name: 'keyviewer',
+      capabilities: {Capability.domainsRead},
+    );
+    await tap(tester, 'DKIM keys');
+    expect(find.text('Set a key for a domain'), findsNothing);
+    expect(
+      find.byTooltip('Remove the key for ${FakeAccounts.host}'),
+      findsNothing,
+    );
+    await tap(tester, FakeAccounts.host);
+    expect(find.textContaining('Never rotated.'), findsOneWidget);
+    expect(find.text('Save'), findsNothing);
+    await tap(tester, 'Done');
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'DKIM write permission is enforced when an altered app shows the form',
+    (tester) async {
+      final (fake, state) = await open(
+        tester,
+        name: 'keyreader',
+        capabilities: {Capability.domainsRead},
+        modified: const Capabilities({'*'}),
+      );
+      clipboard(tester, testDkimKey);
+      await tap(tester, 'DKIM keys');
+      await tap(tester, 'Set a key for a domain');
+      await pickDkimDomain(tester, FakeAccounts.host);
+      await tester.enterText(find.byType(TextField).first, 'refused');
+      await tap(tester, 'Paste');
+      await tap(tester, 'Set key');
+      expect(find.text(noPermission), findsOneWidget);
+      expect((state.current! as RestAccount).client.tokens, isNotNull);
+      expect(
+        fake.domains
+            .firstWhere((d) => d.name == FakeAccounts.host)
+            .dkimSelector,
+        isNot('refused'),
+      );
+      await close(tester, fake, state);
+    },
+  );
 
   testWidgets('a DKIM key and a certificate removed', (tester) async {
     final (fake, state) = await open(tester);
@@ -880,6 +1065,141 @@ void main() {
     dana.close();
     await close(tester, fake, state);
   });
+  for (final (resource, section, selected, fresh, delete) in [
+    ('domains', 'Domains', FakeAccounts.host, 'Bulk', 'Delete domain'),
+    (
+      'mailboxes',
+      'Mailboxes',
+      FakeAccounts.email,
+      'Fresh detail name',
+      'Delete mailbox',
+    ),
+    (
+      'aliases',
+      'Aliases',
+      'hello@${FakeAccounts.host}',
+      'MixedCase@Remote.test',
+      'Delete alias',
+    ),
+  ]) {
+    testWidgets('$resource detail fetches fresh values and refreshes', (
+      tester,
+    ) async {
+      late _DetailTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) => transport = _DetailTransport(inner, resource),
+      );
+      await tap(tester, section);
+      await tap(tester, selected);
+      expect(transport.detailRequests, 1);
+      expect(find.text(fresh), findsOneWidget);
+      final refresh = tester.widget<RefreshIndicator>(
+        find.byType(RefreshIndicator).last,
+      );
+      await refresh.onRefresh();
+      await tester.pumpAndSettle();
+      expect(transport.detailRequests, 2);
+      expect(find.text(fresh), findsOneWidget);
+      await close(tester, fake, state);
+    });
+
+    for (final status in [403, 404]) {
+      testWidgets('$resource $status hides stale actions and can be retried', (
+        tester,
+      ) async {
+        late _DetailTransport transport;
+        final (fake, state) = await open(
+          tester,
+          through: (inner) =>
+              transport = _DetailTransport(inner, resource)
+                ..failureStatus = status,
+        );
+        await tap(tester, section);
+        await tap(tester, selected);
+        expect(transport.detailRequests, 1);
+        expect(find.text(delete), findsNothing);
+        expect(find.text('Try again'), findsOneWidget);
+        if (status == 403) expect(find.text(noPermission), findsOneWidget);
+        expect((state.current! as RestAccount).client.tokens, isNotNull);
+        transport.failureStatus = null;
+        await tap(tester, 'Try again');
+        expect(transport.detailRequests, 2);
+        expect(find.text(fresh), findsOneWidget);
+        expect(find.text('Try again'), findsNothing);
+        await close(tester, fake, state);
+      });
+    }
+  }
+
+  testWidgets('a refresh refusal removes previously loaded mailbox actions', (
+    tester,
+  ) async {
+    late _DetailTransport transport;
+    final (fake, state) = await open(
+      tester,
+      through: (inner) => transport = _DetailTransport(inner, 'mailboxes'),
+    );
+    await tap(tester, 'Mailboxes');
+    await tap(tester, FakeAccounts.email);
+    expect(find.text('Fresh detail name'), findsOneWidget);
+    transport.failureStatus = 403;
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator).last)
+        .onRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Fresh detail name'), findsNothing);
+    expect(find.text('End sessions'), findsNothing);
+    expect(find.text('Delete mailbox'), findsNothing);
+    expect(find.text(noPermission), findsOneWidget);
+    expect((state.current! as RestAccount).client.tokens, isNotNull);
+    transport.failureStatus = null;
+    await tap(tester, 'Try again');
+    expect(find.text('Fresh detail name'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'alias creation opens its response and preserves destination case',
+    (tester) async {
+      final (fake, state) = await open(tester);
+      await tap(tester, 'Aliases');
+      await tap(tester, 'Add an alias');
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'new-alias@${FakeAccounts.host}',
+      );
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'MixedCase@Remote.test',
+      );
+      await tester.pump();
+      await tap(tester, 'Add alias');
+      expect(find.text('Delivers to'), findsOneWidget);
+      expect(find.text('MixedCase@Remote.test'), findsOneWidget);
+      expect(
+        fake.aliases
+            .singleWhere((a) => a.source.startsWith('new-alias@'))
+            .destination,
+        'MixedCase@Remote.test',
+      );
+      await tap(tester, 'Delivers to');
+      await tester.enterText(
+        find.byType(TextField),
+        'AnotherCase@Elsewhere.test',
+      );
+      await tester.pump();
+      await tap(tester, 'Save');
+      expect(find.text('AnotherCase@Elsewhere.test'), findsOneWidget);
+      expect(
+        fake.aliases
+            .singleWhere((a) => a.source.startsWith('new-alias@'))
+            .destination,
+        'AnotherCase@Elsewhere.test',
+      );
+      await close(tester, fake, state);
+    },
+  );
 }
 
 /// Answers creating a domain as a server with other sending policies would:
@@ -915,5 +1235,93 @@ class _Refusing extends http.BaseClient {
       );
     }
     return _inner.send(request);
+  }
+}
+
+/// Lists carry older data; each resource GET answers with the latest values.
+class _DetailTransport extends http.BaseClient {
+  _DetailTransport(this.inner, this.resource);
+  final http.Client inner;
+  final String resource;
+  int detailRequests = 0;
+  int? failureStatus;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method != 'GET' ||
+        !RegExp('/api/v1/admin/$resource/[0-9]+\$')
+            .hasMatch(request.url.path)) {
+      return inner.send(request);
+    }
+    detailRequests++;
+    final status = failureStatus;
+    if (status != null) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'error': {
+                'code': status == 403 ? 'forbidden' : 'not_found',
+                'message': 'Resource unavailable',
+              },
+            }),
+          ),
+        ),
+        status,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final response = await http.Response.fromStream(await inner.send(request));
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>;
+    switch (resource) {
+      case 'domains':
+        data['sending_policy'] = 'bulk';
+      case 'mailboxes':
+        data['display_name'] = 'Fresh detail name';
+      case 'aliases':
+        data['destination_address'] = 'MixedCase@Remote.test';
+    }
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      response.statusCode,
+      headers: response.headers,
+    );
+  }
+}
+
+// Records only a public test fixture, never production key material.
+class _DkimTransport extends http.BaseClient {
+  _DkimTransport(this.inner);
+  final http.Client inner;
+  bool denyGlobal = false;
+  int globalLists = 0;
+  String? installedKey;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (request.method == 'GET' && request.url.path == '/api/v1/admin/dkim') {
+      globalLists++;
+      if (denyGlobal) {
+        return Future.value(
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                '{"error":{"code":"forbidden","message":"Global listing refused"}}',
+              ),
+            ),
+            403,
+          ),
+        );
+      }
+    }
+    if (request is http.Request &&
+        request.method == 'PUT' &&
+        RegExp(r'/api/v1/admin/dkim/[0-9]+$').hasMatch(request.url.path)) {
+      installedKey =
+          (jsonDecode(request.body) as Map<String, dynamic>)['private_key']
+              as String?;
+    }
+    return inner.send(request);
   }
 }

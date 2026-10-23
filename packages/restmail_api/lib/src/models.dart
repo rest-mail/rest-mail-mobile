@@ -63,6 +63,23 @@ enum SetupStep {
   ];
 }
 
+/// The caller's own authenticator state. Pending enrollment does not yet gate
+/// sign-in and never returns the setup secret or recovery codes.
+class TwoFactorStatus {
+  const TwoFactorStatus({required this.enabled, required this.pending});
+
+  factory TwoFactorStatus.fromJson(Map<String, dynamic> json) {
+    final enabled = json['enabled'], pending = json['pending'];
+    if (enabled is! bool || pending is! bool || (enabled && pending)) {
+      throw const FormatException('Invalid two-factor status');
+    }
+    return TwoFactorStatus(enabled: enabled, pending: pending);
+  }
+
+  final bool enabled;
+  final bool pending;
+}
+
 /// A started authenticator enrollment, to show once and then confirm.
 class TotpEnrollment {
   const TotpEnrollment({

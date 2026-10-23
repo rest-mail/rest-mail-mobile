@@ -84,6 +84,10 @@ class FakeRestmail {
   final _aliases = <int, FakeAlias>{};
   final _queue = <int, FakeQueueEntry>{};
   final _bans = <int, FakeBan>{};
+  // Kept private and never included in metadata or domain responses.
+  final _dkimSecrets = <int, String>{};
+  final _dkimInstalledAt = <int, DateTime>{};
+  final _dkimIntervals = <int, int>{};
   final _certificates = <int, FakeCertificate>{};
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
@@ -111,6 +115,11 @@ class FakeRestmail {
   var _nextRowId = 1;
   var _nextEventId = 0;
   var _nextToken = 0;
+
+  /// Grants of roles, by id, as `internal/api/handlers/grants.go` keeps
+  /// them; none until a test adds one with [addGrant] or the app grants.
+  final _grantRows = <int, _GrantRow>{};
+  var _nextGrantId = 1;
 
   /// Until when sign-in's budget is spent; see [throttleSignIns].
   DateTime? _throttledUntil;
@@ -197,16 +206,12 @@ class FakeRestmail {
     String? password = FakeAccounts.adminPassword,
     Set<String> capabilities = const {},
     bool twoFactor = true,
+    bool twoFactorRequired = false,
     String name = '',
   }) {
-    _addMailbox(
-      address,
-      name,
-      password: password,
-      twoFactor: twoFactor,
-    ).capabilities = {
-      ...capabilities,
-    };
+    _addMailbox(address, name, password: password, twoFactor: twoFactor)
+      ..capabilities = {...capabilities}
+      ..owesTwoFactor = twoFactorRequired;
   }
 
   /// What the `admin` role carries, as the real server seeds it: everything
@@ -230,6 +235,45 @@ class FakeRestmail {
       throw ArgumentError.value(address, 'address', 'No such account');
     }
     box.capabilities = {...capabilities};
+  }
+
+  /// The roles the fake grants, and the capabilities each gives, as the
+  /// real server seeds the two it ships with.
+  static const roles = <String, Set<String>>{
+    'superadmin': {'*'},
+    'admin': adminRole,
+  };
+
+  /// Grants [role] to [address] at [scope], as the server's grants table
+  /// holds it: `active` gives the role all the time, `eligible` only once
+  /// switched on. What the role gives at `*` while in force joins what the
+  /// account holds from then on. Returns the grant's id.
+  int addGrant(
+    String address,
+    String role, {
+    String scope = '*',
+    String mode = 'active',
+    DateTime? expiresAt,
+  }) {
+    final box = _mailboxAt(address);
+    if (box == null) {
+      throw ArgumentError.value(address, 'address', 'No such account');
+    }
+    if (!roles.containsKey(role)) {
+      throw ArgumentError.value(role, 'role', 'No such role');
+    }
+    final row = _GrantRow(
+      id: _nextGrantId++,
+      holderId: box.id,
+      role: role,
+      scope: scope,
+      mode: mode,
+      grantedById: null,
+      grantedAt: _clock(),
+      expiresAt: expiresAt,
+    );
+    _grantRows[row.id] = row;
+    return row.id;
   }
 
   /// The addresses [owner] holds the owner grant on: the accounts it
@@ -377,6 +421,27 @@ class FakeRestmail {
           _forgetDevices(session);
         }
         return _noContent();
+    }
+
+    // Each account's own grants, and switching them, need no capability.
+    if (path case [
+      'api',
+      'v1',
+      'admin',
+      'grants',
+      ...final rest,
+    ] when _isEscalation(method, rest)) {
+      final box = _mailboxes[_accessTokens[_bearer(request)]?.session.primary];
+      return method == 'GET'
+          ? _escalation(request, method, rest, bytes)
+          : _audited(
+              request,
+              'admin.change',
+              actorKind: box != null ? 'account' : 'anonymous',
+              actorName: box?.address ?? '',
+              actorId: box?.id,
+              () => _escalation(request, method, rest, bytes),
+            );
     }
 
     if (path case ['api', 'v1', 'admin', ...final rest]) {
@@ -556,6 +621,9 @@ class FakeRestmail {
       if (code != box.totpCode && recovery != box.recoveryCode) {
         _fail(401, 'unauthorized', 'Invalid two-factor authentication code');
       }
+      if (code != box.totpCode && recovery == box.recoveryCode) {
+        box.recoveryCode = null;
+      }
     }
     // The real server marks a session that took the second factor, and a
     // refresh keeps the mark; making an app password asks for it.
@@ -621,7 +689,7 @@ class FakeRestmail {
     final access = _token('access'), refresh = _token('refresh');
     final user = _mailboxes[session.primary]!;
     final setup = user.setupRequired;
-    final capabilities = setup.isEmpty ? {...user.capabilities} : <String>{};
+    final capabilities = setup.isEmpty ? _held(user) : <String>{};
     _accessTokens[access] = _Grant(
       session,
       _clock().add(accessTokenLifetime),
@@ -2085,10 +2153,20 @@ class FakeRestmail {
     List<String> path,
     List<int> bytes,
   ) {
+    if (method == 'GET' && path.join('/') == 'api/v1/auth/2fa') {
+      final box = _mailboxes[_sessionOf(request).primary]!;
+      return _json({
+        'data': {
+          'enabled': box.totpCode != null,
+          'pending': box.totpPending && box.totpCode == null,
+        },
+      });
+    }
     if (method != 'POST') return null;
     final route = switch (path) {
       ['api', 'v1', 'auth', '2fa', 'enroll'] => 'enroll',
       ['api', 'v1', 'auth', '2fa', 'confirm'] => 'confirm',
+      ['api', 'v1', 'auth', '2fa', 'disable'] => 'disable',
       ['api', 'v1', 'auth', 'password'] => 'password',
       _ => null,
     };
@@ -2097,6 +2175,46 @@ class FakeRestmail {
     final body = _object(bytes);
 
     switch (route) {
+      case 'disable':
+        final code = body['totp_code'] as String? ?? '';
+        final recovery = body['recovery_code'] as String? ?? '';
+        if (code.isEmpty && recovery.isEmpty) {
+          _fail(
+            422,
+            'validation_failed',
+            'Request body failed validation',
+            fields: {'totp_code': 'required unless recovery_code is sent'},
+          );
+        }
+        if (box.totpCode == null) {
+          _fail(400, 'bad_request', 'Two-factor authentication is not enabled');
+        }
+        final validCode = code.isNotEmpty && code == box.totpCode;
+        final validRecovery =
+            recovery.isNotEmpty && recovery == box.recoveryCode;
+        if (!validCode && !validRecovery) {
+          _fail(
+            403,
+            code.isEmpty ? 'invalid_recovery_code' : 'invalid_totp',
+            code.isEmpty
+                ? 'Invalid or already used recovery code'
+                : 'Invalid two-factor authentication code',
+          );
+        }
+        if (!validCode) box.recoveryCode = null;
+        if (box.owesTwoFactor) {
+          _fail(
+            403,
+            'two_factor_required',
+            'Two-factor authentication is required for this account and cannot be disabled',
+          );
+        }
+        box
+          ..totpCode = null
+          ..totpPending = false
+          ..recoveryCode = null;
+        revokeSessionsOf(box.address);
+        return _noContent();
       case 'enroll':
         if (box.totpCode != null) {
           _fail(
@@ -2400,7 +2518,7 @@ class FakeRestmail {
         final body = _object(bytes);
         if (body['destination_address'] case final String to
             when to.contains('@')) {
-          alias.destination = to.trim().toLowerCase();
+          alias.destination = to;
         }
         if (body['active'] case final bool active) alias.active = active;
         return _json({'data': _aliasJson(alias)});
@@ -2412,6 +2530,78 @@ class FakeRestmail {
       case ('GET', ['stats']):
         need('domains:read');
         return _stats();
+
+      case ('GET', ['roles']):
+        need('users:read');
+        return _json({
+          'data': [
+            for (final (i, entry) in roles.entries.indexed)
+              {
+                'id': i + 1,
+                'name': entry.key,
+                'description': entry.key == 'superadmin'
+                    ? 'Everything'
+                    : 'Everything but the people who run the server',
+                'system_role': true,
+                'capabilities': [...entry.value],
+              },
+          ],
+        });
+      case ('GET', ['capabilities']):
+        need('users:read');
+        final names = {
+          ...adminRole,
+          'users:read',
+          'users:write',
+          'users:delete',
+        }.toList()..sort();
+        return _json({
+          'data': [
+            for (final (i, name) in names.indexed)
+              {
+                'id': i + 1,
+                'name': name,
+                'description': 'Lets a session $name',
+                'resource': name.split(':').first,
+                'action': name.split(':').last,
+              },
+          ],
+        });
+      case ('GET', ['grants']):
+        need('users:read');
+        final holderId = int.tryParse(query['holder_id'] ?? '');
+        final scope = query['scope'];
+        return _listPage(
+          [
+            for (final row in _grantRows.values)
+              if ((holderId == null || row.holderId == holderId) &&
+                  (scope == null || row.scope == scope))
+                row,
+          ],
+          query,
+          _grantJson,
+        );
+      case ('POST', ['grants']):
+        need('users:write');
+        return _createGrant(request, _object(bytes));
+      case ('DELETE', ['grants', final id]):
+        need('users:write');
+        _requireTwoFactorSession(request);
+        final row = _grantRows[int.tryParse(id)];
+        if (row == null) _fail(404, 'not_found', 'Grant not found');
+        _authorizeGrant(request, row.role);
+        if (row.role == 'superadmin' &&
+            _grantRows.values.where((g) => g.role == 'superadmin').length ==
+                1) {
+          _fail(
+            409,
+            'last_superadmin',
+            'Refused: the last superadmin grant; nobody could grant anything '
+                'after it',
+          );
+        }
+        _grantRows.remove(row.id);
+        return _noContent();
 
       case ('GET', ['bans']):
         need('bans:read');
@@ -2466,23 +2656,91 @@ class FakeRestmail {
       case ('GET', ['dkim']):
         need('domains:read');
         final signing = _domains.values.where((d) => d.signs).toList();
-        // Go's nil slice: no keys at all is null, not [].
         return _json({
-          'data': signing.isEmpty
-              ? null
-              : [
-                  for (final d in signing)
-                    {
-                      'domain_id': d.id,
-                      'domain': d.name,
-                      'selector': d.dkimSelector,
-                      'has_key': true,
-                    },
-                ],
+          'data': [for (final d in signing) _dkimJson(d)],
         });
+      case ('PUT', ['dkim', final id]):
+        need('domains:write');
+        final domain = _domain(id), body = _object(bytes);
+        final selector = body['selector'] as String? ?? '',
+            key = body['private_key'] as String? ?? '';
+        if (selector.isEmpty || key.isEmpty) {
+          _fail(400, 'bad_request', 'selector and private_key are required');
+        }
+        if (selector.length > 63 ||
+            !selector
+                .split('.')
+                .every(
+                  (s) => RegExp(
+                    r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
+                  ).hasMatch(s),
+                )) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid selector',
+            fields: {'selector': 'must be DNS labels, at most 63 characters'},
+          );
+        }
+        // Demo validation only. Real RSA/Ed25519 signing and verification stay
+        // on the production server; this fake checks the PEM envelope and DER.
+        final pem = RegExp(
+          r'^\s*-----BEGIN (RSA PRIVATE KEY|PRIVATE KEY)-----\s*([A-Za-z0-9+/=\s]+)-----END \1-----\s*$',
+        ).firstMatch(key);
+        List<int>? der;
+        try {
+          if (pem != null) {
+            der = base64Decode(pem[2]!.replaceAll(RegExp(r'\s'), ''));
+          }
+        } on FormatException {
+          der = null;
+        }
+        if (der == null || der.isEmpty || der.first != 0x30) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid DKIM private key',
+            fields: {
+              'private_key': 'must be a PEM-encoded RSA or Ed25519 private key',
+            },
+          );
+        }
+        if (_dkimSecrets[domain.id] != key) {
+          _dkimInstalledAt[domain.id] = _clock();
+        }
+        _dkimSecrets[domain.id] = key;
+        domain.dkimSelector = selector;
+        return _json({'data': _dkimJson(domain)});
+      case ('GET', ['dkim', final id, 'rotation']):
+        need('domains:read');
+        return _json({'data': _rotationJson(_domain(id))});
+      case ('PUT', ['dkim', final id, 'rotation']):
+        need('domains:write');
+        final domain = _domain(id), body = _object(bytes);
+        if (body.keys.any((k) => k != 'rotation_interval_days')) {
+          _fail(400, 'bad_request', 'Invalid request body');
+        }
+        final days = body['rotation_interval_days'];
+        if (days is! int || days < 0 || days > 3650) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid DKIM rotation interval',
+            fields: {
+              'rotation_interval_days':
+                  'Must be an integer between 0 and 3650 days; 0 disables rotation',
+            },
+          );
+        }
+        _dkimIntervals[domain.id] = days;
+        return _json({'data': _rotationJson(domain)});
       case ('DELETE', ['dkim', final id]):
         need('domains:write');
-        _domain(id).dkimSelector = '';
+        final domain = _domain(id);
+        domain.dkimSelector = '';
+        _dkimSecrets.remove(domain.id);
+        _dkimInstalledAt.remove(domain.id);
+        // Removing a key does not remove its configured rotation policy.
         return _noContent();
 
       case ('GET', ['certificates']):
@@ -2588,6 +2846,262 @@ class FakeRestmail {
   }
 
   /// The real server's `limit` and `offset`: 50 by default, 200 at most.
+  // ── Grants and escalation ─────────────────────────────────────────────
+
+  /// What [box] holds at `*`: what the test gave it with [grant] or
+  /// [addAccount], and what each of its grants in force at `*` gives.
+  Set<String> _held(FakeMailbox box) {
+    final now = _clock();
+    return {
+      ...box.capabilities,
+      for (final row in _grantRows.values)
+        if (row.holderId == box.id && row.scope == '*' && row.inForce(now))
+          ...roles[row.role]!,
+    };
+  }
+
+  Map<String, Object?> _grantJson(_GrantRow row) {
+    final now = _clock();
+    final activation = row.activation;
+    return {
+      'id': row.id,
+      'holder': {'kind': 'account', 'id': row.holderId},
+      'role': row.role,
+      'role_id': roles.keys.toList().indexOf(row.role) + 1,
+      'scope': row.scope,
+      'mode': row.mode,
+      'granted_by': {
+        'kind': row.grantedById == null ? 'system' : 'account',
+        'id': ?row.grantedById,
+      },
+      'granted_at': _time(row.grantedAt),
+      'expires_at': ?(row.expiresAt == null ? null : _time(row.expiresAt!)),
+      if (activation != null && activation.expiresAt.isAfter(now))
+        'activation': {
+          'id': activation.id,
+          'activated_at': _time(activation.activatedAt),
+          'expires_at': _time(activation.expiresAt),
+          'reason': activation.reason,
+          'seconds_left': activation.expiresAt.difference(now).inSeconds,
+        },
+    };
+  }
+
+  /// Changing grants takes a session that signed in with a second factor.
+  void _requireTwoFactorSession(http.BaseRequest request) {
+    if (!_sessionOf(request).twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'Changing grants needs a session signed in with two-factor '
+            'authentication: sign in again with your code',
+      );
+    }
+  }
+
+  /// The granter must hold everything [role] gives. The fake knows only
+  /// what is held at `*`, so a scoped grant is checked as if it were wide.
+  void _authorizeGrant(http.BaseRequest request, String role) {
+    final held = _held(_mailboxes[_sessionOf(request).primary]!);
+    final gives = roles[role] ?? const <String>{};
+    if (!held.contains('*') && !held.containsAll(gives)) {
+      _fail(403, 'grant_exceeds_held', 'grant exceeds what the granter holds');
+    }
+  }
+
+  http.StreamedResponse _createGrant(
+    http.BaseRequest request,
+    Map<String, dynamic> body,
+  ) {
+    _requireTwoFactorSession(request);
+    final problems = <String, String>{};
+    final holder = body['holder'];
+    final holderId = holder is Map ? (holder['id'] as num?)?.toInt() ?? 0 : 0;
+    if (holder is! Map || holder['kind'] == null || holderId == 0) {
+      problems['holder'] = 'required: {"kind": "account", "id": <account id>}';
+    } else if (holder['kind'] != 'account') {
+      problems['holder'] = 'only accounts can be granted roles yet';
+    }
+    final role = body['role'] as String? ?? '';
+    if (role.isEmpty) problems['role'] = 'required: a role name';
+    final scope = body['scope'] as String? ?? '';
+    if (scope != '*' &&
+        !RegExp(r'^domain:[^@\s]+\.[^@\s]+$').hasMatch(scope) &&
+        !RegExp(r'^mailbox:[^@\s]+@[^@\s]+$').hasMatch(scope)) {
+      problems['scope'] = 'must be "*", "domain:<name>" or "mailbox:<address>"';
+    }
+    final mode = body['mode'] as String? ?? 'active';
+    if (mode != 'active' && mode != 'eligible') {
+      problems['mode'] = 'must be "active" or "eligible"';
+    }
+    final expiresAt = DateTime.tryParse(body['expires_at'] as String? ?? '');
+    if (expiresAt != null && !expiresAt.isAfter(_clock())) {
+      problems['expires_at'] = 'must be in the future';
+    }
+    if (problems.isNotEmpty) {
+      _fail(422, 'validation_failed', 'Validation failed', fields: problems);
+    }
+    if (!_mailboxes.containsKey(holderId)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Validation failed',
+        fields: {'holder': 'no such account'},
+      );
+    }
+    if (!roles.containsKey(role)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Validation failed',
+        fields: {'role': 'no such role'},
+      );
+    }
+    _authorizeGrant(request, role);
+    if (_grantRows.values.any(
+      (g) => g.holderId == holderId && g.role == role && g.scope == scope,
+    )) {
+      _fail(409, 'conflict', 'the holder already holds that role there');
+    }
+    final row = _GrantRow(
+      id: _nextGrantId++,
+      holderId: holderId,
+      role: role,
+      scope: scope,
+      mode: mode,
+      grantedById: _sessionOf(request).primary,
+      grantedAt: _clock(),
+      expiresAt: expiresAt,
+    );
+    _grantRows[row.id] = row;
+    return _json({'data': _grantJson(row)}, status: 201);
+  }
+
+  bool _isEscalation(String method, List<String> rest) =>
+      switch ((method, rest)) {
+        ('GET', ['mine']) => true,
+        ('POST', [_, 'activate' || 'deactivate' || 'make-eligible']) => true,
+        _ => false,
+      };
+
+  /// `/admin/grants/mine` and the steps on the caller's own grants, as
+  /// `escalation.go` serves them: anyone else's grant is 404, and switching
+  /// on or making eligible takes a fresh code.
+  http.StreamedResponse _escalation(
+    http.BaseRequest request,
+    String method,
+    List<String> rest,
+    List<int> bytes,
+  ) {
+    final session = _authenticate(request);
+    final box = _mailboxes[session.primary]!;
+    if (rest case ['mine']) {
+      return _json({
+        'data': [
+          for (final row in _grantRows.values)
+            if (row.holderId == box.id) _grantJson(row),
+        ],
+      });
+    }
+    final row = _grantRows[int.tryParse(rest.first)];
+    if (row == null || row.holderId != box.id) {
+      _fail(404, 'not_found', 'Grant not found');
+    }
+    final body = bytes.isEmpty ? <String, dynamic>{} : _object(bytes);
+    final now = _clock();
+    void freshCode() {
+      if (box.totpCode == null) {
+        _fail(
+          403,
+          'two_factor_required',
+          'Switching a grant on, or making it eligible, needs two-factor '
+              'authentication: enroll an authenticator first',
+        );
+      }
+      final code = (body['totp_code'] as String? ?? '').trim();
+      final recovery = (body['recovery_code'] as String? ?? '').trim();
+      if (code.isEmpty && recovery.isEmpty) {
+        _fail(403, 'totp_required', 'A fresh two-factor code is required');
+      }
+      if (code != box.totpCode &&
+          (recovery.isEmpty || recovery != box.recoveryCode)) {
+        _fail(403, 'invalid_totp', 'Invalid two-factor authentication code');
+      }
+      if (recovery.isNotEmpty && code != box.totpCode) box.recoveryCode = null;
+    }
+
+    var status = 200;
+    switch (rest[1]) {
+      case 'activate':
+        final problems = <String, String>{};
+        final reason = (body['reason'] as String? ?? '').trim();
+        if (reason.isEmpty) {
+          problems['reason'] = 'required: why you are switching it on';
+        } else if (reason.runes.length > 500) {
+          problems['reason'] = 'at most 500 characters';
+        }
+        final minutes = (body['minutes'] as num?)?.toInt() ?? 60;
+        if (minutes < 1 || minutes > 240) {
+          problems['minutes'] = 'must be from 1 to 240';
+        }
+        if (problems.isNotEmpty) {
+          _fail(
+            422,
+            'validation_failed',
+            'Validation failed',
+            fields: problems,
+          );
+        }
+        freshCode();
+        if (row.expiresAt case final ends? when !ends.isAfter(now)) {
+          _fail(409, 'grant_expired', 'the grant has expired');
+        }
+        if (row.mode != 'eligible') {
+          _fail(409, 'not_eligible', 'only an eligible grant can be activated');
+        }
+        if (row.activation case final a? when a.expiresAt.isAfter(now)) {
+          _fail(409, 'already_active', 'the grant is already active');
+        }
+        var until = now.add(Duration(minutes: minutes));
+        if (row.expiresAt case final ends? when ends.isBefore(until)) {
+          until = ends;
+        }
+        row.activation = _GrantActivationRow(
+          id: _nextGrantId++,
+          activatedAt: now,
+          expiresAt: until,
+          reason: reason,
+        );
+        status = 201;
+      case 'deactivate':
+        if (row.activation case final a? when a.expiresAt.isAfter(now)) {
+          row.activation = null;
+        } else {
+          _fail(409, 'not_active', 'the grant is not active');
+        }
+      case 'make-eligible':
+        freshCode();
+        if (row.mode == 'eligible') {
+          _fail(409, 'already_eligible', 'the grant is already eligible');
+        }
+        row
+          ..mode = 'eligible'
+          ..activation = null;
+    }
+    // The real server checks grants live on every request; the fake checks
+    // the token, so the token takes what the account now holds.
+    final held = _held(box);
+    final bearer = _bearer(request)!;
+    final token = _accessTokens[bearer]!;
+    _accessTokens[bearer] = _Grant(token.session, token.expiresAt, held);
+    return _json({
+      'data': {
+        'grant': _grantJson(row),
+        'capabilities': [...held],
+      },
+    }, status: status);
+  }
+
   (int, int) _paging(Map<String, String> query) => (
     (int.tryParse(query['limit'] ?? '') ?? 50).clamp(1, 200),
     max(0, int.tryParse(query['offset'] ?? '') ?? 0),
@@ -2653,6 +3167,9 @@ class FakeRestmail {
         .fold<int>(0, (sum, m) => sum + m.sizeBytes),
     'active': b.active,
     'last_login_at': null,
+    'password_change_required': b.mustChangePassword,
+    'two_factor_required': b.owesTwoFactor,
+    if (_domains[b.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -2663,6 +3180,7 @@ class FakeRestmail {
     'source_address': a.source,
     'destination_address': a.destination,
     'active': a.active,
+    if (_domains[a.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
   };
 
@@ -2948,6 +3466,28 @@ class FakeRestmail {
     };
   }
 
+  Map<String, Object?> _dkimJson(FakeDomain domain) => {
+    'domain_id': domain.id,
+    'domain': domain.name,
+    'selector': domain.dkimSelector,
+    'has_key': domain.signs,
+    'created_at': _dkimInstalledAt[domain.id] == null
+        ? null
+        : _time(_dkimInstalledAt[domain.id]!),
+    'age_seconds': _dkimInstalledAt[domain.id] == null
+        ? null
+        : max(
+            0,
+            _clock().difference(_dkimInstalledAt[domain.id]!).inMicroseconds /
+                1000000,
+          ),
+  };
+
+  Map<String, Object?> _rotationJson(FakeDomain domain) => {
+    'domain_id': domain.id,
+    'rotation_interval_days': _dkimIntervals[domain.id] ?? 0,
+  };
+
   FakeQueueEntry _queueEntry(String id) =>
       _queue[int.tryParse(id)] ??
       _fail(404, 'not_found', 'Queue entry not found');
@@ -2996,6 +3536,7 @@ class FakeRestmail {
     // As on the server, a new domain is not live until it is turned on.
     final domain = _domainNamed(name)
       ..active = false
+      ..dkimSelector = ''
       ..serverType = body['server_type'] as String
       ..sendingPolicy = policy;
     if (body['default_quota_bytes'] case final num quota) {
@@ -3164,9 +3705,7 @@ class FakeRestmail {
     final source = (body['source_address'] as String? ?? '')
         .trim()
         .toLowerCase();
-    final destination = (body['destination_address'] as String? ?? '')
-        .trim()
-        .toLowerCase();
+    final destination = body['destination_address'] as String? ?? '';
     final fields = {
       if (!source.contains('@'))
         'source_address': 'must be a valid email address',
@@ -3216,6 +3755,51 @@ class _Grant {
 
   /// What the account could do on the admin API when the token was minted.
   final Set<String> capabilities;
+}
+
+/// A grant of a role, as the server's grants table holds it.
+class _GrantRow {
+  _GrantRow({
+    required this.id,
+    required this.holderId,
+    required this.role,
+    required this.scope,
+    required this.mode,
+    required this.grantedById,
+    required this.grantedAt,
+    required this.expiresAt,
+  });
+
+  final int id;
+  final int holderId;
+  final String role;
+  final String scope;
+  String mode;
+  final int? grantedById;
+  final DateTime grantedAt;
+  final DateTime? expiresAt;
+  _GrantActivationRow? activation;
+
+  /// Whether it gives its role at [now].
+  bool inForce(DateTime now) {
+    if (expiresAt case final ends? when !ends.isAfter(now)) return false;
+    if (mode == 'active') return true;
+    return activation?.expiresAt.isAfter(now) ?? false;
+  }
+}
+
+class _GrantActivationRow {
+  const _GrantActivationRow({
+    required this.id,
+    required this.activatedAt,
+    required this.expiresAt,
+    required this.reason,
+  });
+
+  final int id;
+  final DateTime activatedAt;
+  final DateTime expiresAt;
+  final String reason;
 }
 
 /// An error answer, thrown from deep in a handler and returned as is.

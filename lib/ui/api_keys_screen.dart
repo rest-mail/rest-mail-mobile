@@ -447,6 +447,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   ),
                   const SizedBox(height: 18),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: _days,
                     decoration: const InputDecoration(labelText: 'Expires'),
                     items: const [
@@ -527,6 +528,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
       child: Column(
         children: [
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: item.capability,
             isExpanded: true,
             decoration: InputDecoration(labelText: 'Capability ${index + 1}'),
@@ -542,6 +544,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   }),
           ),
           DropdownButtonFormField<_Scope>(
+            isExpanded: true,
             initialValue: item.scope,
             decoration: const InputDecoration(labelText: 'Applies to'),
             items: [

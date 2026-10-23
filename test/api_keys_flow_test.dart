@@ -123,14 +123,21 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, Finder target) async {
-    await tester.ensureVisible(target);
+    for (final delta in [-250.0, 250.0]) {
+      for (var i = 0; i < 25 && target.evaluate().isEmpty; i++) {
+        await tester.drag(find.byType(ListView).last, Offset(0, delta));
+        await tester.pumpAndSettle();
+      }
+    }
+    expect(target, findsWidgets);
+    await tester.ensureVisible(target.last);
     await tester.pumpAndSettle();
-    await tester.tap(target);
+    await tester.tap(target.last);
     await tester.pumpAndSettle();
   }
 
   Future<void> text(WidgetTester tester, String value) =>
-      tap(tester, find.text(value).last);
+      tap(tester, find.text(value));
 
   Finder field(String label) => find.byWidgetPredicate(
     (widget) => widget is TextField && widget.decoration?.labelText == label,
