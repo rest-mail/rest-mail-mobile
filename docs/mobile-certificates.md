@@ -23,9 +23,9 @@ storage encryption depends on server configuration.
 
 ## Verification
 
-- 125 API package tests pass, including exact PEM bytes, all metadata, list
+- 136 API package tests pass, including the merged DKIM suite, exact PEM bytes, all metadata, list
   paging, nullable associations, all four operations' 403 behavior, 400 and 404.
-- 62 fake package tests pass, including actual X509 issuer/validity parsing,
+- 68 fake package tests pass, including the merged DKIM suite, actual X509 issuer/validity parsing,
   list/create redaction, public detail, renewal defaults, paging, delete and
   read/write refusals.
 - Both package analyzers pass with `--fatal-infos`.

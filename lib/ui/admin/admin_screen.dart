@@ -47,6 +47,7 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.pipelines => PipelinesScreen(account: account),
     AdminSection.customFilters => CustomFiltersScreen(account: account),
     // Each about one domain, so opened from it, and never listed here.
+    AdminSection.domainDkim ||
     AdminSection.dnsCheck ||
     AdminSection.senderLists ||
     AdminSection.mtaSts ||
