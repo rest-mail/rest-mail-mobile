@@ -1668,6 +1668,105 @@ class RestmailClient {
     ]);
   }
 
+  // ── Mail rules ───────────────────────────────────────────────────────
+  //
+  // An account's vacation reply and Sieve script: reading them needs
+  // mail:read on it, changing them mail:write, and the server answers 403
+  // forbidden otherwise.
+
+  /// The account's vacation reply; off, with nothing set, when it has none.
+  Future<VacationReply> vacation(int accountId) async => VacationReply.fromJson(
+    _data(await _authed('GET', ['accounts', '$accountId', 'vacation'])),
+  );
+
+  /// Replaces the vacation reply. Turned on, it needs a [subject] and a
+  /// [body] (422 `required when enabled` otherwise), and [endDate] may not be
+  /// before [startDate].
+  Future<VacationReply> setVacation(
+    int accountId, {
+    required bool enabled,
+    String subject = '',
+    String body = '',
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final response = await _authed(
+      'PUT',
+      ['accounts', '$accountId', 'vacation'],
+      body: {
+        'enabled': enabled,
+        'subject': subject,
+        'body': body,
+        'start_date': ?startDate?.toUtc().toIso8601String(),
+        'end_date': ?endDate?.toUtc().toIso8601String(),
+      },
+    );
+    try {
+      return VacationReply.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
+  /// Turns the vacation reply off, keeping its subject, body and dates.
+  Future<void> disableVacation(int accountId) async {
+    await _authed('DELETE', ['accounts', '$accountId', 'vacation']);
+  }
+
+  /// The account's Sieve script, or the empty one when none is stored.
+  Future<SieveScript> sieveScript(int accountId) async =>
+      _sieve(await _authed('GET', ['accounts', '$accountId', 'sieve']));
+
+  /// Saves [script] as the account's Sieve script, active unless [active]
+  /// is false. One that does not parse, or fails its dry run, is refused 400
+  /// `invalid_sieve` with the parser's message, and is not saved.
+  Future<SieveScript> putSieveScript(
+    int accountId,
+    String script, {
+    bool? active,
+  }) async => _sieve(
+    await _authed(
+      'PUT',
+      ['accounts', '$accountId', 'sieve'],
+      body: {'script': script, 'active': ?active},
+    ),
+  );
+
+  /// Deletes the Sieve script, whether or not there is one.
+  Future<void> deleteSieveScript(int accountId) async {
+    final response = await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'sieve',
+    ]);
+    if (_data(response)['status'] != 'deleted') throw _unreadable(response);
+  }
+
+  /// Checks [script] as saving it would, without saving it.
+  Future<SieveValidation> validateSieveScript(
+    int accountId,
+    String script,
+  ) async {
+    final response = await _authed(
+      'POST',
+      ['accounts', '$accountId', 'sieve', 'validate'],
+      body: {'script': script},
+    );
+    try {
+      return SieveValidation.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
+  SieveScript _sieve(http.Response response) {
+    try {
+      return SieveScript.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
   // ── Push devices ─────────────────────────────────────────────────────
   //
   // A device registered here belongs to this session: the server pushes to

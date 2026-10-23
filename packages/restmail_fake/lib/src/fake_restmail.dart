@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:basic_utils/basic_utils.dart';
 import 'package:http/http.dart' as http;
@@ -110,6 +111,9 @@ class FakeRestmail {
   final _devices = <String, (FakePushDevice, _Session)>{};
   final _pushes = <FakePush>[];
   final _scheduled = <int, Map<String, Object?>>{};
+  // Each account's vacation reply and Sieve script, by mailbox id.
+  final _vacations = <int, Map<String, Object?>>{};
+  final _sieveScripts = <int, Map<String, Object?>>{};
   // Held mail, as the server's quarantine rows: id -> row, with the mailbox
   // id under "mailbox_id" and the raw message kept out of the JSON.
   final _quarantine = <int, Map<String, Object?>>{};
@@ -583,6 +587,32 @@ class FakeRestmail {
         query,
         _matcher(query),
       ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'vacation']) => _getVacation(
+        session,
+        id,
+      ),
+      ('PUT', ['api', 'v1', 'accounts', final id, 'vacation']) => _setVacation(
+        session,
+        id,
+        _object(bytes),
+      ),
+      ('DELETE', ['api', 'v1', 'accounts', final id, 'vacation']) =>
+        _disableVacation(session, id),
+      ('GET', ['api', 'v1', 'accounts', final id, 'sieve']) => _getSieve(
+        session,
+        id,
+      ),
+      ('PUT', ['api', 'v1', 'accounts', final id, 'sieve']) => _putSieve(
+        session,
+        id,
+        _object(bytes),
+      ),
+      ('DELETE', ['api', 'v1', 'accounts', final id, 'sieve']) => _deleteSieve(
+        session,
+        id,
+      ),
+      ('POST', ['api', 'v1', 'accounts', final id, 'sieve', 'validate']) =>
+        _validateSieve(session, id, _object(bytes)),
       ('GET', ['api', 'v1', 'accounts', final id, 'quota']) => _quota(
         _own(session, id),
       ),
@@ -1790,6 +1820,202 @@ class FakeRestmail {
       ).where((m) => !m.isRead).length,
     });
     if (message.folder == 'INBOX') _pushNewMail(message.mailboxId);
+  }
+
+  // ── Mail rules ────────────────────────────────────────────────────────
+  //
+  // The vacation reply and Sieve script as REST Mail serves them
+  // (rest-mail-server#740): the path and body are bound first, then the
+  // account is checked, answering 403 forbidden when the session cannot
+  // reach it, then the handler's own rules.
+
+  /// The vacation reply of the mailbox at [address], as the server keeps
+  /// it, or null when it has none.
+  Map<String, Object?>? vacationOf(String address) {
+    final box = _mailboxAt(address);
+    return box == null ? null : _vacations[box.id];
+  }
+
+  /// The Sieve script of the mailbox at [address], or null when none is
+  /// stored.
+  Map<String, Object?>? sieveScriptOf(String address) {
+    final box = _mailboxAt(address);
+    return box == null ? null : _sieveScripts[box.id];
+  }
+
+  FakeMailbox _rulesAccount(_Session session, String id) {
+    final box = _mailboxes[_pathId(id)];
+    if (box == null || !_reach(session).contains(box.id)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    return box;
+  }
+
+  http.StreamedResponse _getVacation(_Session session, String id) {
+    final box = _rulesAccount(session, id);
+    return _json({
+      'data':
+          _vacations[box.id] ?? {'enabled': false, 'subject': '', 'body': ''},
+    });
+  }
+
+  http.StreamedResponse _setVacation(
+    _Session session,
+    String accountId,
+    Map<String, dynamic> body,
+  ) {
+    final id = _pathId(accountId);
+    final problems = _undeclared(body, const {
+      'enabled',
+      'subject',
+      'body',
+      'start_date',
+      'end_date',
+    });
+    if (!body.containsKey('enabled')) problems['enabled'] = 'required';
+    _typed<bool>(body, 'enabled', 'a boolean', problems);
+    _typed<String>(body, 'subject', 'a string', problems, nullable: false);
+    _typed<String>(body, 'body', 'a string', problems, nullable: false);
+    final dates = <String, DateTime?>{};
+    for (final name in ['start_date', 'end_date']) {
+      final value = body[name];
+      if (value == null) continue;
+      final at = value is String ? DateTime.tryParse(value) : null;
+      if (at == null) {
+        problems[name] = 'must be a date-time';
+      } else {
+        dates[name] = at;
+      }
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _rulesAccount(session, '$id');
+
+    final enabled = body['enabled'] as bool?;
+    if (enabled == null) _invalid({'enabled': 'required'});
+    final subject = body['subject'] as String? ?? '';
+    final text = body['body'] as String? ?? '';
+    final missing = {
+      if (enabled && subject.isEmpty) 'subject': 'required when enabled',
+      if (enabled && text.isEmpty) 'body': 'required when enabled',
+    };
+    if (missing.isNotEmpty) _invalid(missing);
+    final start = dates['start_date'], end = dates['end_date'];
+    if (start != null && end != null && end.isBefore(start)) {
+      _invalid({'end_date': 'must be after start_date'});
+    }
+    final reply = _vacations[box.id] = {
+      'enabled': enabled,
+      'subject': subject,
+      'body': text,
+      if (start != null) 'start_date': _time(start),
+      if (end != null) 'end_date': _time(end),
+    };
+    return _json({'data': reply});
+  }
+
+  http.StreamedResponse _disableVacation(_Session session, String id) {
+    final box = _rulesAccount(session, id);
+    _vacations[box.id]?['enabled'] = false;
+    return _noContent();
+  }
+
+  http.StreamedResponse _getSieve(_Session session, String id) {
+    final box = _rulesAccount(session, id);
+    return _json({
+      'data':
+          _sieveScripts[box.id] ??
+          {'mailbox_id': box.id, 'script': '', 'active': false},
+    });
+  }
+
+  http.StreamedResponse _putSieve(
+    _Session session,
+    String accountId,
+    Map<String, dynamic> body,
+  ) {
+    final id = _pathId(accountId);
+    final problems = _undeclared(body, const {'script', 'active'});
+    if (!body.containsKey('script')) problems['script'] = 'required';
+    _typed<String>(body, 'script', 'a string', problems);
+    _typed<bool>(body, 'active', 'a boolean', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _rulesAccount(session, '$id');
+
+    final script = body['script'] as String?;
+    if (script == null) _invalid({'script': 'required'});
+    if (_sieveProblem(script) case final problem?) {
+      _fail(400, 'invalid_sieve', problem);
+    }
+    final now = _time(_clock());
+    final existing = _sieveScripts[box.id];
+    final row = _sieveScripts[box.id] = {
+      'id': existing?['id'] ?? _nextRowId++,
+      'mailbox_id': box.id,
+      'script': script,
+      'script_hash': CryptoUtils.getHash(
+        Uint8List.fromList(utf8.encode(script)),
+      ),
+      'validated_at': now,
+      'active': body['active'] as bool? ?? true,
+      'created_at': existing?['created_at'] ?? now,
+      'updated_at': now,
+    };
+    return _json({'data': row}, status: existing == null ? 201 : 200);
+  }
+
+  http.StreamedResponse _deleteSieve(_Session session, String id) {
+    final box = _rulesAccount(session, id);
+    _sieveScripts.remove(box.id);
+    return _json({
+      'data': {'status': 'deleted'},
+    });
+  }
+
+  http.StreamedResponse _validateSieve(
+    _Session session,
+    String accountId,
+    Map<String, dynamic> body,
+  ) {
+    final id = _pathId(accountId);
+    final problems = _undeclared(body, const {'script'});
+    if (!body.containsKey('script')) problems['script'] = 'required';
+    _typed<String>(body, 'script', 'a string', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    _rulesAccount(session, '$id');
+
+    final script = body['script'] as String?;
+    if (script == null) _invalid({'script': 'required'});
+    final problem = script.isEmpty ? null : _sieveProblem(script);
+    return _json({
+      'data': {
+        'message':
+            problem ??
+            (script.isEmpty ? 'Empty script is valid' : 'Script is valid'),
+        'valid': problem == null,
+      },
+    });
+  }
+
+  /// Why [script] would not install, worded as the server's parser words
+  /// it, or null when it would. Not go-sieve: brackets that do not balance,
+  /// and an extension used without its require.
+  String? _sieveProblem(String script) {
+    if (script.trim().isEmpty) return null;
+    if (!_balanced(script)) {
+      return 'sieve parse error: unexpected end of script';
+    }
+    for (final extension in const ['fileinto', 'vacation', 'reject']) {
+      final used = RegExp('(^|[\\s;{}])$extension\\s').hasMatch(script);
+      final required = RegExp(
+        'require\\s+(\\[[^\\]]*)?"$extension"',
+      ).hasMatch(script);
+      if (used && !required) {
+        return 'sieve parse error: unknown command "$extension" (the script '
+            'uses an extension it does not declare — add: require '
+            '"$extension";)';
+      }
+    }
+    return null;
   }
 
   // ── Push devices ──────────────────────────────────────────────────────
