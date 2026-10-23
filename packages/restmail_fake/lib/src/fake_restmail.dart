@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:basic_utils/basic_utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -2750,6 +2751,17 @@ class FakeRestmail {
           query,
           _certificateJson,
         );
+      case ('GET', ['certificates', final id]):
+        need('domains:read');
+        final cert =
+            _certificates[int.tryParse(id)] ??
+            _fail(404, 'not_found', 'Certificate not found');
+        return _json({
+          'data': {..._certificateJson(cert), 'cert_pem': cert.certPem},
+        });
+      case ('POST', ['certificates']):
+        need('domains:write');
+        return _createCertificate(_object(bytes));
       case ('DELETE', ['certificates', final id]):
         need('domains:write');
         if (_certificates.remove(int.tryParse(id)) == null) {
@@ -3184,6 +3196,67 @@ class FakeRestmail {
     'created_at': _time(_clock()),
   };
 
+  http.StreamedResponse _createCertificate(Map<String, dynamic> body) {
+    final domainId = body['domain_id'];
+    final pem = body['cert_pem'],
+        key = body['key_pem'],
+        renew = body['auto_renew'];
+    if (domainId is! int ||
+        domainId < 1 ||
+        pem is! String ||
+        pem.isEmpty ||
+        key is! String ||
+        key.isEmpty ||
+        (renew != null && renew is! bool)) {
+      _fail(
+        400,
+        'bad_request',
+        'domain_id, cert_pem, and key_pem are required',
+      );
+    }
+    final domain =
+        _domains.values.where((d) => d.id == domainId).firstOrNull ??
+        _fail(404, 'not_found', 'Domain not found');
+    // Read public X509 metadata as the real handler does; no TLS connection or
+    // trust-chain verification is simulated, and the fake never retains keys.
+    late final X509CertificateData parsed;
+    try {
+      parsed = X509Utils.x509CertificateFromPem(pem);
+    } catch (_) {
+      _fail(400, 'bad_request', 'Invalid certificate PEM');
+    }
+    final tbs = parsed.tbsCertificate;
+    if (tbs == null) _fail(400, 'bad_request', 'Failed to parse certificate');
+    const names = {
+      '2.5.4.3': 'CN',
+      '2.5.4.6': 'C',
+      '2.5.4.10': 'O',
+      '2.5.4.11': 'OU',
+      '2.5.4.7': 'L',
+      '2.5.4.8': 'ST',
+      '2.5.4.5': 'SERIALNUMBER',
+    };
+    final issuer = tbs.issuer.entries
+        .toList()
+        .reversed
+        .map((e) => '${names[e.key] ?? e.key}=${e.value ?? ''}')
+        .join(',');
+    final cert = FakeCertificate(
+      id: _nextRowId++,
+      domain: domain.name,
+      certPem: pem,
+      issuer: issuer,
+      notBefore: tbs.validity.notBefore,
+      notAfter: tbs.validity.notAfter,
+      autoRenew: renew as bool? ?? true,
+      createdAt: _clock(),
+      updatedAt: _clock(),
+    );
+    _certificates[cert.id] = cert;
+    // Like list/create on the server, omit both PEM fields from this response.
+    return _json({'data': _certificateJson(cert)}, status: 201);
+  }
+
   Map<String, Object?> _certificateJson(FakeCertificate c) => {
     'id': c.id,
     'domain_id': _domains[c.domain]?.id ?? 0,
@@ -3191,8 +3264,8 @@ class FakeRestmail {
     'not_before': _time(c.notBefore),
     'not_after': _time(c.notAfter),
     'auto_renew': c.autoRenew,
-    'created_at': _time(c.notBefore),
-    'updated_at': _time(c.notBefore),
+    'created_at': _time(c.createdAt ?? c.notBefore),
+    'updated_at': _time(c.updatedAt ?? c.notBefore),
     if (_domains[c.domain] case final domain?) 'domain': _domainJson(domain),
   };
 

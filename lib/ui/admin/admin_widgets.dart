@@ -45,8 +45,16 @@ Future<Map<int, String>> domainNames(RestAccount account) async {
     return const {};
   }
   try {
-    final domains = await account.client.domains(limit: 200);
-    return {for (final d in domains.items) d.id: d.name};
+    final names = <int, String>{};
+    var offset = 0;
+    while (true) {
+      final page = await account.client.domains(offset: offset, limit: 200);
+      for (final domain in page.items) {
+        names[domain.id] = domain.name;
+      }
+      if (!page.hasMore || page.items.isEmpty) return names;
+      offset = page.next;
+    }
   } on ApiException {
     return const {};
   }
@@ -418,7 +426,7 @@ class AdminFormScreen extends StatefulWidget {
   final String action;
   final String host;
 
-  /// Sends the values, in the order of [fields], trimmed except passwords.
+  /// Sends values in field order, preserving passwords and multiline text.
   final Future<void> Function(List<String> values) submit;
 
   /// Opens the form; true when it was sent.
@@ -451,7 +459,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
 
   List<String> get _values => [
     for (var i = 0; i < widget.fields.length; i++)
-      widget.fields[i].obscure
+      widget.fields[i].obscure || widget.fields[i].multiline
           ? _controllers[i].text
           : _controllers[i].text.trim(),
   ];
@@ -551,6 +559,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                       )
                     else
                       TextField(
+                        key: ValueKey('admin-field-$i'),
                         controller: _controllers[i],
                         readOnly: widget.fields[i].pasteOnly,
                         enableInteractiveSelection: !widget.fields[i].pasteOnly,
