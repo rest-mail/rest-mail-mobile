@@ -553,7 +553,12 @@ class _CertificateScreenState extends State<CertificateScreen> {
               snapshot.error!,
               host: widget.account.server.host,
             ),
-            onRetry: () => setState(() => _cert = _load()),
+            onRetry: () {
+              final next = _load();
+              setState(() {
+                _cert = next;
+              });
+            },
           );
         }
         final cert = snapshot.data;
@@ -564,7 +569,9 @@ class _CertificateScreenState extends State<CertificateScreen> {
         return RefreshIndicator(
           onRefresh: () async {
             final next = _load();
-            setState(() => _cert = next);
+            setState(() {
+              _cert = next;
+            });
             try {
               await next;
             } on ApiException {
