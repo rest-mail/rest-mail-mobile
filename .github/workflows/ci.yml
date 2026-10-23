@@ -65,6 +65,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Validate pinned admin API source map
+        run: |
+          python3 tool/ci/admin_api_manifest.py docs/admin-api-parity.json
+          python3 -m unittest discover -s tool/ci -p 'test_admin_api_manifest.py'
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze
