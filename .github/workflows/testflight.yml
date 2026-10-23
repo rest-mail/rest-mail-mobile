@@ -283,16 +283,27 @@ jobs:
           set -euo pipefail
           if ! gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
-              --title "rest-mail $VERSION" \
+              --title "REST Mail $VERSION" \
               --notes "TestFlight build $BUILD." \
               --generate-notes
           fi
           # One file, newest first: this release and the previous nine public
-          # versions. Never commit generated notes or create another tag.
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            > "$RUNNER_TEMP/releases.json"
-          python3 tool/ci/build_whats_new.py "$RUNNER_TEMP/releases.json" \
-            "$RUNNER_TEMP/whats-new.json" --require-tag "v$VERSION"
+          # versions. Never commit generated notes or create another tag. The
+          # release list can lag a release created a moment ago, so it is read
+          # again until this one is in it.
+          for attempt in 1 2 3 4 5 6; do
+            gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              > "$RUNNER_TEMP/releases.json"
+            if python3 tool/ci/build_whats_new.py "$RUNNER_TEMP/releases.json" \
+              "$RUNNER_TEMP/whats-new.json" --require-tag "v$VERSION"; then
+              break
+            fi
+            if [ "$attempt" = 6 ]; then
+              exit 1
+            fi
+            echo "v$VERSION is not in the release list yet; reading it again"
+            sleep 10
+          done
           gh release upload "v$VERSION" "$RUNNER_TEMP/whats-new.json" \
             --repo "$GITHUB_REPOSITORY" --clobber
           echo "::notice::published v$VERSION with the latest ten release notes (TestFlight build $BUILD)"
