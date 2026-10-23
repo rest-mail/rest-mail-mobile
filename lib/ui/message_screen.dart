@@ -22,7 +22,7 @@ import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, note, labels, spam, notSpam }
+enum _More { markUnread, flag, note, labels, spam, notSpam, block }
 
 /// One message, read in full, with reply, reply all and forward along the
 /// bottom. On Gmail, with its labels, and the rest of its conversation
@@ -276,11 +276,45 @@ class _MessageScreenState extends State<MessageScreen> {
                 _mailbox.move(message, StandardFolder.inbox, others: others),
             tr(context, 'message.movedToInbox'),
           );
+        case _More.block:
+          await _blockSender();
       }
     } on ApiException catch (e) {
       if (mounted) {
         showToast(context, describeError(context, e));
       }
+    }
+  }
+
+  /// Whether the sender can be blocked: the server keeps contacts, and the
+  /// mail is someone else's.
+  bool get _canBlock {
+    final account = _mailbox.account;
+    final sender = _message.sender.trim();
+    return _mailbox.backend.hasContacts &&
+        account != null &&
+        sender.isNotEmpty &&
+        sender.toLowerCase() != account.address.toLowerCase();
+  }
+
+  /// Refuses the sender's mail from now on, after asking.
+  Future<void> _blockSender() async {
+    final account = _mailbox.account;
+    if (account == null) return;
+    final sender = _message.sender.trim();
+    final sure = await confirmAction(
+      context,
+      title: trArgs(context, 'message.blockTitle', {'sender': sender}),
+      message: tr(context, 'message.blockBody'),
+      action: tr(context, 'message.blockAction'),
+    );
+    if (!sure || !mounted) return;
+    await _mailbox.backend.blockSender(account.id, sender);
+    if (mounted) {
+      showToast(
+        context,
+        trArgs(context, 'message.blocked', {'sender': sender}),
+      );
     }
   }
 
@@ -427,6 +461,11 @@ class _MessageScreenState extends State<MessageScreen> {
                         PopupMenuItem(
                           value: _More.spam,
                           child: Text(tr(context, 'message.moveToSpam')),
+                        ),
+                      if (_canBlock)
+                        PopupMenuItem(
+                          value: _More.block,
+                          child: Text(tr(context, 'message.block')),
                         ),
                     ],
                   ),

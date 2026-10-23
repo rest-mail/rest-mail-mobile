@@ -68,6 +68,16 @@ class _ComposeSheetState extends State<ComposeSheet>
   late final _subject = TextEditingController(text: widget.seed.subject);
   late final _body = TextEditingController(text: widget.seed.body);
   final _toFocus = FocusNode();
+
+  /// The account's contacts matching what is typed in an address field, or
+  /// null where the server keeps none.
+  Future<List<Contact>> Function(String query)? get _suggest {
+    final backend = widget.mailbox.backend;
+    final account = widget.mailbox.account;
+    if (!backend.hasContacts || account == null) return null;
+    return (query) => backend.suggestContacts(account.id, query);
+  }
+
   final _bodyFocus = FocusNode();
 
   late String _from = _initialFrom();
@@ -659,6 +669,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                       focusNode: _toFocus,
                       hint: tr(context, 'compose.recipient'),
                       enabled: !_counting,
+                      suggest: _suggest,
                     ),
                   ),
                   if (_showCc) ...[
@@ -668,6 +679,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                         controller: _cc,
                         hint: '',
                         enabled: !_counting,
+                        suggest: _suggest,
                       ),
                     ),
                     _FieldRow(
@@ -676,6 +688,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                         controller: _bcc,
                         hint: '',
                         enabled: !_counting,
+                        suggest: _suggest,
                       ),
                     ),
                   ],
@@ -848,12 +861,13 @@ class _FieldRow extends StatelessWidget {
   }
 }
 
-class _AddressField extends StatelessWidget {
+class _AddressField extends StatefulWidget {
   const _AddressField({
     required this.controller,
     required this.hint,
     this.focusNode,
     this.enabled = true,
+    this.suggest,
   });
 
   final TextEditingController controller;
@@ -861,18 +875,139 @@ class _AddressField extends StatelessWidget {
   final String hint;
   final bool enabled;
 
+  /// The account's contacts matching what is being typed, or null where the
+  /// server keeps none.
+  final Future<List<Contact>> Function(String query)? suggest;
+
   @override
-  Widget build(BuildContext context) => TextField(
-    controller: controller,
-    focusNode: focusNode,
-    enabled: enabled,
-    keyboardType: TextInputType.emailAddress,
-    autocorrect: false,
-    enableSuggestions: false,
-    textInputAction: TextInputAction.next,
-    style: rmText(15, color: context.rm.ink),
-    decoration: bareInput(context, hint),
-  );
+  State<_AddressField> createState() => _AddressFieldState();
+}
+
+class _AddressFieldState extends State<_AddressField> {
+  List<Contact> _suggestions = const [];
+  Timer? _debounce;
+
+  /// Each question's number: an answer to an older one is dropped.
+  int _asked = 0;
+
+  /// What is being typed: the text after the last separator.
+  String get _typing {
+    final text = widget.controller.text;
+    final at = text.lastIndexOf(RegExp(r'[,;]'));
+    return text.substring(at + 1).trim();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _changed(String _) {
+    _debounce?.cancel();
+    final suggest = widget.suggest, typing = _typing;
+    if (suggest == null || typing.length < 2) {
+      _asked++;
+      if (_suggestions.isNotEmpty) setState(() => _suggestions = const []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 250), () async {
+      final asked = ++_asked;
+      List<Contact> found;
+      try {
+        found = await suggest(typing);
+      } on ApiException {
+        // Suggestions only help: none when they cannot be had.
+        found = const [];
+      }
+      if (!mounted || asked != _asked) return;
+      final present = {
+        for (final address in parseAddresses(widget.controller.text).valid)
+          address.toLowerCase(),
+      };
+      setState(
+        () => _suggestions = [
+          for (final contact in found)
+            if (!present.contains(contact.email.toLowerCase())) contact,
+        ].take(5).toList(),
+      );
+    });
+  }
+
+  /// Puts [contact] in place of what is being typed, ready for the next.
+  void _pick(Contact contact) {
+    final text = widget.controller.text;
+    final at = text.lastIndexOf(RegExp(r'[,;]'));
+    final before = at < 0 ? '' : '${text.substring(0, at + 1)} ';
+    final name = contact.name.trim();
+    final address = name.isEmpty || name.contains(RegExp(r'[,;<>"]'))
+        ? contact.email
+        : '$name <${contact.email}>';
+    final next = '$before$address, ';
+    _asked++;
+    widget.controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    setState(() => _suggestions = const []);
+    widget.focusNode?.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final field = TextField(
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      enabled: widget.enabled,
+      keyboardType: TextInputType.emailAddress,
+      autocorrect: false,
+      enableSuggestions: false,
+      textInputAction: TextInputAction.next,
+      onChanged: _changed,
+      style: rmText(15, color: c.ink),
+      decoration: bareInput(context, widget.hint),
+    );
+    if (_suggestions.isEmpty || !widget.enabled) return field;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        field,
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final contact in _suggestions)
+              Semantics(
+                button: true,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _pick(contact),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: c.line),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      contact.name.trim().isEmpty
+                          ? contact.email
+                          : '${contact.name.trim()} · ${contact.email}',
+                      style: rmText(12.5, color: c.ink2),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _SendButton extends StatelessWidget {
