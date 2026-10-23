@@ -266,44 +266,26 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                       unawaited(m.selectFolder(folder.name));
                     },
                   ),
-                  if (m.account != null &&
-                      (m.backend.hasQuarantine || m.backend.hasContacts)) ...[
+                  if (m.backend.hasQuarantine && m.account != null) ...[
                     const SizedBox(height: 12),
                     RmGroup(
                       children: [
-                        if (m.backend.hasQuarantine)
-                          _QuarantineRow(
-                            held: _held,
-                            onTap: () async {
-                              final accountId = m.account!.id;
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => QuarantineScreen(
-                                    mailbox: m,
-                                    accountId: accountId,
-                                  ),
-                                ),
-                              );
-                              if (mounted) {
-                                unawaited(_refreshHeld(force: true));
-                              }
-                            },
-                          ),
-                        if (m.backend.hasContacts)
-                          _ContactsRow(
-                            onTap: () => unawaited(
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => ContactsScreen(
-                                    mailbox: m,
-                                    accountId: m.account!.id,
-                                  ),
+                        _QuarantineRow(
+                          held: _held,
+                          onTap: () async {
+                            final accountId = m.account!.id;
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => QuarantineScreen(
+                                  mailbox: m,
+                                  accountId: accountId,
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                            if (mounted) unawaited(_refreshHeld(force: true));
+                          },
+                        ),
                       ],
                     ),
                   ],
@@ -336,6 +318,28 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                               OverviewScreen(account: healthAccount),
                         ),
                       ),
+                    ),
+                  ],
+                  // After Administration and the server's health, which an
+                  // administrator reaches first; before them for anyone else.
+                  if (m.backend.hasContacts && m.account != null) ...[
+                    const SizedBox(height: 12),
+                    RmGroup(
+                      children: [
+                        _ContactsRow(
+                          onTap: () => unawaited(
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => ContactsScreen(
+                                  mailbox: m,
+                                  accountId: m.account!.id,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
