@@ -2265,8 +2265,14 @@ class FakeRestmail {
       case ('PATCH', ['domains', final id]):
         need('domains:write');
         final domain = _domain(id);
-        if (_object(bytes)['active'] case final bool active) {
-          domain.active = active;
+        final body = _object(bytes);
+        if (body['sending_policy'] case final String policy) {
+          _checkSendingPolicy(policy);
+          domain.sendingPolicy = policy;
+        }
+        if (body['active'] case final bool active) domain.active = active;
+        if (body['default_quota_bytes'] case final num quota) {
+          domain.defaultQuotaBytes = quota.toInt();
         }
         return _json({'data': _domainJson(domain)});
       case ('DELETE', ['domains', final id]):
@@ -2362,6 +2368,10 @@ class FakeRestmail {
       case ('PATCH', ['mailboxes', final id]):
         need('mailboxes:write');
         return _updateMailbox(_adminMailbox(id), _object(bytes));
+      case ('DELETE', ['mailboxes', final id, 'sessions']):
+        need('mailboxes:write');
+        revokeSessionsOf(_adminMailbox(id).address);
+        return _noContent();
       case ('DELETE', ['mailboxes', final id]):
         need('mailboxes:delete');
         _deleteMailbox(_adminMailbox(id));
@@ -2390,7 +2400,7 @@ class FakeRestmail {
         final body = _object(bytes);
         if (body['destination_address'] case final String to
             when to.contains('@')) {
-          alias.destination = to.trim().toLowerCase();
+          alias.destination = to;
         }
         if (body['active'] case final bool active) alias.active = active;
         return _json({'data': _aliasJson(alias)});
@@ -2400,7 +2410,7 @@ class FakeRestmail {
         return _noContent();
 
       case ('GET', ['stats']):
-        // The real server asks no capability of this one, only an admin.
+        need('domains:read');
         return _stats();
 
       case ('GET', ['bans']):
@@ -2622,10 +2632,11 @@ class FakeRestmail {
   Map<String, Object?> _domainJson(FakeDomain d) => {
     'id': d.id,
     'name': d.name,
-    'server_type': 'restmail',
+    'server_type': d.serverType,
     'active': d.active,
-    'default_quota_bytes': 1073741824,
+    'default_quota_bytes': d.defaultQuotaBytes,
     'dkim_selector': d.dkimSelector,
+    'sending_policy': d.sendingPolicy,
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -2642,6 +2653,9 @@ class FakeRestmail {
         .fold<int>(0, (sum, m) => sum + m.sizeBytes),
     'active': b.active,
     'last_login_at': null,
+    'password_change_required': b.mustChangePassword,
+    'two_factor_required': b.owesTwoFactor,
+    if (_domains[b.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -2652,6 +2666,7 @@ class FakeRestmail {
     'source_address': a.source,
     'destination_address': a.destination,
     'active': a.active,
+    if (_domains[a.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
   };
 
@@ -2977,10 +2992,31 @@ class FakeRestmail {
         fields: {'server_type': "must be 'traditional' or 'restmail'"},
       );
     }
+    final policy = body['sending_policy'] as String? ?? '';
+    _checkSendingPolicy(policy);
     if (_domains.containsKey(name)) {
       _fail(409, 'already_exists', 'Domain already exists');
     }
-    return _json({'data': _domainJson(_domainNamed(name))}, status: 201);
+    // As on the server, a new domain is not live until it is turned on.
+    final domain = _domainNamed(name)
+      ..active = false
+      ..serverType = body['server_type'] as String
+      ..sendingPolicy = policy;
+    if (body['default_quota_bytes'] case final num quota) {
+      domain.defaultQuotaBytes = quota.toInt();
+    }
+    return _json({'data': _domainJson(domain)}, status: 201);
+  }
+
+  void _checkSendingPolicy(String policy) {
+    if (policy != '' && policy != 'transactional' && policy != 'bulk') {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'sending_policy': "must be 'transactional', 'bulk' or empty"},
+      );
+    }
   }
 
   http.StreamedResponse _updateMailbox(
@@ -3006,6 +3042,9 @@ class FakeRestmail {
       }
     }
     if (body['display_name'] case final String name) box.displayName = name;
+    if (body['quota_bytes'] case final num quota) {
+      box.quotaBytes = quota.toInt();
+    }
     if (body['active'] case final bool active) {
       box.active = active;
       if (!active) revokeSessionsOf(box.address);
@@ -3129,9 +3168,7 @@ class FakeRestmail {
     final source = (body['source_address'] as String? ?? '')
         .trim()
         .toLowerCase();
-    final destination = (body['destination_address'] as String? ?? '')
-        .trim()
-        .toLowerCase();
+    final destination = body['destination_address'] as String? ?? '';
     final fields = {
       if (!source.contains('@'))
         'source_address': 'must be a valid email address',

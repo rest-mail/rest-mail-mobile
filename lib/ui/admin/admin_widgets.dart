@@ -27,6 +27,10 @@ String describeAdminError(Object error, {String? host}) {
   return describeError(error, host: host);
 }
 
+/// Bytes for a size typed in MB, or null when nothing was typed.
+int? megabytes(String value) =>
+    value.isEmpty ? null : int.parse(value) * 1024 * 1024;
+
 /// What [account] may see and do in Administration, rebuilding the caller
 /// when its capabilities change at a refresh.
 AdminAccess adminAccessOf(BuildContext context, RestAccount account) {
@@ -41,14 +45,8 @@ Future<Map<int, String>> domainNames(RestAccount account) async {
     return const {};
   }
   try {
-    final names = <int, String>{};
-    var offset = 0;
-    while (true) {
-      final page = await account.client.domains(offset: offset, limit: 200);
-      names.addAll({for (final domain in page.items) domain.id: domain.name});
-      if (!page.hasMore || page.items.isEmpty) return names;
-      offset = page.next;
-    }
+    final domains = await account.client.domains(limit: 200);
+    return {for (final d in domains.items) d.id: d.name};
   } on ApiException {
     return const {};
   }
@@ -139,6 +137,37 @@ class AdminMessage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// A detail is usable only after a successful resource GET. A refusal or a
+/// missing resource replaces the old rows, including their change actions.
+class AdminDetailBody extends StatelessWidget {
+  const AdminDetailBody({
+    super.key,
+    required this.ready,
+    required this.error,
+    required this.host,
+    required this.onRefresh,
+    required this.child,
+  });
+
+  final bool ready;
+  final Object? error;
+  final String host;
+  final Future<void> Function() onRefresh;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error case final failure?) {
+      return AdminMessage(
+        describeAdminError(failure, host: host),
+        onRetry: () => unawaited(onRefresh()),
+      );
+    }
+    if (!ready) return const Center(child: CircularProgressIndicator());
+    return RefreshIndicator(onRefresh: onRefresh, child: child);
   }
 }
 
@@ -330,7 +359,7 @@ class AdminAddButton extends StatelessWidget {
   );
 }
 
-/// A text field on an [AdminFormScreen].
+/// A field on an [AdminFormScreen]: text, or one of [choices].
 class AdminField {
   const AdminField(
     this.label, {
@@ -341,6 +370,8 @@ class AdminField {
     this.optional = false,
     this.multiline = false,
     this.pasteOnly = false,
+    this.number = false,
+    this.choices,
   });
 
   final String label;
@@ -348,8 +379,7 @@ class AdminField {
   final String initial;
   final bool obscure;
 
-  /// Several lines, for pasted text such as a PEM certificate. Not with
-  /// [obscure], which Flutter keeps to one line.
+  /// Several lines for pasted text, except in obscured fields.
   final bool multiline;
 
   /// Paste exact text, preserving line breaks in an obscured field.
@@ -360,6 +390,13 @@ class AdminField {
 
   /// May be left empty.
   final bool optional;
+
+  /// A whole number: digits only, the number keyboard.
+  final bool number;
+
+  /// When given, the field is one of these (value, label) pairs, chosen with
+  /// a tap; its value is the choice's value, starting at [initial].
+  final List<(String, String)>? choices;
 }
 
 /// A few fields and a button that sends them. Pops with true once the
@@ -419,12 +456,21 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
           : _controllers[i].text.trim(),
   ];
 
-  bool get _ready =>
-      !_busy &&
-      [
-        for (var i = 0; i < widget.fields.length; i++)
-          widget.fields[i].optional || _values[i].isNotEmpty,
-      ].every((ok) => ok);
+  bool get _ready {
+    if (_busy) return false;
+    final values = _values;
+    for (var i = 0; i < widget.fields.length; i++) {
+      final field = widget.fields[i];
+      final choices = field.choices;
+      if (choices != null) {
+        // An empty value can be a real choice, such as sending policy None.
+        if (!choices.any((choice) => choice.$1 == values[i])) return false;
+      } else if (!field.optional && values[i].isEmpty) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   Future<void> _send() async {
     if (!_ready) return;
@@ -487,46 +533,70 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                     const SizedBox(height: 18),
                     SectionLabel(widget.fields[i].label),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _controllers[i],
-                      readOnly: widget.fields[i].pasteOnly,
-                      enableInteractiveSelection: !widget.fields[i].pasteOnly,
-                      obscureText: widget.fields[i].obscure,
-                      autocorrect:
-                          !widget.fields[i].obscure && !widget.fields[i].email,
-                      enableSuggestions:
-                          !widget.fields[i].obscure && !widget.fields[i].email,
-                      keyboardType: widget.fields[i].email
-                          ? TextInputType.emailAddress
-                          : widget.fields[i].multiline
-                          ? TextInputType.multiline
-                          : null,
-                      minLines: widget.fields[i].multiline ? 4 : null,
-                      maxLines: widget.fields[i].multiline ? 8 : 1,
-                      textInputAction: widget.fields[i].multiline
-                          ? TextInputAction.newline
-                          : i == widget.fields.length - 1
-                          ? TextInputAction.done
-                          : TextInputAction.next,
-                      onChanged: (_) => setState(() => _error = null),
-                      onSubmitted:
-                          i == widget.fields.length - 1 &&
-                              !widget.fields[i].multiline
-                          ? (_) => unawaited(_send())
-                          : null,
-                      style: rmText(16, color: c.ink),
-                      decoration: InputDecoration(
-                        hintText: widget.fields[i].hint,
-                        suffixIcon: widget.fields[i].pasteOnly
-                            ? TextButton(
-                                onPressed: _busy
-                                    ? null
-                                    : () => unawaited(_paste(i)),
-                                child: const Text('Paste'),
-                              )
+                    if (widget.fields[i].choices case final choices?)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final (value, label) in choices)
+                            ChoiceChip(
+                              label: Text(label),
+                              selected: _controllers[i].text == value,
+                              onSelected: (_) => setState(() {
+                                _controllers[i].text = value;
+                                _error = null;
+                              }),
+                            ),
+                        ],
+                      )
+                    else
+                      TextField(
+                        controller: _controllers[i],
+                        readOnly: widget.fields[i].pasteOnly,
+                        enableInteractiveSelection: !widget.fields[i].pasteOnly,
+                        obscureText: widget.fields[i].obscure,
+                        autocorrect:
+                            !widget.fields[i].obscure &&
+                            !widget.fields[i].email,
+                        enableSuggestions:
+                            !widget.fields[i].obscure &&
+                            !widget.fields[i].email,
+                        keyboardType: widget.fields[i].number
+                            ? TextInputType.number
+                            : widget.fields[i].email
+                            ? TextInputType.emailAddress
+                            : widget.fields[i].multiline
+                            ? TextInputType.multiline
                             : null,
+                        minLines: widget.fields[i].multiline ? 4 : null,
+                        maxLines: widget.fields[i].multiline ? 8 : 1,
+                        inputFormatters: widget.fields[i].number
+                            ? [FilteringTextInputFormatter.digitsOnly]
+                            : null,
+                        textInputAction: widget.fields[i].multiline
+                            ? TextInputAction.newline
+                            : i == widget.fields.length - 1
+                            ? TextInputAction.done
+                            : TextInputAction.next,
+                        onChanged: (_) => setState(() => _error = null),
+                        onSubmitted:
+                            i == widget.fields.length - 1 &&
+                                !widget.fields[i].multiline
+                            ? (_) => unawaited(_send())
+                            : null,
+                        style: rmText(16, color: c.ink),
+                        decoration: InputDecoration(
+                          hintText: widget.fields[i].hint,
+                          suffixIcon: widget.fields[i].pasteOnly
+                              ? TextButton(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => unawaited(_paste(i)),
+                                  child: const Text('Paste'),
+                                )
+                              : null,
+                        ),
                       ),
-                    ),
                   ],
                   if (error != null) ...[
                     const SizedBox(height: 16),

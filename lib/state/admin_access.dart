@@ -49,7 +49,8 @@ enum AdminSection {
   overview.readOnly(
     'Overview',
     'Mail volume, the queue and TLS at a glance',
-    read: Capability.observabilityRead,
+    // GET /admin/stats needs domains:read.
+    read: Capability.domainsRead,
   ),
   deliveryLog.readOnly(
     'Delivery log',
@@ -156,6 +157,22 @@ enum AdminSection {
   mtaSts(
     'MTA-STS',
     'Whether other servers must send here over TLS',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  relay(
+    'Outgoing mail',
+    'Sent straight to other servers, or through a relay',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  suppressions(
+    'Suppressed recipients',
+    'Addresses no longer sent to, after mail to them bounced',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,

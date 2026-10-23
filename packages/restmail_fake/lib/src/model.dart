@@ -27,7 +27,7 @@ class FakeMailbox {
   /// When set, signing in also needs this code or [recoveryCode].
   String? totpCode;
   String? recoveryCode;
-  final int quotaBytes;
+  int quotaBytes;
 
   /// In setup, as a fresh install's bootstrap account is: it must choose its
   /// own password, and enroll an authenticator.
@@ -51,6 +51,11 @@ class FakeDomain {
   final int id;
   final String name;
   bool active;
+  String serverType = 'restmail';
+  int defaultQuotaBytes = 1073741824;
+
+  /// `transactional`, `bulk`, or empty for no rule.
+  String sendingPolicy = '';
 
   /// Where its DKIM key is published; empty once the key is gone.
   String dkimSelector = 'mail';

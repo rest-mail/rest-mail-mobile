@@ -284,28 +284,56 @@ class RestmailClient {
   Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
       _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
 
-  /// Creates a domain whose mail rest-mail serves itself. Throws
-  /// [ApiException] with code `already_exists` when it is there already.
-  /// Needs `domains:write`.
-  Future<void> createDomain(String name) async {
-    await _authed(
-      'POST',
-      ['admin', 'domains'],
-      body: {'name': name, 'server_type': 'restmail'},
-    );
-  }
+  /// Fresh detail. Needs `domains:read` on this domain.
+  Future<AdminDomain> domain(int id) async => AdminDomain.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$id'])),
+  );
 
-  /// Turns a domain's mail on or off. Needs `domains:write`.
-  Future<AdminDomain> updateDomain(int id, {bool? active}) async =>
-      AdminDomain.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'domains', '$id'],
-            body: {'active': ?active},
-          ),
-        ),
-      );
+  /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
+  /// or `traditional`. A new domain is never live: going live is
+  /// [updateDomain] with `active`. Throws [ApiException] with code
+  /// `already_exists` when it is there already. Needs `domains:write`.
+  Future<AdminDomain> createDomain(
+    String name, {
+    String serverType = 'restmail',
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'domains'],
+        body: {
+          'name': name,
+          'server_type': serverType,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
+
+  /// Changes what is given: whether the domain's mail is on, the quota new
+  /// mailboxes get, and its sending policy (empty clears it).
+  /// Needs `domains:write`.
+  Future<AdminDomain> updateDomain(
+    int id, {
+    bool? active,
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'domains', '$id'],
+        body: {
+          'active': ?active,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
@@ -325,6 +353,11 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. Needs `mailboxes:read` on this mailbox.
+  Future<AdminMailbox> adminMailbox(int id) async => AdminMailbox.fromJson(
+    _data(await _authed('GET', ['admin', 'mailboxes', '$id'])),
+  );
+
   /// Changes what is given; a new [password] ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
@@ -332,6 +365,7 @@ class RestmailClient {
     String? displayName,
     String? password,
     bool? active,
+    int? quotaBytes,
   }) async => AdminMailbox.fromJson(
     _data(
       await _authed(
@@ -341,10 +375,18 @@ class RestmailClient {
           'display_name': ?displayName,
           'password': ?password,
           'active': ?active,
+          'quota_bytes': ?quotaBytes,
         },
       ),
     ),
   );
+
+  /// Signs the mailbox out everywhere: its refresh tokens are revoked and
+  /// every access token it holds is refused. Passwords and app passwords
+  /// stay. Needs `mailboxes:write`.
+  Future<void> endMailboxSessions(int id) async {
+    await _authed('DELETE', ['admin', 'mailboxes', '$id', 'sessions']);
+  }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
@@ -364,18 +406,25 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. The server currently needs global `mailboxes:read`.
+  Future<AdminAlias> alias(int id) async => AdminAlias.fromJson(
+    _data(await _authed('GET', ['admin', 'aliases', '$id'])),
+  );
+
   /// Sends mail for [source], on a domain the server has, to [destination].
   /// Needs `mailboxes:write`.
-  Future<void> createAlias({
+  Future<AdminAlias> createAlias({
     required String source,
     required String destination,
-  }) async {
-    await _authed(
-      'POST',
-      ['admin', 'aliases'],
-      body: {'source_address': source, 'destination_address': destination},
-    );
-  }
+  }) async => AdminAlias.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'aliases'],
+        body: {'source_address': source, 'destination_address': destination},
+      ),
+    ),
+  );
 
   /// Needs `mailboxes:write`.
   Future<AdminAlias> updateAlias(
@@ -657,6 +706,62 @@ class RestmailClient {
       'domains',
       '$domainId',
       list.path,
+      '$id',
+    ]);
+  }
+
+  /// How [domainId]'s outgoing mail leaves the server. Needs
+  /// `domains:read`.
+  Future<DomainRelay> domainRelay(int domainId) async => DomainRelay.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'relay'])),
+  );
+
+  /// Replaces [domainId]'s outbound transport. For a relay, [host], [port]
+  /// and [tlsMode] are needed. A [password] left out keeps the stored one;
+  /// an empty one clears it. Needs `domains:write` on every domain, as the
+  /// server asks.
+  Future<DomainRelay> setDomainRelay(
+    int domainId, {
+    required OutboundTransport transport,
+    String host = '',
+    int? port,
+    RelayTlsMode? tlsMode,
+    String username = '',
+    String? password,
+  }) async => DomainRelay.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'domains', '$domainId', 'relay'],
+        body: {
+          'transport': transport.value,
+          if (transport == OutboundTransport.relay) ...{
+            'host': host,
+            'port': ?port,
+            'tls_mode': ?tlsMode?.value,
+            'username': username,
+            'password': ?password,
+          },
+        },
+      ),
+    ),
+  );
+
+  /// The recipients [domainId]'s mail is no longer sent to, most recently
+  /// bounced first. Needs `domains:read`.
+  Future<List<Suppression>> suppressions(int domainId) async => _list(
+    await _authed('GET', ['admin', 'domains', '$domainId', 'suppressions']),
+    Suppression.fromJson,
+  );
+
+  /// Clears a suppression, so mail to the address is tried again. Needs
+  /// `domains:write`.
+  Future<void> clearSuppression(int domainId, int id) async {
+    await _authed('DELETE', [
+      'admin',
+      'domains',
+      '$domainId',
+      'suppressions',
       '$id',
     ]);
   }
