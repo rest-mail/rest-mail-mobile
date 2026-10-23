@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
+import 'filter_models.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -517,29 +518,96 @@ class RestmailClient {
     await _authed('DELETE', ['admin', 'certificates', '$id']);
   }
 
-  /// Needs `pipelines:read`.
-  Future<OffsetPage<Pipeline>> pipelines({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'pipelines'], Pipeline.fromJson, offset, limit);
+  /// Needs global `pipelines:read`. The server filters before pagination.
+  Future<OffsetPage<Pipeline>> pipelines({
+    int? domainId,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'pipelines'],
+    Pipeline.fromJson,
+    offset,
+    limit,
+    {'domain_id': ?domainId?.toString()},
+  );
 
-  /// Turns a pipeline on or off. Needs `pipelines:write`.
-  Future<Pipeline> updatePipeline(int id, {bool? active}) async =>
-      Pipeline.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'pipelines', '$id'],
-            body: {'active': ?active},
-          ),
-        ),
-      );
+  /// Needs global `pipelines:write`. Omitted active defaults to true.
+  Future<Pipeline> createPipeline({
+    required int domainId,
+    required String direction,
+    required List<PipelineFilter> filters,
+    bool? active,
+  }) async => Pipeline.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines'],
+        body: {
+          'domain_id': domainId,
+          'direction': direction,
+          'filters': [for (final filter in filters) filter.toJson()],
+          'active': ?active,
+        },
+      ),
+    ),
+  );
+
+  /// Only supplied fields change. An empty filter list clears all steps.
+  Future<Pipeline> updatePipeline(
+    int id, {
+    bool? active,
+    List<PipelineFilter>? filters,
+  }) async => Pipeline.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'pipelines', '$id'],
+        body: {
+          'active': ?active,
+          if (filters != null)
+            'filters': [for (final filter in filters) filter.toJson()],
+        },
+      ),
+    ),
+  );
 
   /// Needs `pipelines:delete`.
   Future<void> deletePipeline(int id) async {
     await _authed('DELETE', ['admin', 'pipelines', '$id']);
   }
 
-  /// Needs `pipelines:read`.
+  /// Executes the saved pipeline. Requires global `pipelines:write`.
+  Future<PipelineTestResult> testPipeline(
+    int id, {
+    required Map<String, dynamic> email,
+  }) async => PipelineTestResult.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines', 'test'],
+        body: {'pipeline_id': id, 'email': email},
+      ),
+    ),
+  );
+
+  /// Tests one built-in filter with its complete config and canonical email.
+  Future<FilterTestResult> testFilter({
+    required String filterName,
+    required Map<String, dynamic> config,
+    required Map<String, dynamic> email,
+  }) async => FilterTestResult.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'pipelines', 'test-filter'],
+        body: {'filter_name': filterName, 'config': config, 'email': email},
+      ),
+    ),
+  );
+
+  /// Needs global `pipelines:read`.
   Future<OffsetPage<CustomFilter>> customFilters({
+    int? domainId,
     int offset = 0,
     int limit = 100,
   }) => _offsetPage(
@@ -547,19 +615,91 @@ class RestmailClient {
     CustomFilter.fromJson,
     offset,
     limit,
+    {'domain_id': ?domainId?.toString()},
   );
 
-  /// Turns a custom filter on or off. Needs `pipelines:write`.
-  Future<CustomFilter> updateCustomFilter(int id, {bool? enabled}) async =>
-      CustomFilter.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'custom-filters', '$id'],
-            body: {'enabled': ?enabled},
-          ),
-        ),
-      );
+  Future<CustomFilter> customFilter(int id) async => CustomFilter.fromJson(
+    _data(await _authed('GET', ['admin', 'custom-filters', '$id'])),
+  );
+
+  Future<CustomFilter> createCustomFilter({
+    required int domainId,
+    required String name,
+    required String filterType,
+    required String direction,
+    required Map<String, dynamic> config,
+    String? description,
+    bool? enabled,
+  }) async => CustomFilter.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters'],
+        body: {
+          'domain_id': domainId,
+          'name': name,
+          'filter_type': filterType,
+          'direction': direction,
+          'config': config,
+          'description': ?description,
+          'enabled': ?enabled,
+        },
+      ),
+    ),
+  );
+
+  /// Omitted fields are unchanged, including config. Empty objects are sent.
+  Future<CustomFilter> updateCustomFilter(
+    int id, {
+    String? name,
+    String? description,
+    String? filterType,
+    String? direction,
+    Map<String, dynamic>? config,
+    bool? enabled,
+  }) async => CustomFilter.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'custom-filters', '$id'],
+        body: {
+          'name': ?name,
+          'description': ?description,
+          'filter_type': ?filterType,
+          'direction': ?direction,
+          'config': ?config,
+          'enabled': ?enabled,
+        },
+      ),
+    ),
+  );
+
+  /// These sidecar endpoints return bare objects, without a data envelope.
+  Future<FilterValidation> validateCustomFilter(
+    String script, {
+    Map<String, dynamic>? email,
+  }) async => FilterValidation.fromJson(
+    _envelope(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters', 'validate'],
+        body: {'script': script, 'email': ?email},
+      ),
+    ),
+  );
+
+  Future<ScriptTestResult> testCustomFilter(
+    int id, {
+    Map<String, dynamic>? email,
+  }) async => ScriptTestResult.fromJson(
+    _envelope(
+      await _authed(
+        'POST',
+        ['admin', 'custom-filters', '$id', 'test'],
+        body: {'email': ?email},
+      ),
+    ),
+  );
 
   /// Needs `pipelines:delete`.
   Future<void> deleteCustomFilter(int id) async {

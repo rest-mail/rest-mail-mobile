@@ -2511,18 +2511,50 @@ class FakeRestmail {
       case ('GET', ['pipelines']):
         need('pipelines:read');
         return _listPage(
-          _pipelines.values.toList()
+          _pipelines.values
+              .where(
+                (p) =>
+                    query['domain_id'] == null ||
+                    '${_domains[p.domain]?.id}' == query['domain_id'],
+              )
+              .toList()
             ..sort((a, b) => a.direction.compareTo(b.direction)),
           query,
           _pipelineJson,
         );
+      case ('POST', ['pipelines']):
+        need('pipelines:write');
+        final body = _object(bytes);
+        final domain = _definitionDomain(body['domain_id']);
+        final direction = body['direction'];
+        if (direction != 'inbound' && direction != 'outbound') {
+          _definitionError('direction', "must be 'inbound' or 'outbound'");
+        }
+        final filters = _definitionFilters(body['filters']);
+        final pipeline = FakePipeline(
+          id: _nextRowId++,
+          domain: domain.name,
+          direction: direction as String,
+          filters: filters,
+        )..active = body['active'] as bool? ?? true;
+        _pipelines[pipeline.id] = pipeline;
+        return _json({'data': _pipelineJson(pipeline)}, status: 201);
       case ('PATCH', ['pipelines', final id]):
         need('pipelines:write');
         final pipeline =
             _pipelines[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Pipeline not found');
-        if (_object(bytes)['active'] case final bool active) {
+        final body = _object(bytes);
+        final filters = body.containsKey('filters')
+            ? _definitionFilters(body['filters'])
+            : null;
+        if (body['active'] case final bool active) {
           pipeline.active = active;
+        }
+        if (filters != null) {
+          pipeline.filters
+            ..clear()
+            ..addAll(filters);
         }
         return _json({'data': _pipelineJson(pipeline)});
       case ('DELETE', ['pipelines', final id]):
@@ -2535,19 +2567,56 @@ class FakeRestmail {
       case ('GET', ['custom-filters']):
         need('pipelines:read');
         return _listPage(
-          _customFilters.values.toList()
+          _customFilters.values
+              .where(
+                (f) =>
+                    query['domain_id'] == null ||
+                    '${_domains[f.domain]?.id}' == query['domain_id'],
+              )
+              .toList()
             ..sort((a, b) => a.name.compareTo(b.name)),
           query,
           _customFilterJson,
         );
+      case ('GET', ['custom-filters', final id]):
+        need('pipelines:read');
+        final filter =
+            _customFilters[int.tryParse(id)] ??
+            _fail(404, 'not_found', 'Custom filter not found');
+        return _json({'data': _customFilterJson(filter)});
+      case ('POST', ['custom-filters']):
+        need('pipelines:write');
+        final body = _object(bytes);
+        final domain = _definitionDomain(body['domain_id']);
+        _validateCustomDefinition(body);
+        final filter = FakeCustomFilter(
+          id: _nextRowId++,
+          domain: domain.name,
+          name: body['name'] as String,
+          description: body['description'] as String? ?? '',
+          filterType: body['filter_type'] as String,
+          direction: body['direction'] as String,
+          config: body['config'] as Map<String, dynamic>,
+        )..enabled = body['enabled'] as bool? ?? true;
+        _customFilters[filter.id] = filter;
+        return _json({'data': _customFilterJson(filter)}, status: 201);
       case ('PATCH', ['custom-filters', final id]):
         need('pipelines:write');
         final filter =
             _customFilters[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Custom filter not found');
-        if (_object(bytes)['enabled'] case final bool enabled) {
-          filter.enabled = enabled;
-        }
+        final body = _object(bytes);
+        final updated = <String, dynamic>{
+          ..._customFilterJson(filter),
+          ...body,
+        };
+        _validateCustomDefinition(updated);
+        filter.name = updated['name'] as String;
+        filter.description = updated['description'] as String? ?? '';
+        filter.filterType = updated['filter_type'] as String;
+        filter.direction = updated['direction'] as String;
+        filter.config = updated['config'] as Map<String, dynamic>;
+        filter.enabled = updated['enabled'] as bool;
         return _json({'data': _customFilterJson(filter)});
       case ('DELETE', ['custom-filters', final id]):
         need('pipelines:delete');
@@ -2670,6 +2739,49 @@ class FakeRestmail {
   // The server does not load a pipeline's or a filter's domain into the
   // list, so it comes back empty, as Go writes a zero struct.
   static const _noDomain = {'id': 0, 'name': ''};
+
+  Never _definitionError(String field, String message) => _fail(
+    422,
+    'validation_failed',
+    'Request body failed validation',
+    fields: {field: message},
+  );
+
+  FakeDomain _definitionDomain(Object? id) =>
+      _domains.values.where((d) => d.id == id).firstOrNull ??
+      _fail(404, 'not_found', 'Domain not found');
+
+  List<Map<String, Object?>> _definitionFilters(Object? value) {
+    if (value is! List<dynamic>) {
+      _definitionError('filters', 'must be an array of filter objects');
+    }
+    final filters = <Map<String, Object?>>[];
+    for (final item in value) {
+      if (item is! Map<String, dynamic> ||
+          (item.containsKey('name') && item['name'] is! String) ||
+          (item.containsKey('config') &&
+              item['config'] is! Map<String, dynamic>)) {
+        _definitionError('filters', 'must be an array of filter objects');
+      }
+      filters.add(Map<String, Object?>.from(item));
+    }
+    return filters;
+  }
+
+  void _validateCustomDefinition(Map<String, dynamic> body) {
+    if (body['name'] is! String || (body['name'] as String).isEmpty) {
+      _definitionError('name', 'required');
+    }
+    if (!const ['action', 'transform'].contains(body['filter_type'])) {
+      _definitionError('filter_type', 'must be action or transform');
+    }
+    if (!const ['inbound', 'outbound', 'both'].contains(body['direction'])) {
+      _definitionError('direction', 'must be inbound, outbound or both');
+    }
+    if (body['config'] is! Map<String, dynamic>) {
+      _definitionError('config', 'must be an object');
+    }
+  }
 
   Map<String, Object?> _pipelineJson(FakePipeline p) => {
     'id': p.id,

@@ -649,6 +649,7 @@ class PipelineFilter {
     required this.type,
     required this.enabled,
     this.unskippable = false,
+    this.config,
   });
 
   factory PipelineFilter.fromJson(Map<String, dynamic> json) => PipelineFilter(
@@ -656,6 +657,7 @@ class PipelineFilter {
     type: json['type'] as String? ?? '',
     enabled: json['enabled'] as bool? ?? false,
     unskippable: json['unskippable'] as bool? ?? false,
+    config: json['config'] as Map<String, dynamic>?,
   );
 
   final String name;
@@ -666,6 +668,15 @@ class PipelineFilter {
 
   /// Runs even when an earlier filter would skip the rest.
   final bool unskippable;
+  final Map<String, dynamic>? config;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'type': type,
+    'enabled': enabled,
+    'unskippable': unskippable,
+    'config': ?config,
+  };
 }
 
 /// The filters a domain's mail goes through, in order, one way.
@@ -677,6 +688,8 @@ class Pipeline {
     required this.active,
     required this.filters,
     this.updatedAt,
+    this.createdAt,
+    this.domain = '',
   });
 
   factory Pipeline.fromJson(Map<String, dynamic> json) => Pipeline(
@@ -689,6 +702,8 @@ class Pipeline {
         if (filter is Map<String, dynamic>) PipelineFilter.fromJson(filter),
     ],
     updatedAt: _time(json['updated_at']),
+    createdAt: _time(json['created_at']),
+    domain: (json['domain'] as Map<String, dynamic>?)?['name'] as String? ?? '',
   );
 
   final int id;
@@ -699,6 +714,8 @@ class Pipeline {
   final bool active;
   final List<PipelineFilter> filters;
   final DateTime? updatedAt;
+  final DateTime? createdAt;
+  final String domain;
 }
 
 /// A filter an admin wrote, which pipelines can use like the built-in ones.
@@ -713,6 +730,8 @@ class CustomFilter {
     this.description = '',
     this.config,
     this.updatedAt,
+    this.createdAt,
+    this.domain = '',
   });
 
   factory CustomFilter.fromJson(Map<String, dynamic> json) => CustomFilter(
@@ -725,6 +744,8 @@ class CustomFilter {
     enabled: json['enabled'] as bool? ?? false,
     config: json['config'],
     updatedAt: _time(json['updated_at']),
+    createdAt: _time(json['created_at']),
+    domain: (json['domain'] as Map<String, dynamic>?)?['name'] as String? ?? '',
   );
 
   final int id;
@@ -742,6 +763,8 @@ class CustomFilter {
   /// What it does, as JSON.
   final Object? config;
   final DateTime? updatedAt;
+  final DateTime? createdAt;
+  final String domain;
 }
 
 /// What the filters did with the mail over a window of time: how it
