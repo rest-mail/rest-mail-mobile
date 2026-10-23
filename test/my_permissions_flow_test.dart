@@ -99,7 +99,7 @@ void main() {
     return (fake, state, transport);
   }
 
-  Future<void> tap(WidgetTester tester, Finder target) async {
+  Future<void> reveal(WidgetTester tester, Finder target) async {
     // Settings can virtualize the grants row below the mailbox/security
     // controls. Build it by scrolling before asking ensureVisible for it.
     for (final delta in [-250.0, 250.0]) {
@@ -117,6 +117,10 @@ void main() {
     );
     await tester.ensureVisible(target.last);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> tap(WidgetTester tester, Finder target) async {
+    await reveal(tester, target);
     await tester.tap(target.last);
     await tester.pumpAndSettle();
   }
@@ -166,6 +170,7 @@ void main() {
     await tester.pump();
     await tapText(tester, 'Switch on');
     expect(find.textContaining('Switched on admin until'), findsWidgets);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     expect(
       (state.current! as RestAccount).capabilities.allows(Capability.queueRead),
@@ -228,6 +233,7 @@ void main() {
       active: true,
     );
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     final before = transport.refreshes;
 
@@ -255,6 +261,7 @@ void main() {
       active: true,
     );
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     final before = transport.refreshes;
 
@@ -291,6 +298,7 @@ void main() {
       'and can be retried', (tester) async {
     final (fake, state, transport) = await open(tester, active: true);
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     transport.refuseMine = true;
 
@@ -307,6 +315,7 @@ void main() {
 
     transport.refuseMine = false;
     await tapText(tester, 'Try again');
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
     await close(tester, fake, state);
