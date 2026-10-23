@@ -13,6 +13,7 @@ import '../util/format.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'admin/overview_screen.dart';
+import 'quarantine_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
@@ -30,6 +31,8 @@ class MailboxesScreen extends StatefulWidget {
 class _MailboxesScreenState extends State<MailboxesScreen> {
   QuotaInfo? _quota;
   int? _quotaFor;
+  int? _held;
+  int? _heldFor;
 
   ServerStats? _health;
   ApiException? _healthError;
@@ -112,13 +115,43 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
     }
   }
 
+  /// How many messages the account's filters are holding back, for the
+  /// Quarantine row. Only a backend with a quarantine (REST Mail) has one; a
+  /// failure leaves the count out, not the row.
+  Future<void> _refreshHeld({bool force = false}) async {
+    final app = AppScope.read(context);
+    final m = app.mailbox;
+    final account = m?.account;
+    if (m == null ||
+        account == null ||
+        !m.backend.hasQuarantine ||
+        app.current?.signedOut != null) {
+      if (mounted) setState(() => _held = null);
+      return;
+    }
+    if (!force && _heldFor == account.id) return;
+    setState(() {
+      _heldFor = account.id;
+      if (!force) _held = null;
+    });
+    try {
+      final page = await m.backend.quarantine(account.id);
+      if (mounted && _heldFor == account.id) {
+        setState(() => _held = page.total);
+      }
+    } on ApiException {
+      // The row stays, without a count.
+    }
+  }
+
   Future<void> _select(_MailboxAccount account) async {
     if (account.current) return;
     await account.open(StandardFolder.inbox);
     if (!mounted) return;
     _quotaFor = null;
+    _heldFor = null;
     _healthFor = null;
-    await Future.wait([_refreshQuota(), _refreshHealth()]);
+    await Future.wait([_refreshQuota(), _refreshHeld(), _refreshHealth()]);
   }
 
   @override
@@ -148,6 +181,11 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
         if (_quotaFor != m.account?.id) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) unawaited(_refreshQuota());
+          });
+        }
+        if (m.backend.hasQuarantine && _heldFor != m.account?.id) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(_refreshHeld());
           });
         }
         return _screen(context, app, m);
@@ -227,6 +265,29 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                       unawaited(m.selectFolder(folder.name));
                     },
                   ),
+                  if (m.backend.hasQuarantine && m.account != null) ...[
+                    const SizedBox(height: 12),
+                    RmGroup(
+                      children: [
+                        _QuarantineRow(
+                          held: _held,
+                          onTap: () async {
+                            final accountId = m.account!.id;
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => QuarantineScreen(
+                                  mailbox: m,
+                                  accountId: accountId,
+                                ),
+                              ),
+                            );
+                            if (mounted) unawaited(_refreshHeld(force: true));
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                   if (adminAccount != null) ...[
                     const SizedBox(height: 22),
                     RmGroup(
@@ -811,10 +872,20 @@ class _Stats extends StatelessWidget {
                   tr(context, 'mailboxes.storage'),
                   style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
                 ),
-                const Spacer(),
-                Text(
-                  '${sizeLabel(q.usedBytes)} of ${sizeLabel(q.quotaBytes)}',
-                  style: rmText(12, color: c.ink3),
+                const SizedBox(width: 8),
+                // A longer word for "storage" leaves less room: the figures
+                // give way rather than overflow.
+                Expanded(
+                  child: Text(
+                    trArgs(context, 'mailboxes.storageUsed', {
+                      'used': sizeLabel(q.usedBytes),
+                      'quota': sizeLabel(q.quotaBytes),
+                    }),
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: rmText(12, color: c.ink3),
+                  ),
                 ),
               ],
             ),
@@ -1020,6 +1091,45 @@ IconData _folderIcon(String name, bool isLabel) => switch (name) {
 
 /// A row that opens [screen], with the Mailboxes route replaced so Back
 /// returns to the mail.
+/// The way to the account's held mail, with how many there are.
+class _QuarantineRow extends StatelessWidget {
+  const _QuarantineRow({required this.held, required this.onTap});
+
+  final int? held;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final held = this.held;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(Icons.shield_outlined, size: 18, color: c.ink2),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                tr(context, 'mailboxes.quarantine'),
+                style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
+              ),
+            ),
+            if (held != null && held > 0)
+              Text(
+                countLabel(held),
+                style: rmText(13.5, color: c.accent, weight: FontWeight.w700),
+              ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LinkRow extends StatelessWidget {
   const _LinkRow({
     required this.icon,

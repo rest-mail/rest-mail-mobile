@@ -970,6 +970,24 @@ class ImapBackend implements MailBackend {
   @override
   Future<void> cancelScheduledSend(int id) async {}
 
+  // IMAP has no quarantine: a provider's spam folder is an ordinary folder.
+  @override
+  bool get hasQuarantine => false;
+
+  @override
+  Future<OffsetPage<QuarantinedMessage>> quarantine(
+    int accountId, {
+    int offset = 0,
+  }) async => OffsetPage(const [], offset: offset, total: 0);
+
+  @override
+  Future<int> releaseQuarantined(int accountId, int id) =>
+      throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
+
+  @override
+  Future<void> deleteQuarantined(int accountId, int id) =>
+      throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
+
   final _drafts = <int, OutgoingMessage>{};
 
   @override

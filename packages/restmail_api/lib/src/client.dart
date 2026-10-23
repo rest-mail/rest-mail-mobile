@@ -1515,6 +1515,50 @@ class RestmailClient {
     Folder.fromJson,
   );
 
+  /// One page of the messages the account's filters held back, newest first.
+  /// Released ones are not listed. REST Mail only.
+  Future<OffsetPage<QuarantinedMessage>> quarantine(
+    int accountId, {
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['accounts', '$accountId', 'quarantine'],
+    QuarantinedMessage.fromJson,
+    offset,
+    limit,
+  );
+
+  /// Delivers a held message to the inbox, past the filters that held it.
+  /// Returns the id of the message it becomes.
+  Future<int> releaseQuarantined(int accountId, int id) async {
+    final response = await _authed('POST', [
+      'accounts',
+      '$accountId',
+      'quarantine',
+      '$id',
+      'release',
+    ]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    final data = _data(response);
+    final messageId = int.tryParse('${data['message_id']}');
+    if (data['status'] != 'released' || messageId == null) {
+      throw _unreadable(response);
+    }
+    return messageId;
+  }
+
+  /// Deletes a held message for good.
+  Future<void> deleteQuarantined(int accountId, int id) async {
+    final response = await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'quarantine',
+      '$id',
+    ]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    if (_data(response)['status'] != 'deleted') throw _unreadable(response);
+  }
+
   Future<QuotaInfo> quota(int accountId) async => QuotaInfo.fromJson(
     _data(await _authed('GET', ['accounts', '$accountId', 'quota'])),
   );

@@ -108,6 +108,9 @@ class FakeRestmail {
   final _devices = <String, (FakePushDevice, _Session)>{};
   final _pushes = <FakePush>[];
   final _scheduled = <int, Map<String, Object?>>{};
+  // Held mail, as the server's quarantine rows: id -> row, with the mailbox
+  // id under "mailbox_id" and the raw message kept out of the JSON.
+  final _quarantine = <int, Map<String, Object?>>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
   var _nextScheduledId = 1;
@@ -551,6 +554,18 @@ class FakeRestmail {
       ('GET', ['api', 'v1', 'accounts', final id, 'quota']) => _quota(
         _own(session, id),
       ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'quarantine']) =>
+        _listQuarantine(_own(session, id), query),
+      (
+        'POST',
+        ['api', 'v1', 'accounts', final id, 'quarantine', final mid, 'release'],
+      ) =>
+        _releaseQuarantined(_own(session, id), mid),
+      (
+        'DELETE',
+        ['api', 'v1', 'accounts', final id, 'quarantine', final mid],
+      ) =>
+        _deleteQuarantined(_own(session, id), mid),
       ('GET', ['api', 'v1', 'accounts', final id, 'events']) => _events(
         _own(session, id),
       ),
@@ -944,6 +959,97 @@ class FakeRestmail {
         'message_count': mine.length,
         'percent_used': used * 100 / box.quotaBytes,
       },
+    });
+  }
+
+  // ── Quarantine ────────────────────────────────────────────────────────
+
+  /// Holds a message for [address] as the server's filters would, with the
+  /// [reason] code of the step that held it. Returns its id.
+  int hold(
+    String address, {
+    required String sender,
+    String subject = '',
+    String body = '',
+    String reason = 'spam_threshold',
+    double? spamScore,
+    Duration age = Duration.zero,
+  }) {
+    final box = _mailboxes.values.firstWhere(
+      (b) => b.address == address.toLowerCase(),
+    );
+    final id = _nextRowId++;
+    final at = _clock().subtract(age);
+    _quarantine[id] = {
+      'id': id,
+      'mailbox_id': box.id,
+      'sender': sender,
+      'subject': subject,
+      'body_preview': body.length > 200 ? body.substring(0, 200) : body,
+      'spam_score': spamScore,
+      'quarantine_reason': reason,
+      'received_at': _time(at),
+      'expires_at': _time(at.add(const Duration(days: 30))),
+      'released': false,
+      '_body': body,
+    };
+    return id;
+  }
+
+  /// Held messages not yet released, as the server keeps them.
+  List<Map<String, Object?>> get quarantined => [
+    for (final row in _quarantine.values)
+      if (row['released'] != true) {...row}..remove('_body'),
+  ];
+
+  Map<String, Object?> _heldIn(FakeMailbox box, String mid) {
+    final row = _quarantine[int.tryParse(mid)];
+    if (row == null || row['mailbox_id'] != box.id) {
+      _fail(404, 'not_found', 'Quarantined message not found');
+    }
+    return row;
+  }
+
+  http.StreamedResponse _listQuarantine(
+    FakeMailbox box,
+    Map<String, String> query,
+  ) {
+    final rows =
+        [
+          for (final row in _quarantine.values)
+            if (row['mailbox_id'] == box.id && row['released'] != true) row,
+        ]..sort(
+          (a, b) => (b['received_at']! as String).compareTo(
+            a['received_at']! as String,
+          ),
+        );
+    return _listPage(rows, query, (row) => {...row}..remove('_body'));
+  }
+
+  http.StreamedResponse _releaseQuarantined(FakeMailbox box, String mid) {
+    final row = _heldIn(box, mid);
+    row['released'] = true;
+    final message = _add(
+      box,
+      FakeMessage(
+        folder: 'INBOX',
+        sender: row['sender']! as String,
+        receivedAt: _clock(),
+        to: [FakeRecipient(box.address)],
+        subject: row['subject']! as String,
+        bodyText: row['_body']! as String,
+      ),
+    );
+    return _json({
+      'data': {'status': 'released', 'message_id': '${message.id}'},
+    });
+  }
+
+  http.StreamedResponse _deleteQuarantined(FakeMailbox box, String mid) {
+    final row = _heldIn(box, mid);
+    _quarantine.remove(row['id']);
+    return _json({
+      'data': {'status': 'deleted'},
     });
   }
 
@@ -1559,6 +1665,22 @@ class FakeRestmail {
     for (final message in otherMail(now)) {
       _add(other, message);
     }
+    hold(
+      FakeAccounts.email,
+      sender: 'prizes@winner.test',
+      subject: 'You have been selected',
+      body: 'Claim your reward today by confirming your card details.',
+      spamScore: 9.4,
+      age: const Duration(hours: 3),
+    );
+    hold(
+      FakeAccounts.email,
+      sender: 'billing@paypa1.test',
+      subject: 'Your account is limited',
+      body: 'We could not verify your recent payment.',
+      reason: 'dmarc_quarantine',
+      age: const Duration(days: 1),
+    );
     _aliases[_nextRowId] = FakeAlias(
       id: _nextRowId++,
       source: 'hello@${FakeAccounts.host}',

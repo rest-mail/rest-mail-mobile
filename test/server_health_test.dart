@@ -4,7 +4,17 @@ import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
 import 'package:restmail/ui/admin/overview_screen.dart';
+import 'package:restmail/ui/mailboxes_screen.dart';
 import 'package:restmail_fake/restmail_fake.dart';
+
+/// The Mailboxes list: lazy, so rows far down are built only once scrolled
+/// to.
+final _mailboxesList = find
+    .descendant(
+      of: find.byType(MailboxesScreen),
+      matching: find.byType(Scrollable),
+    )
+    .first;
 
 void main() {
   setUpAll(() => EditableText.debugDeterministicCursor = true);
@@ -56,7 +66,7 @@ void main() {
       FakeAccounts.adminPassword,
     );
     final title = find.text('SERVER HEALTH');
-    await tester.ensureVisible(title);
+    await tester.scrollUntilVisible(title, 200, scrollable: _mailboxesList);
     await tester.pumpAndSettle();
     expect(title, findsOneWidget);
     expect(find.text('Domains'), findsOneWidget);
@@ -69,7 +79,7 @@ void main() {
     );
 
     final link = find.text('Open the full overview');
-    await tester.ensureVisible(link);
+    await tester.scrollUntilVisible(link, 200, scrollable: _mailboxesList);
     await tester.tap(link);
     await tester.pumpAndSettle();
     expect(find.byType(OverviewScreen), findsOneWidget);
@@ -84,6 +94,9 @@ void main() {
       FakeAccounts.email,
       FakeAccounts.password,
     );
+    // To the end of the list, so a missing row is not just one not built.
+    await tester.drag(_mailboxesList, const Offset(0, -3000));
+    await tester.pumpAndSettle();
     expect(find.text('SERVER HEALTH'), findsNothing);
     expect(find.text('Open the full overview'), findsNothing);
     await close(tester, fake, state);
