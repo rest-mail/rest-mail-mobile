@@ -289,7 +289,7 @@ class RmSwitch extends StatelessWidget {
 }
 
 /// A segmented control in the design's toolbar style: the chosen segment in
-/// solid ink.
+/// solid ink. Options wrap on narrow screens or with larger text.
 class RmSegmented<T> extends StatelessWidget {
   const RmSegmented({
     super.key,
@@ -312,8 +312,8 @@ class RmSegmented<T> extends StatelessWidget {
         border: Border.all(color: c.line),
         borderRadius: BorderRadius.circular(9),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        runSpacing: 4,
         children: [
           for (final (option, label) in options)
             Semantics(
