@@ -69,7 +69,12 @@ jobs:
         run: |
           python3 tool/ci/admin_api_manifest.py docs/admin-api-parity.json
           python3 -m unittest discover -s tool/ci -p 'test_admin_api_manifest.py'
+      # Before the check: it imports the app's notes as a package.
       - run: flutter pub get
+      - name: Check accumulated release notes
+        run: |
+          python3 -m unittest discover -s tool/ci -p 'test_build_whats_new.py'
+          dart tool/ci/check_whats_new.dart
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze
       - run: flutter test

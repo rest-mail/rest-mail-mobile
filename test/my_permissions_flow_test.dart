@@ -62,12 +62,18 @@ void main() {
     WidgetTester tester, {
     DateTime Function()? clock,
     bool active = false,
+    String scope = '*',
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final fake = FakeRestmail(clock: clock)..addAccount(_eve);
-    final grantId = fake.addGrant(_eve, 'admin', mode: 'eligible');
+    final grantId = fake.addGrant(
+      _eve,
+      'admin',
+      mode: 'eligible',
+      scope: scope,
+    );
     final transport = _OwnPermissionsTransport(fake.client);
     final state = AppState(
       store: MemoryKeyValueStore(),
@@ -93,7 +99,7 @@ void main() {
     return (fake, state, transport);
   }
 
-  Future<void> tap(WidgetTester tester, Finder target) async {
+  Future<void> reveal(WidgetTester tester, Finder target) async {
     // Settings can virtualize the grants row below the mailbox/security
     // controls. Build it by scrolling before asking ensureVisible for it.
     for (final delta in [-250.0, 250.0]) {
@@ -111,6 +117,10 @@ void main() {
     );
     await tester.ensureVisible(target.last);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> tap(WidgetTester tester, Finder target) async {
+    await reveal(tester, target);
     await tester.tap(target.last);
     await tester.pumpAndSettle();
   }
@@ -160,6 +170,7 @@ void main() {
     await tester.pump();
     await tapText(tester, 'Switch on');
     expect(find.textContaining('Switched on admin until'), findsWidgets);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     expect(
       (state.current! as RestAccount).capabilities.allows(Capability.queueRead),
@@ -180,6 +191,39 @@ void main() {
     await tapText(tester, 'My permissions');
   }
 
+  testWidgets('scoped activation shows its scope and never becomes global '
+      'admin access', (tester) async {
+    final (fake, state, _) = await open(
+      tester,
+      scope: 'domain:${FakeAccounts.host}',
+    );
+    await permissions(tester);
+    await tapText(tester, 'Switch on…');
+    await tester.enterText(field('What you need it for'), 'Manage my domain');
+    await tester.enterText(field('6-digit code'), FakeAccounts.totpCode);
+    await tester.pump();
+    await tapText(tester, 'Switch on');
+
+    final account = state.current! as RestAccount;
+    expect(account.capabilities.names, isEmpty);
+    expect(account.capabilities.allows(Capability.domainsWrite), isFalse);
+    expect(
+      account.capabilities.allows(
+        Capability.domainsWrite,
+        scope: 'domain:${FakeAccounts.host}',
+      ),
+      isTrue,
+    );
+    expect(
+      find.text('This session now holds capabilities at the scopes below.'),
+      findsOneWidget,
+    );
+    expect(find.text('Domain ${FakeAccounts.host}'), findsOneWidget);
+    await tap(tester, find.byTooltip('Back').first);
+    expect(find.text('Administration'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
   testWidgets('an activation deadline reloads permissions and removes the '
       'expired administration entry without a manual refresh', (tester) async {
     var now = DateTime.now();
@@ -189,6 +233,7 @@ void main() {
       active: true,
     );
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     final before = transport.refreshes;
 
@@ -216,6 +261,7 @@ void main() {
       active: true,
     );
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     final before = transport.refreshes;
 
@@ -252,6 +298,7 @@ void main() {
       'and can be retried', (tester) async {
     final (fake, state, transport) = await open(tester, active: true);
     await permissions(tester);
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     transport.refuseMine = true;
 
@@ -268,6 +315,7 @@ void main() {
 
     transport.refuseMine = false;
     await tapText(tester, 'Try again');
+    await reveal(tester, find.text('Switch off'));
     expect(find.text('Switch off'), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
     await close(tester, fake, state);
