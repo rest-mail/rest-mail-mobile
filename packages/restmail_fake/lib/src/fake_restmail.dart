@@ -3430,6 +3430,12 @@ class FakeRestmail {
           query,
           _pipelineJson,
         );
+      case ('POST', ['pipelines', 'test']):
+        need('pipelines:write');
+        return _testPipeline(_object(bytes));
+      case ('POST', ['pipelines', 'test-filter']):
+        need('pipelines:write');
+        return _testFilter(_object(bytes));
       case ('POST', ['pipelines']):
         need('pipelines:write');
         final body = _object(bytes);
@@ -3521,6 +3527,12 @@ class FakeRestmail {
             _customFilters[_pathId(id)] ??
             _fail(404, 'not_found', 'Custom filter not found');
         return _json({'data': _customFilterJson(filter)});
+      case ('POST', ['custom-filters', 'validate']):
+        need('pipelines:write');
+        return _validateScript(_object(bytes));
+      case ('POST', ['custom-filters', final id, 'test']):
+        need('pipelines:write');
+        return _testCustomFilter(id, bytes);
       case ('POST', ['custom-filters']):
         need('pipelines:write');
         final body = _object(bytes);
@@ -4228,6 +4240,121 @@ class FakeRestmail {
       filters.add(Map<String, Object?>.from(item));
     }
     return filters;
+  }
+
+  // ── Previews ────────────────────────────────────────────────────────
+  //
+  // The server runs these through its pipeline engine and the JavaScript
+  // sidecar, which the fake has neither of. It binds and refuses requests
+  // as the server does, and answers a stand-in run in the server's shapes:
+  // every filter continues, and the email comes out as it went in.
+
+  /// POST /admin/pipelines/test: a saved pipeline run over an email.
+  http.StreamedResponse _testPipeline(Map<String, dynamic> body) {
+    final problems = _undeclared(body, const {'pipeline_id', 'email'});
+    _nonNegative(body, 'pipeline_id', problems, nullable: false);
+    _typed<Map<String, dynamic>>(body, 'email', 'an object', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final email = body['email'] as Map<String, dynamic>?;
+    if (email == null) _invalid({'email': 'required'});
+    final pipeline =
+        _pipelines[body['pipeline_id'] as int? ?? 0] ??
+        _fail(404, 'not_found', 'Pipeline not found');
+    return _json({
+      'data': {
+        'final_action': 'continue',
+        'final_email': email,
+        'steps': [
+          for (final filter in pipeline.filters)
+            {
+              'filter_name': filter['name'] ?? filter['type'] ?? '',
+              'filter_type': 'action',
+              'action': 'continue',
+              if (filter['enabled'] == false) ...{
+                'skipped': true,
+                'skip_reason': 'disabled',
+              },
+              'log': {'filter': filter['name'] ?? '', 'result': 'continue'},
+              'duration_ms': 0,
+            },
+        ],
+        'duration_ms': 0,
+      },
+    });
+  }
+
+  /// POST /admin/pipelines/test-filter: one built-in filter over an email.
+  http.StreamedResponse _testFilter(Map<String, dynamic> body) {
+    final problems = _undeclared(body, const {
+      'filter_name',
+      'config',
+      'email',
+    });
+    _typed<String>(body, 'filter_name', 'a string', problems, nullable: false);
+    _typed<Map<String, dynamic>>(body, 'email', 'an object', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final name = body['filter_name'] as String? ?? '';
+    if (name.isEmpty || body['email'] == null) {
+      _invalid({'filter_name': 'required', 'email': 'required'});
+    }
+    if (body['config'] is! Map<String, dynamic>) {
+      _definitionError('config', 'must be an object');
+    }
+    return _json({
+      'data': {
+        'type': 'action',
+        'action': 'continue',
+        'log': {'filter': name, 'result': 'continue'},
+      },
+    });
+  }
+
+  /// POST /admin/custom-filters/validate: the sidecar's answer, bare. A
+  /// script whose brackets do not balance fails as a syntax error; with an
+  /// email, a valid one is dry-run too.
+  http.StreamedResponse _validateScript(Map<String, dynamic> body) {
+    final problems = _undeclared(body, const {'script', 'email'});
+    final script = _requiredString(
+      body,
+      'script',
+      problems,
+      broken: 'required',
+    );
+    if (problems.isNotEmpty || script == null) _invalid(problems);
+    if (!_balanced(script)) {
+      return _json({
+        'valid': false,
+        'error': 'SyntaxError: Unexpected end of input',
+        'phase': 'syntax',
+      });
+    }
+    return _json({
+      'valid': true,
+      if (body['email'] != null)
+        'dry_run': {
+          'result': {'action': 'continue'},
+          'logs': <String>[],
+        },
+    });
+  }
+
+  /// POST /admin/custom-filters/{id}/test: the saved script run, bare.
+  http.StreamedResponse _testCustomFilter(String id, List<int> bytes) {
+    _pathId(id);
+    final body = bytes.isEmpty ? <String, dynamic>{} : _object(bytes);
+    final problems = _undeclared(body, const {'email'});
+    if (problems.isNotEmpty) _invalid(problems);
+    final filter =
+        _customFilters[int.parse(id)] ??
+        _fail(404, 'not_found', 'Custom filter not found');
+    if (filter.config['script'] case final String script
+        when script.isNotEmpty) {
+      return _json({
+        'result': {'action': 'continue'},
+        'logs': <String>[],
+      });
+    }
+    _fail(400, 'bad_request', 'Filter config does not contain a script');
   }
 
   /// The server's checks after binding: a name, then the type and the
@@ -5348,6 +5475,20 @@ bool _validRelayHost(String host) {
 /// What could end an SMTP line or forge a header: an ASCII control
 /// character.
 bool _hasControl(String value) => value.runes.any((r) => r < 0x20 || r == 0x7f);
+
+/// Whether every bracket in [script] closes the one it opened.
+bool _balanced(String script) {
+  const pairs = {')': '(', ']': '[', '}': '{'};
+  final open = <String>[];
+  for (final c in script.split('')) {
+    if (pairs.containsValue(c)) {
+      open.add(c);
+    } else if (pairs[c] case final opener?) {
+      if (open.isEmpty || open.removeLast() != opener) return false;
+    }
+  }
+  return open.isEmpty;
+}
 
 /// An integer query parameter as binding reads it: blank or absent is
 /// omitted, anything else must be a whole number.
