@@ -765,7 +765,7 @@ class _ComposeButton extends StatelessWidget {
     final c = context.rm;
     final shape = BorderRadius.circular(19);
     return Tooltip(
-      message: 'New message',
+      message: tr(context, 'compose.title.fresh'),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: shape,

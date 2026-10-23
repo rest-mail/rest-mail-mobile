@@ -155,10 +155,10 @@ class _ComposeSheetState extends State<ComposeSheet>
   ].join('\u0000');
 
   String get _title => switch (widget.seed.kind) {
-    ComposeKind.fresh => 'New message',
-    ComposeKind.reply => 'Reply',
-    ComposeKind.forward => 'Forward',
-    ComposeKind.draft => 'Draft',
+    ComposeKind.fresh => tr(context, 'compose.title.fresh'),
+    ComposeKind.reply => tr(context, 'compose.title.reply'),
+    ComposeKind.forward => tr(context, 'compose.title.forward'),
+    ComposeKind.draft => tr(context, 'compose.title.draft'),
   };
 
   OutgoingMessage _message({
@@ -183,11 +183,15 @@ class _ComposeSheetState extends State<ComposeSheet>
         bcc = parseAddresses(_bcc.text);
     final invalid = [...to.invalid, ...cc.invalid, ...bcc.invalid];
     if (invalid.isNotEmpty) {
-      setState(() => _error = 'Not an address: ${invalid.first}');
+      setState(
+        () => _error = trArgs(context, 'compose.notAnAddress', {
+          'address': invalid.first,
+        }),
+      );
       return;
     }
     if (to.valid.isEmpty && cc.valid.isEmpty && bcc.valid.isEmpty) {
-      setState(() => _error = 'Add someone to send it to.');
+      setState(() => _error = tr(context, 'compose.noRecipients'));
       return;
     }
     setState(() {
@@ -236,8 +240,9 @@ class _ComposeSheetState extends State<ComposeSheet>
       }
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
+      final sent = tr(context, 'compose.sent');
       Navigator.pop(context);
-      messenger.showSnackBar(const SnackBar(content: Text('Message sent')));
+      messenger.showSnackBar(SnackBar(content: Text(sent)));
       unawaited(_mailbox.refresh());
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -257,22 +262,27 @@ class _ComposeSheetState extends State<ComposeSheet>
         bcc = parseAddresses(_bcc.text);
     final invalid = [...to.invalid, ...cc.invalid, ...bcc.invalid];
     if (invalid.isNotEmpty) {
-      setState(() => _error = 'Not an address: ${invalid.first}');
+      setState(
+        () => _error = trArgs(context, 'compose.notAnAddress', {
+          'address': invalid.first,
+        }),
+      );
       return;
     }
     if (to.valid.isEmpty && cc.valid.isEmpty && bcc.valid.isEmpty) {
-      setState(() => _error = 'Add someone to send it to.');
+      setState(() => _error = tr(context, 'compose.noRecipients'));
       return;
     }
     final at = await _pickSendTime();
     if (at == null || !mounted) return;
     if (at.isBefore(DateTime.now().add(const Duration(minutes: 1)))) {
-      setState(() => _error = 'Pick a time at least a minute from now.');
+      setState(() => _error = tr(context, 'compose.tooSoon'));
       return;
     }
-    final when =
-        '${MaterialLocalizations.of(context).formatMediumDate(at)} at '
-        '${TimeOfDay.fromDateTime(at).format(context)}';
+    final when = trArgs(context, 'compose.when', {
+      'date': MaterialLocalizations.of(context).formatMediumDate(at),
+      'time': TimeOfDay.fromDateTime(at).format(context),
+    });
     setState(() {
       _saving = true;
       _error = null;
@@ -282,21 +292,18 @@ class _ComposeSheetState extends State<ComposeSheet>
       final scheduled = await _backend.schedule(message, at);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
+      final done = trArgs(context, 'compose.scheduledFor', {'when': when});
+      final undo = tr(context, 'compose.undo');
+      final cancelFailed = tr(context, 'compose.cancelFailed');
       Navigator.pop(context);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            trArgs(context, 'compose.scheduledFor', {'when': when}),
-          ),
+          content: Text(done),
           action: SnackBarAction(
-            label: 'Undo',
+            label: undo,
             onPressed: () => unawaited(
               _backend.cancelScheduledSend(scheduled.id).catchError((Object _) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not cancel the scheduled message.'),
-                  ),
-                );
+                messenger.showSnackBar(SnackBar(content: Text(cancelFailed)));
               }),
             ),
           ),
@@ -338,7 +345,7 @@ class _ComposeSheetState extends State<ComposeSheet>
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
                 child: Text(
-                  'Send later',
+                  tr(sheet, 'compose.sendLater'),
                   style: rmText(
                     17,
                     color: context.rm.ink,
@@ -350,23 +357,23 @@ class _ComposeSheetState extends State<ComposeSheet>
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'In an hour',
+                    label: tr(sheet, 'compose.inAnHour'),
                     subtitle: when(now.add(const Duration(hours: 1))),
                     onTap: () =>
                         Navigator.pop(sheet, now.add(const Duration(hours: 1))),
                   ),
                   RmRow(
-                    label: 'Tomorrow morning',
+                    label: tr(sheet, 'compose.tomorrowMorning'),
                     subtitle: when(tomorrowMorning()),
                     onTap: () => Navigator.pop(sheet, tomorrowMorning()),
                   ),
                   RmRow(
-                    label: 'Monday morning',
+                    label: tr(sheet, 'compose.mondayMorning'),
                     subtitle: when(mondayMorning()),
                     onTap: () => Navigator.pop(sheet, mondayMorning()),
                   ),
                   RmRow(
-                    label: 'Pick a date and time',
+                    label: tr(sheet, 'compose.pickTime'),
                     onTap: () async {
                       final date = await showDatePicker(
                         context: sheet,
@@ -420,8 +427,9 @@ class _ComposeSheetState extends State<ComposeSheet>
       _draftId = saved.id;
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
+      final saved = tr(context, 'compose.draftSaved');
       Navigator.pop(context);
-      messenger.showSnackBar(const SnackBar(content: Text('Draft saved')));
+      messenger.showSnackBar(SnackBar(content: Text(saved)));
       unawaited(_mailbox.refresh());
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -443,30 +451,31 @@ class _ComposeSheetState extends State<ComposeSheet>
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          _draftId == null
-              ? 'Keep this as a draft?'
-              : 'Save changes to the draft?',
+          tr(
+            context,
+            _draftId == null ? 'compose.keepDraft' : 'compose.saveDraftChanges',
+          ),
         ),
-        content: const Text('A saved draft waits in Drafts for you to finish.'),
+        content: Text(tr(context, 'compose.draftNote')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, _CloseChoice.discard),
             child: Text(
-              'Discard',
+              tr(context, 'compose.discard'),
               style: rmText(14.5, color: c.danger, weight: FontWeight.w600),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, _CloseChoice.keepEditing),
             child: Text(
-              'Keep editing',
+              tr(context, 'compose.keepEditing'),
               style: rmText(14.5, color: c.ink2, weight: FontWeight.w600),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, _CloseChoice.save),
             child: Text(
-              'Save draft',
+              tr(context, 'compose.saveDraft'),
               style: rmText(14.5, color: c.accent, weight: FontWeight.w700),
             ),
           ),
@@ -521,7 +530,10 @@ class _ComposeSheetState extends State<ComposeSheet>
                           icon: _expanded
                               ? Icons.keyboard_arrow_down_rounded
                               : Icons.keyboard_arrow_up_rounded,
-                          tooltip: _expanded ? 'Shrink' : 'Expand',
+                          tooltip: tr(
+                            context,
+                            _expanded ? 'compose.shrink' : 'compose.expand',
+                          ),
                           color: c.ink2,
                           onPressed: () =>
                               setState(() => _expanded = !_expanded),
@@ -539,7 +551,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                         ),
                         RmIconButton(
                           icon: Icons.close_rounded,
-                          tooltip: 'Close',
+                          tooltip: tr(context, 'compose.close'),
                           color: c.ink2,
                           onPressed: _busy ? null : () => unawaited(_close()),
                         ),
@@ -558,7 +570,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                                 ? null
                                 : () => unawaited(_schedule()),
                             child: Text(
-                              'Later',
+                              tr(context, 'compose.later'),
                               style: rmText(
                                 13,
                                 color: c.accent,
@@ -592,7 +604,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                     ),
                   if (_showFrom)
                     _FieldRow(
-                      label: 'From',
+                      label: tr(context, 'compose.from'),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _from,
@@ -618,7 +630,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                       ),
                     ),
                   _FieldRow(
-                    label: 'To',
+                    label: tr(context, 'compose.to'),
                     trailing: _showCc
                         ? null
                         : TextButton(
@@ -634,7 +646,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                                 ? null
                                 : () => setState(() => _showCc = true),
                             child: Text(
-                              'Cc',
+                              tr(context, 'compose.cc'),
                               style: rmText(
                                 13,
                                 color: c.accent,
@@ -645,13 +657,13 @@ class _ComposeSheetState extends State<ComposeSheet>
                     child: _AddressField(
                       controller: _to,
                       focusNode: _toFocus,
-                      hint: 'Recipient',
+                      hint: tr(context, 'compose.recipient'),
                       enabled: !_counting,
                     ),
                   ),
                   if (_showCc) ...[
                     _FieldRow(
-                      label: 'Cc',
+                      label: tr(context, 'compose.cc'),
                       child: _AddressField(
                         controller: _cc,
                         hint: '',
@@ -659,7 +671,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                       ),
                     ),
                     _FieldRow(
-                      label: 'Bcc',
+                      label: tr(context, 'compose.bcc'),
                       child: _AddressField(
                         controller: _bcc,
                         hint: '',
@@ -668,14 +680,17 @@ class _ComposeSheetState extends State<ComposeSheet>
                     ),
                   ],
                   _FieldRow(
-                    label: 'Subject',
+                    label: tr(context, 'compose.subject'),
                     child: TextField(
                       controller: _subject,
                       enabled: !_counting,
                       textCapitalization: TextCapitalization.sentences,
                       textInputAction: TextInputAction.next,
                       style: rmText(15, color: c.ink, weight: FontWeight.w600),
-                      decoration: bareInput(context, 'Subject'),
+                      decoration: bareInput(
+                        context,
+                        tr(context, 'compose.subject'),
+                      ),
                     ),
                   ),
                   Expanded(
@@ -689,8 +704,12 @@ class _ComposeSheetState extends State<ComposeSheet>
                       textCapitalization: TextCapitalization.sentences,
                       textAlignVertical: TextAlignVertical.top,
                       style: rmText(15.5, color: c.ink, height: 1.6),
-                      decoration: bareInput(context, 'Write…', size: 15.5)
-                          .copyWith(
+                      decoration:
+                          bareInput(
+                            context,
+                            tr(context, 'compose.write'),
+                            size: 15.5,
+                          ).copyWith(
                             contentPadding: const EdgeInsets.fromLTRB(
                               16,
                               14,
@@ -750,7 +769,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                                     ),
                                     onPressed: _undoSend,
                                     child: Text(
-                                      'Undo',
+                                      tr(context, 'compose.undo'),
                                       style: rmText(
                                         12.5,
                                         color: c.accent,
@@ -772,7 +791,9 @@ class _ComposeSheetState extends State<ComposeSheet>
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Sending as $_from',
+                                  trArgs(context, 'compose.sendingAs', {
+                                    'address': _from,
+                                  }),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: rmText(
@@ -883,7 +904,7 @@ class _SendButton extends StatelessWidget {
                     ),
                   )
                 : Text(
-                    'Send',
+                    tr(context, 'compose.send'),
                     style: rmText(
                       14,
                       color: Colors.white,
