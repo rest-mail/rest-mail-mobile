@@ -130,7 +130,7 @@ class _BansScreenState extends State<BansScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               [
-                if (_filter.ip case final ip?) ip,
+                ?_filter.ip,
                 if (_filter.protocol case final protocol?)
                   _protocolLabel(protocol),
                 _filter.includeExpired
