@@ -1290,7 +1290,7 @@ class _DkimTransport extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     if (request.method == 'GET' && request.url.path == '/api/v1/admin/dkim') {
       globalLists++;
-      if (denyGlobal)
+      if (denyGlobal) {
         return Future.value(
           http.StreamedResponse(
             Stream.value(
@@ -1301,6 +1301,7 @@ class _DkimTransport extends http.BaseClient {
             403,
           ),
         );
+      }
     }
     if (request is http.Request &&
         request.method == 'PUT' &&

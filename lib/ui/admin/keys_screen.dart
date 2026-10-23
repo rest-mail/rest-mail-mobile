@@ -78,8 +78,9 @@ class _DkimScreenState extends State<DkimScreen> {
   /// Tapping a key: its rotation, or with `domains:write` the choice of
   /// rotation or a replacement key.
   Future<void> _rotationOrKey(DkimKey key, AdminAccess access) async {
-    if (!access.canWrite(AdminSection.domainDkim))
+    if (!access.canWrite(AdminSection.domainDkim)) {
       return _rotation(key, access);
+    }
     final choice = await showModalBottomSheet<bool>(
       context: context,
       builder: (sheet) => SafeArea(
