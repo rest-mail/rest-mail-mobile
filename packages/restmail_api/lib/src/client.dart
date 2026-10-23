@@ -827,43 +827,64 @@ class RestmailClient {
   /// `domains:read`.
   Future<MtaStsPolicy?> mtaStsPolicy(int domainId) async {
     try {
-      return MtaStsPolicy.fromJson(
-        _data(
-          await _authed('GET', ['admin', 'domains', '$domainId', 'mta-sts']),
-        ),
-      );
+      final response = await _authed('GET', [
+        'admin',
+        'domains',
+        '$domainId',
+        'mta-sts',
+      ]);
+      if (response.statusCode != 200) throw _unreadable(response);
+      return MtaStsPolicy.fromJson(_data(response));
     } on ApiException catch (e) {
-      if (e.statusCode == 404) return null;
+      if (e.statusCode == 404 &&
+          e.code == 'not_found' &&
+          e.message == 'No MTA-STS policy found for this domain') {
+        return null;
+      }
       rethrow;
     }
   }
 
   /// Sets [domainId]'s MTA-STS policy, making it if there is none; what is
-  /// left out stays as it was. Needs `domains:write`.
+  /// left out stays as it was. Empty MX hosts also leave the saved hosts
+  /// unchanged. [maxAgeSeconds] preserves the server's full integer range;
+  /// supply it or [maxAge], not both. Needs `domains:write` on this domain.
   Future<MtaStsPolicy> setMtaStsPolicy(
     int domainId, {
     MtaStsMode? mode,
     List<String>? mxHosts,
     Duration? maxAge,
+    int? maxAgeSeconds,
     bool? active,
-  }) async => MtaStsPolicy.fromJson(
-    _data(
-      await _authed(
-        'PUT',
-        ['admin', 'domains', '$domainId', 'mta-sts'],
-        body: {
-          'mode': ?mode?.name,
-          'mx_hosts': ?mxHosts?.join(','),
-          'max_age': ?maxAge?.inSeconds,
-          'active': ?active,
-        },
-      ),
-    ),
-  );
+  }) async {
+    if (maxAge != null && maxAgeSeconds != null) {
+      throw ArgumentError('Use maxAge or maxAgeSeconds, not both');
+    }
+    final response = await _authed(
+      'PUT',
+      ['admin', 'domains', '$domainId', 'mta-sts'],
+      body: {
+        'mode': ?mode?.name,
+        'mx_hosts': ?mxHosts?.join(','),
+        'max_age': ?(maxAgeSeconds ?? maxAge?.inSeconds),
+        'active': ?active,
+      },
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw _unreadable(response);
+    }
+    return MtaStsPolicy.fromJson(_data(response));
+  }
 
   /// Needs `domains:write`, as the server asks.
   Future<void> deleteMtaStsPolicy(int domainId) async {
-    await _authed('DELETE', ['admin', 'domains', '$domainId', 'mta-sts']);
+    final response = await _authed('DELETE', [
+      'admin',
+      'domains',
+      '$domainId',
+      'mta-sts',
+    ]);
+    if (response.statusCode != 204) throw _unreadable(response);
   }
 
   /// Has the server look up [domainId]'s DNS records: MX, SPF, DMARC, DKIM,

@@ -1017,26 +1017,41 @@ enum MtaStsMode {
 /// `https://mta-sts.<domain>/.well-known/mta-sts.txt`.
 class MtaStsPolicy {
   const MtaStsPolicy({
+    this.id = 0,
     required this.domainId,
     required this.mode,
     required this.mxHosts,
-    required this.maxAge,
+    required Duration maxAge,
+    int? maxAgeSeconds,
     required this.active,
+    this.createdAt,
     this.updatedAt,
-  });
+    this.domain,
+  }) : _maxAge = maxAge,
+       _maxAgeSeconds = maxAgeSeconds;
 
   factory MtaStsPolicy.fromJson(Map<String, dynamic> json) => MtaStsPolicy(
+    id: _int(json['id'] ?? 0),
     domainId: _int(json['domain_id'] ?? 0),
     mode: MtaStsMode.parse(json['mode']),
     mxHosts: [
       for (final host in (json['mx_hosts'] as String? ?? '').split(','))
         if (host.trim().isNotEmpty) host.trim(),
     ],
-    maxAge: Duration(seconds: _int(json['max_age'] ?? 0)),
+    maxAge: Duration.zero,
+    maxAgeSeconds: _int(json['max_age'] ?? 0),
     active: json['active'] as bool? ?? false,
+    createdAt: _time(json['created_at']),
     updatedAt: _time(json['updated_at']),
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain
+          when domain['id'] is num && (domain['id'] as num) > 0 =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
   );
 
+  final int id;
   final int domainId;
   final MtaStsMode mode;
 
@@ -1044,11 +1059,23 @@ class MtaStsPolicy {
   final List<String> mxHosts;
 
   /// How long other servers may keep the policy before fetching it again.
-  final Duration maxAge;
+  /// The exact wire value, including lifetimes too large for [Duration]'s
+  /// microsecond representation. Use this when editing or sending it back.
+  int get maxAgeSeconds => _maxAgeSeconds ?? _maxAge.inSeconds;
+
+  final Duration _maxAge;
+  final int? _maxAgeSeconds;
+
+  Duration get maxAge =>
+      _maxAgeSeconds == null ? _maxAge : Duration(seconds: maxAgeSeconds);
 
   /// Whether the server publishes it. One that is not is as good as none.
   final bool active;
+  final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// Present only when the server loads the domain association.
+  final AdminDomain? domain;
 }
 
 /// One DNS record the server looked up for a domain, and whether it is

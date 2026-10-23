@@ -790,7 +790,7 @@ void main() {
 
     await tap(tester, 'Set up a policy');
     await tester.enterText(
-      find.byType(TextField),
+      find.byKey(const ValueKey('mta-sts-hosts')),
       'MX.restmail.test *.restmail.test',
     );
     await tester.pump();
