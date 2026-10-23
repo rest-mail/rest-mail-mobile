@@ -16,6 +16,7 @@ import '../util/format.dart';
 import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'mail_rules_screen.dart';
 import 'api_keys_screen.dart';
 import 'two_factor_screen.dart';
 import 'interface_customizer_screen.dart';
@@ -235,6 +236,33 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                 ? 'Pushed live by the server'
                                 : 'Live while the app is open',
                           ),
+                          if (session != null)
+                            RmRow(
+                              label: 'Vacation reply',
+                              subtitle:
+                                  'An automatic answer while you are away',
+                              onTap: () => _push(
+                                context,
+                                VacationReplyScreen(
+                                  account: session,
+                                  mailbox: account,
+                                ),
+                              ),
+                            ),
+                          if (session != null)
+                            RmRow(
+                              label: 'Mail filters',
+                              subtitle:
+                                  'A Sieve script that files, forwards '
+                                  'or refuses mail',
+                              onTap: () => _push(
+                                context,
+                                MailFiltersScreen(
+                                  account: session,
+                                  mailbox: account,
+                                ),
+                              ),
+                            ),
                           if (session != null &&
                               session.signedOut == null &&
                               account.isPrimary)
