@@ -530,7 +530,6 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: item.capability,
-            isExpanded: true,
             decoration: InputDecoration(labelText: 'Capability ${index + 1}'),
             items: [
               for (final capability in _capabilities)
