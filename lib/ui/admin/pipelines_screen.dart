@@ -8,6 +8,7 @@ import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
+import 'filter_editors.dart';
 
 String _directionLabel(String direction) => switch (direction) {
   'inbound' => 'Coming in',
@@ -24,9 +25,42 @@ String _typeLabel(String type) => switch (type) {
 
 String _domainOf(Map<int, String> names, int id) => names[id] ?? 'Domain $id';
 
-/// What a phone does with filters: looks, turns them on and off, and
-/// deletes. Their filters and configs are edited in the admin webmail.
-const _editElsewhere = 'Filters are edited in the admin webmail.';
+Future<int?> _chooseDomainFilter(BuildContext context, int? current) async {
+  final controller = TextEditingController(text: current?.toString() ?? '');
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Filter by domain'),
+      content: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Domain ID'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, 0),
+          child: const Text('All domains'),
+        ),
+        TextButton(
+          onPressed: () {
+            final id = int.tryParse(controller.text.trim());
+            if (id != null && id > 0) {
+              Navigator.pop(context, id);
+            }
+          },
+          child: const Text('Apply'),
+        ),
+      ],
+    ),
+  );
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  controller.dispose();
+  return result;
+}
 
 /// Each domain's pipelines, one for mail coming in and one for mail going
 /// out, with the filters each runs in order.
@@ -41,8 +75,10 @@ class PipelinesScreen extends StatefulWidget {
 
 class _PipelinesScreenState extends State<PipelinesScreen> {
   var _domains = const <int, String>{};
+  int? _domainId;
   late final _list = AdminList<Pipeline>(
-    (offset) => widget.account.client.pipelines(offset: offset),
+    (offset) =>
+        widget.account.client.pipelines(offset: offset, domainId: _domainId),
   );
 
   @override
@@ -67,6 +103,25 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
     if (mounted) setState(() => _domains = domains);
   }
 
+  Future<void> _add() async {
+    final saved = await Navigator.push<Pipeline>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PipelineEditorScreen(account: widget.account),
+      ),
+    );
+    if (!mounted || saved == null) return;
+    await _list.reload();
+    if (mounted) await _open(saved);
+  }
+
+  Future<void> _filterDomain() async {
+    final result = await _chooseDomainFilter(context, _domainId);
+    if (!mounted || result == null) return;
+    setState(() => _domainId = result == 0 ? null : result);
+    await _list.reload();
+  }
+
   Future<void> _open(Pipeline pipeline) async {
     final done = await Navigator.push<String>(
       context,
@@ -88,8 +143,23 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
     account: widget.account,
     section: AdminSection.pipelines,
     title: 'Pipelines',
-    body: (_) => AdminListView(
+    body: (access) => AdminListView(
       list: _list,
+      header: [
+        if (access.canWrite(AdminSection.pipelines))
+          AdminAddButton(
+            label: 'Add a pipeline',
+            onTap: () => unawaited(_add()),
+          ),
+        TextButton(
+          onPressed: () => unawaited(_filterDomain()),
+          child: Text(
+            _domainId == null
+                ? 'Filter by domain'
+                : 'Domain $_domainId · Change filter',
+          ),
+        ),
+      ],
       host: widget.account.server.host,
       empty: 'No domain has a pipeline.',
       onRefresh: _reload,
@@ -108,8 +178,7 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
   );
 }
 
-/// One pipeline: on or off, its filters in the order they run, and with
-/// `pipelines:delete`, a way to delete it. Pops with what was done.
+/// One pipeline, including its full configuration and preview tools.
 class PipelineScreen extends StatefulWidget {
   const PipelineScreen({
     super.key,
@@ -141,6 +210,17 @@ class _PipelineScreenState extends State<PipelineScreen> {
           .updatePipeline(_pipeline.id, active: active),
     );
     if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _edit() async {
+    final saved = await Navigator.push<Pipeline>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PipelineEditorScreen(account: widget.account, pipeline: _pipeline),
+      ),
+    );
+    if (saved != null && mounted) setState(() => _pipeline = saved);
   }
 
   Future<void> _delete() async {
@@ -215,11 +295,51 @@ class _PipelineScreenState extends State<PipelineScreen> {
                       if (filter.unskippable) 'always runs',
                     ].join(', '),
                     value: filter.enabled ? 'On' : 'Off',
+                    onTap: access.canWrite(AdminSection.pipelines)
+                        ? () => pushScreen(
+                            context,
+                            FilterPreviewScreen(
+                              account: widget.account,
+                              step: filter,
+                            ),
+                          )
+                        : null,
                   ),
               ],
             ),
           const SizedBox(height: 10),
-          Text(_editElsewhere, style: rmText(13, color: c.ink3)),
+          if (access.canWrite(AdminSection.pipelines))
+            RmGroup(
+              children: [
+                RmRow(
+                  label: 'Edit pipeline',
+                  onTap: _busy ? null : () => unawaited(_edit()),
+                ),
+                RmRow(
+                  label: 'Preview saved pipeline',
+                  onTap: _busy
+                      ? null
+                      : () => pushScreen(
+                          context,
+                          FilterPreviewScreen(
+                            account: widget.account,
+                            pipeline: _pipeline,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 12),
+          SelectableText(
+            prettyJson([
+              for (final filter in pipeline.filters) filter.toJson(),
+            ]),
+            style: rmText(13, color: c.ink2, height: 1.45),
+          ),
+          if (pipeline.createdAt case final created?)
+            RmRow(label: 'Created', value: created.toLocal().toString()),
+          if (pipeline.updatedAt case final updated?)
+            RmRow(label: 'Updated', value: updated.toLocal().toString()),
           if (access.canDelete(AdminSection.pipelines)) ...[
             const SizedBox(height: 22),
             RmGroup(
@@ -251,8 +371,12 @@ class CustomFiltersScreen extends StatefulWidget {
 
 class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
   var _domains = const <int, String>{};
+  int? _domainId;
   late final _list = AdminList<CustomFilter>(
-    (offset) => widget.account.client.customFilters(offset: offset),
+    (offset) => widget.account.client.customFilters(
+      offset: offset,
+      domainId: _domainId,
+    ),
   );
 
   @override
@@ -277,7 +401,38 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
     if (mounted) setState(() => _domains = domains);
   }
 
+  Future<void> _add() async {
+    final saved = await Navigator.push<CustomFilter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomFilterEditorScreen(account: widget.account),
+      ),
+    );
+    if (!mounted || saved == null) return;
+    await _list.reload();
+    if (mounted) await _open(saved);
+  }
+
+  Future<void> _filterDomain() async {
+    final result = await _chooseDomainFilter(context, _domainId);
+    if (!mounted || result == null) return;
+    setState(() => _domainId = result == 0 ? null : result);
+    await _list.reload();
+  }
+
   Future<void> _open(CustomFilter filter) async {
+    try {
+      filter = await widget.account.client.customFilter(filter.id);
+    } on ApiException catch (error) {
+      if (mounted) {
+        showToast(
+          context,
+          describeAdminError(error, host: widget.account.server.host),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     final done = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -298,8 +453,23 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
     account: widget.account,
     section: AdminSection.customFilters,
     title: 'Custom filters',
-    body: (_) => AdminListView(
+    body: (access) => AdminListView(
       list: _list,
+      header: [
+        if (access.canWrite(AdminSection.customFilters))
+          AdminAddButton(
+            label: 'Add a custom filter',
+            onTap: () => unawaited(_add()),
+          ),
+        TextButton(
+          onPressed: () => unawaited(_filterDomain()),
+          child: Text(
+            _domainId == null
+                ? 'Filter by domain'
+                : 'Domain $_domainId · Change filter',
+          ),
+        ),
+      ],
       host: widget.account.server.host,
       empty: 'No filters have been written for this server.',
       onRefresh: _reload,
@@ -348,6 +518,17 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
           .updateCustomFilter(_filter.id, enabled: enabled),
     );
     if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _edit() async {
+    final saved = await Navigator.push<CustomFilter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            CustomFilterEditorScreen(account: widget.account, filter: _filter),
+      ),
+    );
+    if (saved != null && mounted) setState(() => _filter = saved);
   }
 
   Future<void> _delete() async {
@@ -420,8 +601,45 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
               style: rmText(13, color: c.ink2, height: 1.45),
             ),
             const SizedBox(height: 10),
-            Text(_editElsewhere, style: rmText(13, color: c.ink3)),
+            if (access.canWrite(AdminSection.customFilters))
+              RmGroup(
+                children: [
+                  RmRow(
+                    label: 'Edit custom filter',
+                    onTap: _busy ? null : () => unawaited(_edit()),
+                  ),
+                  RmRow(
+                    label: 'Test saved custom filter',
+                    onTap: _busy
+                        ? null
+                        : () => pushScreen(
+                            context,
+                            FilterPreviewScreen(
+                              account: widget.account,
+                              filter: _filter,
+                            ),
+                          ),
+                  ),
+                  if (filter.config case {'script': final String script})
+                    RmRow(
+                      label: 'Validate JavaScript',
+                      onTap: _busy
+                          ? null
+                          : () => pushScreen(
+                              context,
+                              FilterPreviewScreen(
+                                account: widget.account,
+                                script: script,
+                              ),
+                            ),
+                    ),
+                ],
+              ),
           ],
+          if (filter.createdAt case final created?)
+            RmRow(label: 'Created', value: created.toLocal().toString()),
+          if (filter.updatedAt case final updated?)
+            RmRow(label: 'Updated', value: updated.toLocal().toString()),
           if (access.canDelete(AdminSection.customFilters)) ...[
             const SizedBox(height: 22),
             RmGroup(
