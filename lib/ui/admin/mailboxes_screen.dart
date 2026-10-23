@@ -39,8 +39,13 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.mailboxes)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: widget.domain == null
+          ? null
+          : CapabilityScope.domain(widget.domain!.name),
+      collection: true,
+    ).canRead(AdminSection.mailboxes)) {
       unawaited(_list.reload());
     }
   }
@@ -107,6 +112,10 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
     final c = context.rm;
     final domain = widget.domain;
     return AdminPage(
+      scope: widget.domain == null
+          ? null
+          : CapabilityScope.domain(widget.domain!.name),
+      collection: true,
       account: widget.account,
       section: AdminSection.mailboxes,
       title: 'Mailboxes',
@@ -164,8 +173,10 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.mailboxes)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.mailbox(widget.mailbox.address),
+    ).canRead(AdminSection.mailboxes)) {
       unawaited(_reload());
     }
   }
@@ -310,6 +321,7 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
   Widget build(BuildContext context) {
     final box = _mailbox;
     return AdminPage(
+      scope: CapabilityScope.mailbox(widget.mailbox.address),
       account: widget.account,
       section: AdminSection.mailboxes,
       title: box.address,

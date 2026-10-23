@@ -35,6 +35,10 @@ class ApiException implements Exception {
         code = error['code'] as String? ?? code;
         message = error['message'] as String? ?? message;
         fields = _fieldsOf(error['details']);
+      } else if (decoded is Map<String, dynamic> &&
+          decoded['error'] is String) {
+        // Custom-filter execution forwards the sidecar's bare error object.
+        message = decoded['error'] as String;
       }
     } on FormatException {
       // Not an envelope; the status line is all there is.

@@ -10,6 +10,7 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'trace_screen.dart';
+import 'report_filters.dart';
 
 String _directionLabel(String direction) =>
     direction == 'inbound' ? 'Coming in' : 'Going out';
@@ -27,10 +28,19 @@ class PipelineLogScreen extends StatefulWidget {
 }
 
 class _PipelineLogScreenState extends State<PipelineLogScreen> {
-  String? _outcome;
+  Map<String, String> _filters = {};
+  String? get _outcome => _filters['outcome'];
   late final _list = AdminList<MessageTrace>(
-    (offset) =>
-        widget.account.client.pipelineLog(outcome: _outcome, offset: offset),
+    (offset) => widget.account.client.pipelineLog(
+      outcome: _outcome,
+      offset: offset,
+      pipelineId: reportInt(_filters, 'pipeline_id'),
+      direction: _filters['direction'],
+      action: _filters['action'],
+      rfcMessageId: _filters['rfc_message_id'],
+      reasonCode: _filters['reason_code'],
+      limit: reportInt(_filters, 'limit') ?? 50,
+    ),
   );
 
   @override
@@ -62,6 +72,55 @@ class _PipelineLogScreenState extends State<PipelineLogScreen> {
         null => 'No mail has been through the filters yet.',
       },
       header: [
+        ReportFiltersBar(
+          host: widget.account.server.host,
+          values: _filters,
+          intro: 'Leave fields empty to include all messages. Message-ID and reason code match exactly.',
+          fields: const [
+            ReportField('pipeline_id', 'Pipeline number', number: true),
+            ReportField(
+              'direction',
+              'Direction',
+              choices: [
+                ('', 'Both'),
+                ('inbound', 'Coming in'),
+                ('outbound', 'Going out'),
+              ],
+            ),
+            ReportField(
+              'action',
+              'Final action',
+              choices: [
+                ('', 'All'),
+                ('continue', 'Passed'),
+                ('reject', 'Turned away'),
+                ('quarantine', 'Quarantined'),
+                ('discard', 'Dropped'),
+                ('defer', 'Put off'),
+              ],
+            ),
+            ReportField(
+              'outcome',
+              'Outcome',
+              choices: [
+                ('', 'All'),
+                ('delivered', 'Delivered'),
+                ('queued', 'Queued'),
+                ('rejected', 'Turned away'),
+                ('quarantined', 'Quarantined'),
+                ('discarded', 'Dropped'),
+                ('deferred', 'Put off'),
+              ],
+            ),
+            ReportField('rfc_message_id', 'Message-ID'),
+            ReportField('reason_code', 'Reason code'),
+            reportPageSize,
+          ],
+          onChanged: (values) {
+            setState(() => _filters = values);
+            unawaited(_list.reload());
+          },
+        ),
         Align(
           alignment: Alignment.centerLeft,
           child: SingleChildScrollView(
@@ -72,10 +131,14 @@ class _PipelineLogScreenState extends State<PipelineLogScreen> {
                 ('delivered', 'Delivered'),
                 ('rejected', 'Turned away'),
                 ('quarantined', 'Quarantined'),
+                ('queued', 'Queued'),
+                ('discarded', 'Dropped'),
+                ('deferred', 'Put off'),
               ],
               value: _outcome,
               onChanged: (outcome) {
-                setState(() => _outcome = outcome);
+                setState(() => _filters = {..._filters}..remove('outcome'));
+                if (outcome != null) _filters['outcome'] = outcome;
                 unawaited(_list.reload());
               },
             ),
@@ -158,6 +221,8 @@ class PipelineAnalyticsScreen extends StatefulWidget {
 
 class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
   var _window = _Window.day;
+  Map<String, String> _filters = {};
+  var _live = false;
   PipelineAnalytics? _analytics;
   ApiException? _error;
 
@@ -179,6 +244,8 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
     try {
       final analytics = await widget.account.client.pipelineAnalytics(
         window: _window.duration,
+        windowText: _filters['window'],
+        since: reportDate(_filters, 'since'),
       );
       if (mounted && generation == _generation) {
         setState(() {
@@ -194,6 +261,7 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
   void _show(_Window window) {
     setState(() {
       _window = window;
+      _filters = {};
       _analytics = null;
       _error = null;
     });
@@ -203,7 +271,7 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
   /// A heading and a card of counted rows, or nothing when there are none.
   List<Widget> _counted(
     String title,
-    List<({String label, String? subtitle, int count})> rows,
+    List<({String label, String? subtitle, num count})> rows,
   ) => [
     if (rows.isNotEmpty) ...[
       const SizedBox(height: 22),
@@ -215,7 +283,9 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
             RmRow(
               label: row.label,
               subtitle: row.subtitle,
-              value: countLabel(row.count),
+              value: row.count % 1 == 0 && row.count.abs() <= 9007199254740991
+                  ? countLabel(row.count.toInt())
+                  : '${row.count}',
             ),
         ],
       ),
@@ -226,6 +296,7 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
   Widget build(BuildContext context) {
     final c = context.rm;
     final analytics = _analytics, error = _error;
+    final PipelineFunnel? funnel = _live ? analytics?.liveTotals : analytics;
     return AdminPage(
       account: widget.account,
       section: AdminSection.pipelineAnalytics,
@@ -237,12 +308,37 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
           children: [
+            ReportFiltersBar(
+              host: widget.account.server.host,
+              values: _filters,
+              title: 'Custom period',
+              intro: 'Choose a Go duration such as 90m or 1h30m, or a start time with a timezone. A start time takes precedence.',
+              fields: [
+                ReportField(
+                  'window',
+                  'Look back',
+                  hint: '90m',
+                  validate: positiveGoDuration,
+                ),
+                reportSince,
+              ],
+              onChanged: (values) {
+                setState(() {
+                  _filters = values;
+                  _analytics = null;
+                  _error = null;
+                });
+                unawaited(_load());
+              },
+            ),
             Align(
               alignment: Alignment.centerLeft,
-              child: RmSegmented<_Window>(
+              child: RmSegmented<_Window?>(
                 options: [for (final w in _Window.values) (w, w.label)],
-                value: _window,
-                onChanged: _show,
+                value: _filters.isEmpty ? _window : null,
+                onChanged: (window) {
+                  if (window != null) _show(window);
+                },
               ),
             ),
             if (error != null)
@@ -260,57 +356,73 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
                   ),
                 ),
               )
-            else if (analytics.isEmpty)
-              AdminMessage(
-                'No mail went through the filters since '
-                '${longDate(analytics.since)}.',
-              )
             else ...[
+              if (analytics.liveTotals != null)
+                SwitchListTile(
+                  title: const Text('Since process start'),
+                  subtitle: const Text(
+                    'Cumulative live counters, independent of the selected period',
+                  ),
+                  value: _live,
+                  onChanged: (value) => setState(() => _live = value),
+                ),
               const SizedBox(height: 12),
               Text(
-                'Since ${longDate(analytics.since)}',
+                _live
+                    ? 'Cumulative since this server process started'
+                    : '${longDate(analytics.since)} to ${longDate(analytics.until)}${analytics.windowLabel.isEmpty ? '' : ' · ${analytics.windowLabel}'}',
                 style: rmText(13, color: c.ink3),
               ),
-              ..._counted('How it ended', [
-                for (final o in analytics.outcomes)
-                  (
-                    label: traceOutcomeLabel(o.outcome),
-                    subtitle: _directionLabel(o.direction),
-                    count: o.count,
-                  ),
-              ]),
-              ..._counted('Arrived from other servers', [
-                for (final r in analytics.received)
-                  (
-                    label: r.transport == 'tls' ? 'Over TLS' : 'No encryption',
-                    subtitle: null,
-                    count: r.count,
-                  ),
-              ]),
-              ..._counted('Why mail was turned away', [
-                for (final r in analytics.rejectReasons)
-                  (
-                    label: reasonLabel(r.reason),
-                    subtitle: null,
-                    count: r.count,
-                  ),
-              ]),
-              ..._counted('Sender checks', [
-                for (final v in analytics.senderChecks)
-                  (
-                    label: '${v.mechanism.toUpperCase()}: ${v.result}',
-                    subtitle: null,
-                    count: v.count,
-                  ),
-              ]),
-              ..._counted('What each filter did', [
-                for (final d in analytics.decisions)
-                  (
-                    label: d.filter,
-                    subtitle: traceActionLabel(d.action),
-                    count: d.count,
-                  ),
-              ]),
+              if (funnel == null || funnel.isEmpty)
+                AdminMessage(
+                  _live
+                      ? 'No live counters are available.'
+                      : 'No mail went through the filters since ${longDate(analytics.since)}.',
+                )
+              else ...[
+                ..._counted('How it ended', [
+                  for (final o in funnel.outcomes)
+                    (
+                      label: traceOutcomeLabel(o.outcome),
+                      subtitle: _directionLabel(o.direction),
+                      count: o.count,
+                    ),
+                ]),
+                ..._counted('Arrived from other servers', [
+                  for (final r in funnel.received)
+                    (
+                      label: r.transport == 'tls'
+                          ? 'Over TLS'
+                          : 'No encryption',
+                      subtitle: null,
+                      count: r.count,
+                    ),
+                ]),
+                ..._counted('Why mail was turned away', [
+                  for (final r in funnel.rejectReasons)
+                    (
+                      label: reasonLabel(r.reason),
+                      subtitle: null,
+                      count: r.count,
+                    ),
+                ]),
+                ..._counted('Sender checks', [
+                  for (final v in funnel.senderChecks)
+                    (
+                      label: '${v.mechanism.toUpperCase()}: ${v.result}',
+                      subtitle: null,
+                      count: v.count,
+                    ),
+                ]),
+                ..._counted('What each filter did', [
+                  for (final d in funnel.decisions)
+                    (
+                      label: d.filter,
+                      subtitle: traceActionLabel(d.action),
+                      count: d.count,
+                    ),
+                ]),
+              ],
             ],
           ],
         ),

@@ -750,7 +750,8 @@ void main() {
     test('a mailbox session is refused', () async {
       final client = await _signedIn(FakeRestmail());
 
-      expect(client.tokens!.capabilities.isEmpty, isTrue);
+      expect(client.tokens!.capabilities.names, isEmpty);
+      expect(client.tokens!.capabilities.scoped, isNotEmpty);
       await expectLater(client.queue(), refused('forbidden'));
     });
 
@@ -772,18 +773,22 @@ void main() {
       expect(fake.bans.single.ip, '203.0.113.7');
     });
 
-    test('a grant taken away goes at the next refresh', () async {
-      final fake = FakeRestmail();
-      final client = await admin(fake);
-      fake.grant(FakeAccounts.adminEmail, {'queue:read'});
+    test(
+      'revocation is enforced immediately; UI metadata changes on refresh',
+      () async {
+        final fake = FakeRestmail();
+        final client = await admin(fake);
+        fake.grant(FakeAccounts.adminEmail, {'queue:read'});
 
-      // The access token keeps what it was minted with...
-      await client.domains();
-      // ...until it is renewed.
-      fake.expireAccessTokens();
-      await expectLater(client.domains(), refused('forbidden'));
-      expect(client.tokens!.capabilities.names, {'queue:read'});
-    });
+        // Authorization uses live grants even while the access token has time
+        // left and the client's UI snapshot still says it holds everything.
+        expect(client.tokens!.capabilities.names, {'*'});
+        await expectLater(client.domains(), refused('forbidden'));
+        expect(client.tokens!.capabilities.names, {'*'});
+        await client.refresh();
+        expect(client.tokens!.capabilities.names, {'queue:read'});
+      },
+    );
 
     test('logs, traces and reports each need their own capability', () async {
       final fake = FakeRestmail()

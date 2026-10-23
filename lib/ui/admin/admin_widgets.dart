@@ -33,9 +33,18 @@ int? megabytes(String value) =>
 
 /// What [account] may see and do in Administration, rebuilding the caller
 /// when its capabilities change at a refresh.
-AdminAccess adminAccessOf(BuildContext context, RestAccount account) {
+AdminAccess adminAccessOf(
+  BuildContext context,
+  RestAccount account, {
+  String? scope,
+  bool collection = false,
+}) {
   AppScope.of(context);
-  return AdminAccess(account.capabilities);
+  return AdminAccess(
+    account.capabilities,
+    scope: scope,
+    collection: collection,
+  );
 }
 
 /// The names of the server's domains by id, for lists that give only the id;
@@ -77,6 +86,8 @@ class AdminPage extends StatelessWidget {
     required this.section,
     required this.title,
     required this.body,
+    this.scope,
+    this.collection = false,
     this.actions = const [],
   });
 
@@ -84,11 +95,18 @@ class AdminPage extends StatelessWidget {
   final AdminSection section;
   final String title;
   final Widget Function(AdminAccess access) body;
+  final String? scope;
+  final bool collection;
   final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
-    final access = adminAccessOf(context, account);
+    final access = adminAccessOf(
+      context,
+      account,
+      scope: scope,
+      collection: collection,
+    );
     final allowed = access.canRead(section);
     return Scaffold(
       body: SafeArea(

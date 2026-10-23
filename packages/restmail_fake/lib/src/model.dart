@@ -74,7 +74,10 @@ class FakeMtaStsPolicy {
     this.mxHosts = '',
     this.maxAge = 604800,
     this.active = true,
-  });
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? createdAt ?? DateTime.now();
 
   final int id;
 
@@ -87,6 +90,8 @@ class FakeMtaStsPolicy {
   /// In seconds.
   int maxAge;
   bool active;
+  final DateTime createdAt;
+  DateTime updatedAt;
 }
 
 /// A sender on one of a domain's lists.
@@ -344,11 +349,11 @@ class FakeCustomFilter {
 
   final int id;
   final String domain;
-  final String name;
-  final String description;
-  final String filterType;
-  final String direction;
-  final Map<String, Object?> config;
+  String name;
+  String description;
+  String filterType;
+  String direction;
+  Map<String, Object?> config;
   bool enabled = true;
 }
 
