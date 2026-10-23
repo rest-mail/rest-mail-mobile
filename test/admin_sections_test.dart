@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
@@ -24,6 +27,7 @@ void main() {
     String? name,
     Set<String>? capabilities,
     Capabilities? modified,
+    http.Client Function(http.Client fake)? through,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -37,7 +41,7 @@ void main() {
     }
     final state = AppState(
       store: MemoryKeyValueStore(),
-      httpClientFactory: () => fake.client,
+      httpClientFactory: () => through?.call(fake.client) ?? fake.client,
     );
     await state.start();
     await state.signIn(
@@ -335,6 +339,7 @@ void main() {
 
     expect(await shown(tester), [
       'Domains',
+      'Overview',
       'TLS reports',
       'DKIM keys',
       'Certificates',
@@ -657,19 +662,17 @@ void main() {
     await close(tester, fake, state);
   });
 
-  testWidgets('with observability:read alone, the overview, traces and '
-      'pipeline analytics, and no pipeline log', (tester) async {
+  testWidgets('with observability:read alone, traces and pipeline '
+      'analytics, and no overview, which needs domains:read, or pipeline log', (
+    tester,
+  ) async {
     final (fake, state) = await open(
       tester,
       name: 'watcher',
       capabilities: {Capability.observabilityRead},
     );
 
-    expect(await shown(tester), [
-      'Overview',
-      'Message trace',
-      'Pipeline analytics',
-    ]);
+    expect(await shown(tester), ['Message trace', 'Pipeline analytics']);
 
     await close(tester, fake, state);
   });
@@ -711,4 +714,206 @@ void main() {
 
     await close(tester, fake, state);
   });
+
+  testWidgets('a domain added as Postfix and Dovecot, Bulk, with a mailbox '
+      'size, opens as the server made it', (tester) async {
+    final (fake, state) = await open(tester);
+
+    await tap(tester, 'Domains');
+    await tap(tester, 'Add a domain');
+    expect(find.text('MAIL KEPT BY'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(0), 'New.test');
+    await tap(tester, 'Postfix and Dovecot');
+    await tap(tester, 'Bulk');
+    // The size takes digits only.
+    await tester.enterText(find.byType(TextField).at(1), '5x0a0');
+    await tester.pump();
+    expect(find.text('500'), findsOneWidget);
+    await tap(tester, 'Add domain');
+
+    final made = fake.domains.firstWhere((d) => d.name == 'new.test');
+    expect(made.serverType, 'traditional');
+    expect(made.sendingPolicy, 'bulk');
+    expect(made.defaultQuotaBytes, 500 * 1024 * 1024);
+    expect(made.active, isFalse);
+    // The domain screen opens on what the server answered.
+    expect(find.text('Add a domain'), findsNothing);
+    expect(find.text('new.test'), findsWidgets);
+    expect(find.text('Postfix and Dovecot'), findsOneWidget);
+    expect(find.text('Bulk'), findsOneWidget);
+    expect(find.text('500 MB'), findsOneWidget);
+
+    // Back on the list, it is there.
+    await back(tester);
+    expect(find.text('new.test'), findsOneWidget);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('a domain added with no choices made is REST Mail, no policy '
+      'and the server default size', (tester) async {
+    final (fake, state) = await open(tester);
+
+    await tap(tester, 'Domains');
+    await tap(tester, 'Add a domain');
+    await tester.enterText(find.byType(TextField).at(0), 'plain.test');
+    await tester.pump();
+    await tap(tester, 'Add domain');
+
+    final made = fake.domains.firstWhere((d) => d.name == 'plain.test');
+    expect(made.serverType, 'restmail');
+    expect(made.sendingPolicy, '');
+    expect(made.defaultQuotaBytes, 1073741824);
+    expect(find.text('REST Mail'), findsOneWidget);
+    expect(find.text('None'), findsOneWidget);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets('a field the server refuses is named on the form, which '
+      'stays open', (tester) async {
+    final (fake, state) = await open(
+      tester,
+      through: (inner) => _Refusing(inner),
+    );
+
+    await tap(tester, 'Domains');
+    await tap(tester, 'Add a domain');
+    await tester.enterText(find.byType(TextField).at(0), 'new.test');
+    await tap(tester, 'Transactional');
+    await tap(tester, 'Add domain');
+
+    expect(
+      find.text("Sending policy must be 'transactional', 'bulk' or empty."),
+      findsOneWidget,
+    );
+    expect(find.text('Add a domain'), findsOneWidget);
+    expect(fake.domains.map((d) => d.name), isNot(contains('new.test')));
+    // Choosing again clears it.
+    await tap(tester, 'Bulk');
+    expect(
+      find.text("Sending policy must be 'transactional', 'bulk' or empty."),
+      findsNothing,
+    );
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets("a domain's mailbox size and sending policy changed, and the "
+      'policy cleared', (tester) async {
+    final (fake, state) = await open(tester);
+    FakeDomain domain() =>
+        fake.domains.firstWhere((d) => d.name == FakeAccounts.host);
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+
+    await tap(tester, 'Mailbox size');
+    expect(find.text('1024'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '250');
+    await tester.pump();
+    await tap(tester, 'Save');
+    expect(domain().defaultQuotaBytes, 250 * 1024 * 1024);
+    expect(find.text('250 MB'), findsOneWidget);
+
+    await tap(tester, 'Sending policy');
+    await tap(tester, 'Transactional');
+    await tap(tester, 'Save');
+    expect(domain().sendingPolicy, 'transactional');
+    expect(find.text('Transactional'), findsOneWidget);
+
+    await tap(tester, 'Sending policy');
+    await tap(tester, 'None');
+    await tap(tester, 'Save');
+    expect(domain().sendingPolicy, '');
+    expect(find.text('None'), findsOneWidget);
+    // The other settings stayed.
+    expect(domain().defaultQuotaBytes, 250 * 1024 * 1024);
+
+    await close(tester, fake, state);
+  });
+
+  testWidgets("a mailbox's size changed, and its sessions ended once "
+      'confirmed', (tester) async {
+    final (fake, state) = await open(tester);
+    final dana = RestmailClient(server: _server, httpClient: fake.client);
+    await dana.login(
+      email: FakeAccounts.email,
+      password: FakeAccounts.password,
+    );
+    await dana.accounts();
+
+    await tap(tester, 'Mailboxes');
+    await tap(tester, FakeAccounts.email);
+
+    await tap(tester, 'Mailbox size');
+    expect(find.text('5120'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '250');
+    await tester.pump();
+    await tap(tester, 'Save');
+    expect(find.text('250 MB'), findsOneWidget);
+    final admin = (state.current! as RestAccount).client;
+    final boxes = await admin.mailboxes();
+    expect(
+      boxes.items.firstWhere((b) => b.address == FakeAccounts.email).quotaBytes,
+      250 * 1024 * 1024,
+    );
+
+    // Cancelled, nothing ends.
+    await tap(tester, 'End sessions');
+    expect(
+      find.text('Sign ${FakeAccounts.email} out everywhere?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await dana.accounts();
+
+    await tap(tester, 'End sessions');
+    await tester.tap(find.text('End sessions').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Signed out everywhere'), findsOneWidget);
+    await expectLater(dana.accounts(), throwsA(isA<ApiException>()));
+    // The administrator's own session carries on.
+    await admin.mailboxes();
+
+    dana.close();
+    await close(tester, fake, state);
+  });
+}
+
+/// Answers creating a domain as a server with other sending policies would:
+/// a 422 naming the field. Everything else reaches [_inner].
+class _Refusing extends http.BaseClient {
+  _Refusing(this._inner);
+
+  final http.Client _inner;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method == 'POST' &&
+        request.url.path.endsWith('/admin/domains')) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'error': {
+                'code': 'validation_failed',
+                'message': 'Request body failed validation',
+                'details': {
+                  'fields': {
+                    'sending_policy':
+                        "must be 'transactional', 'bulk' or empty",
+                  },
+                },
+              },
+            }),
+          ),
+        ),
+        422,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return _inner.send(request);
+  }
 }

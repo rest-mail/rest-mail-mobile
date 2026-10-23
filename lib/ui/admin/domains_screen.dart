@@ -16,6 +16,22 @@ import 'relay_screen.dart';
 import 'sender_lists_screen.dart';
 import 'suppressions_screen.dart';
 
+/// The `server_type` values a domain may have, with what they mean.
+const serverTypes = [
+  ('restmail', 'REST Mail'),
+  ('traditional', 'Postfix and Dovecot'),
+];
+
+/// The `sending_policy` values a domain may have; empty is no rule.
+const sendingPolicies = [
+  ('', 'None'),
+  ('transactional', 'Transactional'),
+  ('bulk', 'Bulk'),
+];
+
+String _choiceLabel(List<(String, String)> choices, String value) =>
+    choices.firstWhere((c) => c.$1 == value, orElse: () => (value, value)).$2;
+
 /// The domains the server holds mail for.
 class DomainsScreen extends StatefulWidget {
   const DomainsScreen({super.key, required this.account});
@@ -49,21 +65,42 @@ class _DomainsScreenState extends State<DomainsScreen> {
   }
 
   Future<void> _add() async {
+    AdminDomain? created;
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
         title: 'Add a domain',
         intro:
-            'Mail for the domain is kept on $_host. Point its MX record here '
-            'for mail to arrive.',
-        fields: const [AdminField('Domain', hint: 'example.com', email: true)],
+            'Point its MX record at $_host for mail to arrive. A new domain '
+            'starts off; turn it on once it is ready.',
+        fields: const [
+          AdminField('Domain', hint: 'example.com', email: true),
+          AdminField('Mail kept by', initial: 'restmail', choices: serverTypes),
+          AdminField('Sending policy', choices: sendingPolicies),
+          AdminField(
+            'Mailbox size in MB',
+            hint: 'The server default',
+            number: true,
+            optional: true,
+          ),
+        ],
         action: 'Add domain',
         host: _host,
-        submit: (values) =>
-            widget.account.client.createDomain(values[0].toLowerCase()),
+        submit: (values) async =>
+            created = await widget.account.client.createDomain(
+              values[0].toLowerCase(),
+              serverType: values[1],
+              sendingPolicy: values[2],
+              defaultQuotaBytes: megabytes(values[3]),
+            ),
       ),
     );
-    if (added) unawaited(_list.reload());
+    if (!mounted || !added) return;
+    if (created case final domain?) {
+      await _open(domain);
+    } else {
+      unawaited(_list.reload());
+    }
   }
 
   Future<void> _open(AdminDomain domain) async {
@@ -153,6 +190,49 @@ class _DomainScreenState extends State<DomainScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _editQuota() async {
+    await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Mailbox size',
+        intro: 'The storage each new mailbox on ${_domain.name} gets.',
+        fields: [
+          AdminField(
+            'Mailbox size in MB',
+            initial: '${_domain.defaultQuotaBytes ~/ (1024 * 1024)}',
+            number: true,
+          ),
+        ],
+        action: 'Save',
+        host: _host,
+        submit: (values) async => _domain = await widget.account.client
+            .updateDomain(_domain.id, defaultQuotaBytes: megabytes(values[0])),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _editPolicy() async {
+    await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Sending policy',
+        fields: [
+          AdminField(
+            'Sending policy',
+            initial: _domain.sendingPolicy,
+            choices: sendingPolicies,
+          ),
+        ],
+        action: 'Save',
+        host: _host,
+        submit: (values) async => _domain = await widget.account.client
+            .updateDomain(_domain.id, sendingPolicy: values[0]),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _delete() async {
     setState(() => _busy = true);
     final name = _domain.name;
@@ -205,13 +285,21 @@ class _DomainScreenState extends State<DomainScreen> {
               ),
               RmRow(
                 label: 'Mail kept by',
-                value: domain.serverType == 'restmail'
-                    ? 'REST Mail'
-                    : 'Postfix and Dovecot',
+                value: _choiceLabel(serverTypes, domain.serverType),
               ),
               RmRow(
                 label: 'Mailbox size',
                 value: sizeLabel(domain.defaultQuotaBytes),
+                onTap: access.canWrite(AdminSection.domains) && !_busy
+                    ? () => unawaited(_editQuota())
+                    : null,
+              ),
+              RmRow(
+                label: 'Sending policy',
+                value: _choiceLabel(sendingPolicies, domain.sendingPolicy),
+                onTap: access.canWrite(AdminSection.domains) && !_busy
+                    ? () => unawaited(_editPolicy())
+                    : null,
               ),
               if (domain.dkimSelector.isNotEmpty)
                 RmRow(label: 'DKIM selector', value: domain.dkimSelector),

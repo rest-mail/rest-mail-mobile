@@ -119,6 +119,7 @@ class AdminDomain {
     required this.active,
     required this.defaultQuotaBytes,
     this.dkimSelector = '',
+    this.sendingPolicy = '',
   });
 
   factory AdminDomain.fromJson(Map<String, dynamic> json) => AdminDomain(
@@ -128,7 +129,14 @@ class AdminDomain {
     active: json['active'] as bool? ?? false,
     defaultQuotaBytes: _int(json['default_quota_bytes'] ?? 0),
     dkimSelector: json['dkim_selector'] as String? ?? '',
+    sendingPolicy: json['sending_policy'] as String? ?? '',
   );
+
+  /// The server types a domain can be created with.
+  static const serverTypes = ['restmail', 'traditional'];
+
+  /// The sending policies a domain can have; empty means no rule.
+  static const sendingPolicies = ['', 'transactional', 'bulk'];
 
   final int id;
   final String name;
@@ -139,6 +147,9 @@ class AdminDomain {
   final bool active;
   final int defaultQuotaBytes;
   final String dkimSelector;
+
+  /// `transactional`, `bulk`, or empty when the send API applies no rule.
+  final String sendingPolicy;
 }
 
 /// A mailbox, as an admin sees it.
