@@ -11,6 +11,7 @@ import 'admin_widgets.dart';
 import 'aliases_screen.dart';
 import 'dns_check_screen.dart';
 import 'mailboxes_screen.dart';
+import 'keys_screen.dart';
 import 'mta_sts_screen.dart';
 import 'relay_screen.dart';
 import 'sender_lists_screen.dart';
@@ -189,6 +190,10 @@ class _DomainScreenState extends State<DomainScreen> {
 
   /// The screen for one of [AdminAccess.domainSections].
   Widget? _screenFor(AdminSection section) => switch (section) {
+    AdminSection.domainDkim => DkimScreen(
+      account: widget.account,
+      domain: _domain,
+    ),
     AdminSection.dnsCheck => DnsCheckScreen(
       account: widget.account,
       domain: _domain,

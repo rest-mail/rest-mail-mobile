@@ -16,6 +16,7 @@ import '../util/format.dart';
 import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'two_factor_screen.dart';
 import 'interface_customizer_screen.dart';
 import 'my_permissions_screen.dart';
 import 'whats_new_screen.dart';
@@ -233,6 +234,17 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                 ? 'Pushed live by the server'
                                 : 'Live while the app is open',
                           ),
+                          if (session != null &&
+                              session.signedOut == null &&
+                              account.isPrimary)
+                            RmRow(
+                              label: 'Two-factor sign-in',
+                              subtitle: 'Authenticator and recovery codes',
+                              onTap: () => _push(
+                                context,
+                                TwoFactorScreen(account: session),
+                              ),
+                            ),
                           if (session != null)
                             RmRow(
                               label: 'App passwords',
