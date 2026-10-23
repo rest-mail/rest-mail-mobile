@@ -3217,7 +3217,7 @@ class FakeRestmail {
         need('observability:read');
         return _json({
           'data':
-              _traces[int.tryParse(id)] ??
+              _traces[_pathId(id)] ??
               _fail(404, 'not_found', 'No pipeline trace for this message'),
         });
       case ('GET', ['tls-reports']):
@@ -3368,31 +3368,29 @@ class FakeRestmail {
 
       case ('GET', ['pipelines', 'logs']):
         need('pipelines:read');
-        _reportEnum(query, 'direction', const {'inbound', 'outbound'});
-        _reportEnum(query, 'action', const {
+        final problems = <String, String>{};
+        _queryEnum(query, 'direction', const ['inbound', 'outbound'], problems);
+        _queryEnum(query, 'action', const [
           'continue',
           'reject',
           'quarantine',
           'discard',
           'defer',
-        });
-        _reportEnum(query, 'outcome', const {
+        ], problems);
+        _queryEnum(query, 'outcome', const [
           'delivered',
           'queued',
           'rejected',
           'quarantined',
           'discarded',
           'deferred',
-        });
-        final pipeline = int.tryParse(query['pipeline_id'] ?? '');
-        if (query['pipeline_id'] != null && pipeline == null) {
-          _fail(
-            422,
-            'validation_failed',
-            'Invalid pipeline_id',
-            fields: {'pipeline_id': 'must be a whole number'},
-          );
+        ], problems);
+        final pipeline = _queryInt(query, 'pipeline_id', problems);
+        if ((_queryInt(query, 'limit', problems) ?? 0) > 200) {
+          problems['limit'] = 'must be at most 200';
         }
+        _queryInt(query, 'offset', problems);
+        if (problems.isNotEmpty) _invalid(problems);
         final direction = query['direction'], outcome = query['outcome'];
         return _listPage(
           _traceLog
@@ -3421,12 +3419,11 @@ class FakeRestmail {
 
       case ('GET', ['pipelines']):
         need('pipelines:read');
+        final domainId = _listQuery(query);
         return _listPage(
           _pipelines.values
               .where(
-                (p) =>
-                    query['domain_id'] == null ||
-                    '${_domains[p.domain]?.id}' == query['domain_id'],
+                (p) => domainId == null || _domains[p.domain]?.id == domainId,
               )
               .toList()
             ..sort((a, b) => a.direction.compareTo(b.direction)),
@@ -3436,12 +3433,28 @@ class FakeRestmail {
       case ('POST', ['pipelines']):
         need('pipelines:write');
         final body = _object(bytes);
-        final domain = _definitionDomain(body['domain_id']);
+        final problems = _undeclared(body, const {
+          'domain_id',
+          'direction',
+          'filters',
+          'active',
+        });
+        _nonNegative(body, 'domain_id', problems, nullable: false);
+        _enumField(
+          body,
+          'direction',
+          const ['inbound', 'outbound'],
+          "must be 'inbound' or 'outbound'",
+          problems,
+        );
+        _typed<bool>(body, 'active', 'a boolean', problems);
+        if (problems.isNotEmpty) _invalid(problems);
         final direction = body['direction'];
         if (direction != 'inbound' && direction != 'outbound') {
           _definitionError('direction', "must be 'inbound' or 'outbound'");
         }
         final filters = _definitionFilters(body['filters']);
+        final domain = _definitionDomain(body['domain_id']);
         final pipeline = FakePipeline(
           id: _nextRowId++,
           domain: domain.name,
@@ -3452,10 +3465,22 @@ class FakeRestmail {
         return _json({'data': _pipelineJson(pipeline)}, status: 201);
       case ('PATCH', ['pipelines', final id]):
         need('pipelines:write');
+        _pathId(id);
+        final body = _object(bytes);
+        final problems = _undeclared(body, const {
+          'filters',
+          'active',
+          'domain_id',
+          'direction',
+        });
+        _typed<bool>(body, 'active', 'a boolean', problems);
+        // Webmail sends these; they are accepted and ignored.
+        _nonNegative(body, 'domain_id', problems);
+        _typed<String>(body, 'direction', 'a string', problems);
+        if (problems.isNotEmpty) _invalid(problems);
         final pipeline =
             _pipelines[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Pipeline not found');
-        final body = _object(bytes);
         final filters = body.containsKey('filters')
             ? _definitionFilters(body['filters'])
             : null;
@@ -3470,7 +3495,7 @@ class FakeRestmail {
         return _json({'data': _pipelineJson(pipeline)});
       case ('DELETE', ['pipelines', final id]):
         need('pipelines:delete');
-        if (_pipelines.remove(int.tryParse(id)) == null) {
+        if (_pipelines.remove(_pathId(id)) == null) {
           _fail(404, 'not_found', 'Pipeline not found');
         }
         return _json({
@@ -3479,12 +3504,11 @@ class FakeRestmail {
 
       case ('GET', ['custom-filters']):
         need('pipelines:read');
+        final domainId = _listQuery(query);
         return _listPage(
           _customFilters.values
               .where(
-                (f) =>
-                    query['domain_id'] == null ||
-                    '${_domains[f.domain]?.id}' == query['domain_id'],
+                (f) => domainId == null || _domains[f.domain]?.id == domainId,
               )
               .toList()
             ..sort((a, b) => a.name.compareTo(b.name)),
@@ -3494,14 +3518,27 @@ class FakeRestmail {
       case ('GET', ['custom-filters', final id]):
         need('pipelines:read');
         final filter =
-            _customFilters[int.tryParse(id)] ??
+            _customFilters[_pathId(id)] ??
             _fail(404, 'not_found', 'Custom filter not found');
         return _json({'data': _customFilterJson(filter)});
       case ('POST', ['custom-filters']):
         need('pipelines:write');
         final body = _object(bytes);
-        final domain = _definitionDomain(body['domain_id']);
+        _bindCustomFilter(body, creating: true);
+        // Name, type and direction are required together, as one refusal.
+        if ([
+          'name',
+          'filter_type',
+          'direction',
+        ].any((k) => (body[k] as String? ?? '').isEmpty)) {
+          _invalid({
+            'name': 'required',
+            'filter_type': 'required',
+            'direction': 'required',
+          });
+        }
         _validateCustomDefinition(body);
+        final domain = _definitionDomain(body['domain_id']);
         final filter = FakeCustomFilter(
           id: _nextRowId++,
           domain: domain.name,
@@ -3515,13 +3552,18 @@ class FakeRestmail {
         return _json({'data': _customFilterJson(filter)}, status: 201);
       case ('PATCH', ['custom-filters', final id]):
         need('pipelines:write');
+        _pathId(id);
+        final body = _object(bytes);
+        _bindCustomFilter(body, creating: false);
         final filter =
             _customFilters[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Custom filter not found');
-        final body = _object(bytes);
+        // Null leaves a field as it is; a config that is sent must be an
+        // object, null included.
         final updated = <String, dynamic>{
           ..._customFilterJson(filter),
-          ...body,
+          for (final MapEntry(:key, :value) in body.entries)
+            if (value != null || key == 'config') key: value,
         };
         _validateCustomDefinition(updated);
         filter.name = updated['name'] as String;
@@ -3533,7 +3575,7 @@ class FakeRestmail {
         return _json({'data': _customFilterJson(filter)});
       case ('DELETE', ['custom-filters', final id]):
         need('pipelines:delete');
-        if (_customFilters.remove(int.tryParse(id)) == null) {
+        if (_customFilters.remove(_pathId(id)) == null) {
           _fail(404, 'not_found', 'Custom filter not found');
         }
         return _json({
@@ -4188,19 +4230,75 @@ class FakeRestmail {
     return filters;
   }
 
+  /// The server's checks after binding: a name, then the type and the
+  /// direction together, then the config.
   void _validateCustomDefinition(Map<String, dynamic> body) {
     if (body['name'] is! String || (body['name'] as String).isEmpty) {
       _definitionError('name', 'required');
     }
-    if (!const ['action', 'transform'].contains(body['filter_type'])) {
-      _definitionError('filter_type', 'must be action or transform');
-    }
-    if (!const ['inbound', 'outbound', 'both'].contains(body['direction'])) {
-      _definitionError('direction', 'must be inbound, outbound or both');
-    }
+    final problems = {
+      if (!const ['action', 'transform'].contains(body['filter_type']))
+        'filter_type': 'must be action or transform',
+      if (!const ['inbound', 'outbound', 'both'].contains(body['direction']))
+        'direction': 'must be inbound, outbound or both',
+    };
+    if (problems.isNotEmpty) _invalid(problems);
     if (body['config'] is! Map<String, dynamic>) {
       _definitionError('config', 'must be an object');
     }
+  }
+
+  /// A custom filter body as binding reads it: its declared fields, each of
+  /// its type, type and direction within their enums. On update every field
+  /// may be null; on create only enabled may.
+  void _bindCustomFilter(Map<String, dynamic> body, {required bool creating}) {
+    final problems = _undeclared(body, const {
+      'domain_id',
+      'name',
+      'description',
+      'filter_type',
+      'direction',
+      'config',
+      'enabled',
+    });
+    _nonNegative(body, 'domain_id', problems, nullable: !creating);
+    _typed<String>(body, 'name', 'a string', problems, nullable: !creating);
+    _typed<String>(
+      body,
+      'description',
+      'a string',
+      problems,
+      nullable: !creating,
+    );
+    _enumField(
+      body,
+      'filter_type',
+      const ['action', 'transform'],
+      'must be action or transform',
+      problems,
+      nullable: !creating,
+    );
+    _enumField(
+      body,
+      'direction',
+      const ['inbound', 'outbound', 'both'],
+      'must be inbound, outbound or both',
+      problems,
+      nullable: !creating,
+    );
+    _typed<bool>(body, 'enabled', 'a boolean', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+  }
+
+  /// A list's domain_id, limit and offset as binding reads them; the domain
+  /// id, if one is given.
+  int? _listQuery(Map<String, String> query) {
+    final problems = <String, String>{};
+    final domainId = _queryInt(query, 'domain_id', problems);
+    _queryInt(query, 'limit', problems);
+    _queryInt(query, 'offset', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    return domainId;
   }
 
   Map<String, Object?> _pipelineJson(FakePipeline p) => {
@@ -4643,12 +4741,7 @@ class FakeRestmail {
 
   void _reportEnum(Map<String, String> query, String key, Set<String> allowed) {
     if (query[key] != null && !allowed.contains(query[key])) {
-      _fail(
-        422,
-        'validation_failed',
-        'Invalid filter',
-        fields: {key: 'must be one of ${allowed.join(', ')}'},
-      );
+      _invalid({key: 'must be one of ${allowed.join(', ')}'});
     }
   }
 
@@ -5255,6 +5348,68 @@ bool _validRelayHost(String host) {
 /// What could end an SMTP line or forge a header: an ASCII control
 /// character.
 bool _hasControl(String value) => value.runes.any((r) => r < 0x20 || r == 0x7f);
+
+/// An integer query parameter as binding reads it: blank or absent is
+/// omitted, anything else must be a whole number.
+int? _queryInt(
+  Map<String, String> query,
+  String name,
+  Map<String, String> problems,
+) {
+  final raw = query[name] ?? '';
+  if (raw.isEmpty) return null;
+  final n = RegExp(r'^[-+]?[0-9]+$').hasMatch(raw) ? int.tryParse(raw) : null;
+  if (n == null) problems[name] = 'must be an integer';
+  return n;
+}
+
+/// A string query parameter held to [allowed]: blank is a value, which the
+/// enum refuses.
+void _queryEnum(
+  Map<String, String> query,
+  String name,
+  List<String> allowed,
+  Map<String, String> problems,
+) {
+  if (query[name] case final value? when !allowed.contains(value)) {
+    problems[name] = 'must be one of ${allowed.join(', ')}';
+  }
+}
+
+/// A body field that is an unsigned id: a whole number of 0 or more.
+void _nonNegative(
+  Map<String, dynamic> body,
+  String name,
+  Map<String, String> problems, {
+  bool nullable = true,
+}) {
+  _typed<int>(
+    body,
+    name,
+    'a non-negative integer',
+    problems,
+    nullable: nullable,
+  );
+  if (body[name] case final int n when n < 0) {
+    problems[name] = 'must be a non-negative integer';
+  }
+}
+
+/// A body string field held to [allowed], worded [rule] when it is not one
+/// of them, the empty string included.
+void _enumField(
+  Map<String, dynamic> body,
+  String name,
+  List<String> allowed,
+  String rule,
+  Map<String, String> problems, {
+  bool nullable = false,
+}) {
+  _typed<String>(body, name, 'a string', problems, nullable: nullable);
+  if (body[name] case final String value when !allowed.contains(value)) {
+    problems[name] = rule;
+  }
+}
 
 /// A required string field as binding reads it: absent is [missing], null
 /// or another type says what it must be, and a value [valid] refuses breaks
