@@ -2923,11 +2923,9 @@ class FakeRestmail {
 
       case ('GET', ['mailboxes']):
         need('mailboxes:read');
-        final domain = _domainFilter(query);
+        final inDomain = _domainFilter(query);
         return _listPage(
-          _mailboxes.values
-              .where((b) => domain == null || b.domain == domain.name)
-              .toList()
+          _mailboxes.values.where((b) => inDomain(b.domain)).toList()
             ..sort((a, b) => a.address.compareTo(b.address)),
           query,
           _mailboxJson,
@@ -2937,7 +2935,7 @@ class FakeRestmail {
         return _json({'data': _mailboxJson(_adminMailbox(id))});
       case ('PATCH', ['mailboxes', final id]):
         need('mailboxes:write');
-        return _updateMailbox(_adminMailbox(id), _object(bytes));
+        return _updateMailbox(id, _object(bytes));
       case ('DELETE', ['mailboxes', final id, 'sessions']):
         need('mailboxes:write');
         revokeSessionsOf(_adminMailbox(id).address);
@@ -2949,11 +2947,9 @@ class FakeRestmail {
 
       case ('GET', ['aliases']):
         need('mailboxes:read');
-        final domain = _domainFilter(query);
+        final inDomain = _domainFilter(query);
         return _listPage(
-          _aliases.values
-              .where((a) => domain == null || a.domain == domain.name)
-              .toList()
+          _aliases.values.where((a) => inDomain(a.domain)).toList()
             ..sort((a, b) => a.source.compareTo(b.source)),
           query,
           _aliasJson,
@@ -2966,10 +2962,20 @@ class FakeRestmail {
         return _json({'data': _aliasJson(_alias(id))});
       case ('PATCH', ['aliases', final id]):
         need('mailboxes:write');
-        final alias = _alias(id);
+        _pathId(id);
         final body = _object(bytes);
-        if (body['destination_address'] case final String to
-            when to.contains('@')) {
+        final problems = _undeclared(body, const {
+          'destination_address',
+          'active',
+        });
+        _typed<String>(body, 'destination_address', 'a string', problems);
+        _typed<bool>(body, 'active', 'a boolean', problems);
+        if (problems.isNotEmpty) _invalid(problems);
+        final alias = _alias(id);
+        if (body['destination_address'] case final String to) {
+          if (!to.contains('@')) {
+            _invalid({'destination_address': 'must be a valid email address'});
+          }
           alias.destination = to;
         }
         if (body['active'] case final bool active) alias.active = active;
@@ -4498,15 +4504,25 @@ class FakeRestmail {
       _domains.values.where((d) => d.id == int.tryParse(id)).firstOrNull ??
       _fail(404, 'domain_not_found', 'Domain not found');
 
-  FakeDomain? _domainFilter(Map<String, String> query) =>
-      query['domain_id'] == null ? null : _domain(query['domain_id']!);
+  /// Whether a domain is in the list's `domain_id`, as the server binds it:
+  /// absent or blank is every domain, and an id no domain has matches none.
+  bool Function(String domain) _domainFilter(Map<String, String> query) {
+    final raw = query['domain_id'] ?? '';
+    if (raw.isEmpty) return (_) => true;
+    final id = RegExp(r'^[-+]?[0-9]+$').hasMatch(raw)
+        ? int.tryParse(raw)
+        : null;
+    if (id == null) _invalid({'domain_id': 'must be an integer'});
+    final name = _domains.values.where((d) => d.id == id).firstOrNull?.name;
+    return (domain) => domain == name;
+  }
 
   FakeMailbox _adminMailbox(String id) =>
-      _mailboxes[int.tryParse(id)] ??
+      _mailboxes[_pathId(id)] ??
       _fail(404, 'mailbox_not_found', 'Mailbox not found');
 
   FakeAlias _alias(String id) =>
-      _aliases[int.tryParse(id)] ?? _fail(404, 'not_found', 'Alias not found');
+      _aliases[_pathId(id)] ?? _fail(404, 'not_found', 'Alias not found');
 
   http.StreamedResponse _createDomain(Map<String, dynamic> body) {
     final name = (body['name'] as String? ?? '').trim().toLowerCase();
@@ -4569,12 +4585,23 @@ class FakeRestmail {
     }
   }
 
-  http.StreamedResponse _updateMailbox(
-    FakeMailbox box,
-    Map<String, dynamic> body,
-  ) {
+  http.StreamedResponse _updateMailbox(String id, Map<String, dynamic> body) {
+    _pathId(id);
+    final problems = _undeclared(body, const {
+      'password',
+      'display_name',
+      'quota_bytes',
+      'active',
+    });
+    _typed<String>(body, 'password', 'a string', problems);
+    _typed<String>(body, 'display_name', 'a string', problems);
+    _typed<int>(body, 'quota_bytes', 'an integer', problems);
+    _typed<bool>(body, 'active', 'a boolean', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _adminMailbox(id);
     if (body['password'] case final String password) {
-      if (password.length < 12) {
+      // The server counts bytes, not characters.
+      if (utf8.encode(password).length < 12) {
         _fail(
           422,
           'validation_failed',
@@ -4592,9 +4619,7 @@ class FakeRestmail {
       }
     }
     if (body['display_name'] case final String name) box.displayName = name;
-    if (body['quota_bytes'] case final num quota) {
-      box.quotaBytes = quota.toInt();
-    }
+    if (body['quota_bytes'] case final int quota) box.quotaBytes = quota;
     if (body['active'] case final bool active) {
       box.active = active;
       if (!active) revokeSessionsOf(box.address);
@@ -4793,24 +4818,31 @@ class FakeRestmail {
     return _json({'data': _banJson(ban)}, status: existing == null ? 201 : 200);
   }
 
+  /// Binding first (types, undeclared fields), then the handler's own
+  /// checks in the server's order: both missing fields, the destination,
+  /// and only then the source.
   http.StreamedResponse _createAlias(Map<String, dynamic> body) {
-    final source = (body['source_address'] as String? ?? '')
-        .trim()
-        .toLowerCase();
+    const fields = {'source_address', 'destination_address'};
+    final problems = _undeclared(body, fields);
+    for (final name in fields) {
+      if (!body.containsKey(name)) continue;
+      if (body[name] == null) problems[name] = 'must not be null';
+      _typed<String>(body, name, 'a string', problems);
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final given = body['source_address'] as String? ?? '';
     final destination = body['destination_address'] as String? ?? '';
-    final fields = {
-      if (!source.contains('@'))
-        'source_address': 'must be a valid email address',
-      if (!destination.contains('@'))
+    final missing = {
+      if (given.isEmpty) 'source_address': 'required',
+      if (destination.isEmpty)
+        'destination_address': 'required'
+      else if (!destination.contains('@'))
         'destination_address': 'must be a valid email address',
     };
-    if (fields.isNotEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: fields,
-      );
+    if (missing.isNotEmpty) _invalid(missing);
+    final source = given.trim().toLowerCase();
+    if (!source.contains('@')) {
+      _invalid({'source_address': 'must be a valid email address'});
     }
     final domain = source.substring(source.indexOf('@') + 1);
     if (!_domains.containsKey(domain)) {
@@ -4956,6 +4988,29 @@ Map<String, String> _undeclared(
   for (final key in body.keys)
     if (!declared.contains(key)) '$prefix$key': 'not allowed',
 };
+
+/// An optional field of [body] given a value other than a [T] or null,
+/// worded as binding words it: `must be [described]`.
+void _typed<T>(
+  Map<String, dynamic> body,
+  String name,
+  String described,
+  Map<String, String> problems,
+) {
+  final value = body[name];
+  if (value != null && value is! T) problems[name] = 'must be $described';
+}
+
+/// A path id as binding reads it before anything is looked up: digits that
+/// fit an unsigned 32-bit id, and never 0.
+int _pathId(String id) {
+  final n = RegExp(r'^[0-9]+$').hasMatch(id) ? int.tryParse(id) : null;
+  if (n == null || n > 0xffffffff) {
+    _invalid({'id': 'must be a non-negative integer'});
+  }
+  if (n == 0) _invalid({'id': 'must be at least 1'});
+  return n;
+}
 
 /// A required string field as binding reads it: absent is [missing], null
 /// or another type says what it must be, and a value [valid] refuses breaks
