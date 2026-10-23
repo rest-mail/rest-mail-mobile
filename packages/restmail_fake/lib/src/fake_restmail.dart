@@ -220,6 +220,7 @@ class FakeRestmail {
   static const adminRole = {
     'domains:read', 'domains:write', 'domains:delete', //
     'mailboxes:read', 'mailboxes:write', 'mailboxes:delete',
+    'users:read',
     'queue:read', 'queue:manage', 'bans:read', 'bans:write',
     'bans:delete', 'pipelines:read', 'pipelines:write',
     'pipelines:delete', 'messages:read', 'observability:read',
@@ -238,11 +239,33 @@ class FakeRestmail {
     box.capabilities = {...capabilities};
   }
 
-  /// The roles the fake grants, and the capabilities each gives, as the
-  /// real server seeds the two it ships with.
+  /// The four built-in roles in bootstrap.EnsureRBAC and models.OwnerCapabilities.
+  static const ownerRole = {
+    'mail:read',
+    'mail:write',
+    'mail:send',
+    'mailbox:manage',
+  };
   static const roles = <String, Set<String>>{
     'superadmin': {'*'},
     'admin': adminRole,
+    'readonly': {
+      'domains:read',
+      'mailboxes:read',
+      'pipelines:read',
+      'users:read',
+      'messages:read',
+      'queue:read',
+      'bans:read',
+      'observability:read',
+    },
+    'owner': ownerRole,
+  };
+  static const _roleDescriptions = {
+    'superadmin': 'Full system access',
+    'admin': 'Standard administrator',
+    'readonly': 'Read-only access',
+    'owner': 'Everything on a mailbox: read, write, send and manage',
   };
 
   /// Grants [role] to [address] at [scope], as the server's grants table
@@ -263,11 +286,18 @@ class FakeRestmail {
     if (!roles.containsKey(role)) {
       throw ArgumentError.value(role, 'role', 'No such role');
     }
+    final normalizedScope = _parseScope(scope);
+    if (normalizedScope == null) {
+      throw ArgumentError.value(scope, 'scope', 'Invalid grant scope');
+    }
+    if (mode != 'active' && mode != 'eligible') {
+      throw ArgumentError.value(mode, 'mode', 'Invalid grant mode');
+    }
     final row = _GrantRow(
       id: _nextGrantId++,
       holderId: box.id,
       role: role,
-      scope: scope,
+      scope: normalizedScope,
       mode: mode,
       grantedById: null,
       grantedAt: _clock(),
@@ -706,6 +736,7 @@ class FakeRestmail {
           'display_name': user.displayName,
         },
         if (capabilities.isNotEmpty) 'capabilities': [...capabilities],
+        if (setup.isEmpty) 'scoped_capabilities': _scopedHeld(user),
         if (setup.isNotEmpty) 'setup_required': setup,
         if (native) ...{
           'access_token': access,
@@ -788,8 +819,11 @@ class FakeRestmail {
       );
     }
     final domain = address.substring(at + 1);
-    final held = _mailboxes[session.primary]!.capabilities;
-    if (!held.contains('*') && !held.contains('mailboxes:write')) {
+    if (!_allowsHeld(
+      _mailboxes[session.primary]!,
+      'mailboxes:write',
+      'domain:$domain',
+    )) {
       _fail(403, 'forbidden', 'You cannot create accounts on $domain');
     }
     if (!_domains.containsKey(domain)) {
@@ -2340,15 +2374,11 @@ class FakeRestmail {
     return null;
   }
 
-  /// What the caller's access token may do on the admin API, refusing one
-  /// that may do nothing there.
+  /// Authorization reads grants live, independently of the token's UI snapshot.
+  /// Each route's need() still requires a global capability unless scoped below.
   Set<String> _adminCapabilities(http.BaseRequest request) {
-    _authenticate(request);
-    final grant = _accessTokens[_bearer(request)]!;
-    if (grant.capabilities.isEmpty) {
-      _fail(403, 'forbidden', 'Admin access required');
-    }
-    return grant.capabilities;
+    final session = _authenticate(request);
+    return _held(_mailboxes[session.primary]!);
   }
 
   /// `/api/v1/admin/…`, each route behind the capability the real server's
@@ -2589,9 +2619,7 @@ class FakeRestmail {
               {
                 'id': i + 1,
                 'name': entry.key,
-                'description': entry.key == 'superadmin'
-                    ? 'Everything'
-                    : 'Everything but the people who run the server',
+                'description': _roleDescriptions[entry.key],
                 'system_role': true,
                 'capabilities': [...entry.value],
               },
@@ -2600,7 +2628,8 @@ class FakeRestmail {
       case ('GET', ['capabilities']):
         need('users:read');
         final names = {
-          ...adminRole,
+          ...roles.values.expand((names) => names),
+          'messages:send_bulk',
           'users:read',
           'users:write',
           'users:delete',
@@ -2639,10 +2668,17 @@ class FakeRestmail {
         _requireTwoFactorSession(request);
         final row = _grantRows[int.tryParse(id)];
         if (row == null) _fail(404, 'not_found', 'Grant not found');
-        _authorizeGrant(request, row.role);
-        if (row.role == 'superadmin' &&
-            _grantRows.values.where((g) => g.role == 'superadmin').length ==
-                1) {
+        _authorizeGrant(request, row.role, row.scope);
+        if (_usableSuperadmin(row) &&
+            !_mailboxes.values.any(
+              (box) =>
+                  box.active &&
+                  box.setupRequired.isEmpty &&
+                  box.capabilities.contains('*'),
+            ) &&
+            !_grantRows.values.any(
+              (other) => other.id != row.id && _usableSuperadmin(other),
+            )) {
           _fail(
             409,
             'last_superadmin',
@@ -2953,18 +2989,50 @@ class FakeRestmail {
       case ('GET', ['pipelines']):
         need('pipelines:read');
         return _listPage(
-          _pipelines.values.toList()
+          _pipelines.values
+              .where(
+                (p) =>
+                    query['domain_id'] == null ||
+                    '${_domains[p.domain]?.id}' == query['domain_id'],
+              )
+              .toList()
             ..sort((a, b) => a.direction.compareTo(b.direction)),
           query,
           _pipelineJson,
         );
+      case ('POST', ['pipelines']):
+        need('pipelines:write');
+        final body = _object(bytes);
+        final domain = _definitionDomain(body['domain_id']);
+        final direction = body['direction'];
+        if (direction != 'inbound' && direction != 'outbound') {
+          _definitionError('direction', "must be 'inbound' or 'outbound'");
+        }
+        final filters = _definitionFilters(body['filters']);
+        final pipeline = FakePipeline(
+          id: _nextRowId++,
+          domain: domain.name,
+          direction: direction as String,
+          filters: filters,
+        )..active = body['active'] as bool? ?? true;
+        _pipelines[pipeline.id] = pipeline;
+        return _json({'data': _pipelineJson(pipeline)}, status: 201);
       case ('PATCH', ['pipelines', final id]):
         need('pipelines:write');
         final pipeline =
             _pipelines[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Pipeline not found');
-        if (_object(bytes)['active'] case final bool active) {
+        final body = _object(bytes);
+        final filters = body.containsKey('filters')
+            ? _definitionFilters(body['filters'])
+            : null;
+        if (body['active'] case final bool active) {
           pipeline.active = active;
+        }
+        if (filters != null) {
+          pipeline.filters
+            ..clear()
+            ..addAll(filters);
         }
         return _json({'data': _pipelineJson(pipeline)});
       case ('DELETE', ['pipelines', final id]):
@@ -2977,19 +3045,56 @@ class FakeRestmail {
       case ('GET', ['custom-filters']):
         need('pipelines:read');
         return _listPage(
-          _customFilters.values.toList()
+          _customFilters.values
+              .where(
+                (f) =>
+                    query['domain_id'] == null ||
+                    '${_domains[f.domain]?.id}' == query['domain_id'],
+              )
+              .toList()
             ..sort((a, b) => a.name.compareTo(b.name)),
           query,
           _customFilterJson,
         );
+      case ('GET', ['custom-filters', final id]):
+        need('pipelines:read');
+        final filter =
+            _customFilters[int.tryParse(id)] ??
+            _fail(404, 'not_found', 'Custom filter not found');
+        return _json({'data': _customFilterJson(filter)});
+      case ('POST', ['custom-filters']):
+        need('pipelines:write');
+        final body = _object(bytes);
+        final domain = _definitionDomain(body['domain_id']);
+        _validateCustomDefinition(body);
+        final filter = FakeCustomFilter(
+          id: _nextRowId++,
+          domain: domain.name,
+          name: body['name'] as String,
+          description: body['description'] as String? ?? '',
+          filterType: body['filter_type'] as String,
+          direction: body['direction'] as String,
+          config: body['config'] as Map<String, dynamic>,
+        )..enabled = body['enabled'] as bool? ?? true;
+        _customFilters[filter.id] = filter;
+        return _json({'data': _customFilterJson(filter)}, status: 201);
       case ('PATCH', ['custom-filters', final id]):
         need('pipelines:write');
         final filter =
             _customFilters[int.tryParse(id)] ??
             _fail(404, 'not_found', 'Custom filter not found');
-        if (_object(bytes)['enabled'] case final bool enabled) {
-          filter.enabled = enabled;
-        }
+        final body = _object(bytes);
+        final updated = <String, dynamic>{
+          ..._customFilterJson(filter),
+          ...body,
+        };
+        _validateCustomDefinition(updated);
+        filter.name = updated['name'] as String;
+        filter.description = updated['description'] as String? ?? '';
+        filter.filterType = updated['filter_type'] as String;
+        filter.direction = updated['direction'] as String;
+        filter.config = updated['config'] as Map<String, dynamic>;
+        filter.enabled = updated['enabled'] as bool;
         return _json({'data': _customFilterJson(filter)});
       case ('DELETE', ['custom-filters', final id]):
         need('pipelines:delete');
@@ -3106,17 +3211,93 @@ class FakeRestmail {
   /// The real server's `limit` and `offset`: 50 by default, 200 at most.
   // ── Grants and escalation ─────────────────────────────────────────────
 
-  /// What [box] holds at `*`: what the test gave it with [grant] or
-  /// [addAccount], and what each of its grants in force at `*` gives.
-  Set<String> _held(FakeMailbox box) {
+  /// Same grammar and hierarchy as grants.ParseScope/Covers, independently
+  /// implemented here so client scope bugs cannot make the fake agree with it.
+  static String? _parseScope(Object? value) {
+    if (value is! String) return null;
+    final scope = value.trim().toLowerCase();
+    if (scope == '*') return scope;
+    bool domain(String name) =>
+        name.isNotEmpty &&
+        name.length <= 253 &&
+        name
+            .split('.')
+            .every(
+              (label) =>
+                  label.isNotEmpty &&
+                  label.length <= 63 &&
+                  RegExp(r'^[a-z0-9-]+$').hasMatch(label),
+            );
+    if (scope.startsWith('domain:') && domain(scope.substring(7))) return scope;
+    if (scope.startsWith('mailbox:')) {
+      final address = scope.substring(8), at = scope.substring(8).indexOf('@');
+      if (at > 0 &&
+          !RegExp(r'[ \t\r\n@]').hasMatch(address.substring(0, at)) &&
+          domain(address.substring(at + 1))) {
+        return scope;
+      }
+    }
+    return null;
+  }
+
+  static bool _covers(String scope, String target) =>
+      scope == '*' ||
+      scope == target ||
+      (scope.startsWith('domain:') &&
+          target.startsWith('mailbox:') &&
+          target.substring(target.lastIndexOf('@') + 1) == scope.substring(7));
+
+  Set<(String, String)> _heldEntries(FakeMailbox box) {
     final now = _clock();
     return {
-      ...box.capabilities,
+      for (final capability in box.capabilities) (capability, '*'),
       for (final row in _grantRows.values)
-        if (row.holderId == box.id && row.scope == '*' && row.inForce(now))
-          ...roles[row.role]!,
+        if (row.holderId == box.id && row.inForce(now))
+          for (final capability in roles[row.role]!) (capability, row.scope),
+      // Active accounts hold the owner role on their own and linked mailboxes.
+      for (final id in [box.id, ...?_owned[box.id]])
+        if (box.active && _mailboxes[id]?.active == true)
+          for (final capability in ownerRole)
+            (capability, 'mailbox:${_mailboxes[id]!.address.toLowerCase()}'),
     };
   }
+
+  Set<String> _held(FakeMailbox box) {
+    final names = {
+      for (final (capability, scope) in _heldEntries(box))
+        if (scope == '*') capability,
+    };
+    return names.contains('*') ? {'*'} : names;
+  }
+
+  List<Map<String, String>> _scopedHeld(FakeMailbox box) {
+    final entries = _heldEntries(box).where((entry) => entry.$2 != '*').toList()
+      ..sort((a, b) {
+        final byScope = a.$2.compareTo(b.$2);
+        return byScope == 0 ? a.$1.compareTo(b.$1) : byScope;
+      });
+    return [
+      for (final (capability, scope) in entries)
+        {'capability': capability, 'scope': scope},
+    ];
+  }
+
+  bool _allowsHeld(FakeMailbox box, String capability, String target) =>
+      _heldEntries(box).any(
+        (entry) =>
+            (entry.$1 == '*' || entry.$1 == capability) &&
+            _covers(entry.$2, target),
+      );
+
+  bool _usableSuperadmin(_GrantRow row) =>
+      row.scope == '*' &&
+      (roles[row.role]?.contains('*') ?? false) &&
+      _mailboxes[row.holderId]?.active == true &&
+      (row.expiresAt == null || row.expiresAt!.isAfter(_clock())) &&
+      (row.mode == 'active' ||
+          (row.mode == 'eligible' &&
+              _mailboxes[row.holderId]?.totpCode != null &&
+              _mailboxes[row.holderId]?.totpPending == false));
 
   Map<String, Object?> _grantJson(_GrantRow row) {
     final now = _clock();
@@ -3157,12 +3338,13 @@ class FakeRestmail {
     }
   }
 
-  /// The granter must hold everything [role] gives. The fake knows only
-  /// what is held at `*`, so a scoped grant is checked as if it were wide.
-  void _authorizeGrant(http.BaseRequest request, String role) {
-    final held = _held(_mailboxes[_sessionOf(request).primary]!);
-    final gives = roles[role] ?? const <String>{};
-    if (!held.contains('*') && !held.containsAll(gives)) {
+  /// CanGrant requires every role capability at a scope covering the target.
+  /// A cached login snapshot never authorizes a grant change.
+  void _authorizeGrant(http.BaseRequest request, String role, String scope) {
+    final box = _mailboxes[_sessionOf(request).primary]!;
+    if (!(roles[role] ?? const <String>{}).every(
+      (capability) => _allowsHeld(box, capability, scope),
+    )) {
       _fail(403, 'grant_exceeds_held', 'grant exceeds what the granter holds');
     }
   }
@@ -3182,10 +3364,8 @@ class FakeRestmail {
     }
     final role = body['role'] as String? ?? '';
     if (role.isEmpty) problems['role'] = 'required: a role name';
-    final scope = body['scope'] as String? ?? '';
-    if (scope != '*' &&
-        !RegExp(r'^domain:[^@\s]+\.[^@\s]+$').hasMatch(scope) &&
-        !RegExp(r'^mailbox:[^@\s]+@[^@\s]+$').hasMatch(scope)) {
+    final scope = _parseScope(body['scope']);
+    if (scope == null) {
       problems['scope'] = 'must be "*", "domain:<name>" or "mailbox:<address>"';
     }
     final mode = body['mode'] as String? ?? 'active';
@@ -3215,7 +3395,7 @@ class FakeRestmail {
         fields: {'role': 'no such role'},
       );
     }
-    _authorizeGrant(request, role);
+    _authorizeGrant(request, role, scope!);
     if (_grantRows.values.any(
       (g) => g.holderId == holderId && g.role == role && g.scope == scope,
     )) {
@@ -3346,8 +3526,7 @@ class FakeRestmail {
           ..mode = 'eligible'
           ..activation = null;
     }
-    // The real server checks grants live on every request; the fake checks
-    // the token, so the token takes what the account now holds.
+    // The reply updates the UI snapshot; authorization reads live grants.
     final held = _held(box);
     final bearer = _bearer(request)!;
     final token = _accessTokens[bearer]!;
@@ -3356,6 +3535,7 @@ class FakeRestmail {
       'data': {
         'grant': _grantJson(row),
         'capabilities': [...held],
+        'scoped_capabilities': _scopedHeld(box),
       },
     }, status: status);
   }
@@ -3518,6 +3698,49 @@ class FakeRestmail {
   // The server does not load a pipeline's or a filter's domain into the
   // list, so it comes back empty, as Go writes a zero struct.
   static const _noDomain = {'id': 0, 'name': ''};
+
+  Never _definitionError(String field, String message) => _fail(
+    422,
+    'validation_failed',
+    'Request body failed validation',
+    fields: {field: message},
+  );
+
+  FakeDomain _definitionDomain(Object? id) =>
+      _domains.values.where((d) => d.id == id).firstOrNull ??
+      _fail(404, 'not_found', 'Domain not found');
+
+  List<Map<String, Object?>> _definitionFilters(Object? value) {
+    if (value is! List<dynamic>) {
+      _definitionError('filters', 'must be an array of filter objects');
+    }
+    final filters = <Map<String, Object?>>[];
+    for (final item in value) {
+      if (item is! Map<String, dynamic> ||
+          (item.containsKey('name') && item['name'] is! String) ||
+          (item.containsKey('config') &&
+              item['config'] is! Map<String, dynamic>)) {
+        _definitionError('filters', 'must be an array of filter objects');
+      }
+      filters.add(Map<String, Object?>.from(item));
+    }
+    return filters;
+  }
+
+  void _validateCustomDefinition(Map<String, dynamic> body) {
+    if (body['name'] is! String || (body['name'] as String).isEmpty) {
+      _definitionError('name', 'required');
+    }
+    if (!const ['action', 'transform'].contains(body['filter_type'])) {
+      _definitionError('filter_type', 'must be action or transform');
+    }
+    if (!const ['inbound', 'outbound', 'both'].contains(body['direction'])) {
+      _definitionError('direction', 'must be inbound, outbound or both');
+    }
+    if (body['config'] is! Map<String, dynamic>) {
+      _definitionError('config', 'must be an object');
+    }
+  }
 
   Map<String, Object?> _pipelineJson(FakePipeline p) => {
     'id': p.id,
@@ -4201,7 +4424,7 @@ class _GrantRow {
   bool inForce(DateTime now) {
     if (expiresAt case final ends? when !ends.isAfter(now)) return false;
     if (mode == 'active') return true;
-    return activation?.expiresAt.isAfter(now) ?? false;
+    return mode == 'eligible' && (activation?.expiresAt.isAfter(now) ?? false);
   }
 }
 
