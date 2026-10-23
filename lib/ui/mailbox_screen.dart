@@ -307,7 +307,8 @@ class _MailboxScreenState extends State<MailboxScreen> {
       message: message,
       others: conversation.sublist(1),
       action: () => m.delete(message, others: conversation.sublist(1)),
-      done: permanent ? 'Deleted' : 'Moved to Trash',
+      done: tr(context, permanent ? 'message.deleted' : 'message.movedToTrash'),
+      undoLabel: tr(context, 'common.undo'),
       undoable: !permanent,
     );
   }

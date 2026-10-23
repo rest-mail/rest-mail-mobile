@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../l10n/voice.dart';
 import '../state/mail_backend.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
@@ -20,6 +21,7 @@ Future<void> openAttachment(
   Attachment attachment,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final saveFailed = tr(context, 'attachments.saveFailed');
   final box = context.findRenderObject();
   // iPad anchors the share sheet to the thing that was tapped.
   final origin = box is RenderBox && box.hasSize
@@ -29,7 +31,9 @@ Future<void> openAttachment(
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text('Opening ${attachment.filename}…'),
+        content: Text(
+          trArgs(context, 'attachments.opening', {'name': attachment.filename}),
+        ),
         duration: const Duration(seconds: 30),
       ),
     );
@@ -55,9 +59,7 @@ Future<void> openAttachment(
   } on FileSystemException {
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Could not save the file to open it.')),
-      );
+      ..showSnackBar(SnackBar(content: Text(saveFailed)));
   }
 }
 
@@ -89,12 +91,14 @@ class AttachmentSummary extends StatelessWidget {
       return _AttachmentCard(
         title: attachment.filename,
         meta:
-            '${kindLabel(attachment.contentType)} · ${sizeLabel(attachment.sizeBytes)}',
+            '${tr(context, kindKey(attachment.contentType))} · ${sizeLabel(attachment.sizeBytes)}',
         onTap: (context) => openAttachment(context, backend, attachment),
       );
     }
     return _AttachmentCard(
-      title: '${attachments.length} attachments',
+      title: trArgs(context, 'attachments.count', {
+        'count': '${attachments.length}',
+      }),
       meta: attachments.map((a) => a.filename).join(', '),
       onTap: (context) => Navigator.push(
         context,
@@ -190,7 +194,10 @@ class AttachmentsScreen extends StatelessWidget {
     body: SafeArea(
       child: Column(
         children: [
-          RmTopBar(title: 'Attachments', onBack: () => Navigator.pop(context)),
+          RmTopBar(
+            title: tr(context, 'attachments.title'),
+            onBack: () => Navigator.pop(context),
+          ),
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
@@ -278,7 +285,7 @@ class _AttachmentTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${kindLabel(attachment.contentType)} · ${sizeLabel(attachment.sizeBytes)}',
+                    '${tr(context, kindKey(attachment.contentType))} · ${sizeLabel(attachment.sizeBytes)}',
                     style: rmText(11.5, color: c.ink3),
                   ),
                 ],

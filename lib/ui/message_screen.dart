@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../state/interface_prefs.dart';
 import '../state/mailbox_state.dart';
@@ -173,6 +174,7 @@ class _MessageScreenState extends State<MessageScreen> {
     bool undoable = true,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final undo = tr(context, 'common.undo');
     final message = _message;
     final others = widget.others;
     Navigator.pop(context);
@@ -183,6 +185,7 @@ class _MessageScreenState extends State<MessageScreen> {
       others: others,
       action: () => action(message, others),
       done: done,
+      undoLabel: undo,
       undoable: undoable,
     );
   }
@@ -192,7 +195,7 @@ class _MessageScreenState extends State<MessageScreen> {
     final permanent = _message.folder == StandardFolder.trash;
     await _removeAndLeave(
       (message, others) => _mailbox.delete(message, others: others),
-      permanent ? 'Deleted' : 'Moved to Trash',
+      tr(context, permanent ? 'message.deleted' : 'message.movedToTrash'),
       undoable: !permanent,
     );
   }
@@ -221,7 +224,9 @@ class _MessageScreenState extends State<MessageScreen> {
           remove: remove,
           others: others,
         ),
-        'Removed from ${folderLabel(_message.folder)}',
+        trArgs(context, 'message.removedFrom', {
+          'folder': folderLabelOf(context, _message.folder),
+        }),
       );
       return;
     }
@@ -263,13 +268,13 @@ class _MessageScreenState extends State<MessageScreen> {
           await _removeAndLeave(
             (message, others) =>
                 _mailbox.move(message, StandardFolder.spam, others: others),
-            'Moved to Spam',
+            tr(context, 'message.movedToSpam'),
           );
         case _More.notSpam:
           await _removeAndLeave(
             (message, others) =>
                 _mailbox.move(message, StandardFolder.inbox, others: others),
-            'Moved to Inbox',
+            tr(context, 'message.movedToInbox'),
           );
       }
     } on ApiException catch (e) {
@@ -283,7 +288,9 @@ class _MessageScreenState extends State<MessageScreen> {
   String _recipientLine() {
     final own = _mailbox.ownAddresses;
     String name(Recipient r) {
-      if (own.contains(r.address.toLowerCase())) return 'me';
+      if (own.contains(r.address.toLowerCase())) {
+        return tr(context, 'message.me');
+      }
       if (!_allRecipients) return r.displayName;
       return r.name == null ? r.address : '${r.name} <${r.address}>';
     }
@@ -291,8 +298,8 @@ class _MessageScreenState extends State<MessageScreen> {
     final to = _message.to.map(name).join(', ');
     final cc = _message.cc.map(name).join(', ');
     return [
-      if (to.isNotEmpty) 'to $to',
-      if (cc.isNotEmpty) 'cc $cc',
+      if (to.isNotEmpty) trArgs(context, 'message.to', {'names': to}),
+      if (cc.isNotEmpty) trArgs(context, 'message.cc', {'names': cc}),
       if (_allRecipients) longDate(_message.date),
     ].join(' · ');
   }
@@ -326,7 +333,7 @@ class _MessageScreenState extends State<MessageScreen> {
       _removeAndLeave(
         (message, others) =>
             _mailbox.move(message, StandardFolder.archive, others: others),
-        'Archived',
+        tr(context, 'message.archived'),
       ),
     );
     return Scaffold(
@@ -342,7 +349,7 @@ class _MessageScreenState extends State<MessageScreen> {
                 children: [
                   RmIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
-                    tooltip: 'Back',
+                    tooltip: tr(context, 'common.back'),
                     color: c.accent,
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -352,11 +359,11 @@ class _MessageScreenState extends State<MessageScreen> {
                     v.actions == ActionStyle.icons
                         ? RmIconButton(
                             icon: Icons.archive_outlined,
-                            tooltip: 'Archive',
+                            tooltip: tr(context, 'message.archive'),
                             onPressed: archive,
                           )
                         : _WordAction(
-                            label: 'Archive',
+                            label: tr(context, 'message.archive'),
                             keyHint: v.actions == ActionStyle.keyed
                                 ? 'e'
                                 : null,
@@ -365,50 +372,59 @@ class _MessageScreenState extends State<MessageScreen> {
                   v.actions == ActionStyle.icons
                       ? RmIconButton(
                           icon: Icons.delete_outline_rounded,
-                          tooltip: 'Delete',
+                          tooltip: tr(context, 'message.delete'),
                           onPressed: () => unawaited(_delete()),
                         )
                       : _WordAction(
-                          label: 'Delete',
+                          label: tr(context, 'message.delete'),
                           keyHint: v.actions == ActionStyle.keyed ? 'x' : null,
                           onPressed: () => unawaited(_delete()),
                         ),
                   PopupMenuButton<_More>(
-                    tooltip: 'More',
+                    tooltip: tr(context, 'message.more'),
                     icon: Icon(Icons.more_vert_rounded, size: 20, color: c.ink),
                     onSelected: (action) => unawaited(_more(action)),
                     itemBuilder: (_) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: _More.markUnread,
-                        child: Text('Mark as unread'),
+                        child: Text(tr(context, 'message.markUnread')),
                       ),
                       PopupMenuItem(
                         value: _More.flag,
-                        child: Text(switch ((_labels, m.isFlagged)) {
-                          (true, true) => 'Remove star',
-                          (true, false) => 'Star',
-                          (false, true) => 'Remove flag',
-                          (false, false) => 'Flag',
-                        }),
+                        child: Text(
+                          tr(context, switch ((_labels, m.isFlagged)) {
+                            (true, true) => 'message.removeStar',
+                            (true, false) => 'message.star',
+                            (false, true) => 'message.removeFlag',
+                            (false, false) => 'message.flag',
+                          }),
+                        ),
                       ),
                       PopupMenuItem(
                         value: _More.note,
-                        child: Text(_note == null ? 'Add note' : 'Edit note'),
+                        child: Text(
+                          tr(
+                            context,
+                            _note == null
+                                ? 'message.addNote'
+                                : 'message.editNote',
+                          ),
+                        ),
                       ),
                       if (_labels)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: _More.labels,
-                          child: Text('Labels…'),
+                          child: Text(tr(context, 'message.labels')),
                         ),
                       if (m.folder == StandardFolder.spam)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: _More.notSpam,
-                          child: Text('Not spam'),
+                          child: Text(tr(context, 'message.notSpam')),
                         )
                       else
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: _More.spam,
-                          child: Text('Move to Spam'),
+                          child: Text(tr(context, 'message.moveToSpam')),
                         ),
                     ],
                   ),
@@ -420,7 +436,9 @@ class _MessageScreenState extends State<MessageScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
                 children: [
                   SelectableText(
-                    m.subject.isEmpty ? '(no subject)' : m.subject,
+                    m.subject.isEmpty
+                        ? tr(context, 'message.noSubject')
+                        : m.subject,
                     style: rmText(
                       v.readerType == Typeface.serif ? 26 : 24,
                       color: c.ink,
@@ -543,7 +561,9 @@ class _MessageScreenState extends State<MessageScreen> {
                   if (_conversation.length > 1) ...[
                     const SizedBox(height: 26),
                     SectionLabel(
-                      '${_conversation.length} messages in this conversation',
+                      trArgs(context, 'message.conversation', {
+                        'count': '${_conversation.length}',
+                      }),
                     ),
                     const SizedBox(height: 8),
                     for (final other in _conversation)
@@ -574,7 +594,7 @@ class _MessageScreenState extends State<MessageScreen> {
               ),
               child: isDraft
                   ? RmPrimaryButton(
-                      label: 'Edit draft',
+                      label: tr(context, 'message.editDraft'),
                       height: 44,
                       radius: 11,
                       fontSize: 14.5,
@@ -584,7 +604,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       children: [
                         Expanded(
                           child: RmPrimaryButton(
-                            label: 'Reply',
+                            label: tr(context, 'message.reply'),
                             height: 44,
                             radius: 11,
                             fontSize: 14.5,
@@ -596,7 +616,7 @@ class _MessageScreenState extends State<MessageScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: RmOutlineButton(
-                              label: 'Reply all',
+                              label: tr(context, 'message.replyAll'),
                               height: 44,
                               radius: 11,
                               fontSize: 14.5,
@@ -611,13 +631,13 @@ class _MessageScreenState extends State<MessageScreen> {
                         v.actions == ActionStyle.icons
                             ? RmOutlineIconButton(
                                 icon: Icons.arrow_forward_rounded,
-                                tooltip: 'Forward',
+                                tooltip: tr(context, 'message.forward'),
                                 onPressed: () => _compose(forwardSeed(m)),
                               )
                             : RmOutlineButton(
                                 label: v.actions == ActionStyle.keyed
-                                    ? '[f] Forward'
-                                    : 'Forward',
+                                    ? '[f] ${tr(context, 'message.forward')}'
+                                    : tr(context, 'message.forward'),
                                 height: 44,
                                 radius: 11,
                                 fontSize: 14.5,
@@ -667,7 +687,7 @@ class _NoteEditorState extends State<_NoteEditor> {
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
               child: Text(
-                'Private note',
+                tr(context, 'note.title'),
                 style: rmText(
                   17,
                   color: c.ink,
@@ -679,7 +699,7 @@ class _NoteEditorState extends State<_NoteEditor> {
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
               child: Text(
-                'Only you can see this. It stays on this phone.',
+                tr(context, 'note.privacy'),
                 style: rmText(12.5, color: c.ink3, height: 1.35),
               ),
             ),
@@ -693,7 +713,7 @@ class _NoteEditorState extends State<_NoteEditor> {
                 keyboardType: TextInputType.multiline,
                 textCapitalization: TextCapitalization.sentences,
                 style: rmText(15, color: c.ink, height: 1.45),
-                decoration: const InputDecoration(hintText: 'Write a note…'),
+                decoration: InputDecoration(hintText: tr(context, 'note.hint')),
               ),
             ),
             Padding(
@@ -703,17 +723,23 @@ class _NoteEditorState extends State<_NoteEditor> {
                   if (widget.initial != null)
                     TextButton(
                       onPressed: () => Navigator.pop(context, ''),
-                      child: Text('Remove', style: rmText(14, color: c.danger)),
+                      child: Text(
+                        tr(context, 'common.remove'),
+                        style: rmText(14, color: c.danger),
+                      ),
                     ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel', style: rmText(14, color: c.ink2)),
+                    child: Text(
+                      tr(context, 'common.cancel'),
+                      style: rmText(14, color: c.ink2),
+                    ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, _text.text),
                     child: Text(
-                      'Save',
+                      tr(context, 'common.save'),
                       style: rmText(
                         14,
                         color: c.accent,
@@ -759,7 +785,7 @@ class _NoteCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'NOTE',
+                  tr(context, 'note.label').toUpperCase(),
                   style: rmText(
                     10.5,
                     color: c.ink3,
@@ -773,7 +799,7 @@ class _NoteCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Edit note',
+            tooltip: tr(context, 'message.editNote'),
             icon: Icon(Icons.edit_outlined, size: 18, color: c.ink3),
             onPressed: onEdit,
           ),
@@ -800,7 +826,7 @@ class _LabelChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
-        folderLabel(name),
+        folderLabelOf(context, name),
         style: rmText(12, color: c.ink2, weight: FontWeight.w600),
       ),
     );

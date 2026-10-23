@@ -103,13 +103,17 @@ String fileKind(String filename) {
       : 'file';
 }
 
-String kindLabel(String contentType) {
+/// The string key for what kind of file [contentType] is: `kind.image`,
+/// `kind.pdf` and so on, which the language pack words.
+String kindKey(String contentType) {
   final type = contentType.toLowerCase();
-  if (type.startsWith('image/')) return 'Image';
-  if (type == 'application/pdf') return 'PDF';
-  if (type.startsWith('text/')) return 'Text';
-  if (type.startsWith('audio/')) return 'Audio';
-  if (type.startsWith('video/')) return 'Video';
-  if (type.contains('zip') || type.contains('compressed')) return 'Archive';
-  return 'File';
+  if (type.startsWith('image/')) return 'kind.image';
+  if (type == 'application/pdf') return 'kind.pdf';
+  if (type.startsWith('text/')) return 'kind.text';
+  if (type.startsWith('audio/')) return 'kind.audio';
+  if (type.startsWith('video/')) return 'kind.video';
+  if (type.contains('zip') || type.contains('compressed')) {
+    return 'kind.archive';
+  }
+  return 'kind.file';
 }
