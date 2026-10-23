@@ -64,7 +64,7 @@ class _MessageBodyState extends State<MessageBody> {
           color: c.accent,
         ),
         label: Text(
-          _showQuote ? 'Hide quoted text' : 'Show quoted text',
+          tr(context, _showQuote ? 'message.hideQuote' : 'message.showQuote'),
           style: rmText(13, color: c.accent, weight: FontWeight.w700),
         ),
       ),

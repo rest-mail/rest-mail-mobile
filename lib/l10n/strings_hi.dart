@@ -188,6 +188,8 @@ const Map<String, Map<String, String>> stringsHi = {
     'message.imageBlocked': '1 दूरस्थ छवि रोकी गई',
     'message.imagesBlocked': '{count} दूरस्थ छवियाँ रोकी गईं',
     'message.loadImages': 'लोड करें',
+    'message.showQuote': 'उद्धृत पाठ दिखाएँ',
+    'message.hideQuote': 'उद्धृत पाठ छिपाएँ',
     'note.title': 'निजी नोट',
     'note.privacy': 'केवल आप इसे देख सकते हैं। यह इसी फ़ोन पर रहता है।',
     'note.hint': 'नोट लिखें…',

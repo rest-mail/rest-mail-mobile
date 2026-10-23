@@ -192,6 +192,8 @@ const Map<String, Map<String, String>> stringsNe = {
     'message.imageBlocked': '1 रिमोट छवि रोकियो',
     'message.imagesBlocked': '{count} रिमोट छविहरू रोकिए',
     'message.loadImages': 'लोड गर्नुहोस्',
+    'message.showQuote': 'उद्धृत पाठ देखाउनुहोस्',
+    'message.hideQuote': 'उद्धृत पाठ लुकाउनुहोस्',
     'note.title': 'निजी टिप्पणी',
     'note.privacy': 'यो तपाईंले मात्र देख्न सक्नुहुन्छ। यो यही फोनमा रहन्छ।',
     'note.hint': 'टिप्पणी लेख्नुहोस्…',

@@ -198,6 +198,8 @@ const Map<String, Map<String, String>> stringsEn = {
     'message.imageBlocked': '1 remote image blocked',
     'message.imagesBlocked': '{count} remote images blocked',
     'message.loadImages': 'Load',
+    'message.showQuote': 'Show quoted text',
+    'message.hideQuote': 'Hide quoted text',
     'note.title': 'Private note',
     'note.privacy': 'Only you can see this. It stays on this phone.',
     'note.hint': 'Write a note…',

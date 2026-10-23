@@ -194,6 +194,8 @@ const Map<String, Map<String, String>> stringsEs = {
     'message.imageBlocked': '1 imagen remota bloqueada',
     'message.imagesBlocked': '{count} imágenes remotas bloqueadas',
     'message.loadImages': 'Cargar',
+    'message.showQuote': 'Mostrar texto citado',
+    'message.hideQuote': 'Ocultar texto citado',
     'note.title': 'Nota privada',
     'note.privacy': 'Solo tú puedes verla. Se queda en este teléfono.',
     'note.hint': 'Escribe una nota…',

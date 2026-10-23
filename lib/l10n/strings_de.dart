@@ -193,6 +193,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'message.imageBlocked': '1 externes Bild blockiert',
     'message.imagesBlocked': '{count} externe Bilder blockiert',
     'message.loadImages': 'Laden',
+    'message.showQuote': 'Zitierten Text anzeigen',
+    'message.hideQuote': 'Zitierten Text ausblenden',
     'note.title': 'Private Notiz',
     'note.privacy':
         'Nur auf diesem Telefon gespeichert und für niemanden sonst sichtbar.',
