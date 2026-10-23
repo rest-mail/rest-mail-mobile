@@ -582,6 +582,16 @@ void main() {
           isA<ApiException>().having((e) => e.code, 'code', 'already_exists'),
         ),
       );
+      // A name that is not a domain name is refused on the field, as the
+      // server refuses it.
+      await expectLater(
+        client.createDomain('localhost'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 422)
+              .having((e) => e.code, 'code', 'validation_failed'),
+        ),
+      );
     });
   });
 
