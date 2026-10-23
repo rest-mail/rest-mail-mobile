@@ -242,7 +242,8 @@ void main() {
             .toSet(),
         {'allow', 'block'},
       );
-      expect(find.text('Reviewed exception'), findsOneWidget);
+      // The reason heads the row's subtitle, over when it was added.
+      expect(find.textContaining('Reviewed exception'), findsOneWidget);
       await close(tester, fake, state);
     },
   );
