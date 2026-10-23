@@ -117,6 +117,8 @@ class FakeRestmail {
   // Held mail, as the server's quarantine rows: id -> row, with the mailbox
   // id under "mailbox_id" and the raw message kept out of the JSON.
   final _quarantine = <int, Map<String, Object?>>{};
+  // An account's contacts: id -> row, with the mailbox id under "mailbox_id".
+  final _contacts = <int, Map<String, Object?>>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
   var _nextScheduledId = 1;
@@ -628,6 +630,23 @@ class FakeRestmail {
         ['api', 'v1', 'accounts', final id, 'quarantine', final mid],
       ) =>
         _deleteQuarantined(_own(session, id), mid),
+      ('GET', ['api', 'v1', 'accounts', final id, 'contacts']) => _listContacts(
+        session,
+        id,
+        query,
+      ),
+      ('POST', ['api', 'v1', 'accounts', final id, 'contacts']) =>
+        _createContact(session, id, _object(bytes)),
+      ('POST', ['api', 'v1', 'accounts', final id, 'contacts', 'block']) =>
+        _blockSender(session, id, _object(bytes)),
+      ('POST', ['api', 'v1', 'accounts', final id, 'contacts', 'import']) =>
+        _importContacts(session, id, _object(bytes)),
+      ('GET', ['api', 'v1', 'accounts', final id, 'contacts', 'suggest']) =>
+        _suggestContacts(session, id, query),
+      ('PATCH', ['api', 'v1', 'accounts', final id, 'contacts', final cid]) =>
+        _updateContact(session, id, cid, _object(bytes)),
+      ('DELETE', ['api', 'v1', 'accounts', final id, 'contacts', final cid]) =>
+        _deleteContact(session, id, cid),
       ('GET', ['api', 'v1', 'accounts', final id, 'events']) => _events(
         _own(session, id),
       ),
@@ -1129,6 +1148,308 @@ class FakeRestmail {
     _quarantine.remove(row['id']);
     return _json({
       'data': {'status': 'deleted'},
+    });
+  }
+
+  // ── Contacts ──────────────────────────────────────────────────────────
+  //
+  // As REST Mail serves them (rest-mail-server#739): the path, query and
+  // body are bound first, then the account is checked, answering 403
+  // forbidden when the session cannot reach it, then the handler's own
+  // rules.
+
+  /// Adds a contact to [address]'s mailbox, as mail it sent would, and
+  /// returns its id.
+  int addContact(
+    String address,
+    String email, {
+    String name = '',
+    String trustLevel = 'auto',
+    String source = 'sent',
+  }) {
+    final box = _mailboxes.values.firstWhere(
+      (b) => b.address == address.toLowerCase(),
+    );
+    return _newContact(box, email, name, trustLevel, source)['id']! as int;
+  }
+
+  /// The contacts of the mailbox at [address], as the server keeps them.
+  List<Map<String, Object?>> contactsOf(String address) => [
+    for (final row in _contacts.values)
+      if (_mailboxes[row['mailbox_id']]?.address == address.toLowerCase())
+        {...row},
+  ];
+
+  Map<String, Object?> _newContact(
+    FakeMailbox box,
+    String email,
+    String name,
+    String trustLevel,
+    String source,
+  ) {
+    final id = _nextRowId++;
+    final at = _time(_clock());
+    return _contacts[id] = {
+      'id': id,
+      'mailbox_id': box.id,
+      'email': email,
+      'name': name,
+      'trust_level': trustLevel,
+      'source': source,
+      'created_at': at,
+      'updated_at': at,
+    };
+  }
+
+  FakeMailbox _contactAccount(_Session session, int id) {
+    final box = _mailboxes[id];
+    if (box == null || !_reach(session).contains(box.id)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    return box;
+  }
+
+  Map<String, Object?>? _contactAt(FakeMailbox box, String email) => _contacts
+      .values
+      .where((c) => c['mailbox_id'] == box.id && c['email'] == email)
+      .firstOrNull;
+
+  Map<String, Object?> _contactIn(FakeMailbox box, int cid) {
+    final row = _contacts[cid];
+    if (row == null || row['mailbox_id'] != box.id) {
+      _fail(404, 'not_found', 'Contact not found');
+    }
+    return row;
+  }
+
+  http.StreamedResponse _listContacts(
+    _Session session,
+    String id,
+    Map<String, String> query,
+  ) {
+    final accountId = _pathId(id);
+    final problems = <String, String>{};
+    _queryEnum(query, 'trust_level', const [
+      'auto',
+      'trusted',
+      'blocked',
+    ], problems);
+    _queryInt(query, 'limit', problems);
+    _queryInt(query, 'offset', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _contactAccount(session, accountId);
+    final trust = query['trust_level'];
+    final search = query['search'] ?? '';
+    final rows = [
+      for (final row in _contacts.values)
+        if (row['mailbox_id'] == box.id &&
+            (trust == null || row['trust_level'] == trust) &&
+            (row['email']! as String).contains(search))
+          row,
+    ]..sort((a, b) => (a['email']! as String).compareTo(b['email']! as String));
+    return _listPage(rows, query, (row) => {...row});
+  }
+
+  http.StreamedResponse _createContact(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final accountId = _pathId(id);
+    final problems = _undeclared(body, const {'email', 'name', 'trust_level'});
+    if (!body.containsKey('email')) problems['email'] = 'required';
+    _typed<String>(body, 'email', 'a string', problems, nullable: false);
+    _typed<String>(body, 'name', 'a string', problems, nullable: false);
+    _typed<String>(body, 'trust_level', 'a string', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _contactAccount(session, accountId);
+
+    final email = body['email'] as String;
+    final trustLevel = body['trust_level'] as String? ?? 'trusted';
+    if (email.isEmpty) {
+      problems['email'] = 'required';
+    } else if (!_bareAddress(email)) {
+      problems['email'] = 'must be an email address';
+    }
+    if (!const ['auto', 'trusted', 'blocked'].contains(trustLevel)) {
+      problems['trust_level'] = 'must be auto, trusted, or blocked';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    if (_contactAt(box, email) != null) {
+      _fail(409, 'already_exists', 'Contact already exists');
+    }
+    final name = body['name'] as String? ?? '';
+    return _json({
+      'data': _newContact(box, email, name, trustLevel, 'manual'),
+    }, status: 201);
+  }
+
+  http.StreamedResponse _updateContact(
+    _Session session,
+    String id,
+    String cid,
+    Map<String, dynamic> body,
+  ) {
+    final accountId = _pathId(id), contactId = _pathId(cid, 'cid');
+    final problems = _undeclared(body, const {'name', 'trust_level'});
+    _typed<String>(body, 'name', 'a string', problems);
+    _typed<String>(body, 'trust_level', 'a string', problems);
+    if (body['trust_level'] case final String level
+        when !const ['auto', 'trusted', 'blocked'].contains(level)) {
+      problems['trust_level'] = 'must be auto, trusted, or blocked';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final row = _contactIn(_contactAccount(session, accountId), contactId);
+    // Null or left out leaves a field as it is.
+    if (body['name'] case final String name) row['name'] = name;
+    if (body['trust_level'] case final String level) {
+      row['trust_level'] = level;
+    }
+    if (body['name'] is String || body['trust_level'] is String) {
+      row['updated_at'] = _time(_clock());
+    }
+    return _json({
+      'data': {...row},
+    });
+  }
+
+  http.StreamedResponse _deleteContact(
+    _Session session,
+    String id,
+    String cid,
+  ) {
+    final accountId = _pathId(id), contactId = _pathId(cid, 'cid');
+    final row = _contactIn(_contactAccount(session, accountId), contactId);
+    _contacts.remove(row['id']);
+    return _noContent();
+  }
+
+  http.StreamedResponse _blockSender(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final accountId = _pathId(id);
+    final problems = _undeclared(body, const {'email'});
+    if (!body.containsKey('email')) problems['email'] = 'required';
+    _typed<String>(body, 'email', 'a string', problems, nullable: false);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _contactAccount(session, accountId);
+    final email = body['email'] as String;
+    if (email.isEmpty) _invalid({'email': 'required'});
+
+    if (_contactAt(box, email) case final row?) {
+      row
+        ..['trust_level'] = 'blocked'
+        ..['source'] = 'manual'
+        ..['updated_at'] = _time(_clock());
+      return _json({
+        'data': {...row},
+      });
+    }
+    return _json({
+      'data': _newContact(box, email, '', 'blocked', 'manual'),
+    }, status: 201);
+  }
+
+  http.StreamedResponse _importContacts(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final accountId = _pathId(id);
+    final problems = _undeclared(body, const {'contacts'});
+    final entries = body['contacts'];
+    if (!body.containsKey('contacts')) {
+      problems['contacts'] = 'required';
+    } else if (entries == null) {
+      problems['contacts'] = 'must not be null';
+    } else if (entries is! List) {
+      problems['contacts'] = 'must be an array';
+    } else {
+      for (final (i, entry) in entries.indexed) {
+        if (entry is! Map<String, dynamic>) {
+          problems['contacts[$i]'] = 'must be an object';
+          continue;
+        }
+        final prefix = 'contacts[$i].';
+        problems.addAll(_undeclared(entry, const {'email', 'name'}, prefix));
+        final entryProblems = <String, String>{};
+        if (!entry.containsKey('email')) entryProblems['email'] = 'required';
+        _typed<String>(
+          entry,
+          'email',
+          'a string',
+          entryProblems,
+          nullable: false,
+        );
+        _typed<String>(
+          entry,
+          'name',
+          'a string',
+          entryProblems,
+          nullable: false,
+        );
+        problems.addAll({
+          for (final MapEntry(:key, :value) in entryProblems.entries)
+            '$prefix$key': value,
+        });
+      }
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _contactAccount(session, accountId);
+
+    final list = (entries! as List).cast<Map<String, dynamic>>();
+    if (list.isEmpty) _invalid({'contacts': 'required'});
+    // Every address is checked before any is added.
+    for (final (i, entry) in list.indexed) {
+      final email = entry['email'] as String;
+      if (email.isEmpty) {
+        problems['contacts[$i].email'] = 'required';
+      } else if (!_bareAddress(email)) {
+        problems['contacts[$i].email'] = 'must be an email address';
+      }
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    var imported = 0;
+    for (final entry in list) {
+      final email = entry['email'] as String;
+      // One already a contact is skipped.
+      if (_contactAt(box, email) != null) continue;
+      _newContact(box, email, entry['name'] as String? ?? '', 'auto', 'import');
+      imported++;
+    }
+    return _json({
+      'data': {'imported': imported},
+    });
+  }
+
+  http.StreamedResponse _suggestContacts(
+    _Session session,
+    String id,
+    Map<String, String> query,
+  ) {
+    final box = _contactAccount(session, _pathId(id));
+    final q = query['q'] ?? '';
+    if (q.isEmpty) return _json({'data': <Object>[]});
+    final rows =
+        [
+          for (final row in _contacts.values)
+            if (row['mailbox_id'] == box.id &&
+                row['trust_level'] != 'blocked' &&
+                ((row['email']! as String).contains(q) ||
+                    (row['name']! as String).contains(q)))
+              row,
+        ]..sort((a, b) {
+          final byName = (a['name']! as String).compareTo(b['name']! as String);
+          return byName != 0
+              ? byName
+              : (a['email']! as String).compareTo(b['email']! as String);
+        });
+    return _json({
+      'data': [
+        for (final row in rows.take(10)) {...row},
+      ],
     });
   }
 
@@ -5697,6 +6018,11 @@ bool _validRelayHost(String host) {
       host.length <= 253 &&
       host.split('.').every(label.hasMatch);
 }
+
+/// A bare address, as Go's mail.ParseAddress reads one back unchanged: no
+/// display name, angle brackets, comment or space.
+bool _bareAddress(String value) =>
+    RegExp(r'^[^\s@<>()\[\]",;:\\]+@[^\s@<>()\[\]",;:\\]+$').hasMatch(value);
 
 /// What could end an SMTP line or forge a header: an ASCII control
 /// character.
