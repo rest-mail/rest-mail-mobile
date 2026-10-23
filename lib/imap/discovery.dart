@@ -7,17 +7,8 @@ import 'package:xml/xml.dart';
 import 'mail_settings.dart';
 
 /// Where a domain's settings were found, in the order they are tried.
-enum SettingsSource {
-  preset('Built in'),
-  saved('Saved on this phone'),
-  ispdb("From Thunderbird's database"),
-  autoconfig("From the domain's own settings"),
-  dns('From DNS');
-
-  const SettingsSource(this.label);
-
-  final String label;
-}
+/// The screen words each one as `imap.source.<name>`.
+enum SettingsSource { preset, saved, ispdb, autoconfig, dns }
 
 class FoundSettings {
   const FoundSettings(this.settings, this.source, {this.provider});

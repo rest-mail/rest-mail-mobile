@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../util/secret_clipboard.dart';
@@ -54,13 +55,10 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   }
 
   String _describe(ApiException e) => switch (e.code) {
-    'invalid_totp' =>
-      "That authenticator code didn't work. Try a current code.",
-    'invalid_recovery_code' =>
-      "That recovery code didn't work or has already been used.",
-    'two_factor_required' => 'This account must keep two-factor sign-in. The server will not turn it off.',
-    'conflict' =>
-      'Two-factor sign-in is already on. Go back and reload its status.',
+    'invalid_totp' => tr(context, 'twoFactor.badCode'),
+    'invalid_recovery_code' => tr(context, 'twoFactor.badRecovery'),
+    'two_factor_required' => tr(context, 'twoFactor.required'),
+    'conflict' => tr(context, 'twoFactor.alreadyOn'),
     'forbidden' => e.message,
     _ when e.fields.isNotEmpty => e.fields.values.first,
     _ => describeError(e, host: widget.account.server.host),
@@ -122,11 +120,11 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     if (_busy || _code.text.trim().isEmpty) return;
     final sure = await confirmAction(
       context,
-      title: 'Turn off two-factor sign-in?',
-      message:
-          'Every sign-in session for ${widget.account.address} ends, '
-          'including this phone. Sign in again with your password.',
-      action: 'Turn off and sign out',
+      title: tr(context, 'twoFactor.turnOffTitle'),
+      message: trArgs(context, 'twoFactor.turnOffBody', {
+        'address': widget.account.address,
+      }),
+      action: tr(context, 'twoFactor.turnOffAndSignOut'),
     );
     if (!sure || !mounted) return;
     await _run(() async {
@@ -146,8 +144,10 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     showToast(
       context,
       expires
-          ? 'Copied to this phone for ${SecretClipboard.lifetime.inMinutes} minutes'
-          : 'Copied. Clear the clipboard after saving it.',
+          ? trArgs(context, 'twoFactor.copiedFor', {
+              'minutes': '${SecretClipboard.lifetime.inMinutes}',
+            })
+          : tr(context, 'twoFactor.copied'),
     );
   }
 
@@ -166,7 +166,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       opened = false;
     }
     if (!opened && mounted) {
-      showToast(context, 'Open an authenticator app and enter the setup key.');
+      showToast(context, tr(context, 'twoFactor.openManually'));
     }
   }
 
@@ -179,9 +179,10 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     keyboardType: recovery ? TextInputType.text : TextInputType.number,
     inputFormatters: recovery ? null : [FilteringTextInputFormatter.digitsOnly],
     decoration: InputDecoration(
-      hintText: recovery
-          ? 'An unused recovery code'
-          : 'Code from your authenticator',
+      hintText: tr(
+        context,
+        recovery ? 'twoFactor.recoveryHint' : 'twoFactor.codeHint',
+      ),
     ),
     onChanged: (_) => setState(() => _error = null),
   );
@@ -190,32 +191,29 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     final c = context.rm;
     if (_hidden) {
       return [
-        Text(
-          'Setup details hidden while REST Mail is in the background',
-          style: rmText(14, color: c.ink3),
-        ),
+        Text(tr(context, 'twoFactor.hidden'), style: rmText(14, color: c.ink3)),
       ];
     }
     return [
       Text(
-        'Add ${widget.account.address} to your authenticator. Save the recovery codes somewhere else before confirming.',
+        trArgs(context, 'twoFactor.addTo', {'address': widget.account.address}),
         style: rmText(14, color: c.ink2, height: 1.45),
       ),
       const SizedBox(height: 18),
       RmOutlineButton(
-        label: 'Open authenticator app',
+        label: tr(context, 'twoFactor.openApp'),
         onPressed: () => unawaited(_openAuthenticator(enrollment)),
       ),
       const SizedBox(height: 12),
-      const SectionLabel('Setup key'),
+      SectionLabel(tr(context, 'twoFactor.setupKey')),
       const SizedBox(height: 8),
       Text(enrollment.secret, style: rmText(15, color: c.ink)),
       TextButton(
         onPressed: () => unawaited(_copy(enrollment.secret)),
-        child: const Text('Copy setup key'),
+        child: Text(tr(context, 'twoFactor.copyKey')),
       ),
       const SizedBox(height: 18),
-      const SectionLabel('Recovery codes'),
+      SectionLabel(tr(context, 'twoFactor.recoveryCodes')),
       const SizedBox(height: 8),
       Text(
         enrollment.recoveryCodes.join('\n'),
@@ -223,7 +221,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       ),
       TextButton(
         onPressed: () => unawaited(_copy(enrollment.recoveryCodes.join('\n'))),
-        child: const Text('Copy recovery codes'),
+        child: Text(tr(context, 'twoFactor.copyCodes')),
       ),
       CheckboxListTile(
         contentPadding: EdgeInsets.zero,
@@ -232,12 +230,12 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         onChanged: _busy
             ? null
             : (value) => setState(() => _saved = value ?? false),
-        title: const Text("I've saved my recovery codes"),
+        title: Text(tr(context, 'twoFactor.saved')),
       ),
       _proofField(recovery: false),
       const SizedBox(height: 18),
       RmPrimaryButton(
-        label: 'Confirm authenticator',
+        label: tr(context, 'twoFactor.confirm'),
         busy: _busy,
         onPressed: !_busy && _saved && _code.text.trim().isNotEmpty
             ? () => unawaited(_confirm())
@@ -250,31 +248,38 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     final c = context.rm;
     return [
       RmRow(
-        label: 'Two-factor sign-in',
-        value: status.enabled
-            ? 'On'
-            : status.pending
-            ? 'Not confirmed'
-            : 'Off',
+        label: tr(context, 'twoFactor.title'),
+        value: tr(
+          context,
+          status.enabled
+              ? 'twoFactor.on'
+              : status.pending
+              ? 'twoFactor.notConfirmed'
+              : 'twoFactor.off',
+        ),
       ),
       const SizedBox(height: 18),
       if (!status.enabled) ...[
         Text(
-          status.pending
-              ? 'An enrollment was started but not confirmed. Restarting creates a new setup key and recovery codes.'
-              : 'Use an authenticator code as well as your password when signing in.',
+          tr(
+            context,
+            status.pending ? 'twoFactor.pendingNote' : 'twoFactor.offNote',
+          ),
           style: rmText(14, color: c.ink2, height: 1.45),
         ),
         const SizedBox(height: 18),
         RmPrimaryButton(
-          label: status.pending ? 'Restart enrollment' : 'Set up authenticator',
+          label: tr(
+            context,
+            status.pending ? 'twoFactor.restart' : 'twoFactor.setUp',
+          ),
           busy: _busy,
           onPressed: _busy ? null : () => unawaited(_enroll()),
         ),
       ] else ...[
         if (_justEnrolled) ...[
           Text(
-            'Authenticator enabled. Sign in again with a code to use protected account actions.',
+            tr(context, 'twoFactor.enabled'),
             style: rmText(14, color: c.ink2, height: 1.45),
           ),
           TextButton(
@@ -289,13 +294,13 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                 ),
               ),
             ),
-            child: const Text('Sign in again'),
+            child: Text(tr(context, 'twoFactor.signInAgain')),
           ),
           const SizedBox(height: 18),
         ],
         if (!_disabling)
           RmOutlineButton(
-            label: 'Turn off two-factor sign-in',
+            label: tr(context, 'twoFactor.turnOff'),
             onPressed: _busy
                 ? null
                 : () => setState(() {
@@ -309,8 +314,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
             spacing: 8,
             children: [
               for (final (value, label) in [
-                (false, 'Authenticator'),
-                (true, 'Recovery code'),
+                (false, tr(context, 'twoFactor.authenticator')),
+                (true, tr(context, 'twoFactor.recoveryCode')),
               ])
                 ChoiceChip(
                   label: Text(label),
@@ -329,7 +334,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
           _proofField(recovery: _recovery),
           const SizedBox(height: 18),
           RmPrimaryButton(
-            label: 'Turn off and sign out',
+            label: tr(context, 'twoFactor.turnOffAndSignOut'),
             busy: _busy,
             onPressed: !_busy && _code.text.trim().isNotEmpty
                 ? () => unawaited(_disable())
@@ -343,7 +348,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     _code.clear();
                     _error = null;
                   }),
-            child: const Text('Cancel'),
+            child: Text(tr(context, 'common.cancel')),
           ),
         ],
       ],
@@ -359,7 +364,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Two-factor sign-in',
+              title: tr(context, 'twoFactor.title'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
