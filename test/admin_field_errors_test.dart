@@ -16,7 +16,7 @@ void main() {
         ),
       ),
     );
-    return (error) => describeAdminError(context, error);
+    return (Object error) => describeAdminError(context, error);
   }
 
   ApiException invalid(String field, String message) => ApiException(
