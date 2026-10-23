@@ -69,6 +69,69 @@ RestmailClient _client(
 );
 
 void main() {
+  group('grant deadlines', () {
+    final before = DateTime.utc(2026, 10, 23, 10, 30);
+    final deadline = DateTime.utc(2026, 10, 23, 11);
+
+    test('an active role without a deadline remains in force', () {
+      final grant = Grant.fromJson(_grant(mode: 'active'));
+      expect(grant.isExpiredAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isTrue);
+    });
+
+    test('an active role ends at its exact grant deadline', () {
+      final grant = Grant.fromJson(
+        _grant(mode: 'active', expiresAt: deadline.toIso8601String()),
+      );
+      expect(grant.isInForceAt(before), isTrue);
+      expect(grant.isExpiredAt(deadline), isTrue);
+      expect(grant.isInForceAt(deadline), isFalse);
+      expect(
+        grant.isInForceAt(deadline.add(const Duration(seconds: 1))),
+        isFalse,
+      );
+    });
+
+    test('an eligible role without an activation is off', () {
+      final grant = Grant.fromJson(_grant());
+      expect(grant.isInForceAt(before), isFalse);
+    });
+
+    test('an eligible activation ends at its exact deadline', () {
+      final grant = Grant.fromJson(_grant(activation: _activation));
+      expect(grant.activation!.isActiveAt(before), isTrue);
+      expect(grant.isInForceAt(before), isTrue);
+      expect(grant.activation!.isActiveAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isFalse);
+    });
+
+    test('a grant deadline can end an activation earlier', () {
+      final grant = Grant.fromJson(
+        _grant(activation: _activation, expiresAt: before.toIso8601String()),
+      );
+      expect(grant.activation!.isActiveAt(before), isTrue);
+      expect(grant.isInForceAt(before), isFalse);
+    });
+
+    test('an activation deadline can end a longer grant', () {
+      final grant = Grant.fromJson(
+        _grant(
+          activation: _activation,
+          expiresAt: deadline.add(const Duration(days: 1)).toIso8601String(),
+        ),
+      );
+      expect(grant.isExpiredAt(deadline), isFalse);
+      expect(grant.isInForceAt(deadline), isFalse);
+    });
+
+    test('the current-time getter excludes an expired active role', () {
+      final grant = Grant.fromJson(
+        _grant(mode: 'active', expiresAt: '2001-01-01T00:00:00Z'),
+      );
+      expect(grant.isInForce, isFalse);
+    });
+  });
+
   group('roles and capabilities', () {
     test('lists the roles, each with its capabilities', () async {
       late http.Request sent;
@@ -192,12 +255,15 @@ void main() {
       expect(always.grantedAt.toUtc(), DateTime.utc(2026, 10, 1, 9));
       expect(always.expiresAt!.toUtc(), DateTime.utc(2026, 12, 31));
       expect(always.activation, isNull);
-      expect(always.isInForce, isTrue);
+      expect(always.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)), isTrue);
 
       final switchedOn = page.items.last;
       expect(switchedOn.mode, GrantMode.eligible);
       expect(switchedOn.expiresAt, isNull);
-      expect(switchedOn.isInForce, isTrue);
+      expect(
+        switchedOn.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)),
+        isTrue,
+      );
       final activation = switchedOn.activation!;
       expect(activation.id, 4);
       expect(activation.activatedAt.toUtc(), DateTime.utc(2026, 10, 23, 10));
@@ -539,7 +605,10 @@ void main() {
           'totp_code': '123456',
         });
         expect(step.grant.id, 9);
-        expect(step.grant.isInForce, isTrue);
+        expect(
+          step.grant.isInForceAt(DateTime.utc(2026, 10, 23, 10, 30)),
+          isTrue,
+        );
         expect(step.grant.activation!.reason, 'rotate DKIM');
         expect(
           step.grant.activation!.expiresAt.toUtc(),

@@ -142,6 +142,9 @@ class GrantActivation {
 
   /// How long it had left when the server answered; never negative.
   final int secondsLeft;
+
+  /// The activation ends at its deadline, including that exact instant.
+  bool isActiveAt(DateTime now) => expiresAt.isAfter(now);
 }
 
 /// A role held at a scope.
@@ -198,11 +201,19 @@ class Grant {
   /// The activation running now, of an eligible grant switched on.
   final GrantActivation? activation;
 
-  /// Whether it gives its role now: an active grant always does, an eligible
-  /// one while switched on.
-  bool get isInForce =>
-      mode == GrantMode.active ||
-      (mode == GrantMode.eligible && activation != null);
+  /// A grant stops applying at its deadline, including that exact instant.
+  bool isExpiredAt(DateTime now) =>
+      expiresAt != null && !expiresAt!.isAfter(now);
+
+  /// Whether it gives its role at [now]. A parsed response can remain on
+  /// screen longer than either the grant or its activation lasts.
+  bool isInForceAt(DateTime now) =>
+      !isExpiredAt(now) &&
+      (mode == GrantMode.active ||
+          (mode == GrantMode.eligible &&
+              (activation?.isActiveAt(now) ?? false)));
+
+  bool get isInForce => isInForceAt(DateTime.now());
 }
 
 /// A grant after a step of escalation, and what its holder now holds.

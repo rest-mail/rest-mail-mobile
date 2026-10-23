@@ -51,26 +51,46 @@ proof. The server enforces these decisions. The UI surfaces refusal codes,
 including invalid proof, wider-than-held grants, conflicts and last-superadmin
 protection; a 403 does not refresh or sign the session out.
 
+My permissions refreshes the server's capability snapshot and own-grant list
+on entry, pull-to-refresh, retry and app resume. While this screen is mounted,
+a single timer reloads at the next known grant or activation deadline. Old
+actions disappear while loading or after refusal; a late earlier load cannot
+restore them. Grant and activation deadlines are exclusive: at the exact
+expiry time the role is no longer in force. Historical step summaries clear
+when reconciling permissions.
+
+App resume renews every signed-in REST session even if its access token still
+has time left, because grants can expire or be removed independently. Concurrent
+resume calls share the refresh, and rotated tokens and the resulting capability
+snapshot use the existing ordered persistence. A transient network failure
+keeps the session; a refused refresh ends it.
+
 The fake still models only `superadmin` and `admin`, and its grantor checks do
 not fully model scoped holdings. Scoped snapshots/permissions depend on #108
-and server #619. Activations are reloaded on request; automatic expiry-driven
-screen updates are not implemented here. This PR is not evidence of complete
-live scoped authorization or the whole admin parity objective.
+and server #619. The deadline timer belongs to My permissions; after leaving
+it, other screens learn permission changes through ordinary token renewal,
+app resume, or another server request. This is not evidence of complete live
+scoped authorization or the whole admin parity objective.
 
 ## Verification
 
-- **188 API tests pass**, including the original typed grants tests and 12 new
-  session-generation/rotation/status regressions across all three own-grant
-  mutation methods. API analysis passes with `--fatal-infos`.
+- **195 API tests pass**, including seven deadline-boundary regressions and
+  the 12 session-generation/rotation/status regressions across all three
+  own-grant mutation methods. API analysis passes with `--fatal-infos`.
 - **76 fake tests pass**, including its existing grants, DKIM and two-factor
   suites. Fake analysis passes with `--fatal-infos`.
 - Pinned Dart 3.13.1 formatting, package formats and `git diff --check` pass.
 - Three new widget tests cover combined filters/reset/invalid input; paging
   beyond 200, manual holder entry and eligible create/delete; and read-only
-  role/capability inspection. The existing eligible-activation and phone-width
-  tests remain. These Flutter tests, full app analysis/tour and Android/iOS
-  builds have not run locally; normal GitHub CI supplies that evidence.
+  role/capability inspection. Four additional widget tests cover timed expiry,
+  background/resume, refusal/retry and an out-of-order grant response. Two
+  additional AppState tests cover removal of permissions while the access
+  token remains fresh, coalesced renewal/persistence, and a revoked refresh.
+  The existing eligible-activation and phone-width tests remain. These Flutter
+  tests, full app analysis/tour and Android/iOS builds have not run locally;
+  normal GitHub CI supplies that evidence.
 
-Local logs live under `/tmp/restmail-mobile-api-audit/grants-integrated-*`;
+Local logs live under `/tmp/restmail-mobile-api-audit/grants-integrated-*`
+and `grants-expiry-*`;
 the durable overnight state records exact branch heads and subsequent CI
 results. No production account or credential was used.

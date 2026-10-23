@@ -25,10 +25,13 @@ class MyPermissionsScreen extends StatefulWidget {
   State<MyPermissionsScreen> createState() => _MyPermissionsScreenState();
 }
 
-class _MyPermissionsScreenState extends State<MyPermissionsScreen> {
+class _MyPermissionsScreenState extends State<MyPermissionsScreen>
+    with WidgetsBindingObserver {
   List<Grant>? _grants;
   ApiException? _error;
   var _loading = true;
+  Timer? _expiryTimer;
+  var _loadEpoch = 0;
 
   /// What the last step answered: the grant as it now is, and everything
   /// the session holds after it.
@@ -40,23 +43,73 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen> {
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_load(reconcile: true));
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_load(reconcile: true));
+    }
+  }
+
+  /// Keep one timer for the next known grant or activation deadline. The
+  /// server remains authoritative: refresh returns its current capability
+  /// snapshot, then Mine returns the grants and remaining activations.
+  void _scheduleExpiry(List<Grant> grants) {
+    _expiryTimer?.cancel();
+    final now = DateTime.now();
+    DateTime? next;
+    for (final grant in grants) {
+      for (final deadline in [grant.expiresAt, grant.activation?.expiresAt]) {
+        if (deadline != null &&
+            deadline.isAfter(now) &&
+            (next == null || deadline.isBefore(next))) {
+          next = deadline;
+        }
+      }
+    }
+    if (next != null) {
+      _expiryTimer = Timer(next.difference(now), () {
+        unawaited(_load(reconcile: true));
+      });
+    }
+  }
+
+  Future<void> _load({bool reconcile = false}) async {
+    if (!mounted) return;
+    final epoch = ++_loadEpoch;
+    _expiryTimer?.cancel();
     setState(() {
       _loading = true;
       _error = null;
+      // An older response cannot keep actions visible during a refused or
+      // pending reload, or overwrite a more recent reload's result.
+      _grants = null;
+      if (reconcile) {
+        _step = null;
+        _stepTitle = null;
+      }
     });
     try {
+      if (reconcile) await widget.account.client.refresh();
       final grants = await widget.account.client.myGrants();
-      if (!mounted) return;
+      if (!mounted || epoch != _loadEpoch) return;
       setState(() {
         _grants = grants;
         _loading = false;
       });
+      _scheduleExpiry(grants);
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || epoch != _loadEpoch) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -151,7 +204,7 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen> {
     } else if (error != null && grants == null) {
       content = AdminMessage(
         describeGrantError(error, host: _host, escalating: true),
-        onRetry: () => unawaited(_load()),
+        onRetry: () => unawaited(_load(reconcile: true)),
       );
     } else if (grants == null || grants.isEmpty) {
       content = AdminMessage('You hold no roles on $_host.');
@@ -181,7 +234,7 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen> {
             Expanded(
               child: RefreshIndicator(
                 color: c.accent,
-                onRefresh: _load,
+                onRefresh: () => _load(reconcile: true),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
@@ -230,9 +283,11 @@ class _GrantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final ended = grant.isExpiredAt(now);
     final activation = grant.activation;
-    final ended =
-        grant.expiresAt != null && grant.expiresAt!.isBefore(DateTime.now());
+    final switchedOn =
+        grant.mode == GrantMode.eligible && grant.isInForceAt(now);
     return RmGroup(
       children: [
         RmRow(
@@ -244,9 +299,9 @@ class _GrantCard extends StatelessWidget {
             grantEnds(grant),
           ].join('\n'),
         ),
-        if (!ended && grant.mode == GrantMode.eligible && activation == null)
+        if (!ended && grant.mode == GrantMode.eligible && !switchedOn)
           RmRow(label: 'Switch on…', onTap: onActivate),
-        if (activation != null)
+        if (switchedOn)
           RmRow(label: 'Switch off', danger: true, onTap: onDeactivate),
         if (!ended && grant.mode == GrantMode.active)
           RmRow(

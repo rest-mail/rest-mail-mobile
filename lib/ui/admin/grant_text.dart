@@ -17,10 +17,12 @@ String scopeLabel(String scope) => switch (scope) {
 
 /// Whether a grant gives its role now, and for how long.
 String grantState(Grant grant) {
+  final now = DateTime.now();
+  if (grant.isExpiredAt(now)) return 'Ended';
   final activation = grant.activation;
   return switch (grant.mode) {
     GrantMode.active => 'Active: always applies',
-    GrantMode.eligible when activation != null =>
+    GrantMode.eligible when activation != null && activation.isActiveAt(now) =>
       'Switched on until ${longDate(activation.expiresAt)}',
     GrantMode.eligible => 'Eligible: off until switched on',
     GrantMode.unknown => 'Unknown mode',
