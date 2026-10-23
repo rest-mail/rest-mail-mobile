@@ -55,6 +55,9 @@ class RestmailClient {
   final http.Client _http;
   SessionTokens? _tokens;
   Future<SessionTokens>? _refreshing;
+  // Rotating tokens belong to the same session. A later login or sign-out is
+  // a different one and must survive a late security-change response.
+  int _sessionEpoch = 0;
 
   /// An access token this close to expiry is renewed before use rather than
   /// sent to be refused.
@@ -114,6 +117,7 @@ class RestmailClient {
     _throwIfError(response);
     final data = _data(response);
     final tokens = _tokensFrom(response, data);
+    _sessionEpoch++;
     _setTokens(tokens);
     return LoginResult(
       user: User.fromJson(data['user'] as Map<String, dynamic>),
@@ -189,20 +193,64 @@ class RestmailClient {
 
   // ── Setup ────────────────────────────────────────────────────────────
 
+  /// The session owner's own status, never a linked mailbox's.
+  Future<TwoFactorStatus> twoFactorStatus() async {
+    final response = await _authed('GET', ['auth', '2fa']);
+    try {
+      return TwoFactorStatus.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
   /// Starts enrolling an authenticator. Show the result once, then
   /// [confirmTwoFactor] with a code the authenticator produces.
-  Future<TotpEnrollment> enrollTwoFactor() async => TotpEnrollment.fromJson(
-    _data(await _authed('POST', ['auth', '2fa', 'enroll'])),
-  );
+  Future<TotpEnrollment> enrollTwoFactor() async {
+    final response = await _authed('POST', ['auth', '2fa', 'enroll']);
+    try {
+      final enrollment = TotpEnrollment.fromJson(_data(response));
+      if (enrollment.secret.isEmpty ||
+          enrollment.otpauthUri.scheme != 'otpauth' ||
+          enrollment.recoveryCodes.isEmpty) {
+        throw const FormatException('Invalid enrollment');
+      }
+      return enrollment;
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
 
   /// Finishes enrolling: from now on signing in also takes a code. A wrong
   /// code is 403 `invalid_totp`, never 401: the session is still good.
   Future<void> confirmTwoFactor(String code) async {
-    await _authed(
+    final response = await _authed(
       'POST',
       ['auth', '2fa', 'confirm'],
       body: {'totp_code': code},
     );
+    if (response.statusCode != 204) throw _unreadable(response);
+  }
+
+  /// Turns off the session owner's authenticator using a current code or an
+  /// unused recovery code. Success ends all of that account's sessions, this
+  /// one included; the token callback also clears persisted credentials.
+  /// Wrong proof and mandatory-2FA refusals are 403 and keep the session.
+  Future<void> disableTwoFactor({
+    String? totpCode,
+    String? recoveryCode,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = await _authed(
+      'POST',
+      ['auth', '2fa', 'disable'],
+      body: {
+        if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+        if (recoveryCode != null && recoveryCode.isNotEmpty)
+          'recovery_code': recoveryCode,
+      },
+    );
+    if (response.statusCode != 204) throw _unreadable(response);
+    if (_sessionEpoch == epoch) _setTokens(null);
   }
 
   /// Replaces the signed-in account's password. The server ends every
@@ -213,12 +261,13 @@ class RestmailClient {
     required String current,
     required String next,
   }) async {
+    final epoch = _sessionEpoch;
     await _authed(
       'POST',
       ['auth', 'password'],
       body: {'current_password': current, 'new_password': next},
     );
-    _setTokens(null);
+    if (_sessionEpoch == epoch) _setTokens(null);
   }
 
   // ── Admin ────────────────────────────────────────────────────────────
@@ -1481,6 +1530,7 @@ class RestmailClient {
   }
 
   void _setTokens(SessionTokens? tokens) {
+    if (tokens == null) _sessionEpoch++;
     _tokens = tokens;
     onTokensChanged?.call(tokens);
   }
