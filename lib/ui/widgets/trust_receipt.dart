@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../l10n/voice.dart';
 import '../../theme/tokens.dart';
 
 /// The checks behind a trust verdict, when the reader is set to show them.
@@ -49,7 +50,10 @@ class RmTrustReceipt extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 3),
-          Text(verdict.detail, style: rmText(11, color: c.ink3, height: 1.4)),
+          Text(
+            trustDetailOf(context, verdict),
+            style: rmText(11, color: c.ink3, height: 1.4),
+          ),
         ],
       ),
     );

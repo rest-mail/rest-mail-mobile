@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../l10n/voice.dart';
 import '../../theme/packs.dart';
 import '../../theme/tokens.dart';
 import '../../util/html_sanitizer.dart';
@@ -115,15 +116,17 @@ class _RemoteImagesNotice extends StatelessWidget {
           Expanded(
             child: Text(
               count == 1
-                  ? '1 remote image blocked'
-                  : '$count remote images blocked',
+                  ? tr(context, 'message.imageBlocked')
+                  : trArgs(context, 'message.imagesBlocked', {
+                      'count': '$count',
+                    }),
               style: rmText(13, color: c.ink2),
             ),
           ),
           TextButton(
             onPressed: onLoad,
             child: Text(
-              'Load',
+              tr(context, 'message.loadImages'),
               style: rmText(13, color: c.accent, weight: FontWeight.w700),
             ),
           ),

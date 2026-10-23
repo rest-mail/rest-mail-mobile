@@ -431,8 +431,3 @@ List<Folder> sortFolders(List<Folder> folders) {
         : a.name.toLowerCase().compareTo(b.name.toLowerCase());
   });
 }
-
-/// What a folder is called on screen. rest-mail's names are already words,
-/// except the inbox, which IMAP heritage spells in capitals.
-String folderLabel(String name) =>
-    name == StandardFolder.inbox ? 'Inbox' : name;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../state/mailbox_state.dart';
+import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
 
@@ -48,7 +48,7 @@ class _LabelsSheetState extends State<_LabelsSheet> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
             child: Text(
-              'Labels',
+              tr(context, 'labels.title'),
               style: rmText(17, color: c.ink, weight: FontWeight.w800),
             ),
           ),
@@ -59,7 +59,7 @@ class _LabelsSheetState extends State<_LabelsSheet> {
                 children: [
                   for (final label in widget.labels)
                     RmRow(
-                      label: folderLabel(label),
+                      label: folderLabelOf(context, label),
                       trailing: Icon(
                         _chosen.contains(label)
                             ? Icons.check_box_rounded
@@ -78,7 +78,7 @@ class _LabelsSheetState extends State<_LabelsSheet> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: RmPrimaryButton(
-              label: 'Done',
+              label: tr(context, 'common.done'),
               height: 44,
               radius: 11,
               fontSize: 14.5,

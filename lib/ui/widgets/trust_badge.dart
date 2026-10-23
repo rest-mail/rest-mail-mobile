@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../l10n/voice.dart';
 import '../../theme/tokens.dart';
 
 /// The one-line statement about who sent a message.
@@ -31,10 +32,11 @@ class RmTrustBadge extends StatelessWidget {
       TrustState.unsigned => Icons.gpp_maybe_outlined,
       _ => Icons.shield_outlined,
     };
+    final label = trustLabelOf(context, verdict);
     return Tooltip(
-      message: verdict.detail,
+      message: trustDetailOf(context, verdict),
       child: Semantics(
-        label: 'Sender verification: ${verdict.label}',
+        label: trArgs(context, 'trust.verification', {'label': label}),
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: compact ? 6 : 8,
@@ -51,7 +53,7 @@ class RmTrustBadge extends StatelessWidget {
               Icon(icon, size: compact ? 11 : 12, color: colour),
               const SizedBox(width: 4),
               Text(
-                verdict.label,
+                label,
                 style: rmText(
                   compact ? 10.5 : 11,
                   color: colour,

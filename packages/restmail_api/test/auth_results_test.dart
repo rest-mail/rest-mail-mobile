@@ -12,6 +12,7 @@ void main() {
       });
       expect(verdict.state, TrustState.signed);
       expect(verdict.signedBy, 'restmail.dev');
+      expect(verdict.domain, 'restmail.dev');
     });
 
     test('dmarc pass without a signature is aligned, not signed', () {
@@ -21,6 +22,7 @@ void main() {
             'dmarc=pass header.from=restmail.dev',
       });
       expect(verdict.state, TrustState.aligned);
+      expect(verdict.domain, 'restmail.dev');
     });
 
     test('spf alone is spf only', () {
@@ -29,6 +31,9 @@ void main() {
             'mx.restmail.dev; spf=pass smtp.mailfrom=restmail.dev',
       });
       expect(verdict.state, TrustState.spfOnly);
+      // The domain SPF authorised, though nothing was signed by it.
+      expect(verdict.domain, 'restmail.dev');
+      expect(verdict.signedBy, isNull);
     });
 
     test('dmarc fail with an intact arc chain is forwarded', () {
@@ -46,6 +51,7 @@ void main() {
             'dkim=fail header.d=evil.example',
       });
       expect(verdict.state, TrustState.mismatch);
+      expect(verdict.domain, isNull);
     });
 
     test('no header is unchecked, never a verdict', () {

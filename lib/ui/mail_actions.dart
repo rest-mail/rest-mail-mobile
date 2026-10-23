@@ -4,20 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../util/compose_seed.dart';
 import 'compose_sheet.dart';
 import 'widgets/common.dart';
 
 /// Runs [action], which takes [message] out of the folder on screen, then
-/// says so with an Undo that puts it back where it was. [others] are the
-/// rest of its conversation, taken out with it and put back with it.
+/// says [done] with an Undo, labelled [undoLabel], that puts it back where it
+/// was. [others] are the rest of its conversation, taken out with it and put
+/// back with it. Both words come in already translated: the screen that
+/// asked may be gone by the time this speaks.
 Future<void> removeWithUndo({
   required ScaffoldMessengerState messenger,
   required MailboxState mailbox,
   required Message message,
   required Future<void> Function() action,
   required String done,
+  required String undoLabel,
   bool undoable = true,
   List<Message> others = const [],
 }) async {
@@ -31,7 +35,7 @@ Future<void> removeWithUndo({
           duration: Duration(milliseconds: undoable ? 4000 : 2200),
           action: undoable
               ? SnackBarAction(
-                  label: 'Undo',
+                  label: undoLabel,
                   onPressed: () => unawaited(
                     _undo(messenger, mailbox, [message, ...others]),
                   ),
@@ -68,9 +72,9 @@ Future<bool> confirmPermanentDelete(
     message.folder != StandardFolder.trash ||
     await confirmAction(
       context,
-      title: 'Delete forever?',
-      message: 'It is already in Trash, so this cannot be undone.',
-      action: 'Delete',
+      title: tr(context, 'message.deleteForever'),
+      message: tr(context, 'message.deleteForeverBody'),
+      action: tr(context, 'message.delete'),
     );
 
 /// A link tapped in a message: mailto opens a new message here, anything
@@ -100,6 +104,6 @@ Future<void> openLink(
     opened = false;
   }
   if (!opened && context.mounted) {
-    showToast(context, "Couldn't open that link.");
+    showToast(context, tr(context, 'message.linkFailed'));
   }
 }
