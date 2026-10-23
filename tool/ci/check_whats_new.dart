@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../lib/state/whats_new_notes.dart';
+import 'package:restmail/state/whats_new_notes.dart';
 
 var _checks = 0;
 void check(bool condition, String message) {
