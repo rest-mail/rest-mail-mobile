@@ -15,7 +15,7 @@ class PipelineTestResult {
         for (final value in json['auth_results'] as List<dynamic>? ?? const [])
           value as Map<String, dynamic>,
       ],
-      duration = (json['duration_ms'] as num?)?.toInt() ?? 0;
+      durationMs = (json['duration_ms'] as num?)?.toInt() ?? 0;
 
   final Map<String, dynamic> json;
   final String finalAction;
@@ -24,9 +24,8 @@ class PipelineTestResult {
   final List<PipelineTestStep> steps;
   final List<Map<String, dynamic>> authResults;
 
-  /// The server currently serializes Go time.Duration under duration_ms.
-  /// Keep the value without assuming the unit from the field's name.
-  final int duration;
+  /// How long the whole run took, in whole milliseconds.
+  final int durationMs;
 }
 
 class PipelineTestStep {
@@ -39,7 +38,7 @@ class PipelineTestStep {
       skipReason = json['skip_reason'] as String? ?? '',
       error = json['error'] as String? ?? '',
       log = json['log'] as Map<String, dynamic>? ?? const {},
-      duration = (json['duration_ms'] as num?)?.toInt() ?? 0;
+      durationMs = (json['duration_ms'] as num?)?.toInt() ?? 0;
 
   final Map<String, dynamic> json;
   final String filterName;
@@ -49,7 +48,9 @@ class PipelineTestStep {
   final String skipReason;
   final String error;
   final Map<String, dynamic> log;
-  final int duration;
+
+  /// How long the step took, in whole milliseconds.
+  final int durationMs;
 }
 
 class FilterTestResult {

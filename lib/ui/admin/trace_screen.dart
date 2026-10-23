@@ -265,7 +265,7 @@ class TraceDetails extends StatelessWidget {
                   subtitle: [
                     ?_stageNote(stage),
                     if (stage.filterType.isNotEmpty) stage.filterType,
-                    '${stage.durationMilliseconds} ms',
+                    '${stage.durationMs} ms',
                   ].join(' · '),
                   onTap: () => pushScreen(
                     context,
@@ -282,7 +282,7 @@ class TraceDetails extends StatelessWidget {
                                 padding: const EdgeInsets.all(20),
                                 children: [
                                   Text(
-                                    '${stage.filterType} · ${stage.durationMilliseconds} ms',
+                                    '${stage.filterType} · ${stage.durationMs} ms',
                                   ),
                                   Text(
                                     stage.skipped

@@ -2053,8 +2053,7 @@ class FakeRestmail {
             'filter_type': 'action',
             'action': action,
             'log': {'filter': filter, 'result': result},
-            // Go writes a time.Duration as nanoseconds, whatever the name.
-            'duration_ms': 18000000,
+            'duration_ms': 18,
           },
       ],
       'sampled': true,

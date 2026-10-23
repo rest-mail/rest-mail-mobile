@@ -78,7 +78,7 @@ void main() {
       expect((await client.pipelineLog(reasonCode: 'unknown')).total, 0);
       final stage = filtered.items.single.stages.first;
       expect(stage.filterType, 'action');
-      expect(stage.durationMilliseconds, 18);
+      expect(stage.durationMs, 18);
       expect(stage.log, isNotEmpty);
       expect(filtered.items.single.sampled, isTrue);
     },
