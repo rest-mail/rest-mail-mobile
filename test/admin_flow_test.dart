@@ -45,6 +45,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// A queued message's details: a lazy list, whose actions are built only
+  /// once they are scrolled near.
+  Finder entryDetails() => find
+      .ancestor(of: find.text('To'), matching: find.byType(Scrollable))
+      .first;
+
+  Future<void> scrollToAction(WidgetTester tester, String action) => tester
+      .scrollUntilVisible(find.text(action), 200, scrollable: entryDetails());
+
   /// Administration, from the drawer.
   Future<void> administer(WidgetTester tester) async {
     await tester.pumpAndSettle();
@@ -109,6 +118,7 @@ void main() {
     await tap(tester, 'Outbound queue');
     expect(find.text('tom@ryeworks.test'), findsOneWidget);
     await tap(tester, 'tom@ryeworks.test');
+    await scrollToAction(tester, 'Retry now');
     await tap(tester, 'Retry now');
     expect(find.text('Retrying tom@ryeworks.test'), findsOneWidget);
     expect(
@@ -216,6 +226,9 @@ void main() {
     await tap(tester, 'Outbound queue');
     await tap(tester, 'tom@ryeworks.test');
     expect(find.text('Deferred'), findsOneWidget);
+    // To the end of the details, where the actions would be.
+    await tester.drag(entryDetails(), const Offset(0, -2000));
+    await tester.pumpAndSettle();
     for (final action in ['Retry now', 'Bounce to sender', 'Delete']) {
       expect(find.text(action), findsNothing, reason: action);
     }
@@ -264,6 +277,7 @@ void main() {
 
     await tap(tester, 'Outbound queue');
     await tap(tester, 'ana@harbor.test');
+    await scrollToAction(tester, 'Retry now');
     await tap(tester, 'Retry now');
     expect(find.text(noPermission), findsOneWidget);
     expect(
