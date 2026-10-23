@@ -29,6 +29,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'settings.linkMailbox': 'Weiteres Postfach verknüpfen',
     'settings.server': 'Server',
     'settings.administration': 'Verwaltung',
+    'settings.myPermissions': 'Meine Berechtigungen',
+    'settings.myPermissionsSubtitle': 'Ihre Rollen, und sie einschalten',
     'settings.sending': 'Senden',
     'settings.scheduled': 'Geplant',
     'settings.scheduledSubtitle': 'Nachrichten, die der Server später sendet',
@@ -94,6 +96,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'admin.section.bans.title': 'Sperren',
     'admin.section.bans.subtitle':
         'Adressen, die von SMTP, IMAP und POP3 ausgeschlossen sind',
+    'admin.section.permissions.title': 'Berechtigungen',
+    'admin.section.permissions.subtitle': 'Wer welche Rolle hat, und wo',
     'admin.section.overview.title': '\u00dcbersicht',
     'admin.section.overview.subtitle':
         'Mailvolumen, Warteschlange und TLS auf einen Blick',
