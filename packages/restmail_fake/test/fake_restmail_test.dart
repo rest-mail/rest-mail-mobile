@@ -1071,7 +1071,7 @@ void main() {
           SenderList.block,
           pattern: '@deals.test',
         ),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 500)),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 409)),
       );
       // A rule is removed only from the list it is on.
       await expectLater(

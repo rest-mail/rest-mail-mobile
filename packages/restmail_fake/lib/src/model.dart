@@ -98,6 +98,7 @@ class FakeSenderRule {
     required this.list,
     required this.createdAt,
     this.reason = '',
+    this.createdBy,
   });
 
   final int id;
@@ -109,6 +110,7 @@ class FakeSenderRule {
   /// `allow` or `block`.
   final String list;
   final String reason;
+  final int? createdBy;
   final DateTime createdAt;
 }
 

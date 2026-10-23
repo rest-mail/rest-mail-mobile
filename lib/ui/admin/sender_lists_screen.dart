@@ -32,13 +32,28 @@ class SenderListsScreen extends StatefulWidget {
 
 class _SenderListsScreenState extends State<SenderListsScreen> {
   var _shown = SenderList.block;
-  late final _list = AdminList<SenderRule>((_) async {
+  late var _list = _newList(_shown);
+
+  AdminList<SenderRule> _newList(SenderList list) => AdminList((_) async {
     final rules = await widget.account.client.senderRules(
       widget.domain.id,
-      _shown,
+      list,
     );
     return OffsetPage(rules, offset: 0, total: rules.length);
   });
+
+  // Each selection starts with no rows. An older request belongs to a
+  // disposed list and cannot replace the current selection's results.
+  Future<void> _reload(SenderList list) async {
+    final previous = _list;
+    final next = _newList(list);
+    setState(() {
+      _shown = list;
+      _list = next;
+    });
+    previous.dispose();
+    await next.reload();
+  }
 
   String get _host => widget.account.server.host;
   String get _name => widget.domain.name;
@@ -98,7 +113,7 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
         },
       ),
     );
-    if (added && mounted) unawaited(_list.reload());
+    if (added && mounted) unawaited(_reload(_shown));
   }
 
   Future<void> _remove(SenderRule rule) async {
@@ -120,8 +135,61 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
     );
     if (!ok || !mounted) return;
     showToast(context, 'Removed ${rule.pattern}');
-    unawaited(_list.reload());
+    unawaited(_reload(_shown));
   }
+
+  Future<void> _details(SenderRule rule) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (sheet) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Sender rule', style: rmText(20, color: sheet.rm.ink)),
+            const SizedBox(height: 18),
+            const SectionLabel('Sender'),
+            SelectableText(rule.pattern),
+            const SizedBox(height: 14),
+            RmGroup(
+              children: [
+                RmRow(label: 'Rule ID', value: '${rule.id}'),
+                RmRow(label: 'Domain', value: _name),
+                RmRow(label: 'Domain ID', value: '${rule.domainId}'),
+                RmRow(
+                  label: 'List',
+                  value: rule.list == SenderList.block
+                      ? 'Turned away'
+                      : 'Let in',
+                ),
+                RmRow(
+                  label: 'Created by',
+                  value: rule.createdBy == null
+                      ? 'Not recorded'
+                      : 'Account ${rule.createdBy}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const SectionLabel('Reason'),
+            SelectableText(rule.reason.isEmpty ? 'None given' : rule.reason),
+            if (rule.createdAt case final at?) ...[
+              const SizedBox(height: 14),
+              const SectionLabel('Added'),
+              SelectableText(at.toLocal().toIso8601String()),
+            ],
+            const SizedBox(height: 18),
+            RmOutlineButton(
+              label: 'Done',
+              onPressed: () => Navigator.pop(sheet),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -131,62 +199,71 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
       account: widget.account,
       section: AdminSection.senderLists,
       title: 'Sender lists',
-      body: (access) => AdminListView(
-        list: _list,
-        host: _host,
-        empty: block
-            ? 'No sender is turned away.'
-            : 'No sender skips the spam checks.',
-        header: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RmSegmented<SenderList>(
-              options: const [
-                (SenderList.block, 'Turned away'),
-                (SenderList.allow, 'Let in'),
-              ],
-              value: _shown,
-              onChanged: (list) {
-                setState(() => _shown = list);
-                unawaited(_list.reload());
-              },
+      body: (access) => ListenableBuilder(
+        listenable: _list,
+        builder: (context, _) => AdminListView(
+          list: _list,
+          onRefresh: () => _reload(_shown),
+          host: _host,
+          empty: block
+              ? 'No sender is turned away.'
+              : 'No sender skips the spam checks.',
+          header: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: RmSegmented<SenderList>(
+                options: const [
+                  (SenderList.block, 'Turned away'),
+                  (SenderList.allow, 'Let in'),
+                ],
+                value: _shown,
+                onChanged: (list) {
+                  if (list != _shown) unawaited(_reload(list));
+                },
+              ),
             ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Text(
+                block
+                    ? 'Mail to $_name from these senders is turned away, even '
+                          'if they are also let in.'
+                    : 'Mail to $_name from these senders skips the spam '
+                          'checks, when SPF or DKIM shows it really is theirs.',
+                style: rmText(13, color: c.ink3, height: 1.4),
+              ),
+            ),
+            if (!_list.loading &&
+                _list.error == null &&
+                access.canWrite(AdminSection.senderLists))
+              AdminAddButton(
+                label: block ? 'Turn a sender away' : 'Let a sender in',
+                onTap: () => unawaited(_add()),
+              ),
+          ],
+          row: (rule) => RmRow(
+            label: rule.pattern,
+            onTap: _list.loading ? null : () => unawaited(_details(rule)),
+            subtitle: switch ([
+              if (rule.reason.isNotEmpty) rule.reason,
+              if (rule.createdAt case final at?) 'Added ${timeLabel(at)}',
+            ]) {
+              [] => null,
+              final lines => lines.join('\n'),
+            },
+            trailing:
+                !_list.loading &&
+                    _list.error == null &&
+                    access.canDelete(AdminSection.senderLists)
+                ? RmIconButton(
+                    icon: Icons.close_rounded,
+                    tooltip: 'Remove ${rule.pattern}',
+                    color: c.ink3,
+                    onPressed: () => unawaited(_remove(rule)),
+                  )
+                : null,
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Text(
-              block
-                  ? 'Mail to $_name from these senders is turned away, even '
-                        'if they are also let in.'
-                  : 'Mail to $_name from these senders skips the spam '
-                        'checks, when SPF or DKIM shows it really is theirs.',
-              style: rmText(13, color: c.ink3, height: 1.4),
-            ),
-          ),
-          if (access.canWrite(AdminSection.senderLists))
-            AdminAddButton(
-              label: block ? 'Turn a sender away' : 'Let a sender in',
-              onTap: () => unawaited(_add()),
-            ),
-        ],
-        row: (rule) => RmRow(
-          label: rule.pattern,
-          subtitle: switch ([
-            if (rule.reason.isNotEmpty) rule.reason,
-            if (rule.createdAt case final at?) 'Added ${timeLabel(at)}',
-          ]) {
-            [] => null,
-            final lines => lines.join('\n'),
-          },
-          trailing: access.canDelete(AdminSection.senderLists)
-              ? RmIconButton(
-                  icon: Icons.close_rounded,
-                  tooltip: 'Remove ${rule.pattern}',
-                  color: c.ink3,
-                  onPressed: () => unawaited(_remove(rule)),
-                )
-              : null,
         ),
       ),
     );
