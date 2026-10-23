@@ -231,9 +231,25 @@ void main() {
       )).items.single;
       await tap(tester, 'Pipeline log');
       await tap(tester, 'Filters');
-      await tester.enterText(find.byType(TextField).at(0), '0');
-      await tester.enterText(find.byType(TextField).at(1), trace.rfcMessageId);
-      await tester.enterText(find.byType(TextField).at(2), 'custom_reject');
+      await tester.enterText(find.byKey(const ValueKey('admin-field-0')), '0');
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('admin-field-4')),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-field-4')),
+        trace.rfcMessageId,
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('admin-field-5')),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-field-5')),
+        'custom_reject',
+      );
       await tap(tester, 'Apply filters');
       expect(find.text('news@deals.test'), findsOneWidget);
       expect(find.text('promo@deals.test'), findsNothing);
@@ -603,9 +619,11 @@ void main() {
 
     await tap(tester, 'Pipeline analytics');
     expect(find.text('HOW IT ENDED'), findsOneWidget);
+    await reveal(tester, 'Scored as spam');
     expect(find.text('Scored as spam'), findsOneWidget);
     expect(find.text('Failed DMARC'), findsNothing);
     await tap(tester, 'A week');
+    await reveal(tester, 'Scored as spam');
     expect(find.text('Scored as spam'), findsOneWidget);
     await reveal(tester, 'Failed DMARC');
     expect(find.text('Turned away by a filter'), findsOneWidget);
