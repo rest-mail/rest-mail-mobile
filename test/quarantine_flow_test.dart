@@ -161,6 +161,30 @@ void main() {
     await close(tester, fake, state);
   });
 
+  testWidgets('held mail is explained in the language the app is set to', (
+    tester,
+  ) async {
+    final (fake, state, _) = await open(tester);
+    await state.updateSettings(state.settings.copyWith(languageCode: 'de'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Postfächer'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Quarantäne');
+
+    expect(find.text('2 ZURÜCKGEHALTEN'), findsOneWidget);
+    expect(find.text('Als Spam bewertet · prizes@winner.test'), findsOneWidget);
+    expect(find.text('Auswählen'), findsOneWidget);
+    await tap(tester, 'You have been selected');
+    expect(find.text('Zurückgehaltene Nachricht'), findsOneWidget);
+    expect(
+      find.text('Der Spamfilter hat sie über der Grenze bewertet.'),
+      findsOneWidget,
+    );
+    expect(find.text('In den Posteingang freigeben'), findsOneWidget);
+
+    await close(tester, fake, state);
+  });
+
   testWidgets('a list the server cannot give says so, and tries again', (
     tester,
   ) async {

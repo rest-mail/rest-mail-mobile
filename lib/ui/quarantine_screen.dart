@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
@@ -11,32 +12,33 @@ import 'widgets/common.dart';
 
 /// Why the server held a message, from the reason code of the filter step
 /// that held it.
-String quarantineReasonLabel(String code) => switch (code) {
-  'spam_threshold' => 'Scored as spam',
-  'dmarc_quarantine' || 'dmarc_reject' => 'Failed DMARC',
-  'spf_fail' => 'Failed SPF',
-  'dkim_fail' => 'Failed DKIM',
-  'virus_detected' => 'Carried a virus',
-  'header_invalid' => 'Broken headers',
-  'custom_reject' => 'Held by a filter rule',
-  'greylist_defer' => 'Greylisted',
-  'size_exceeded' => 'Too large',
-  'rate_limited' => 'Sent too fast',
-  _ => 'Held by your filters',
-};
+String quarantineReasonLabel(BuildContext context, String code) =>
+    tr(context, switch (code) {
+      'spam_threshold' => 'quarantine.reason.spam',
+      'dmarc_quarantine' || 'dmarc_reject' => 'quarantine.reason.dmarc',
+      'spf_fail' => 'quarantine.reason.spf',
+      'dkim_fail' => 'quarantine.reason.dkim',
+      'virus_detected' => 'quarantine.reason.virus',
+      'header_invalid' => 'quarantine.reason.headers',
+      'custom_reject' => 'quarantine.reason.rule',
+      'greylist_defer' => 'quarantine.reason.greylist',
+      'size_exceeded' => 'quarantine.reason.size',
+      'rate_limited' => 'quarantine.reason.rate',
+      _ => 'quarantine.reason.other',
+    });
 
 /// What a reason means, for the message's own screen.
-String quarantineReasonHelp(String code) => switch (code) {
-  'spam_threshold' => 'The spam filter scored it above the line.',
-  'dmarc_quarantine' || 'dmarc_reject' =>
-    "It claims to be from a domain whose DMARC policy it didn't pass.",
-  'spf_fail' => "It came from a server the sender's domain doesn't allow.",
-  'dkim_fail' => "Its signature didn't check out.",
-  'virus_detected' => 'The virus scanner found something in it.',
-  'header_invalid' => "Its headers aren't well formed.",
-  'custom_reject' => 'One of your filter rules held it.',
-  _ => 'Your mail filters held it back.',
-};
+String quarantineReasonHelp(BuildContext context, String code) =>
+    tr(context, switch (code) {
+      'spam_threshold' => 'quarantine.help.spam',
+      'dmarc_quarantine' || 'dmarc_reject' => 'quarantine.help.dmarc',
+      'spf_fail' => 'quarantine.help.spf',
+      'dkim_fail' => 'quarantine.help.dkim',
+      'virus_detected' => 'quarantine.help.virus',
+      'header_invalid' => 'quarantine.help.headers',
+      'custom_reject' => 'quarantine.help.rule',
+      _ => 'quarantine.help.other',
+    });
 
 /// Mail the account's filters held back instead of delivering: why each one
 /// was held, and a way to release it into the inbox or delete it, one at a
@@ -111,7 +113,7 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
         _total = page.total;
       });
     } on ApiException catch (e) {
-      if (mounted) showToast(context, describeError(e, host: _host));
+      if (mounted) showToast(context, describeError(context, e, host: _host));
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
@@ -135,10 +137,12 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
       final sure = await confirmAction(
         context,
         title: ids.length == 1
-            ? 'Delete this message?'
-            : 'Delete ${ids.length} messages?',
-        message: 'They are gone for good, and never reach your inbox.',
-        action: 'Delete',
+            ? tr(context, 'quarantine.deleteOne')
+            : trArgs(context, 'quarantine.deleteMany', {
+                'count': '${ids.length}',
+              }),
+        message: tr(context, 'quarantine.deleteManyBody'),
+        action: tr(context, 'quarantine.delete'),
       );
       if (!sure || !mounted) return;
     }
@@ -155,19 +159,21 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
       }
       if (!mounted) return;
       _gone(done);
-      showToast(
-        context,
-        release
-            ? (done.length == 1
-                  ? 'Released to your inbox'
-                  : 'Released ${done.length} to your inbox')
-            : (done.length == 1 ? 'Deleted' : 'Deleted ${done.length}'),
-      );
+      showToast(context, switch ((release, done.length == 1)) {
+        (true, true) => tr(context, 'quarantine.released'),
+        (true, false) => trArgs(context, 'quarantine.releasedMany', {
+          'count': '${done.length}',
+        }),
+        (false, true) => tr(context, 'quarantine.deleted'),
+        (false, false) => trArgs(context, 'quarantine.deletedMany', {
+          'count': '${done.length}',
+        }),
+      });
       if (release) unawaited(_mailbox.refresh());
     } on ApiException catch (e) {
       if (!mounted) return;
       _gone(done);
-      showToast(context, describeError(e, host: _host));
+      showToast(context, describeError(context, e, host: _host));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -199,9 +205,14 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Quarantine',
+              title: tr(context, 'mailboxes.quarantine'),
               onBack: () => Navigator.pop(context),
-              trailingText: canSelect ? (_selecting ? 'Done' : 'Select') : null,
+              trailingText: canSelect
+                  ? tr(
+                      context,
+                      _selecting ? 'quarantine.done' : 'quarantine.select',
+                    )
+                  : null,
               onTrailing: canSelect
                   ? () => setState(() {
                       _selecting = !_selecting;
@@ -231,7 +242,11 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
         children: [
           Expanded(
             child: RmOutlineButton(
-              label: ids.isEmpty ? 'Delete' : 'Delete ${ids.length}',
+              label: ids.isEmpty
+                  ? tr(context, 'quarantine.delete')
+                  : trArgs(context, 'quarantine.deleteCount', {
+                      'count': '${ids.length}',
+                    }),
               height: 44,
               color: c.danger,
               onPressed: none
@@ -242,7 +257,11 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: RmPrimaryButton(
-              label: ids.isEmpty ? 'Release' : 'Release ${ids.length}',
+              label: ids.isEmpty
+                  ? tr(context, 'quarantine.release')
+                  : trArgs(context, 'quarantine.releaseCount', {
+                      'count': '${ids.length}',
+                    }),
               height: 44,
               busy: _busy,
               onPressed: none
@@ -273,13 +292,13 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                describeError(error, host: _host),
+                describeError(context, error, host: _host),
                 textAlign: TextAlign.center,
                 style: rmText(14, color: c.ink2, height: 1.4),
               ),
               const SizedBox(height: 14),
               RmOutlineButton(
-                label: 'Try again',
+                label: tr(context, 'quarantine.retry'),
                 height: 44,
                 onPressed: () => unawaited(_load()),
               ),
@@ -299,14 +318,13 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
             Icon(Icons.shield_outlined, size: 34, color: c.ink3),
             const SizedBox(height: 12),
             Text(
-              'Nothing is held back.',
+              tr(context, 'quarantine.empty'),
               textAlign: TextAlign.center,
               style: rmText(14.5, color: c.ink2, weight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
-              'Mail your filters doubt waits here for you to release or '
-              'delete.',
+              tr(context, 'quarantine.emptyNote'),
               textAlign: TextAlign.center,
               style: rmText(12.5, color: c.ink3, height: 1.4),
             ),
@@ -321,18 +339,24 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
         children: [
-          SectionLabel(_total == 1 ? '1 held' : '${countLabel(_total)} held'),
+          SectionLabel(
+            _total == 1
+                ? tr(context, 'quarantine.heldOne')
+                : trArgs(context, 'quarantine.held', {
+                    'count': countLabel(_total),
+                  }),
+          ),
           const SizedBox(height: 9),
           RmGroup(
             children: [
               for (final item in _items)
                 RmRow(
                   label: item.subject.trim().isEmpty
-                      ? '(no subject)'
+                      ? tr(context, 'quarantine.noSubject')
                       : item.subject,
                   subtitle:
-                      '${quarantineReasonLabel(item.reason)} · '
-                      '${item.sender.isEmpty ? 'Unknown sender' : item.sender}',
+                      '${quarantineReasonLabel(context, item.reason)} · '
+                      '${item.sender.isEmpty ? tr(context, 'quarantine.unknownSender') : item.sender}',
                   value: switch (item.receivedAt) {
                     final at? => timeLabel(at),
                     null => null,
@@ -354,7 +378,10 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
           if (_items.length < _total) ...[
             const SizedBox(height: 14),
             RmOutlineButton(
-              label: _loadingMore ? 'Loading…' : 'Show more',
+              label: tr(
+                context,
+                _loadingMore ? 'quarantine.loading' : 'quarantine.more',
+              ),
               height: 44,
               onPressed: _loadingMore ? null : () => unawaited(_more()),
             ),
@@ -394,34 +421,40 @@ class _QuarantinedMessageScreenState extends State<QuarantinedMessageScreen> {
     try {
       await widget.mailbox.backend.releaseQuarantined(widget.accountId, _m.id);
       if (!mounted) return;
-      showToast(context, 'Released to your inbox');
+      showToast(context, tr(context, 'quarantine.released'));
       unawaited(widget.mailbox.refresh());
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      showToast(context, describeError(e, host: widget.mailbox.backend.host));
+      showToast(
+        context,
+        describeError(context, e, host: widget.mailbox.backend.host),
+      );
     }
   }
 
   Future<void> _delete() async {
     final sure = await confirmAction(
       context,
-      title: 'Delete this message?',
-      message: 'It is gone for good, and never reaches your inbox.',
-      action: 'Delete',
+      title: tr(context, 'quarantine.deleteOne'),
+      message: tr(context, 'quarantine.deleteOneBody'),
+      action: tr(context, 'quarantine.delete'),
     );
     if (!sure || !mounted) return;
     setState(() => _busy = true);
     try {
       await widget.mailbox.backend.deleteQuarantined(widget.accountId, _m.id);
       if (!mounted) return;
-      showToast(context, 'Deleted');
+      showToast(context, tr(context, 'quarantine.deleted'));
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      showToast(context, describeError(e, host: widget.mailbox.backend.host));
+      showToast(
+        context,
+        describeError(context, e, host: widget.mailbox.backend.host),
+      );
     }
   }
 
@@ -433,7 +466,7 @@ class _QuarantinedMessageScreenState extends State<QuarantinedMessageScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Held message',
+              title: tr(context, 'quarantine.heldMessage'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -443,31 +476,40 @@ class _QuarantinedMessageScreenState extends State<QuarantinedMessageScreen> {
                   RmGroup(
                     children: [
                       RmRow(
-                        label: 'Subject',
+                        label: tr(context, 'quarantine.subject'),
                         value: _m.subject.trim().isEmpty
-                            ? '(no subject)'
+                            ? tr(context, 'quarantine.noSubject')
                             : _m.subject,
                       ),
-                      RmRow(label: 'From', value: _m.sender),
                       RmRow(
-                        label: 'Why',
-                        value: quarantineReasonLabel(_m.reason),
-                        subtitle: quarantineReasonHelp(_m.reason),
+                        label: tr(context, 'quarantine.from'),
+                        value: _m.sender,
+                      ),
+                      RmRow(
+                        label: tr(context, 'quarantine.why'),
+                        value: quarantineReasonLabel(context, _m.reason),
+                        subtitle: quarantineReasonHelp(context, _m.reason),
                       ),
                       if (_m.spamScore case final score?)
                         RmRow(
-                          label: 'Spam score',
+                          label: tr(context, 'quarantine.score'),
                           value: score.toStringAsFixed(1),
                         ),
                       if (_m.receivedAt case final at?)
-                        RmRow(label: 'Arrived', value: longDate(at)),
+                        RmRow(
+                          label: tr(context, 'quarantine.arrived'),
+                          value: longDate(at),
+                        ),
                       if (_m.expiresAt case final at?)
-                        RmRow(label: 'Deleted after', value: longDate(at)),
+                        RmRow(
+                          label: tr(context, 'quarantine.expires'),
+                          value: longDate(at),
+                        ),
                     ],
                   ),
                   if (_m.bodyPreview.trim().isNotEmpty) ...[
                     const SizedBox(height: 22),
-                    const SectionLabel('Preview'),
+                    SectionLabel(tr(context, 'quarantine.preview')),
                     const SizedBox(height: 9),
                     Text(
                       _m.bodyPreview.trim(),
@@ -476,13 +518,13 @@ class _QuarantinedMessageScreenState extends State<QuarantinedMessageScreen> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: 'Release to inbox',
+                    label: tr(context, 'quarantine.releaseToInbox'),
                     busy: _busy,
                     onPressed: _busy ? null : () => unawaited(_release()),
                   ),
                   const SizedBox(height: 10),
                   RmOutlineButton(
-                    label: 'Delete',
+                    label: tr(context, 'quarantine.delete'),
                     color: c.danger,
                     onPressed: _busy ? null : () => unawaited(_delete()),
                   ),
