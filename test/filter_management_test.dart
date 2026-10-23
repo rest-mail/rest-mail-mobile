@@ -61,8 +61,9 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final fake = FakeRestmail();
-    if (readonly)
+    if (readonly) {
       fake.grant(FakeAccounts.adminEmail, {Capability.pipelinesRead});
+    }
     final transport = _PreviewClient(fake.client);
     final state = AppState(
       store: MemoryKeyValueStore(),

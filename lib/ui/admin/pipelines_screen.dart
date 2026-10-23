@@ -424,11 +424,12 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
     try {
       filter = await widget.account.client.customFilter(filter.id);
     } on ApiException catch (error) {
-      if (mounted)
+      if (mounted) {
         showToast(
           context,
           describeAdminError(error, host: widget.account.server.host),
         );
+      }
       return;
     }
     if (!mounted) return;

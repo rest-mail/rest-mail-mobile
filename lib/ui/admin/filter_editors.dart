@@ -173,13 +173,14 @@ class _DomainFieldState extends State<_DomainField> {
       );
       if (id != null && mounted) widget.controller.text = '$id';
     } on ApiException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = describeAdminError(
             error,
             host: widget.account.server.host,
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -232,7 +233,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
             _StepEditorScreen(filter: index == null ? null : _filters[index]),
       ),
     );
-    if (filter != null && mounted)
+    if (filter != null && mounted) {
       setState(() {
         if (index == null) {
           _filters.add(filter);
@@ -240,6 +241,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
           _filters[index] = filter;
         }
       });
+    }
   }
 
   Future<void> _save() async {
@@ -376,8 +378,9 @@ class _StepEditorScreenState extends State<_StepEditorScreen> {
 
   void _save() {
     try {
-      if (_name.text.trim().isEmpty)
+      if (_name.text.trim().isEmpty) {
         throw const FormatException('Enter a filter name.');
+      }
       final config = _object(_config.text, 'Configuration');
       Navigator.pop(
         context,
@@ -474,8 +477,9 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
       _error = null;
     });
     try {
-      if (_name.text.trim().isEmpty)
+      if (_name.text.trim().isEmpty) {
         throw const FormatException('Enter a filter name.');
+      }
       final config = _object(_config.text, 'Configuration');
       final existing = widget.filter;
       final saved = existing == null
@@ -514,10 +518,11 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
     try {
       final config = _object(_config.text, 'Configuration');
       final script = config['script'];
-      if (script is! String || script.isEmpty)
+      if (script is! String || script.isEmpty) {
         throw const FormatException(
           'Configuration needs a nonempty script to validate JavaScript.',
         );
+      }
       await Navigator.push<void>(
         context,
         MaterialPageRoute(
@@ -649,14 +654,16 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
         result = preview.json;
         summary = 'Script completed';
       } else if (widget.pipeline case final pipeline?) {
-        if (email == null)
+        if (email == null) {
           throw const FormatException('Sample email is required.');
+        }
         final preview = await client.testPipeline(pipeline.id, email: email);
         result = preview.json;
         summary = 'Decision: ${preview.finalAction}';
       } else if (widget.step case final step?) {
-        if (email == null)
+        if (email == null) {
           throw const FormatException('Sample email is required.');
+        }
         final preview = await client.testFilter(
           filterName: step.name,
           config: step.config ?? {},
@@ -667,21 +674,23 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
       } else {
         throw const FormatException('Choose a filter to preview.');
       }
-      if (mounted)
+      if (mounted) {
         setState(() {
           _result = result;
           _summary = summary;
         });
+      }
     } on FormatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } on ApiException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = describeAdminError(
             error,
             host: widget.account.server.host,
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
