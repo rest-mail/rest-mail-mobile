@@ -232,10 +232,17 @@ void main() {
       await tap(tester, 'Pipeline log');
       await tap(tester, 'Filters');
       await tester.enterText(find.byKey(const ValueKey('admin-field-0')), '0');
+      // The form's own list: every text field holds a Scrollable of its own.
+      final form = find
+          .ancestor(
+            of: find.byKey(const ValueKey('admin-field-0')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('admin-field-4')),
         200,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: form,
       );
       await tester.enterText(
         find.byKey(const ValueKey('admin-field-4')),
@@ -244,7 +251,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('admin-field-5')),
         200,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: form,
       );
       await tester.enterText(
         find.byKey(const ValueKey('admin-field-5')),
