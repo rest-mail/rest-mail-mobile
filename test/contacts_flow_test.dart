@@ -54,8 +54,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Mailboxes → Contacts, last in the list: scrolled to, then tapped.
   Future<void> openContacts(WidgetTester tester) async {
     await tester.tap(find.byTooltip('Mailboxes'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Contacts'),
+      200,
+      scrollable: find
+          .ancestor(
+            of: find.text('Quarantine'),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
     await tap(tester, 'Contacts');
   }
