@@ -417,12 +417,21 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
           : _controllers[i].text.trim(),
   ];
 
-  bool get _ready =>
-      !_busy &&
-      [
-        for (var i = 0; i < widget.fields.length; i++)
-          widget.fields[i].optional || _values[i].isNotEmpty,
-      ].every((ok) => ok);
+  bool get _ready {
+    if (_busy) return false;
+    final values = _values;
+    for (var i = 0; i < widget.fields.length; i++) {
+      final field = widget.fields[i];
+      final choices = field.choices;
+      if (choices != null) {
+        // An empty value can be a real choice, such as sending policy None.
+        if (!choices.any((choice) => choice.$1 == values[i])) return false;
+      } else if (!field.optional && values[i].isEmpty) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   Future<void> _send() async {
     if (!_ready) return;

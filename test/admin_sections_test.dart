@@ -339,6 +339,7 @@ void main() {
 
     expect(await shown(tester), [
       'Domains',
+      'Overview',
       'TLS reports',
       'DKIM keys',
       'Certificates',
@@ -720,7 +721,7 @@ void main() {
 
     await tap(tester, 'Domains');
     await tap(tester, 'Add a domain');
-    expect(find.text('Mail kept by'), findsOneWidget);
+    expect(find.text('MAIL KEPT BY'), findsOneWidget);
     await tester.enterText(find.byType(TextField).at(0), 'New.test');
     await tap(tester, 'Postfix and Dovecot');
     await tap(tester, 'Bulk');
