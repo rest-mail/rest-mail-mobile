@@ -115,13 +115,13 @@ void main() {
                 .first,
           )
           .position;
-      for (
-        var offset = 0.0;
-        finder.evaluate().isEmpty && offset <= list.maxScrollExtent;
-        offset += 300
-      ) {
-        list.jumpTo(offset);
+      // Down a step at a time, and last to the very end, which a step can
+      // overshoot: the list may be only a little taller than the screen.
+      for (var offset = 0.0; finder.evaluate().isEmpty; offset += 300) {
+        final end = list.maxScrollExtent;
+        list.jumpTo(offset < end ? offset : end);
         await tester.pumpAndSettle();
+        if (offset >= end) break;
       }
     }
     await tester.ensureVisible(finder.last);
