@@ -232,12 +232,22 @@ void main() {
                   'mode': 'eligible',
                   'granted_by': {'kind': 'account', 'id': 1},
                   'granted_at': '2026-10-23T00:00:00Z',
+                  'activation': {
+                    'id': 2,
+                    'activated_at': DateTime.now().toUtc().toIso8601String(),
+                    'expires_at': DateTime.now()
+                        .add(const Duration(minutes: 1))
+                        .toUtc()
+                        .toIso8601String(),
+                    'reason': 'Routine administration',
+                    'seconds_left': 60,
+                  },
                 },
                 'capabilities': <String>[],
                 'scoped_capabilities': _scoped,
               },
             }),
-            200,
+            201,
             headers: {'content-type': 'application/json'},
           );
         }),
@@ -245,7 +255,11 @@ void main() {
       addTearDown(client.close);
       final pending = client.refresh();
       await Future<void>.delayed(Duration.zero);
-      await client.activateGrant(1, reason: 'Routine administration');
+      await client.activateGrant(
+        1,
+        reason: 'Routine administration',
+        totpCode: '123456',
+      );
       expect(client.tokens!.capabilities.scoped, hasLength(3));
       rotating.complete(
         _response('rotated-access', 'rotated-refresh', scoped: []),

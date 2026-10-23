@@ -62,12 +62,18 @@ void main() {
     WidgetTester tester, {
     DateTime Function()? clock,
     bool active = false,
+    String scope = '*',
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final fake = FakeRestmail(clock: clock)..addAccount(_eve);
-    final grantId = fake.addGrant(_eve, 'admin', mode: 'eligible');
+    final grantId = fake.addGrant(
+      _eve,
+      'admin',
+      mode: 'eligible',
+      scope: scope,
+    );
     final transport = _OwnPermissionsTransport(fake.client);
     final state = AppState(
       store: MemoryKeyValueStore(),
@@ -164,6 +170,39 @@ void main() {
     await tapText(tester, _eve);
     await tapText(tester, 'My permissions');
   }
+
+  testWidgets('scoped activation shows its scope and never becomes global '
+      'admin access', (tester) async {
+    final (fake, state, _) = await open(
+      tester,
+      scope: 'domain:${FakeAccounts.host}',
+    );
+    await permissions(tester);
+    await tapText(tester, 'Switch on…');
+    await tester.enterText(field('What you need it for'), 'Manage my domain');
+    await tester.enterText(field('6-digit code'), FakeAccounts.totpCode);
+    await tester.pump();
+    await tapText(tester, 'Switch on');
+
+    final account = state.current! as RestAccount;
+    expect(account.capabilities.names, isEmpty);
+    expect(account.capabilities.allows(Capability.domainsWrite), isFalse);
+    expect(
+      account.capabilities.allows(
+        Capability.domainsWrite,
+        scope: 'domain:${FakeAccounts.host}',
+      ),
+      isTrue,
+    );
+    expect(
+      find.text('This session now holds capabilities at the scopes below.'),
+      findsOneWidget,
+    );
+    expect(find.text('Domain ${FakeAccounts.host}'), findsOneWidget);
+    await tap(tester, find.byTooltip('Back').first);
+    expect(find.text('Administration'), findsOneWidget);
+    await close(tester, fake, state);
+  });
 
   testWidgets('an activation deadline reloads permissions and removes the '
       'expired administration entry without a manual refresh', (tester) async {
