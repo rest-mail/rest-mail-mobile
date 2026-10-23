@@ -411,6 +411,43 @@ class FakeAuditEntry {
 }
 
 /// One of a mailbox's app passwords, as the fake stores it.
+/// A scoped API key (rest-mail-server#618): a credential for automations that
+/// may do only what its permissions name, and never more than its account
+/// holds at the time of each request.
+class FakeAPIKey {
+  FakeAPIKey({
+    required this.id,
+    required this.mailboxId,
+    required this.name,
+    required this.publicId,
+    required this.secret,
+    required this.permissions,
+    required this.createdAt,
+    this.expiresAt,
+  });
+
+  final int id;
+  final int mailboxId;
+  final String name;
+  final String publicId;
+
+  /// The whole key. The real server keeps only a hash of its secret; the fake
+  /// keeps it to check a use, and never answers with it after making it.
+  final String secret;
+
+  /// Capability and scope pairs, scopes in lower case, without duplicates.
+  final List<(String, String)> permissions;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+  DateTime? lastUsedAt;
+
+  /// When it was revoked. A revoked key stays, as the real server keeps the
+  /// row for its audit trail, but leaves the list and stops working.
+  DateTime? revokedAt;
+
+  bool get isRevoked => revokedAt != null;
+}
+
 class FakeAppPassword {
   FakeAppPassword({
     required this.id,
