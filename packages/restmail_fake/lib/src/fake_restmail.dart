@@ -2613,8 +2613,30 @@ class FakeRestmail {
 
       case ('GET', ['bans']):
         need('bans:read');
+        final protocol = query['protocol'], active = query['active'];
+        if (protocol != null &&
+            !const ['smtp', 'imap', 'pop3', 'all'].contains(protocol)) {
+          _banFieldError(
+            'protocol',
+            'protocol must be one of smtp, imap, pop3, all',
+          );
+        }
+        if (active != null && active != 'true' && active != 'false') {
+          _banFieldError('active', 'must be true or false');
+        }
         return _listPage(
-          _bans.values.toList()
+          _bans.values
+              .where(
+                (ban) =>
+                    (query['ip'] == null || query['ip'] == ban.ip) &&
+                    (protocol == null ||
+                        protocol == ban.protocol ||
+                        ban.protocol == 'all') &&
+                    (active == 'false' ||
+                        ban.expiresAt == null ||
+                        ban.expiresAt!.isAfter(_clock())),
+              )
+              .toList()
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
           query,
           _banJson,
@@ -2622,6 +2644,19 @@ class FakeRestmail {
       case ('POST', ['bans']):
         need('bans:write');
         return _createBan(_object(bytes));
+      case ('DELETE', ['bans', 'ip', final ip]):
+        need('bans:delete');
+        final matches = _bans.values
+            .where((ban) => ban.ip == ip)
+            .map((ban) => ban.id)
+            .toList();
+        if (matches.isEmpty) {
+          _fail(404, 'not_found', 'No ban found for this IP');
+        }
+        for (final id in matches) {
+          _bans.remove(id);
+        }
+        return _noContent();
       case ('DELETE', ['bans', final id]):
         need('bans:delete');
         _bans.remove(int.tryParse(id));
@@ -3828,41 +3863,77 @@ class FakeRestmail {
     'created_at': _time(ban.createdAt),
   };
 
+  Never _banFieldError(String field, String message) => _fail(
+    422,
+    'validation_failed',
+    'Request body failed validation',
+    fields: {field: message},
+  );
+
+  // The fake accepts Go duration units and compound/decimal values. Its clock
+  // has microsecond precision; sub-microsecond durations are rounded here.
+  Duration _banDuration(String raw) {
+    if (raw == '0') return Duration.zero;
+    var text = raw;
+    var sign = 1;
+    if (text.startsWith('-') || text.startsWith('+')) {
+      if (text.startsWith('-')) sign = -1;
+      text = text.substring(1);
+    }
+    if (text == '0') return Duration.zero;
+    final token = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)');
+    const units = {
+      'ns': .001,
+      'us': 1.0,
+      'µs': 1.0,
+      'μs': 1.0,
+      'ms': 1000.0,
+      's': 1000000.0,
+      'm': 60000000.0,
+      'h': 3600000000.0,
+    };
+    var offset = 0;
+    var microseconds = 0.0;
+    while (offset < text.length) {
+      final match = token.matchAsPrefix(text, offset);
+      if (match == null) {
+        _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+      }
+      microseconds += double.parse(match[1]!) * units[match[2]]!;
+      offset = match.end;
+    }
+    if (offset == 0 ||
+        !microseconds.isFinite ||
+        microseconds > 9223372036854775) {
+      _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+    }
+    return Duration(microseconds: (sign * microseconds).round());
+  }
+
   http.StreamedResponse _createBan(Map<String, dynamic> body) {
-    final ip = (body['ip'] as String? ?? '').trim();
-    if (ip.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'ip': 'IP address is required'},
+    final ip = body['ip'] as String? ?? '';
+    if (ip.isEmpty) _banFieldError('ip', 'IP address is required');
+    if (body['created_by'] is! String) _banFieldError('created_by', 'required');
+    if (!const ['smtp', 'imap', 'pop3', 'all'].contains(body['protocol'])) {
+      _banFieldError(
+        'protocol',
+        'protocol must be one of smtp, imap, pop3, all',
       );
     }
-    Duration? lasts;
-    if (body['duration'] case final String raw) {
-      final minutes = RegExp(r'^(\d+)m$').firstMatch(raw)?.group(1);
-      final hours = RegExp(r'^(\d+)h$').firstMatch(raw)?.group(1);
-      lasts = minutes != null
-          ? Duration(minutes: int.parse(minutes))
-          : hours != null
-          ? Duration(hours: int.parse(hours))
-          : _fail(
-              422,
-              'validation_failed',
-              'Request body failed validation',
-              fields: {'duration': 'invalid duration format (e.g. 24h, 168h)'},
-            );
-    }
-    final ban = _bans[_nextRowId] = FakeBan(
-      id: _nextRowId++,
+    final duration = body['duration'] as String?;
+    final lasts = duration == null ? null : _banDuration(duration);
+    final existing = _bans.values.where((ban) => ban.ip == ip).firstOrNull;
+    final id = existing?.id ?? _nextRowId++;
+    final ban = _bans[id] = FakeBan(
+      id: id,
       ip: ip,
-      protocol: body['protocol'] as String? ?? 'all',
+      protocol: body['protocol'] as String,
       reason: body['reason'] as String? ?? '',
-      createdBy: body['created_by'] as String? ?? '',
-      createdAt: _clock(),
+      createdBy: body['created_by'] as String,
+      createdAt: existing?.createdAt ?? _clock(),
       expiresAt: lasts == null ? null : _clock().add(lasts),
     );
-    return _json({'data': _banJson(ban)}, status: 201);
+    return _json({'data': _banJson(ban)}, status: existing == null ? 201 : 200);
   }
 
   http.StreamedResponse _createAlias(Map<String, dynamic> body) {
