@@ -215,10 +215,7 @@ class _BanFormState extends State<_BanForm> {
   }
 
   Future<void> _send() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+    // Asked first: nothing is under way while the question is open.
     if (widget.unban) {
       final sure = await confirmAction(
         context,
@@ -226,12 +223,12 @@ class _BanFormState extends State<_BanForm> {
         message: 'It can reach the mail protocols again straight away.',
         action: 'Lift ban',
       );
-      if (!mounted) return;
-      if (!sure) {
-        setState(() => _busy = false);
-        return;
-      }
+      if (!mounted || !sure) return;
     }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       if (widget.unban) {
         await widget.account.client.unbanIP(_ip.text.trim());
