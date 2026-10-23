@@ -974,24 +974,21 @@ class RestmailClient {
     int? minutes,
     String? totpCode,
     String? recoveryCode,
-  }) async => _escalated(
-    await _authed(
-      'POST',
-      ['admin', 'grants', '$id', 'activate'],
-      body: {
-        'reason': reason,
-        'minutes': ?minutes,
-        'totp_code': ?totpCode,
-        'recovery_code': ?recoveryCode,
-      },
-    ),
+  }) => _escalationRequest(
+    id,
+    'activate',
+    body: {
+      'reason': reason,
+      'minutes': ?minutes,
+      'totp_code': ?totpCode,
+      'recovery_code': ?recoveryCode,
+    },
   );
 
   /// Switches one of the account's own grants off before its activation runs
   /// out. The session's capabilities become the ones the server answers with.
-  Future<Escalation> deactivateGrant(int id) async => _escalated(
-    await _authed('POST', ['admin', 'grants', '$id', 'deactivate']),
-  );
+  Future<Escalation> deactivateGrant(int id) =>
+      _escalationRequest(id, 'deactivate');
 
   /// Makes one of the account's own active grants eligible: from then on it
   /// gives nothing until switched on. Needs a fresh code, as [activateGrant]
@@ -1001,22 +998,40 @@ class RestmailClient {
     int id, {
     String? totpCode,
     String? recoveryCode,
-  }) async => _escalated(
-    await _authed(
-      'POST',
-      ['admin', 'grants', '$id', 'make-eligible'],
-      body: {'totp_code': ?totpCode, 'recovery_code': ?recoveryCode},
-    ),
+  }) => _escalationRequest(
+    id,
+    'make-eligible',
+    body: {'totp_code': ?totpCode, 'recovery_code': ?recoveryCode},
   );
+
+  Future<Escalation> _escalationRequest(
+    int id,
+    String operation, {
+    Map<String, Object?>? body,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = await _authed('POST', [
+      'admin',
+      'grants',
+      '$id',
+      operation,
+    ], body: body);
+    if (response.statusCode != (operation == 'activate' ? 201 : 200)) {
+      throw _unreadable(response);
+    }
+    return _escalated(response, epoch);
+  }
 
   /// Reads a step of escalation, and keeps what it says the account now
   /// holds as the session's capabilities until the next refresh brings them.
-  Escalation _escalated(http.Response response) {
+  /// A late answer cannot apply the old account's grants to a replacement
+  /// login or restore a signed-out session. Normal rotation keeps the epoch.
+  Escalation _escalated(http.Response response, int epoch) {
     final data = _data(response);
     if (data['grant'] is! Map<String, dynamic>) throw _unreadable(response);
     final step = Escalation.fromJson(data);
     final tokens = _tokens;
-    if (tokens != null) {
+    if (tokens != null && _sessionEpoch == epoch) {
       _setTokens(
         SessionTokens(
           accessToken: tokens.accessToken,
