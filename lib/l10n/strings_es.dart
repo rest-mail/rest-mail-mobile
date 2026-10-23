@@ -151,6 +151,7 @@ const Map<String, Map<String, String>> stringsEs = {
     'mailboxes.unread': 'Sin leer',
     'mailboxes.messages': 'Mensajes',
     'mailboxes.storage': 'Almacenamiento',
+    'mailboxes.storageUsed': '{used} de {quota}',
     'mailboxes.loading': 'Cargando esta cuenta…',
     'mailboxes.tapFolder': 'Toca una carpeta para abrir esta cuenta',
     'mailboxes.signedOutNote': 'Esta cuenta tiene la sesión cerrada. Vuelve a iniciar sesión para cargar sus carpetas.',

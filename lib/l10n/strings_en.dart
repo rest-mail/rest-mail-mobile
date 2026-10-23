@@ -157,6 +157,7 @@ const Map<String, Map<String, String>> stringsEn = {
     'mailboxes.unread': 'Unread',
     'mailboxes.messages': 'Messages',
     'mailboxes.storage': 'Storage',
+    'mailboxes.storageUsed': '{used} of {quota}',
     'mailboxes.loading': 'Loading this account…',
     'mailboxes.tapFolder': 'Tap a folder to open this account',
     'mailboxes.signedOutNote':

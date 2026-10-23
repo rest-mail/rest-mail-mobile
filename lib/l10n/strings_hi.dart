@@ -148,6 +148,7 @@ const Map<String, Map<String, String>> stringsHi = {
     'mailboxes.unread': 'अपठित',
     'mailboxes.messages': 'संदेश',
     'mailboxes.storage': 'संग्रहण',
+    'mailboxes.storageUsed': '{quota} में से {used}',
     'mailboxes.loading': 'यह खाता लोड हो रहा है…',
     'mailboxes.tapFolder': 'इस खाते को खोलने के लिए फ़ोल्डर पर टैप करें',
     'mailboxes.signedOutNote': 'यह खाता साइन आउट है। इसके फ़ोल्डर लोड करने के लिए फिर से साइन इन करें।',

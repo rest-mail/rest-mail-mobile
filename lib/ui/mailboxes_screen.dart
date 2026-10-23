@@ -872,10 +872,20 @@ class _Stats extends StatelessWidget {
                   tr(context, 'mailboxes.storage'),
                   style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
                 ),
-                const Spacer(),
-                Text(
-                  '${sizeLabel(q.usedBytes)} of ${sizeLabel(q.quotaBytes)}',
-                  style: rmText(12, color: c.ink3),
+                const SizedBox(width: 8),
+                // A longer word for "storage" leaves less room: the figures
+                // give way rather than overflow.
+                Expanded(
+                  child: Text(
+                    trArgs(context, 'mailboxes.storageUsed', {
+                      'used': sizeLabel(q.usedBytes),
+                      'quota': sizeLabel(q.quotaBytes),
+                    }),
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: rmText(12, color: c.ink3),
+                  ),
                 ),
               ],
             ),

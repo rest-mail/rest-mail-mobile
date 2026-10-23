@@ -146,6 +146,7 @@ const Map<String, Map<String, String>> stringsNe = {
     'mailboxes.unread': 'नपढिएको',
     'mailboxes.messages': 'सन्देशहरू',
     'mailboxes.storage': 'भण्डारण',
+    'mailboxes.storageUsed': '{quota} मध्ये {used}',
     'mailboxes.loading': 'यो खाता लोड हुँदैछ…',
     'mailboxes.tapFolder': 'यो खाता खोल्न फोल्डरमा ट्याप गर्नुहोस्',
     'mailboxes.signedOutNote':

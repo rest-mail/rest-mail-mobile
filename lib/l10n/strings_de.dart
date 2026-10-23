@@ -150,6 +150,7 @@ const Map<String, Map<String, String>> stringsDe = {
     'mailboxes.unread': 'Ungelesen',
     'mailboxes.messages': 'Nachrichten',
     'mailboxes.storage': 'Speicher',
+    'mailboxes.storageUsed': '{used} von {quota}',
     'mailboxes.loading': 'Konto wird geladen…',
     'mailboxes.tapFolder': 'Ordner antippen, um dieses Konto zu öffnen',
     'mailboxes.signedOutNote': 'Dieses Konto ist abgemeldet. Melde dich erneut an, um seine Ordner zu laden.',
