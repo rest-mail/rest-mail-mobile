@@ -594,7 +594,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'bad_selector');
     await tap(tester, 'Paste');
     await tap(tester, 'Set key');
-    expect(find.textContaining('must be DNS labels'), findsOneWidget);
+    expect(find.textContaining('Must be a DNS label'), findsOneWidget);
     expect((state.current! as RestAccount).client.tokens, isNotNull);
     await tester.enterText(find.byType(TextField).first, 'valid');
     await tap(tester, 'Set key');
@@ -735,7 +735,7 @@ void main() {
       certificate: 'not PEM',
     );
     await tap(tester, 'Add certificate');
-    expect(find.text('Invalid certificate PEM'), findsOneWidget);
+    expect(find.text('Invalid certificate PEM.'), findsOneWidget);
     expect(fake.certificates, hasLength(count));
     await certificateField(tester, 1, testCertificatePem);
     await tap(tester, 'Add certificate');

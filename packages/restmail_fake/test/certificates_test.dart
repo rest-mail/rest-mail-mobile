@@ -125,7 +125,9 @@ void main() {
             keyPem: testCertificateKey,
           ),
           throwsA(
-            isA<ApiException>().having((e) => e.statusCode, 'status', 400),
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'status', 422)
+                .having((e) => e.fields.keys, 'fields', ['cert_pem']),
           ),
         );
       }
@@ -135,7 +137,13 @@ void main() {
           certPem: testCertificatePem,
           keyPem: '',
         ),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 400)),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, 'status', 422).having(
+            (e) => e.fields,
+            'fields',
+            {'key_pem': 'required'},
+          ),
+        ),
       );
       await expectLater(
         client.uploadCertificate(
