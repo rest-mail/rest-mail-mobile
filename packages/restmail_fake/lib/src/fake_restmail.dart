@@ -105,6 +105,7 @@ class FakeRestmail {
   final _traces = <int, Map<String, Object?>>{};
   final _traceLog = <Map<String, Object?>>[];
   final _appPasswords = <int, FakeAppPassword>{};
+  final _apiKeys = <int, FakeAPIKey>{};
   final _devices = <String, (FakePushDevice, _Session)>{};
   final _pushes = <FakePush>[];
   final _scheduled = <int, Map<String, Object?>>{};
@@ -588,6 +589,23 @@ class FakeRestmail {
           session,
           'credentials.revoke',
           () => _revokeAppPassword(_manageable(session, id), credential),
+        ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'api-keys']) => _listAPIKeys(
+        _manageable(session, id),
+      ),
+      // Recorded in the audit log, refused ones too, as the server does.
+      ('POST', ['api', 'v1', 'accounts', final id, 'api-keys']) => _auditedBy(
+        request,
+        session,
+        'api_keys.create',
+        () => _createAPIKey(session, id, bytes),
+      ),
+      ('DELETE', ['api', 'v1', 'accounts', final id, 'api-keys', final key]) =>
+        _auditedBy(
+          request,
+          session,
+          'api_keys.revoke',
+          () => _revokeAPIKey(session, id, key),
         ),
       ('GET', ['api', 'v1', 'devices']) => _listDevices(session),
       ('POST', ['api', 'v1', 'devices']) => _registerDevice(
@@ -1179,6 +1197,238 @@ class FakeRestmail {
     'created_at': _time(p.createdAt),
     'last_used_at': p.lastUsedAt == null ? null : _time(p.lastUsedAt!),
     'expires_at': p.expiresAt == null ? null : _time(p.expiresAt!),
+  };
+
+  /// Every capability the server knows, as its catalogue lists them.
+  Set<String> get _capabilityNames => {
+    ...roles.values.expand((names) => names),
+    'messages:send_bulk',
+    'users:read',
+    'users:write',
+    'users:delete',
+  };
+
+  // ── API keys (rest-mail-server#618, registered with their types in #732) ──
+
+  http.StreamedResponse _listAPIKeys(FakeMailbox box) {
+    final listed =
+        [
+          for (final k in _apiKeys.values)
+            if (k.mailboxId == box.id && !k.isRevoked) k,
+        ]..sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt) != 0
+              ? b.createdAt.compareTo(a.createdAt)
+              : b.id.compareTo(a.id),
+        );
+    return _json({
+      'data': [for (final k in listed) _apiKeyJson(k)],
+    });
+  }
+
+  /// In the server's order: the body is bound, the account is reached, the
+  /// session must have used two-factor, the fields keep their rules, the
+  /// creator's current password is checked, and the key may hold nothing
+  /// beyond what both the creator and the account hold.
+  http.StreamedResponse _createAPIKey(
+    _Session session,
+    String id,
+    List<int> bytes,
+  ) {
+    // Login's throttle sits in front of the route, before anything else.
+    _spendSignInBudget();
+    final body = _object(bytes);
+    final problems = _undeclared(body, const {
+      'name',
+      'password',
+      'permissions',
+      'expires_at',
+    });
+    final name = body['name'];
+    if (!body.containsKey('name')) {
+      problems['name'] = 'required';
+    } else if (name == null) {
+      problems['name'] = 'must not be null';
+    } else if (name is! String) {
+      problems['name'] = 'must be a string';
+    }
+    final password = body['password'];
+    if (body.containsKey('password') && password is! String) {
+      problems['password'] = password == null
+          ? 'must not be null'
+          : 'must be a string';
+    }
+    final permissions = body['permissions'];
+    if (body.containsKey('permissions')) {
+      if (permissions == null) {
+        problems['permissions'] = 'must not be null';
+      } else if (permissions is! List<Object?>) {
+        problems['permissions'] = 'must be an array';
+      } else {
+        for (final (i, permission) in permissions.indexed) {
+          if (permission is! Map<String, dynamic>) {
+            problems['permissions[$i]'] = 'must be an object';
+            continue;
+          }
+          problems.addAll(
+            _undeclared(permission, const {
+              'capability',
+              'scope',
+            }, 'permissions[$i].'),
+          );
+          for (final field in const ['capability', 'scope']) {
+            final value = permission[field];
+            if (permission.containsKey(field) && value is! String) {
+              problems['permissions[$i].$field'] = value == null
+                  ? 'must not be null'
+                  : 'must be a string';
+            }
+          }
+        }
+      }
+    }
+    final rawExpiry = body['expires_at'];
+    final expiresAt = rawExpiry is String ? DateTime.tryParse(rawExpiry) : null;
+    if (rawExpiry != null && expiresAt == null) {
+      problems['expires_at'] = 'must be a date-time';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+
+    final box = _manageable(session, id);
+    if (!session.twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'Sign in with two-factor authentication to create API keys',
+      );
+    }
+    final now = _clock();
+    final trimmed = (name as String).trim();
+    final asked = permissions as List<Object?>? ?? const [];
+    final rules = <String, String>{};
+    if (trimmed.isEmpty) {
+      rules['name'] = 'required';
+    } else if (trimmed.runes.length > 100 ||
+        trimmed.runes.any((r) => r < 0x20 || (r >= 0x7f && r < 0xa0))) {
+      rules['name'] =
+          'must contain at most 100 characters and no control characters';
+    }
+    if (asked.isEmpty || asked.length > 64) {
+      rules['permissions'] = 'must contain between 1 and 64 scoped permissions';
+    }
+    final granted = <(String, String)>[];
+    for (final permission in asked.cast<Map<String, dynamic>>()) {
+      final capability = permission['capability'] as String? ?? '';
+      final scope = _apiKeyScope(permission['scope'] as String? ?? '');
+      if (capability.isEmpty || capability == '*' || scope == null) {
+        rules['permissions'] =
+            'each permission needs a named capability and a valid scope';
+        break;
+      }
+      if (!granted.contains((capability, scope))) {
+        granted.add((capability, scope));
+      }
+    }
+    if (expiresAt != null && !expiresAt.isAfter(now)) {
+      rules['expires_at'] = 'must be in the future';
+    }
+    if (rules.isNotEmpty) _invalid(rules);
+
+    final own = _mailboxes[session.primary]!;
+    final current = password as String? ?? '';
+    if (current.isEmpty) {
+      _fail(
+        403,
+        'reauth_required',
+        'Enter your current password to create a credential',
+      );
+    }
+    if (current != own.password || !own.active) {
+      _fail(403, 'invalid_password', 'The password is incorrect');
+    }
+    if (!granted.every(
+      (p) => _allowsHeld(own, p.$1, p.$2) && _allowsHeld(box, p.$1, p.$2),
+    )) {
+      _fail(
+        403,
+        'forbidden',
+        "API key permissions must be within the account's and your current "
+            'grants',
+      );
+    }
+    final known = _capabilityNames;
+    if (granted.any((p) => !known.contains(p.$1))) {
+      _invalid({'permissions': 'contains an unknown capability'});
+    }
+    final publicId = _base62(12);
+    final created = _apiKeys[_nextRowId] = FakeAPIKey(
+      id: _nextRowId++,
+      mailboxId: box.id,
+      name: trimmed,
+      publicId: publicId,
+      secret: 'rmk_${publicId}_${_base62(43)}',
+      permissions: granted,
+      createdAt: now,
+      expiresAt: expiresAt ?? now.add(const Duration(days: 90)),
+    );
+    return _json({
+      'data': {..._apiKeyJson(created), 'token': created.secret},
+    }, status: 201);
+  }
+
+  http.StreamedResponse _revokeAPIKey(_Session session, String id, String key) {
+    final box = _manageable(session, id);
+    if (!session.twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'Sign in with two-factor authentication to revoke API keys',
+      );
+    }
+    final found = _apiKeys[int.tryParse(key)];
+    if (found == null || found.mailboxId != box.id || found.isRevoked) {
+      _fail(404, 'not_found', 'API key not found');
+    }
+    found.revokedAt = _clock();
+    return _noContent();
+  }
+
+  /// A scope as an API key stores it, in lower case: `*`, `domain:<name>` or
+  /// `mailbox:<address>`. Null when it is none of those.
+  static String? _apiKeyScope(String raw) {
+    final scope = raw.trim().toLowerCase();
+    bool domain(String name) =>
+        name.isNotEmpty &&
+        name.length <= 253 &&
+        name.split('.').every((l) => RegExp(r'^[a-z0-9-]{1,63}$').hasMatch(l));
+    if (scope == '*') return scope;
+    if (scope.startsWith('domain:') && domain(scope.substring(7))) {
+      return scope;
+    }
+    if (scope.startsWith('mailbox:')) {
+      final address = scope.substring(8);
+      final at = address.indexOf('@');
+      if (at > 0 &&
+          !address.substring(0, at).contains(RegExp(r'[\s@]')) &&
+          domain(address.substring(at + 1))) {
+        return scope;
+      }
+    }
+    return null;
+  }
+
+  /// Never the token.
+  Map<String, Object?> _apiKeyJson(FakeAPIKey k) => {
+    'id': k.id,
+    'name': k.name,
+    'kind': 'api_key',
+    'public_id': k.publicId,
+    'created_at': _time(k.createdAt),
+    'last_used_at': k.lastUsedAt == null ? null : _time(k.lastUsedAt!),
+    'expires_at': k.expiresAt == null ? null : _time(k.expiresAt!),
+    'permissions': [
+      for (final (capability, scope) in k.permissions)
+        {'capability': capability, 'scope': scope},
+    ],
   };
 
   static final _secureRandom = Random.secure();
@@ -2749,13 +2999,7 @@ class FakeRestmail {
         });
       case ('GET', ['capabilities']):
         need('users:read');
-        final names = {
-          ...roles.values.expand((names) => names),
-          'messages:send_bulk',
-          'users:read',
-          'users:write',
-          'users:delete',
-        }.toList()..sort();
+        final names = _capabilityNames.toList()..sort();
         return _json({
           'data': [
             for (final (i, name) in names.indexed)
