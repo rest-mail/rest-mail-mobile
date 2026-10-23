@@ -750,9 +750,8 @@ class RestmailClient {
   );
 
   /// Needs `pipelines:delete`.
-  Future<void> deletePipeline(int id) async {
-    await _authed('DELETE', ['admin', 'pipelines', '$id']);
-  }
+  Future<void> deletePipeline(int id) async =>
+      _expectDeleted(await _authed('DELETE', ['admin', 'pipelines', '$id']));
 
   /// Executes the saved pipeline. Requires global `pipelines:write`.
   Future<PipelineTestResult> testPipeline(
@@ -880,8 +879,20 @@ class RestmailClient {
   );
 
   /// Needs `pipelines:delete`.
-  Future<void> deleteCustomFilter(int id) async {
-    await _authed('DELETE', ['admin', 'custom-filters', '$id']);
+  Future<void> deleteCustomFilter(int id) async => _expectDeleted(
+    await _authed('DELETE', ['admin', 'custom-filters', '$id']),
+  );
+
+  /// A pipeline or custom filter is gone only when the server says so: 200
+  /// and `{"data": {"status": "deleted"}}`. Anything else is not taken as
+  /// done.
+  void _expectDeleted(http.Response response) {
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      if (_data(response)['status'] != 'deleted') throw _unreadable(response);
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Each message the filters handled, newest first, delivered or not: the

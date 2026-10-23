@@ -381,6 +381,57 @@ void main() {
       ),
     );
   });
+  for (final (name, delete, path) in [
+    ('pipeline', (RestmailClient c) => c.deletePipeline(9), 'pipelines/9'),
+    (
+      'custom filter',
+      (RestmailClient c) => c.deleteCustomFilter(8),
+      'custom-filters/8',
+    ),
+  ]) {
+    test('$name delete reads the deleted acknowledgement', () async {
+      reply = {
+        'data': {'status': 'deleted'},
+      };
+      await delete(client);
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/api/v1/admin/$path');
+      expect(calls, 1);
+    });
+    for (final (what, body, code) in <(String, Object, int)>[
+      (
+        'another status',
+        {
+          'data': {'status': 'queued'},
+        },
+        200,
+      ),
+      ('no status', {'data': <String, Object?>{}}, 200),
+      ('no data', <String, Object?>{}, 200),
+      (
+        'an unexpected success code',
+        {
+          'data': {'status': 'deleted'},
+        },
+        202,
+      ),
+    ]) {
+      test('$name delete with $what is not taken as done', () async {
+        reply = body;
+        status = code;
+        await expectLater(
+          delete(client),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.code, 'code', 'bad_response')
+                .having((e) => e.statusCode, 'status', code),
+          ),
+        );
+        expect(calls, 1);
+        expect(client.tokens!.accessToken, 'access');
+      });
+    }
+  }
   for (final code in [400, 403, 404, 422, 429, 503]) {
     test('$code refusal keeps session, field errors and retry delay', () async {
       reply = {
