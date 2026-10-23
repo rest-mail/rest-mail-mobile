@@ -402,35 +402,70 @@ class RestmailClient {
   Future<ServerStats> stats() async =>
       ServerStats.fromJson(_data(await _authed('GET', ['admin', 'stats'])));
 
-  /// The bans in force. Needs `bans:read`.
-  Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);
+  /// Global `bans:read`. By default only unexpired bans are returned.
+  /// [active] false includes both current and expired bans. [protocol]
+  /// includes bans on that protocol plus bans on all protocols.
+  Future<OffsetPage<Ban>> bans({
+    String? protocol,
+    bool? active,
+    String? ip,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'bans'],
+    Ban.fromJson,
+    offset,
+    limit,
+    {'protocol': ?protocol, 'active': ?active?.toString(), 'ip': ?ip},
+  );
 
-  /// Keeps [ip] out of [protocol] (`all` of them unless named) for
-  /// [duration], or for good. Needs `bans:write`.
-  Future<void> createBan({
+  /// Creates or replaces a ban by IP. The server requires [createdBy]; the
+  /// mobile form supplies the signed-in address. Needs global `bans:write`.
+  /// Omit both durations for a permanent ban. [durationText] accepts the
+  /// server's complete Go duration syntax; it cannot be combined with [duration].
+  Future<Ban> createBan({
     required String ip,
     required String createdBy,
     String reason = '',
     String protocol = 'all',
     Duration? duration,
+    String? durationText,
   }) async {
-    await _authed(
-      'POST',
-      ['admin', 'bans'],
-      body: {
-        'ip': ip,
-        'reason': reason,
-        'protocol': protocol,
-        'created_by': createdBy,
-        if (duration != null) 'duration': '${duration.inMinutes}m',
-      },
+    if (duration != null && durationText != null) {
+      throw ArgumentError('Supply duration or durationText, not both.');
+    }
+    final wireDuration =
+        durationText ??
+        (duration == null
+            ? null
+            : duration.inMicroseconds % Duration.microsecondsPerMinute == 0
+            ? '${duration.inMinutes}m'
+            : '${duration.inMicroseconds}us');
+    return Ban.fromJson(
+      _data(
+        await _authed(
+          'POST',
+          ['admin', 'bans'],
+          body: {
+            'ip': ip,
+            'reason': reason,
+            'protocol': protocol,
+            'created_by': createdBy,
+            'duration': ?wireDuration,
+          },
+        ),
+      ),
     );
   }
 
-  /// Lifts a ban. Needs `bans:delete`.
+  /// Lifts a ban. Needs global `bans:delete`.
   Future<void> deleteBan(int id) async {
     await _authed('DELETE', ['admin', 'bans', '$id']);
+  }
+
+  /// Removes a ban by its exact IPv4 or IPv6 address; answers 404 if absent.
+  Future<void> unbanIP(String ip) async {
+    await _authed('DELETE', ['admin', 'bans', 'ip', ip]);
   }
 
   /// Mail sent to other servers, newest first, with how each went: the
