@@ -311,9 +311,16 @@ void main() {
   ) async {
     final (fake, state, _) = await open(tester);
     expect(find.text('Two-factor sign-in'), findsOneWidget);
-    await tester.tap(find.byTooltip('Back').last);
+    final linked = await (state.current! as RestAccount).client.linkAccount(
+      address: FakeAccounts.otherEmail,
+      password: FakeAccounts.password,
+    );
+    expect(linked.isPrimary, isFalse);
+    await state.mailbox!.reloadAccounts();
+    await state.mailbox!.selectAccount(linked);
     await tester.pumpAndSettle();
-    await tapText(tester, FakeAccounts.otherEmail);
+    expect(state.mailbox!.account!.id, linked.id);
+    expect(fake.ownedBy(FakeAccounts.email), contains(FakeAccounts.otherEmail));
     expect(find.text('App passwords'), findsOneWidget);
     expect(find.text('Two-factor sign-in'), findsNothing);
     await close(tester, fake, state);
