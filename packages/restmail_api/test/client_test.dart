@@ -1202,4 +1202,201 @@ void main() {
       },
     );
   });
+
+  group('domain delivery', () {
+    RestmailClient clientFor(
+      FutureOr<http.Response> Function(http.Request) handler,
+    ) => RestmailClient(
+      server: _server,
+      tokens: _tokens('1'),
+      httpClient: MockClient((request) async => handler(request)),
+    );
+
+    test('reads a domain relay without its password', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 587,
+            'tls_mode': 'starttls',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final relay = await client.domainRelay(4);
+      expect(relay.domainId, 4);
+      expect(relay.transport, OutboundTransport.relay);
+      expect(relay.host, 'smtp.relay.test');
+      expect(relay.port, 587);
+      expect(relay.tlsMode, RelayTlsMode.starttls);
+      expect(relay.username, 'ada');
+      expect(relay.passwordSet, isTrue);
+    });
+
+    test('reads a direct transport with no relay fields', () async {
+      final client = clientFor(
+        (_) => _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        }),
+      );
+      final relay = await client.domainRelay(4);
+      expect(relay.transport, OutboundTransport.direct);
+      expect(relay.host, '');
+      expect(relay.port, isNull);
+      expect(relay.tlsMode, isNull);
+      expect(relay.passwordSet, isFalse);
+    });
+
+    test('sets a relay, leaving the password out to keep it', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 465,
+            'tls_mode': 'implicit',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final saved = await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 465,
+        tlsMode: RelayTlsMode.implicit,
+        username: 'ada',
+      );
+      expect(sent, {
+        'transport': 'relay',
+        'host': 'smtp.relay.test',
+        'port': 465,
+        'tls_mode': 'implicit',
+        'username': 'ada',
+      });
+      expect(saved.tlsMode, RelayTlsMode.implicit);
+      expect(saved.passwordSet, isTrue);
+    });
+
+    test('sends a new or empty relay password as given', () async {
+      final bodies = <Map<String, dynamic>>[];
+      final client = clientFor((request) {
+        bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+        return _json({
+          'data': {'domain_id': 4, 'transport': 'relay', 'password_set': false},
+        });
+      });
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        username: 'ada',
+        password: 's3cret',
+      );
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        password: '',
+      );
+      expect(bodies[0]['password'], 's3cret');
+      expect(bodies[1]['username'], '');
+      expect(bodies[1]['password'], '');
+    });
+
+    test('switches to direct with only the transport', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        });
+      });
+      await client.setDomainRelay(4, transport: OutboundTransport.direct);
+      expect(sent, {'transport': 'direct'});
+    });
+
+    test('lists suppressions with every field the server sends', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/suppressions');
+        return _json({
+          'data': [
+            {
+              'id': 9,
+              'domain_id': 4,
+              'address': 'gone@far.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_mailbox',
+              'last_error': '550 5.1.1 no such user',
+              'message_id': 31,
+              'created_at': '2026-10-20T08:00:00Z',
+              'updated_at': '2026-10-21T08:00:00Z',
+              'expires_at': '2026-11-20T08:00:00Z',
+            },
+            {
+              'id': 10,
+              'domain_id': 4,
+              'address': 'nobody@nowhere.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_domain',
+              'last_error': '',
+              'message_id': null,
+              'created_at': '2026-10-19T08:00:00Z',
+              'updated_at': '2026-10-19T08:00:00Z',
+              'expires_at': '2026-11-19T08:00:00Z',
+            },
+          ],
+        });
+      });
+      final list = await client.suppressions(4);
+      expect(list, hasLength(2));
+      final first = list.first;
+      expect(first.id, 9);
+      expect(first.domainId, 4);
+      expect(first.address, 'gone@far.test');
+      expect(first.reason, 'hard_bounce');
+      expect(first.failureCategory, 'bad_mailbox');
+      expect(first.lastError, '550 5.1.1 no such user');
+      expect(first.messageId, 31);
+      expect(first.createdAt!.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(first.updatedAt!.toUtc(), DateTime.utc(2026, 10, 21, 8));
+      expect(first.expiresAt!.toUtc(), DateTime.utc(2026, 11, 20, 8));
+      expect(list.last.messageId, isNull);
+    });
+
+    test('clears a suppression', () async {
+      late http.Request sent;
+      final client = clientFor((request) {
+        sent = request;
+        return http.Response('', 204);
+      });
+      await client.clearSuppression(4, 9);
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/api/v1/admin/domains/4/suppressions/9');
+    });
+  });
 }

@@ -51,7 +51,9 @@ class AdministrationScreen extends StatelessWidget {
     // Each about one domain, so opened from it, and never listed here.
     AdminSection.dnsCheck ||
     AdminSection.senderLists ||
-    AdminSection.mtaSts => DomainsScreen(account: account),
+    AdminSection.mtaSts ||
+    AdminSection.relay ||
+    AdminSection.suppressions => DomainsScreen(account: account),
   };
 
   @override
