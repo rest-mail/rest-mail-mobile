@@ -3774,6 +3774,7 @@ class FakeRestmail {
     'pattern': r.pattern,
     'list_type': r.list,
     if (r.reason.isNotEmpty) 'reason': r.reason,
+    if (r.createdBy != null) 'created_by': r.createdBy,
     'created_at': _time(r.createdAt),
   };
 
@@ -3812,12 +3813,12 @@ class FakeRestmail {
     }
     final domain = _domain(id);
     final name = list == 'allow' ? 'allowlist' : 'blocklist';
-    // The server's unique index refuses the same sender twice, and its
-    // handler reports that as a failure of its own.
+    // A duplicate on this list is a conflict. The same sender can still
+    // be on the other list, as the server's composite unique index allows.
     if (_senderRules.values.any(
       (r) => r.domain == domain.name && r.list == list && r.pattern == pattern,
     )) {
-      _fail(500, 'internal_error', 'Failed to create $name rule');
+      _fail(409, 'already_exists', 'Sender is already on the $name');
     }
     final rule = _senderRules[_nextRowId] = FakeSenderRule(
       id: _nextRowId++,

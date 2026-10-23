@@ -1076,11 +1076,47 @@ class RestmailClient {
 
   /// The senders on one of [domainId]'s lists, newest first. Needs
   /// `domains:read`.
-  Future<List<SenderRule>> senderRules(int domainId, SenderList list) async =>
-      _list(
-        await _authed('GET', ['admin', 'domains', '$domainId', list.path]),
-        SenderRule.fromJson,
+  Future<List<SenderRule>> senderRules(int domainId, SenderList list) async {
+    final response = await _authed('GET', [
+      'admin',
+      'domains',
+      '$domainId',
+      list.path,
+    ]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      final envelope = _envelope(response);
+      if (!envelope.containsKey('data')) throw _unreadable(response);
+      return _items(
+        envelope['data'],
+        response,
+        (json) => _senderRule(json, domainId, list),
       );
+    } on FormatException {
+      throw _unreadable(response);
+    } on TypeError {
+      throw _unreadable(response);
+    }
+  }
+
+  // A rule from another domain or list cannot be presented with this
+  // screen's removal controls, even if a server returns a mixed-up cache.
+  SenderRule _senderRule(
+    Map<String, dynamic> json,
+    int domainId,
+    SenderList list,
+  ) {
+    final rule = SenderRule.fromJson(json);
+    if (rule.id <= 0 ||
+        rule.domainId != domainId ||
+        rule.list != list ||
+        rule.pattern.isEmpty ||
+        rule.createdAt == null ||
+        (json['created_by'] != null && json['created_by'] is! int)) {
+      throw const FormatException('Sender rule does not match its route');
+    }
+    return rule;
+  }
 
   /// Puts [pattern], an address or `@` and a domain, on one of [domainId]'s
   /// lists. Needs `domains:write`.
@@ -1089,25 +1125,32 @@ class RestmailClient {
     SenderList list, {
     required String pattern,
     String reason = '',
-  }) async => SenderRule.fromJson(
-    _data(
-      await _authed(
-        'POST',
-        ['admin', 'domains', '$domainId', list.path],
-        body: {'pattern': pattern, 'reason': reason},
-      ),
-    ),
-  );
+  }) async {
+    final response = await _authed(
+      'POST',
+      ['admin', 'domains', '$domainId', list.path],
+      body: {'pattern': pattern, 'reason': reason},
+    );
+    if (response.statusCode != 201) throw _unreadable(response);
+    try {
+      return _senderRule(_data(response), domainId, list);
+    } on FormatException {
+      throw _unreadable(response);
+    } on TypeError {
+      throw _unreadable(response);
+    }
+  }
 
   /// Needs `domains:write`, as the server asks.
   Future<void> removeSenderRule(int domainId, SenderList list, int id) async {
-    await _authed('DELETE', [
+    final response = await _authed('DELETE', [
       'admin',
       'domains',
       '$domainId',
       list.path,
       '$id',
     ]);
+    if (response.statusCode != 204) throw _unreadable(response);
   }
 
   /// How [domainId]'s outgoing mail leaves the server. Needs

@@ -1181,6 +1181,7 @@ class SenderRule {
     required this.pattern,
     required this.list,
     this.reason = '',
+    this.createdBy,
     this.createdAt,
   });
 
@@ -1188,8 +1189,13 @@ class SenderRule {
     id: _int(json['id']),
     domainId: _int(json['domain_id'] ?? 0),
     pattern: json['pattern'] as String? ?? '',
-    list: json['list_type'] == 'allow' ? SenderList.allow : SenderList.block,
+    list: switch (json['list_type']) {
+      'allow' => SenderList.allow,
+      'block' => SenderList.block,
+      _ => throw const FormatException('Unknown sender rule list'),
+    },
     reason: json['reason'] as String? ?? '',
+    createdBy: json['created_by'] == null ? null : _int(json['created_by']),
     createdAt: _time(json['created_at']),
   );
 
@@ -1200,6 +1206,10 @@ class SenderRule {
   final String pattern;
   final SenderList list;
   final String reason;
+
+  /// The recorded account ID, if the server has one. New sender-rule
+  /// requests do not accept a creator chosen by the client.
+  final int? createdBy;
   final DateTime? createdAt;
 }
 
