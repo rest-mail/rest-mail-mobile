@@ -258,12 +258,68 @@ class TraceDetails extends StatelessWidget {
               for (final stage in trace.stages)
                 RmRow(
                   label: stage.filter,
-                  subtitle: _stageNote(stage),
+                  subtitle: [
+                    ?_stageNote(stage),
+                    if (stage.filterType.isNotEmpty) stage.filterType,
+                    '${stage.durationMilliseconds} ms',
+                  ].join(' · '),
+                  onTap: () => pushScreen(
+                    context,
+                    Scaffold(
+                      body: SafeArea(
+                        child: Column(
+                          children: [
+                            RmTopBar(
+                              title: stage.filter,
+                              onBack: () => Navigator.pop(context),
+                            ),
+                            Expanded(
+                              child: ListView(
+                                padding: const EdgeInsets.all(20),
+                                children: [
+                                  Text(
+                                    '${stage.filterType} · ${stage.durationMilliseconds} ms',
+                                  ),
+                                  Text(
+                                    stage.skipped
+                                        ? 'Skipped: ${stage.skipReason}'
+                                        : traceActionLabel(stage.action),
+                                  ),
+                                  if (stage.error.isNotEmpty) Text(stage.error),
+                                  const SizedBox(height: 16),
+                                  SelectableText(prettyJson(stage.log)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   value: stage.skipped ? null : traceActionLabel(stage.action),
                 ),
             ],
           ),
         ],
+        const SizedBox(height: 22),
+        RmGroup(
+          children: [
+            RmRow(label: 'Trace number', value: '${trace.id}'),
+            RmRow(label: 'Pipeline number', value: '${trace.pipelineId}'),
+            if (trace.messageId case final id?)
+              RmRow(label: 'Stored message', value: '$id'),
+            RmRow(
+              label: 'Final action',
+              value: traceActionLabel(trace.finalAction),
+            ),
+            RmRow(
+              label: 'Sampling retained',
+              value: trace.sampled ? 'Yes' : 'No',
+            ),
+            if (trace.expiresAt case final at?)
+              RmRow(label: 'Retained until', value: longDate(at)),
+          ],
+        ),
         if (trace.rfcMessageId.isNotEmpty) ...[
           const SizedBox(height: 22),
           const SectionLabel('Message-ID'),

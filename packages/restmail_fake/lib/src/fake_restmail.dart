@@ -2075,7 +2075,22 @@ class FakeRestmail {
   static final _zeroHash = '0' * 64;
 
   /// Walks the chain from the first entry, as the server's check does.
-  Map<String, Object?> _verifyAudit() {
+  Map<String, Object?> _verifyAudit([String? anchorText]) {
+    Map<String, Object?>? anchor;
+    if (anchorText != null) {
+      final match = RegExp(
+        r'^([1-9][0-9]{0,17}):([0-9a-fA-F]{64})$',
+      ).firstMatch(anchorText);
+      if (match == null) {
+        _fail(
+          422,
+          'validation_failed',
+          'Invalid anchor',
+          fields: {'anchor': 'must be a sequence number and 64 hex characters'},
+        );
+      }
+      anchor = {'seq': int.parse(match[1]!), 'hash': match[2]!.toLowerCase()};
+    }
     var previous = _zeroHash;
     var checked = 0;
     FakeAuditEntry? last;
@@ -2084,6 +2099,10 @@ class FakeRestmail {
           ? 'prev_hash does not match the previous entry'
           : entry.hash != _auditHash(entry)
           ? 'hash does not match its contents'
+          : anchor != null &&
+                entry.seq == anchor['seq'] &&
+                entry.hash != anchor['hash']
+          ? 'hash does not match the anchor: the log was rewritten up to here'
           : null;
       if (reason != null) {
         return {
@@ -2094,6 +2113,7 @@ class FakeRestmail {
           'last_hash': last?.hash ?? _zeroHash,
           'broken_at_seq': entry.seq,
           'reason': reason,
+          'anchor': ?anchor,
         };
       }
       previous = entry.hash;
@@ -2101,7 +2121,10 @@ class FakeRestmail {
       checked++;
     }
     return {
-      'ok': true,
+      'ok': anchor == null || _audit.any((e) => e.seq == anchor!['seq']),
+      'anchor': ?anchor,
+      if (anchor != null && !_audit.any((e) => e.seq == anchor!['seq']))
+        'reason': 'anchor entry is no longer in the log',
       'checked': checked,
       'first_seq': _audit.firstOrNull?.seq ?? 0,
       'last_seq': last?.seq ?? 0,
@@ -2136,11 +2159,30 @@ class FakeRestmail {
         fields: invalid,
       );
     }
+    final actorId = int.tryParse(query['actor_id'] ?? '');
+    if (query['actor_id'] != null && (actorId == null || actorId < 0)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Invalid account number',
+        fields: {'actor_id': 'must be a whole number'},
+      );
+    }
+    final since = _reportDate(query, 'since'),
+        until = _reportDate(query, 'until');
     final matching = [
       for (final entry in _audit.reversed)
         if ((kind == null || entry.actorKind == kind) &&
             (outcome == null || entry.outcome == outcome) &&
-            (before == null || entry.seq < before))
+            (before == null || entry.seq < before) &&
+            (actorId == null || entry.actorId == actorId) &&
+            (query['actor'] == null ||
+                entry.actorName.toLowerCase().contains(
+                  query['actor']!.toLowerCase(),
+                )) &&
+            (query['action'] == null || entry.action == query['action']) &&
+            (since == null || !entry.occurredAt.isBefore(since)) &&
+            (until == null || !entry.occurredAt.isAfter(until)))
           entry,
     ];
     final page = matching.take(limit!).toList();
@@ -2700,14 +2742,33 @@ class FakeRestmail {
 
       case ('GET', ['logs', 'delivery']):
         need('messages:read');
+        _reportEnum(query, 'status', const {
+          'pending',
+          'delivering',
+          'deferred',
+          'delivered',
+          'bounced',
+          'expired',
+        });
         final status = query['status'], recipient = query['recipient'];
+        final since = _reportDate(query, 'since'),
+            until = _reportDate(query, 'until');
         return _listPage(
           _queue.values
               .where(
                 (e) =>
                     (status == null || e.status == status) &&
+                    (query['domain'] == null || e.domain == query['domain']) &&
+                    (query['sender'] == null ||
+                        e.sender.toLowerCase().contains(
+                          query['sender']!.toLowerCase(),
+                        )) &&
+                    (since == null || !e.createdAt.isBefore(since)) &&
+                    (until == null || !e.createdAt.isAfter(until)) &&
                     (recipient == null ||
-                        e.recipient.contains(recipient.toLowerCase())),
+                        e.recipient.toLowerCase().contains(
+                          recipient.toLowerCase(),
+                        )),
               )
               .toList()
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
@@ -2723,14 +2784,39 @@ class FakeRestmail {
         });
       case ('GET', ['tls-reports']):
         need('domains:read');
-        return _listPage(_tlsReports, query, (r) => r);
+        _reportEnum(query, 'policy_type', const {'sts', 'tlsa', 'no-policy'});
+        final domain = int.tryParse(query['domain_id'] ?? '');
+        if (query['domain_id'] != null && (domain == null || domain < 0)) {
+          _fail(400, 'bad_request', 'Invalid domain_id');
+        }
+        return _listPage(
+          _tlsReports
+              .where(
+                (r) =>
+                    (domain == null || r['domain_id'] == domain) &&
+                    (query['policy_type'] == null ||
+                        r['policy_type'] == query['policy_type']) &&
+                    (query['reporting_org'] == null ||
+                        (r['reporting_org']! as String).toLowerCase().contains(
+                          query['reporting_org']!.toLowerCase(),
+                        )),
+              )
+              .toList()
+            ..sort(
+              (a, b) => (b['received_at']! as String).compareTo(
+                a['received_at']! as String,
+              ),
+            ),
+          query,
+          (r) => r,
+        );
 
       case ('GET', ['audit']):
         need('audit:read');
         return _auditList(query);
       case ('GET', ['audit', 'verify']):
         need('audit:read');
-        return _json({'data': _verifyAudit()});
+        return _json({'data': _verifyAudit(query['anchor'])});
 
       case ('GET', ['dkim']):
         need('domains:read');
@@ -2849,13 +2935,45 @@ class FakeRestmail {
 
       case ('GET', ['pipelines', 'logs']):
         need('pipelines:read');
+        _reportEnum(query, 'direction', const {'inbound', 'outbound'});
+        _reportEnum(query, 'action', const {
+          'continue',
+          'reject',
+          'quarantine',
+          'discard',
+          'defer',
+        });
+        _reportEnum(query, 'outcome', const {
+          'delivered',
+          'queued',
+          'rejected',
+          'quarantined',
+          'discarded',
+          'deferred',
+        });
+        final pipeline = int.tryParse(query['pipeline_id'] ?? '');
+        if (query['pipeline_id'] != null && pipeline == null) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid pipeline_id',
+            fields: {'pipeline_id': 'must be a whole number'},
+          );
+        }
         final direction = query['direction'], outcome = query['outcome'];
         return _listPage(
           _traceLog
               .where(
                 (t) =>
                     (direction == null || t['direction'] == direction) &&
-                    (outcome == null || t['outcome'] == outcome),
+                    (outcome == null || t['outcome'] == outcome) &&
+                    (pipeline == null || t['pipeline_id'] == pipeline) &&
+                    (query['action'] == null ||
+                        t['final_action'] == query['action']) &&
+                    (query['rfc_message_id'] == null ||
+                        t['rfc_message_id'] == query['rfc_message_id']) &&
+                    (query['reason_code'] == null ||
+                        t['reason_code'] == query['reason_code']),
               )
               .toList()
             ..sort((a, b) => _createdAt(b).compareTo(_createdAt(a))),
@@ -2864,7 +2982,9 @@ class FakeRestmail {
         );
       case ('GET', ['pipelines', 'analytics']):
         need('observability:read');
-        return _json({'data': _pipelineAnalytics(query['window'])});
+        return _json({
+          'data': _pipelineAnalytics(query['window'], query['since']),
+        });
 
       case ('GET', ['pipelines']):
         need('pipelines:read');
@@ -3802,11 +3922,16 @@ class FakeRestmail {
   /// The server's funnel over [window] (a Go duration in hours, a day by
   /// default), counted here from the traces rather than from rollups. Go
   /// writes the counts as floats, and an empty list as null.
-  Map<String, Object?> _pipelineAnalytics(String? window) {
-    final hours =
-        int.tryParse(RegExp(r'^(\d+)h$').firstMatch(window ?? '')?[1] ?? '') ??
-        24;
-    final until = _clock(), since = until.subtract(Duration(hours: hours));
+  Map<String, Object?> _pipelineAnalytics(
+    String? window, [
+    String? sinceText,
+    bool includeLive = true,
+  ]) {
+    final until = _clock(), explicitSince = DateTime.tryParse(sinceText ?? '');
+    final duration = _reportDuration(window ?? '') ?? const Duration(hours: 24);
+    final since = !includeLive
+        ? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true)
+        : explicitSince ?? until.subtract(duration);
     final traces = _traceLog.where((t) => !_createdAt(t).isBefore(since));
     final received = <String, double>{},
         verdicts = <(String, String), double>{},
@@ -3850,11 +3975,12 @@ class FakeRestmail {
         a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2);
     Map<K, double> sorted<K>(Map<K, double> m, int Function(K, K) by) =>
         Map.fromEntries(m.entries.toList()..sort((a, b) => by(a.key, b.key)));
-    return {
+    final response = <String, Object?>{
       'window': {
         'since': _time(since),
         'until': _time(until),
-        'label': '${hours}h0m0s',
+        if (explicitSince == null)
+          'label': _reportDuration(window ?? '') == null ? '24h0m0s' : window,
       },
       'funnel': {
         'received': rows(
@@ -3886,6 +4012,62 @@ class FakeRestmail {
         ),
       },
     };
+    // The demo counts its full trace history as cumulative process counters.
+    if (includeLive) {
+      response['live_totals'] = _pipelineAnalytics(null, null, false)['funnel'];
+    }
+    return response;
+  }
+
+  void _reportEnum(Map<String, String> query, String key, Set<String> allowed) {
+    if (query[key] != null && !allowed.contains(query[key])) {
+      _fail(
+        422,
+        'validation_failed',
+        'Invalid filter',
+        fields: {key: 'must be one of ${allowed.join(', ')}'},
+      );
+    }
+  }
+
+  DateTime? _reportDate(Map<String, String> query, String key) {
+    if (query[key] == null) return null;
+    final date = DateTime.tryParse(query[key]!);
+    if (date == null ||
+        !RegExp(r'(Z|[+-]\d{2}:\d{2})$').hasMatch(query[key]!)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Invalid date',
+        fields: {key: 'must be an RFC 3339 time'},
+      );
+    }
+    return date;
+  }
+
+  Duration? _reportDuration(String text) {
+    if (text.startsWith('+')) text = text.substring(1);
+    final parts = RegExp(
+      r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)',
+    ).allMatches(text);
+    if (text.isEmpty || parts.map((p) => p[0]).join() != text) return null;
+    const micros = {
+      'ns': .001,
+      'us': 1.0,
+      'µs': 1.0,
+      'μs': 1.0,
+      'ms': 1000.0,
+      's': 1000000.0,
+      'm': 60000000.0,
+      'h': 3600000000.0,
+    };
+    final value = parts.fold<double>(
+      0,
+      (n, p) => n + double.parse(p[1]!) * micros[p[2]]!,
+    );
+    return value >= .001 && value < 9223372036854776.0
+        ? Duration(microseconds: value.round())
+        : null;
   }
 
   Map<String, Object?> _dkimJson(FakeDomain domain) => {

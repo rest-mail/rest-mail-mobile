@@ -227,6 +227,163 @@ void main() {
     await close(tester, fake, state);
   });
 
+  testWidgets(
+    'delivery filters validate times, apply from page one and clear',
+    (tester) async {
+      final (fake, state) = await open(tester);
+      await tap(tester, 'Delivery log');
+      await tap(tester, 'Filters');
+      await tester.enterText(find.byType(TextField).at(0), 'harbor.test');
+      await tester.enterText(find.byType(TextField).at(2), 'LEE');
+      await tester.enterText(find.byType(TextField).at(3), 'yesterday');
+      await tap(tester, 'Apply filters');
+      expect(
+        find.textContaining('must be a date and time with a timezone'),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byType(TextField).at(3),
+        '2026-02-31T06:00:00Z',
+      );
+      await tap(tester, 'Apply filters');
+      expect(
+        find.textContaining('must be a date and time with a timezone'),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField).at(3), '');
+      await tap(tester, 'Apply filters');
+      expect(find.text('lee@harbor.test'), findsOneWidget);
+      expect(find.text('nobody@ryeworks.test'), findsNothing);
+      expect(find.text('Filters (2)'), findsOneWidget);
+      await tap(tester, 'Clear filters');
+      expect(find.text('nobody@ryeworks.test'), findsOneWidget);
+      expect(find.text('Filters'), findsOneWidget);
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets('TLS report filters and complete detail are usable', (
+    tester,
+  ) async {
+    final (fake, state) = await open(tester);
+    await tap(tester, 'TLS reports');
+    await tap(tester, 'Filters');
+    await tester.enterText(find.byType(TextField).at(1), 'MICROSOFT');
+    await tap(tester, 'Apply filters');
+    expect(find.text('Google Inc.'), findsNothing);
+    await tap(tester, 'Microsoft Corporation');
+    await reveal(tester, 'Report');
+    expect(find.text('Report'), findsOneWidget);
+    expect(find.text('Domain number'), findsOneWidget);
+    expect(find.text('Added'), findsOneWidget);
+    await reveal(tester, 'WHAT FAILED');
+    expect(find.textContaining('certificate-expired'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'pipeline correlation filters open full filter log and step timing',
+    (tester) async {
+      final (fake, state) = await open(tester);
+      final account = state.current! as RestAccount;
+      final trace = (await account.client.pipelineLog(
+        reasonCode: 'custom_reject',
+      )).items.single;
+      await tap(tester, 'Pipeline log');
+      await tap(tester, 'Filters');
+      await tester.enterText(find.byKey(const ValueKey('admin-field-0')), '0');
+      // The form's own list, found from the list itself: every text field
+      // holds a Scrollable of its own, and a field scrolled away is gone.
+      final form = find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('admin-field-4')),
+        200,
+        scrollable: form,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-field-4')),
+        trace.rfcMessageId,
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('admin-field-5')),
+        200,
+        scrollable: form,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-field-5')),
+        'custom_reject',
+      );
+      await tap(tester, 'Apply filters');
+      expect(find.text('news@deals.test'), findsOneWidget);
+      expect(find.text('promo@deals.test'), findsNothing);
+      await tap(tester, 'news@deals.test');
+      await tap(tester, 'domain_allowlist');
+      expect(find.textContaining('18.0 ms'), findsOneWidget);
+      expect(find.textContaining('"result": "blocked"'), findsOneWidget);
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets('audit actor/action filters and independently saved anchor', (
+    tester,
+  ) async {
+    final (fake, state) = await open(tester);
+    final anchor = fake.auditLog.first;
+    await tap(tester, 'Audit log');
+    await tap(tester, 'Filters');
+    await tester.enterText(
+      find.byType(TextField).at(1),
+      FakeAccounts.adminEmail,
+    );
+    await tester.enterText(find.byType(TextField).at(2), 'auth.sign_in');
+    await tap(tester, 'Apply filters');
+    expect(find.textContaining('admin.change'), findsNothing);
+    expect(find.textContaining('auth.sign_in'), findsWidgets);
+    await tap(tester, 'Verify saved anchor');
+    await tester.enterText(find.byType(TextField), 'bad');
+    await tap(tester, 'Verify anchor');
+    expect(
+      find.textContaining('must be a positive sequence number'),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byType(TextField),
+      '${anchor.seq}:${anchor.hash}',
+    );
+    await tap(tester, 'Verify anchor');
+    expect(find.textContaining('The chain holds'), findsOneWidget);
+    expect(find.textContaining('Checked against saved anchor'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'analytics accepts a custom period and shows cumulative counters separately',
+    (tester) async {
+      final (fake, state) = await open(tester);
+      await tap(tester, 'Pipeline analytics');
+      await tap(tester, 'Custom period');
+      await tester.enterText(find.byType(TextField).at(0), 'wrong');
+      await tap(tester, 'Apply filters');
+      expect(find.textContaining('must be a duration such as'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).at(0), '90m');
+      await tap(tester, 'Apply filters');
+      expect(find.textContaining('90m'), findsWidgets);
+      await tap(tester, 'Since process start');
+      expect(
+        find.text('Cumulative since this server process started'),
+        findsOneWidget,
+      );
+      await reveal(tester, 'Failed DMARC');
+      expect(find.text('Failed DMARC'), findsOneWidget);
+      await close(tester, fake, state);
+    },
+  );
+
   testWidgets('a trace found by its message number, and one that is not '
       'there', (tester) async {
     final (fake, state) = await open(tester);
@@ -902,7 +1059,7 @@ void main() {
     await tap(tester, 'promo@deals.test');
     expect(find.text('Trace'), findsOneWidget);
     // How it ended, and what rspamd did.
-    expect(find.text('Turned away'), findsNWidgets(2));
+    expect(find.text('Turned away'), findsAtLeastNWidgets(2));
     expect(find.text('Scored as spam'), findsOneWidget);
     expect(find.text('rspamd'), findsOneWidget);
 
@@ -914,9 +1071,11 @@ void main() {
 
     await tap(tester, 'Pipeline analytics');
     expect(find.text('HOW IT ENDED'), findsOneWidget);
+    await reveal(tester, 'Scored as spam');
     expect(find.text('Scored as spam'), findsOneWidget);
     expect(find.text('Failed DMARC'), findsNothing);
     await tap(tester, 'A week');
+    await reveal(tester, 'Scored as spam');
     expect(find.text('Scored as spam'), findsOneWidget);
     await reveal(tester, 'Failed DMARC');
     expect(find.text('Turned away by a filter'), findsOneWidget);

@@ -634,7 +634,11 @@ class RestmailClient {
   /// outbound queue's history. Needs `messages:read`.
   Future<OffsetPage<QueueEntry>> deliveryLog({
     QueueStatus? status,
+    String? domain,
+    String? sender,
     String? recipient,
+    DateTime? since,
+    DateTime? until,
     int offset = 0,
     int limit = 50,
   }) => _offsetPage(
@@ -642,7 +646,14 @@ class RestmailClient {
     QueueEntry.fromJson,
     offset,
     limit,
-    {'status': ?status?.name, 'recipient': ?recipient},
+    {
+      'status': ?status?.name,
+      'domain': ?domain,
+      'sender': ?sender,
+      'recipient': ?recipient,
+      'since': ?since?.toUtc().toIso8601String(),
+      'until': ?until?.toUtc().toIso8601String(),
+    },
   );
 
   /// How the message stored as [messageId] went through the filters. Throws
@@ -656,8 +667,23 @@ class RestmailClient {
       );
 
   /// The TLS reports other servers sent, newest first. Needs `domains:read`.
-  Future<OffsetPage<TlsReport>> tlsReports({int offset = 0, int limit = 50}) =>
-      _offsetPage(['admin', 'tls-reports'], TlsReport.fromJson, offset, limit);
+  Future<OffsetPage<TlsReport>> tlsReports({
+    int? domainId,
+    String? policyType,
+    String? reportingOrg,
+    int offset = 0,
+    int limit = 50,
+  }) => _offsetPage(
+    ['admin', 'tls-reports'],
+    TlsReport.fromJson,
+    offset,
+    limit,
+    {
+      'domain_id': ?domainId?.toString(),
+      'policy_type': ?policyType,
+      'reporting_org': ?reportingOrg,
+    },
+  );
 
   /// The audit log, newest first, a page at a time: hand the page's cursor
   /// back as [before] for the next. Only entries with [outcome] or by an
@@ -667,6 +693,11 @@ class RestmailClient {
     String? before,
     String? outcome,
     String? actorKind,
+    int? actorId,
+    String? actor,
+    String? action,
+    DateTime? since,
+    DateTime? until,
     int limit = 50,
   }) async => _cursorPage(
     await _authed(
@@ -676,6 +707,11 @@ class RestmailClient {
         'before_seq': ?before,
         'outcome': ?outcome,
         'actor_kind': ?actorKind,
+        'actor_id': ?actorId?.toString(),
+        'actor': ?actor,
+        'action': ?action,
+        'since': ?since?.toUtc().toIso8601String(),
+        'until': ?until?.toUtc().toIso8601String(),
         'limit': '$limit',
       },
     ),
@@ -684,8 +720,14 @@ class RestmailClient {
 
   /// Has the server walk the whole audit log and check its chain. Needs
   /// `audit:read`.
-  Future<AuditCheck> verifyAudit() async => AuditCheck.fromJson(
-    _data(await _authed('GET', ['admin', 'audit', 'verify'])),
+  Future<AuditCheck> verifyAudit({String? anchor}) async => AuditCheck.fromJson(
+    _data(
+      await _authed(
+        'GET',
+        ['admin', 'audit', 'verify'],
+        query: {'anchor': ?anchor},
+      ),
+    ),
   );
 
   /// The domains that sign their mail. Needs `domains:read`.
@@ -983,8 +1025,12 @@ class RestmailClient {
   /// pipeline log. Only those that went [direction] or ended in [outcome],
   /// when given. Needs `pipelines:read`.
   Future<OffsetPage<MessageTrace>> pipelineLog({
+    int? pipelineId,
     String? direction,
+    String? action,
+    String? rfcMessageId,
     String? outcome,
+    String? reasonCode,
     int offset = 0,
     int limit = 50,
   }) => _offsetPage(
@@ -992,19 +1038,38 @@ class RestmailClient {
     MessageTrace.fromJson,
     offset,
     limit,
-    {'direction': ?direction, 'outcome': ?outcome},
+    {
+      'pipeline_id': ?pipelineId?.toString(),
+      'direction': ?direction,
+      'action': ?action,
+      'rfc_message_id': ?rfcMessageId,
+      'outcome': ?outcome,
+      'reason_code': ?reasonCode,
+    },
   );
 
-  /// What the filters did over the last [window]. Needs
-  /// `observability:read`.
+  /// Windowed analytics plus optional cumulative counters. [since] takes
+  /// precedence; [windowText] accepts a Go duration, including subsecond units.
+  /// Needs `observability:read`.
   Future<PipelineAnalytics> pipelineAnalytics({
     Duration window = const Duration(days: 1),
+    String? windowText,
+    DateTime? since,
   }) async => PipelineAnalytics.fromJson(
     _data(
       await _authed(
         'GET',
         ['admin', 'pipelines', 'analytics'],
-        query: {'window': '${window.inHours}h'},
+        query: {
+          if (since != null)
+            'since': since.toUtc().toIso8601String()
+          else
+            'window':
+                windowText ??
+                (window.inMicroseconds % Duration.microsecondsPerHour == 0
+                    ? '${window.inHours}h'
+                    : '${window.inMicroseconds}us'),
+        },
       ),
     ),
   );

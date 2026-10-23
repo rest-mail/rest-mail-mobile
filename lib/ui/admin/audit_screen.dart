@@ -9,6 +9,7 @@ import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
+import 'report_filters.dart';
 
 String _outcomeLabel(String outcome) => switch (outcome) {
   'success' => 'Allowed',
@@ -93,9 +94,20 @@ class AuditScreen extends StatefulWidget {
 }
 
 class _AuditScreenState extends State<AuditScreen> {
-  String? _outcome;
+  Map<String, String> _filters = {};
+  String? get _outcome => _filters['outcome'];
   late final _list = AdminList<AuditEntry>.cursor(
-    (cursor) => widget.account.client.audit(before: cursor, outcome: _outcome),
+    (cursor) => widget.account.client.audit(
+      before: cursor ?? _filters['before_seq'],
+      outcome: _outcome,
+      actorKind: _filters['actor_kind'],
+      actorId: reportInt(_filters, 'actor_id'),
+      actor: _filters['actor'],
+      action: _filters['action'],
+      since: reportDate(_filters, 'since'),
+      until: reportDate(_filters, 'until'),
+      limit: reportInt(_filters, 'limit') ?? 50,
+    ),
   );
   var _checking = false;
   AuditCheck? _check;
@@ -117,13 +129,14 @@ class _AuditScreenState extends State<AuditScreen> {
     super.dispose();
   }
 
-  Future<void> _verify() async {
+  Future<void> _verify({String? anchor}) async {
     setState(() {
       _checking = true;
       _checkError = null;
+      _check = null;
     });
     try {
-      final check = await widget.account.client.verifyAudit();
+      final check = await widget.account.client.verifyAudit(anchor: anchor);
       if (mounted) setState(() => _check = check);
     } on ApiException catch (e) {
       if (mounted) {
@@ -132,6 +145,40 @@ class _AuditScreenState extends State<AuditScreen> {
     } finally {
       if (mounted) setState(() => _checking = false);
     }
+  }
+
+  Future<void> _verifyAnchor() async {
+    await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Verify saved anchor',
+        host: _host,
+        intro:
+            'Paste a sequence number and hash saved independently of this server. '
+            'This checks that the chain still contains that entry unchanged.',
+        fields: const [
+          AdminField(
+            'Saved anchor',
+            hint: '42: followed by its 64-character hash',
+          ),
+        ],
+        action: 'Verify anchor',
+        submit: (values) async {
+          if (!RegExp(r'^[1-9][0-9]{0,17}:[0-9a-fA-F]{64}$')
+              .hasMatch(values[0])) {
+            throw const ApiException(
+              422,
+              'validation_failed',
+              'Invalid anchor',
+              fields: {
+                'anchor': 'must be a positive sequence number, a colon and 64 hex characters',
+              },
+            );
+          }
+          await _verify(anchor: values[0]);
+        },
+      ),
+    );
   }
 
   @override
@@ -151,6 +198,49 @@ class _AuditScreenState extends State<AuditScreen> {
           _ => 'Nothing has been recorded yet.',
         },
         header: [
+          ReportFiltersBar(
+            host: _host,
+            values: _filters,
+            fields: const [
+              ReportField(
+                'actor_kind',
+                'Actor kind',
+                choices: [
+                  ('', 'All'),
+                  ('account', 'Account'),
+                  ('system', 'Server'),
+                  ('anonymous', 'Not signed in'),
+                ],
+              ),
+              ReportField('actor_id', 'Account number', number: true),
+              ReportField('actor', 'Actor name contains'),
+              ReportField('action', 'Action'),
+              ReportField(
+                'outcome',
+                'Outcome',
+                choices: [
+                  ('', 'All'),
+                  ('success', 'Success'),
+                  ('denied', 'Denied'),
+                  ('failed', 'Failed'),
+                  ('error', 'Server error'),
+                ],
+              ),
+              reportSince,
+              reportUntil,
+              ReportField(
+                'before_seq',
+                'Before entry',
+                number: true,
+                positive: true,
+              ),
+              reportPageSize,
+            ],
+            onChanged: (values) {
+              setState(() => _filters = values);
+              unawaited(_list.reload());
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: RmOutlineButton(
@@ -158,6 +248,11 @@ class _AuditScreenState extends State<AuditScreen> {
               onPressed: _checking ? null : () => unawaited(_verify()),
             ),
           ),
+          RmOutlineButton(
+            label: 'Verify saved anchor',
+            onPressed: _checking ? null : () => unawaited(_verifyAnchor()),
+          ),
+          const SizedBox(height: 14),
           if (check != null) ...[
             _ChainResult(check),
             const SizedBox(height: 16),
@@ -173,13 +268,15 @@ class _AuditScreenState extends State<AuditScreen> {
               child: RmSegmented<String?>(
                 options: const [
                   (null, 'All'),
+                  ('success', 'Success'),
                   ('denied', 'Denied'),
                   ('failed', 'Failed'),
                   ('error', 'Errors'),
                 ],
                 value: _outcome,
                 onChanged: (outcome) {
-                  setState(() => _outcome = outcome);
+                  setState(() => _filters = {..._filters}..remove('outcome'));
+                  if (outcome != null) _filters['outcome'] = outcome;
                   unawaited(_list.reload());
                 },
               ),
@@ -223,6 +320,8 @@ class _ChainResult extends StatelessWidget {
       else if (check.ok)
         'The chain holds: all $entries, from ${check.firstSeq} to '
             '${check.lastSeq}, follow one another and match their hashes.'
+      else if (broken == null)
+        'The chain could not be verified${check.reason.isEmpty ? '.' : ': ${check.reason}.'}'
       else
         [
           'The chain breaks at entry $broken'
@@ -233,6 +332,11 @@ class _ChainResult extends StatelessWidget {
             'The $entries before it hold.',
         ].join(' '),
       if (check.note.isNotEmpty) check.note,
+      if (check.anchor case final anchor?)
+        'Checked against saved anchor ${anchor.value}.',
+      if (check.lastHash.isNotEmpty)
+        'Last verified entry: ${check.lastSeq}:${check.lastHash}',
+      if (check.anchor == null) 'An independently saved anchor can also detect history that was rewritten and rehashed.',
     ].join('\n\n');
     return Container(
       padding: const EdgeInsets.all(14),
@@ -251,7 +355,10 @@ class _ChainResult extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: rmText(14, color: c.ink, height: 1.45)),
+            child: SelectableText(
+              text,
+              style: rmText(14, color: c.ink, height: 1.45),
+            ),
           ),
         ],
       ),
@@ -286,6 +393,14 @@ class AuditEntryScreen extends StatelessWidget {
               RmRow(label: 'When', value: longDate(entry.occurredAt)),
               RmRow(label: 'Who', subtitle: _actor(entry)),
               RmRow(label: 'As', value: entry.actorKind),
+              if (entry.actorId case final id?)
+                RmRow(label: 'Account number', value: '$id'),
+              if (entry.credentialId case final id?)
+                RmRow(label: 'Credential number', value: '$id'),
+              if (entry.sessionId.isNotEmpty)
+                RmRow(label: 'Session', subtitle: entry.sessionId),
+              if (entry.requestId.isNotEmpty)
+                RmRow(label: 'Request ID', subtitle: entry.requestId),
               RmRow(label: 'Action', value: entry.action),
               RmRow(
                 label: 'Outcome',
@@ -309,7 +424,7 @@ class AuditEntryScreen extends StatelessWidget {
           const SectionLabel('Its hash, and the one before'),
           const SizedBox(height: 9),
           SelectableText(
-            '${entry.hash}\n${entry.prevHash}',
+            'Saved anchor: ${entry.seq}:${entry.hash}\nPrevious hash: ${entry.prevHash}',
             style: rmText(12.5, color: c.ink2, height: 1.5),
           ),
         ],
