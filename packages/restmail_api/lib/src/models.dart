@@ -694,6 +694,68 @@ DateTime? _quarantineTime(Object? value) {
   return at.toLocal();
 }
 
+/// How far an account trusts a sender. The inbound filters skip the spam
+/// checks for a trusted sender and refuse mail from a blocked one.
+enum TrustLevel {
+  /// Learned from mail the account sent, not set by anyone.
+  auto('auto'),
+  trusted('trusted'),
+  blocked('blocked');
+
+  const TrustLevel(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static TrustLevel? parse(Object? value) => switch (value) {
+    'auto' => auto,
+    'trusted' => trusted,
+    'blocked' => blocked,
+    _ => null,
+  };
+}
+
+/// An address an account's mail is filtered by, and offered when composing.
+class Contact {
+  const Contact({
+    required this.id,
+    required this.mailboxId,
+    required this.email,
+    required this.name,
+    required this.trustLevel,
+    required this.source,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Contact.fromJson(Map<String, dynamic> json) => Contact(
+    id: (json['id'] as num).toInt(),
+    mailboxId: (json['mailbox_id'] as num).toInt(),
+    email: json['email'] as String,
+    name: json['name'] as String? ?? '',
+    trustLevel:
+        TrustLevel.parse(json['trust_level']) ??
+        (throw FormatException('Unknown trust level ${json['trust_level']}')),
+    source: json['source'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
+  );
+
+  final int id;
+  final int mailboxId;
+  final String email;
+
+  /// Empty when it has none.
+  final String name;
+  final TrustLevel trustLevel;
+
+  /// How it was added: `sent` (learned from mail the account sent), `manual`
+  /// or `import`.
+  final String source;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
 /// Filters for a mailbox search. Every field is optional; the server ANDs
 /// whichever are given.
 class SearchQuery {
