@@ -34,8 +34,13 @@ class _AliasesScreenState extends State<AliasesScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.aliases)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: widget.domain == null
+          ? null
+          : CapabilityScope.domain(widget.domain!.name),
+      collection: true,
+    ).canRead(AdminSection.aliases)) {
       unawaited(_list.reload());
     }
   }
@@ -94,6 +99,10 @@ class _AliasesScreenState extends State<AliasesScreen> {
     final c = context.rm;
     final domain = widget.domain;
     return AdminPage(
+      scope: widget.domain == null
+          ? null
+          : CapabilityScope.domain(widget.domain!.name),
+      collection: true,
       account: widget.account,
       section: AdminSection.aliases,
       title: 'Aliases',
@@ -145,8 +154,12 @@ class _AliasScreenState extends State<AliasScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.aliases)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(
+        widget.alias.source.substring(widget.alias.source.lastIndexOf('@') + 1),
+      ),
+    ).canRead(AdminSection.aliases)) {
       unawaited(_reload());
     }
   }
@@ -230,6 +243,9 @@ class _AliasScreenState extends State<AliasScreen> {
   Widget build(BuildContext context) {
     final alias = _alias;
     return AdminPage(
+      scope: CapabilityScope.domain(
+        widget.alias.source.substring(widget.alias.source.lastIndexOf('@') + 1),
+      ),
       account: widget.account,
       section: AdminSection.aliases,
       title: alias.source,

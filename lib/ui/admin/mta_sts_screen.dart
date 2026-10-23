@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../../state/admin_access.dart';
 import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
+import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
@@ -25,17 +26,19 @@ String _modeHelp(MtaStsMode mode) => switch (mode) {
 };
 
 /// How long other servers keep a policy, in words.
-String _ageLabel(Duration age) {
-  final days = age.inDays;
-  if (age == const Duration(days: 1)) return 'A day';
-  if (age == const Duration(days: 7)) return 'A week';
-  if (age.inSeconds % Duration.secondsPerDay == 0) {
+String _ageLabel(int seconds) {
+  if (seconds == 0) return '0 seconds';
+  final days = seconds ~/ Duration.secondsPerDay;
+  if (days == 1 && seconds == Duration.secondsPerDay) return 'A day';
+  if (days == 7 && seconds == 7 * Duration.secondsPerDay) return 'A week';
+  if (seconds % Duration.secondsPerDay == 0) {
     return days % 7 == 0 ? '${days ~/ 7} weeks' : '$days days';
   }
-  if (age.inSeconds % Duration.secondsPerHour == 0) {
-    return age.inHours == 1 ? 'An hour' : '${age.inHours} hours';
+  if (seconds % Duration.secondsPerHour == 0) {
+    final hours = seconds ~/ Duration.secondsPerHour;
+    return hours == 1 ? 'An hour' : '$hours hours';
   }
-  return '${age.inSeconds} seconds';
+  return '$seconds seconds';
 }
 
 /// A domain's MTA-STS policy (RFC 8461): whether other servers must reach
@@ -64,12 +67,22 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities).canRead(AdminSection.mtaSts)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.mtaSts)) {
       unawaited(_load());
     }
   }
 
   Future<void> _load() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _loaded = false;
+      _policy = null;
+      _error = null;
+    });
     try {
       final policy = await widget.account.client.mtaStsPolicy(widget.domain.id);
       if (mounted) {
@@ -81,6 +94,8 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -123,7 +138,7 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
         title: 'Delete the MTA-STS policy for $_name?',
         message:
             'The server stops publishing it. Other servers keep the copy they '
-            'have for up to ${_ageLabel(policy.maxAge).toLowerCase()}.',
+            'have for up to ${_ageLabel(policy.maxAgeSeconds).toLowerCase()}.',
         action: 'Delete',
       ),
     );
@@ -140,6 +155,7 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
     final c = context.rm;
     final policy = _policy, error = _error;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.mtaSts,
       title: 'MTA-STS',
@@ -176,6 +192,11 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
               ),
               const SizedBox(height: 14),
               where,
+              const SizedBox(height: 18),
+              RmOutlineButton(
+                label: 'Refresh policy',
+                onPressed: _busy ? null : () => unawaited(_load()),
+              ),
               if (canWrite) ...[
                 const SizedBox(height: 26),
                 RmPrimaryButton(
@@ -208,7 +229,10 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
                       ? 'None listed'
                       : policy.mxHosts.join('\n'),
                 ),
-                RmRow(label: 'Kept for', value: _ageLabel(policy.maxAge)),
+                RmRow(
+                  label: 'Kept for',
+                  value: _ageLabel(policy.maxAgeSeconds),
+                ),
                 RmRow(
                   label: 'Published',
                   value: canWrite ? null : (policy.active ? 'On' : 'Off'),
@@ -222,10 +246,23 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
                         )
                       : null,
                 ),
+                if (policy.id != 0)
+                  RmRow(label: 'Policy ID', value: '${policy.id}'),
+                RmRow(label: 'Domain', value: policy.domain?.name ?? _name),
+                RmRow(label: 'Domain ID', value: '${policy.domainId}'),
+                if (policy.createdAt case final at?)
+                  RmRow(label: 'Added', value: timeLabel(at)),
+                if (policy.updatedAt case final at?)
+                  RmRow(label: 'Changed', value: timeLabel(at)),
               ],
             ),
             const SizedBox(height: 12),
             where,
+            const SizedBox(height: 18),
+            RmOutlineButton(
+              label: 'Refresh policy',
+              onPressed: _busy ? null : () => unawaited(_load()),
+            ),
             if (canWrite) ...[
               const SizedBox(height: 22),
               RmOutlineButton(
@@ -272,26 +309,16 @@ class _MtaStsForm extends StatefulWidget {
 
 class _MtaStsFormState extends State<_MtaStsForm> {
   late var _mode = widget.policy?.mode ?? MtaStsMode.testing;
-  late var _maxAge = widget.policy?.maxAge ?? const Duration(days: 7);
+  late var _published = widget.policy?.active ?? true;
+  late final _seconds = TextEditingController(
+    text: '${widget.policy?.maxAgeSeconds ?? 604800}',
+  );
   late final _hosts = TextEditingController(
     text: widget.policy?.mxHosts.join(', ') ?? '',
   );
   var _busy = false;
   String? _error;
-
-  /// What other servers may keep it for: a day while trying it out, then
-  /// longer; and what it is now, if that is none of these.
-  late final _ages = [
-    const Duration(days: 1),
-    const Duration(days: 7),
-    const Duration(days: 28),
-    if (!const [
-      Duration(days: 1),
-      Duration(days: 7),
-      Duration(days: 28),
-    ].contains(_maxAge))
-      _maxAge,
-  ];
+  String? _lifetimeError;
 
   List<String> get _hostList => [
     for (final host in _hosts.text.split(RegExp(r'[,\s]+')))
@@ -301,20 +328,30 @@ class _MtaStsFormState extends State<_MtaStsForm> {
   @override
   void dispose() {
     _hosts.dispose();
+    _seconds.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final seconds = int.tryParse(_seconds.text.trim());
+    if (seconds == null || seconds < 0) {
+      setState(
+        () => _lifetimeError = 'Enter a whole number of seconds, 0 or more.',
+      );
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
+      _lifetimeError = null;
     });
     try {
       final saved = await widget.account.client.setMtaStsPolicy(
         widget.domain.id,
         mode: _mode,
         mxHosts: _hostList,
-        maxAge: _maxAge,
+        maxAgeSeconds: seconds,
+        active: _published,
       );
       if (mounted) Navigator.pop(context, saved);
     } on ApiException catch (e) {
@@ -331,6 +368,7 @@ class _MtaStsFormState extends State<_MtaStsForm> {
     final c = context.rm;
     final error = _error;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.mtaSts,
       title: widget.policy == null ? 'Set up MTA-STS' : 'MTA-STS',
@@ -352,7 +390,14 @@ class _MtaStsFormState extends State<_MtaStsForm> {
                 for (final mode in MtaStsMode.values) (mode, _modeLabel(mode)),
               ],
               value: _mode,
-              onChanged: (mode) => setState(() => _mode = mode),
+              onChanged: (mode) {
+                if (!_busy) {
+                  setState(() {
+                    _mode = mode;
+                    _error = null;
+                  });
+                }
+              },
             ),
           ),
           const SizedBox(height: 8),
@@ -361,7 +406,9 @@ class _MtaStsFormState extends State<_MtaStsForm> {
           const SectionLabel('Mail servers'),
           const SizedBox(height: 8),
           TextField(
+            key: const ValueKey('mta-sts-hosts'),
             controller: _hosts,
+            enabled: !_busy,
             keyboardType: TextInputType.url,
             autocorrect: false,
             enableSuggestions: false,
@@ -371,15 +418,63 @@ class _MtaStsFormState extends State<_MtaStsForm> {
               hintText: 'mx.${widget.domain.name}, *.${widget.domain.name}',
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Separate names with commas or spaces. Leaving this empty keeps '
+            'the saved mail servers; a new policy starts with none.',
+            style: rmText(13, color: c.ink3, height: 1.4),
+          ),
           const SizedBox(height: 18),
           const SectionLabel('Other servers keep it for'),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RmSegmented<Duration>(
-              options: [for (final age in _ages) (age, _ageLabel(age))],
-              value: _maxAge,
-              onChanged: (age) => setState(() => _maxAge = age),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final seconds in [86400, 604800, 2419200])
+                ChoiceChip(
+                  label: Text(_ageLabel(seconds)),
+                  selected: _seconds.text == '$seconds',
+                  onSelected: _busy
+                      ? null
+                      : (_) => setState(() {
+                          _seconds.text = '$seconds';
+                          _error = null;
+                          _lifetimeError = null;
+                        }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const ValueKey('mta-sts-max-age'),
+            controller: _seconds,
+            enabled: !_busy,
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
+            onChanged: (_) => setState(() {
+              _error = null;
+              _lifetimeError = null;
+            }),
+            style: rmText(16, color: c.ink),
+            decoration: InputDecoration(
+              labelText: 'Lifetime in seconds',
+              helperText: '0 means fetch the policy again for each delivery.',
+              errorText: _lifetimeError,
+            ),
+          ),
+          const SizedBox(height: 18),
+          RmRow(
+            label: 'Published',
+            trailing: RmSwitch(
+              value: _published,
+              label: 'Published',
+              onChanged: (value) {
+                if (!_busy) {
+                  setState(() {
+                    _published = value;
+                    _error = null;
+                  });
+                }
+              },
             ),
           ),
           if (error != null) ...[const SizedBox(height: 16), ErrorText(error)],
@@ -387,9 +482,7 @@ class _MtaStsFormState extends State<_MtaStsForm> {
           RmPrimaryButton(
             label: 'Save',
             busy: _busy,
-            onPressed: !_busy && _hostList.isNotEmpty
-                ? () => unawaited(_save())
-                : null,
+            onPressed: _busy ? null : () => unawaited(_save()),
           ),
         ],
       ),

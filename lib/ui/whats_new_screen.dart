@@ -9,18 +9,22 @@ import '../theme/tokens.dart';
 import '../version.dart';
 import 'widgets/common.dart';
 
-/// The release notes for the version on the phone. Shown by itself the first
-/// time that version opens, and from App settings afterwards.
+/// The latest release followed by nine previous versions. Shown once when
+/// an installed version first opens, and from App settings afterwards.
 class WhatsNewScreen extends StatefulWidget {
   const WhatsNewScreen({
     super.key,
     this.notes,
+    this.history,
+    this.service = const WhatsNewService(),
     this.markSeen = false,
     this.onClose,
-  });
+  }) : assert(notes == null || history == null);
 
   /// A loaded release, for tests and for opening a known version.
   final WhatsNewNotes? notes;
+  final WhatsNewHistory? history;
+  final WhatsNewService service;
 
   /// Record this version as seen when the screen closes.
   final bool markSeen;
@@ -33,30 +37,32 @@ class WhatsNewScreen extends StatefulWidget {
 }
 
 class _WhatsNewScreenState extends State<WhatsNewScreen> {
-  static const _service = WhatsNewService();
-
-  WhatsNewNotes? _notes;
+  WhatsNewHistory? _history;
   bool _loading = false;
-  bool _failed = false;
+  var _loadEpoch = 0;
 
   @override
   void initState() {
     super.initState();
-    _notes = widget.notes;
-    if (_notes == null) unawaited(_load());
+    _history = widget.history;
+    if (widget.notes case final notes?) {
+      _history = WhatsNewHistory(releases: [notes]);
+    }
+    if (_history == null) unawaited(_load());
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  Future<void> _load() async {
+    final epoch = ++_loadEpoch;
+    setState(() => _loading = true);
+    // A saved history is readable immediately while the latest file loads.
+    final cached = await widget.service.readCache();
+    if (!mounted || epoch != _loadEpoch) return;
+    if (cached != null) setState(() => _history ??= cached);
+    final history = await widget.service.load(refresh: true);
+    if (!mounted || epoch != _loadEpoch) return;
     setState(() {
-      _loading = true;
-      _failed = false;
-    });
-    final notes = await _service.load(appVersion, refresh: refresh);
-    if (!mounted) return;
-    setState(() {
-      _notes = notes;
+      _history = history ?? _history;
       _loading = false;
-      _failed = notes == null;
     });
   }
 
@@ -79,58 +85,98 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
-    final notes = _notes;
+    final releases = _history?.releases.take(WhatsNewHistory.limit).toList();
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             RmTopBar(title: tr(context, 'whatsNew.title'), onBack: _close),
             Expanded(
-              child: _loading
+              child: _loading && releases == null
                   ? const Center(
                       child: SizedBox.square(
                         dimension: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : notes == null
-                  ? _Empty(onRetry: () => unawaited(_load(refresh: true)))
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                      children: [
-                        Text(
-                          notes.title,
-                          style: rmText(
-                            25,
-                            color: c.ink,
-                            weight: FontWeight.w800,
-                            height: 1.15,
-                            tracking: -0.03,
+                  : releases == null || releases.isEmpty
+                  ? _Empty(onRetry: () => unawaited(_load()))
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                        children: [
+                          for (var i = 0; i < releases.length; i++) ...[
+                            if (i < 2) ...[
+                              SectionLabel(
+                                tr(
+                                  context,
+                                  i == 0
+                                      ? 'whatsNew.latest'
+                                      : 'whatsNew.previous',
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                            _ReleaseNotes(notes: releases[i], latest: i == 0),
+                            const SizedBox(height: 24),
+                            if (i < releases.length - 1) ...[
+                              Divider(color: c.line),
+                              const SizedBox(height: 18),
+                            ],
+                          ],
+                          RmOutlineButton(
+                            label: tr(context, 'whatsNew.close'),
+                            onPressed: _close,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          notes.summary,
-                          style: rmText(14.5, color: c.ink2, height: 1.5),
-                        ),
-                        if (notes.items.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          SectionLabel(tr(context, 'whatsNew.fixed')),
-                          const SizedBox(height: 10),
-                          for (final item in notes.items) _ItemRow(item: item),
                         ],
-                        const SizedBox(height: 28),
-                        RmOutlineButton(
-                          label: tr(context, 'whatsNew.close'),
-                          onPressed: _close,
-                        ),
-                      ],
+                      ),
                     ),
             ),
-            if (_failed) const SizedBox.shrink(),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReleaseNotes extends StatelessWidget {
+  const _ReleaseNotes({required this.notes, required this.latest});
+
+  final WhatsNewNotes notes;
+  final bool latest;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          notes.version,
+          style: rmText(12, color: c.accent, weight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          notes.title,
+          style: rmText(
+            latest ? 25 : 20,
+            color: c.ink,
+            weight: FontWeight.w800,
+            height: 1.15,
+            tracking: -0.03,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(notes.summary, style: rmText(14.5, color: c.ink2, height: 1.5)),
+        if (notes.items.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          SectionLabel(tr(context, 'whatsNew.fixed')),
+          const SizedBox(height: 10),
+          for (final item in notes.items) _ItemRow(item: item),
+        ],
+      ],
     );
   }
 }
