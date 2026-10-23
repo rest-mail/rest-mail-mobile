@@ -52,6 +52,8 @@ class QueueEntry {
     this.expiresAt,
     this.lastError = '',
     this.lastErrorCode = 0,
+    this.bodyType = '',
+    this.failureCategory = '',
   });
 
   factory QueueEntry.fromJson(Map<String, dynamic> json) => QueueEntry(
@@ -69,6 +71,8 @@ class QueueEntry {
     expiresAt: _time(json['expires_at']),
     lastError: json['last_error'] as String? ?? '',
     lastErrorCode: _int(json['last_error_code'] ?? 0),
+    bodyType: json['body_type'] as String? ?? '',
+    failureCategory: json['failure_category'] as String? ?? '',
   );
 
   final int id;
@@ -92,6 +96,77 @@ class QueueEntry {
   /// What the receiving server said the last time, if it refused.
   final String lastError;
   final int lastErrorCode;
+  final String bodyType;
+  final String failureCategory;
+}
+
+/// Queue filters have identical semantics for listing and bulk operations.
+class QueueFilter {
+  const QueueFilter({this.status, this.domain, this.sender, this.recipient});
+
+  final QueueStatus? status;
+  final String? domain;
+  final String? sender;
+  final String? recipient;
+
+  Map<String, String> toJson() => {
+    'status': ?status?.name,
+    'domain': ?domain,
+    'sender': ?sender,
+    'recipient': ?recipient,
+  };
+}
+
+/// The server's acknowledgement of a single queue retry or bounce.
+class QueueActionResult {
+  const QueueActionResult({required this.status});
+
+  factory QueueActionResult.fromJson(Map<String, dynamic> json) {
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Queue acknowledgement needs a status');
+    }
+    return QueueActionResult(status: status);
+  }
+
+  /// `retrying` for retry and `bounced` for bounce, validated by the client.
+  final String status;
+}
+
+/// Exactly one selection: IDs, or all entries matching a filter across pages.
+class QueueSelection {
+  QueueSelection.ids(List<int> ids)
+    : ids = List<int>.unmodifiable(ids),
+      filter = null {
+    if (ids.isEmpty || ids.length > 1000 || ids.any((id) => id < 1)) {
+      throw ArgumentError.value(
+        ids,
+        'ids',
+        'Select between 1 and 1000 positive IDs',
+      );
+    }
+  }
+
+  const QueueSelection.filter(QueueFilter this.filter) : ids = null;
+
+  final List<int>? ids;
+  final QueueFilter? filter;
+
+  Map<String, Object> toJson() => {'ids': ?ids, 'filter': ?filter?.toJson()};
+}
+
+class BulkQueueResult {
+  const BulkQueueResult({required this.affected});
+
+  factory BulkQueueResult.fromJson(Map<String, dynamic> json) {
+    final affected = json['affected'];
+    if (affected is! int || affected < 0) {
+      throw const FormatException('Missing bulk queue result');
+    }
+    return BulkQueueResult(affected: affected);
+  }
+
+  final int affected;
 }
 
 /// How many queue entries are in each state.
@@ -219,7 +294,9 @@ class AdminMailbox {
     lastLoginAt: _time(json['last_login_at']),
     localPart: json['local_part'] as String? ?? '',
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },
@@ -271,7 +348,9 @@ class AdminAlias {
     destination: json['destination_address'] as String,
     active: json['active'] as bool? ?? false,
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },

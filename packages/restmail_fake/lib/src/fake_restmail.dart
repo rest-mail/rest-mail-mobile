@@ -220,6 +220,7 @@ class FakeRestmail {
   static const adminRole = {
     'domains:read', 'domains:write', 'domains:delete', //
     'mailboxes:read', 'mailboxes:write', 'mailboxes:delete',
+    'users:read',
     'queue:read', 'queue:manage', 'bans:read', 'bans:write',
     'bans:delete', 'pipelines:read', 'pipelines:write',
     'pipelines:delete', 'messages:read', 'observability:read',
@@ -238,11 +239,33 @@ class FakeRestmail {
     box.capabilities = {...capabilities};
   }
 
-  /// The roles the fake grants, and the capabilities each gives, as the
-  /// real server seeds the two it ships with.
+  /// The four built-in roles in bootstrap.EnsureRBAC and models.OwnerCapabilities.
+  static const ownerRole = {
+    'mail:read',
+    'mail:write',
+    'mail:send',
+    'mailbox:manage',
+  };
   static const roles = <String, Set<String>>{
     'superadmin': {'*'},
     'admin': adminRole,
+    'readonly': {
+      'domains:read',
+      'mailboxes:read',
+      'pipelines:read',
+      'users:read',
+      'messages:read',
+      'queue:read',
+      'bans:read',
+      'observability:read',
+    },
+    'owner': ownerRole,
+  };
+  static const _roleDescriptions = {
+    'superadmin': 'Full system access',
+    'admin': 'Standard administrator',
+    'readonly': 'Read-only access',
+    'owner': 'Everything on a mailbox: read, write, send and manage',
   };
 
   /// Grants [role] to [address] at [scope], as the server's grants table
@@ -263,11 +286,18 @@ class FakeRestmail {
     if (!roles.containsKey(role)) {
       throw ArgumentError.value(role, 'role', 'No such role');
     }
+    final normalizedScope = _parseScope(scope);
+    if (normalizedScope == null) {
+      throw ArgumentError.value(scope, 'scope', 'Invalid grant scope');
+    }
+    if (mode != 'active' && mode != 'eligible') {
+      throw ArgumentError.value(mode, 'mode', 'Invalid grant mode');
+    }
     final row = _GrantRow(
       id: _nextGrantId++,
       holderId: box.id,
       role: role,
-      scope: scope,
+      scope: normalizedScope,
       mode: mode,
       grantedById: null,
       grantedAt: _clock(),
@@ -706,6 +736,7 @@ class FakeRestmail {
           'display_name': user.displayName,
         },
         if (capabilities.isNotEmpty) 'capabilities': [...capabilities],
+        if (setup.isEmpty) 'scoped_capabilities': _scopedHeld(user),
         if (setup.isNotEmpty) 'setup_required': setup,
         if (native) ...{
           'access_token': access,
@@ -788,8 +819,11 @@ class FakeRestmail {
       );
     }
     final domain = address.substring(at + 1);
-    final held = _mailboxes[session.primary]!.capabilities;
-    if (!held.contains('*') && !held.contains('mailboxes:write')) {
+    if (!_allowsHeld(
+      _mailboxes[session.primary]!,
+      'mailboxes:write',
+      'domain:$domain',
+    )) {
       _fail(403, 'forbidden', 'You cannot create accounts on $domain');
     }
     if (!_domains.containsKey(domain)) {
@@ -2298,15 +2332,11 @@ class FakeRestmail {
     return null;
   }
 
-  /// What the caller's access token may do on the admin API, refusing one
-  /// that may do nothing there.
+  /// Authorization reads grants live, independently of the token's UI snapshot.
+  /// Each route's need() still requires a global capability unless scoped below.
   Set<String> _adminCapabilities(http.BaseRequest request) {
-    _authenticate(request);
-    final grant = _accessTokens[_bearer(request)]!;
-    if (grant.capabilities.isEmpty) {
-      _fail(403, 'forbidden', 'Admin access required');
-    }
-    return grant.capabilities;
+    final session = _authenticate(request);
+    return _held(_mailboxes[session.primary]!);
   }
 
   /// `/api/v1/admin/…`, each route behind the capability the real server's
@@ -2338,6 +2368,13 @@ class FakeRestmail {
         return _json({
           'data': {...counts, 'total': _queue.length},
         });
+      case ('POST', ['queue', final operation])
+          when operation == 'bulk-retry' || operation == 'bulk-bounce':
+        need('queue:manage');
+        return _bulkQueue(operation, _object(bytes));
+      case ('DELETE', ['queue', 'bulk-delete']):
+        need('queue:manage');
+        return _bulkQueue('bulk-delete', _object(bytes));
       case ('GET', ['queue', final id]):
         need('queue:read');
         return _json({'data': _queueJson(_queueEntry(id))});
@@ -2540,9 +2577,7 @@ class FakeRestmail {
               {
                 'id': i + 1,
                 'name': entry.key,
-                'description': entry.key == 'superadmin'
-                    ? 'Everything'
-                    : 'Everything but the people who run the server',
+                'description': _roleDescriptions[entry.key],
                 'system_role': true,
                 'capabilities': [...entry.value],
               },
@@ -2551,7 +2586,8 @@ class FakeRestmail {
       case ('GET', ['capabilities']):
         need('users:read');
         final names = {
-          ...adminRole,
+          ...roles.values.expand((names) => names),
+          'messages:send_bulk',
           'users:read',
           'users:write',
           'users:delete',
@@ -2590,10 +2626,17 @@ class FakeRestmail {
         _requireTwoFactorSession(request);
         final row = _grantRows[int.tryParse(id)];
         if (row == null) _fail(404, 'not_found', 'Grant not found');
-        _authorizeGrant(request, row.role);
-        if (row.role == 'superadmin' &&
-            _grantRows.values.where((g) => g.role == 'superadmin').length ==
-                1) {
+        _authorizeGrant(request, row.role, row.scope);
+        if (_usableSuperadmin(row) &&
+            !_mailboxes.values.any(
+              (box) =>
+                  box.active &&
+                  box.setupRequired.isEmpty &&
+                  box.capabilities.contains('*'),
+            ) &&
+            !_grantRows.values.any(
+              (other) => other.id != row.id && _usableSuperadmin(other),
+            )) {
           _fail(
             409,
             'last_superadmin',
@@ -2606,8 +2649,30 @@ class FakeRestmail {
 
       case ('GET', ['bans']):
         need('bans:read');
+        final protocol = query['protocol'], active = query['active'];
+        if (protocol != null &&
+            !const ['smtp', 'imap', 'pop3', 'all'].contains(protocol)) {
+          _banFieldError(
+            'protocol',
+            'protocol must be one of smtp, imap, pop3, all',
+          );
+        }
+        if (active != null && active != 'true' && active != 'false') {
+          _banFieldError('active', 'must be true or false');
+        }
         return _listPage(
-          _bans.values.toList()
+          _bans.values
+              .where(
+                (ban) =>
+                    (query['ip'] == null || query['ip'] == ban.ip) &&
+                    (protocol == null ||
+                        protocol == ban.protocol ||
+                        ban.protocol == 'all') &&
+                    (active == 'false' ||
+                        ban.expiresAt == null ||
+                        ban.expiresAt!.isAfter(_clock())),
+              )
+              .toList()
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
           query,
           _banJson,
@@ -2615,6 +2680,19 @@ class FakeRestmail {
       case ('POST', ['bans']):
         need('bans:write');
         return _createBan(_object(bytes));
+      case ('DELETE', ['bans', 'ip', final ip]):
+        need('bans:delete');
+        final matches = _bans.values
+            .where((ban) => ban.ip == ip)
+            .map((ban) => ban.id)
+            .toList();
+        if (matches.isEmpty) {
+          _fail(404, 'not_found', 'No ban found for this IP');
+        }
+        for (final id in matches) {
+          _bans.remove(id);
+        }
+        return _noContent();
       case ('DELETE', ['bans', final id]):
         need('bans:delete');
         _bans.remove(int.tryParse(id));
@@ -2910,12 +2988,28 @@ class FakeRestmail {
 
   http.StreamedResponse _queueList(Map<String, String> query) {
     final status = query['status'];
+    if (status != null &&
+        !{
+          'pending',
+          'delivering',
+          'deferred',
+          'delivered',
+          'bounced',
+          'expired',
+        }.contains(status)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {
+          'status':
+              'must be one of pending, delivering, deferred, delivered, bounced, expired',
+        },
+      );
+    }
     final (limit, offset) = _paging(query);
-    final all =
-        _queue.values
-            .where((e) => status == null || e.status == status)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final all = _queue.values.where((e) => _queueMatches(e, query)).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return _json({
       'data': {
         'items': [for (final e in all.skip(offset).take(limit)) _queueJson(e)],
@@ -2926,20 +3020,164 @@ class FakeRestmail {
     });
   }
 
+  bool _queueMatches(FakeQueueEntry entry, Map<String, dynamic> filter) {
+    bool contains(String value, Object? part) =>
+        part == null ||
+        part == '' ||
+        value.toLowerCase().contains((part as String).toLowerCase());
+    return (filter['status'] == null ||
+            filter['status'] == '' ||
+            entry.status == filter['status']) &&
+        (filter['domain'] == null ||
+            filter['domain'] == '' ||
+            entry.domain == filter['domain']) &&
+        contains(entry.sender, filter['sender']) &&
+        contains(entry.recipient, filter['recipient']);
+  }
+
+  http.StreamedResponse _bulkQueue(
+    String operation,
+    Map<String, dynamic> body,
+  ) {
+    final ids = body['ids'];
+    final filter = body['filter'];
+    if ((ids != null && ids is! List<Object?>) ||
+        (filter != null && filter is! Map<String, dynamic>)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    final values = ids as List<Object?>? ?? const <Object?>[];
+    if (filter is Map<String, dynamic> &&
+        filter.values.any((value) => value != null && value is! String)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.any((id) => id is! int || id < 0)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.length > 1000) {
+      _fail(400, 'bad_request', 'max 1000 IDs per request');
+    }
+    if (values.isEmpty && filter == null) {
+      _fail(400, 'bad_request', 'ids or filter required');
+    }
+    final selected = _queue.values
+        .where(
+          (entry) => values.isNotEmpty
+              ? values.contains(entry.id)
+              : _queueMatches(entry, filter as Map<String, dynamic>),
+        )
+        .toList();
+    var affected = 0;
+    for (final entry in selected) {
+      switch (operation) {
+        case 'bulk-retry':
+          if (!{'pending', 'deferred'}.contains(entry.status)) continue;
+          entry.status = 'pending';
+        case 'bulk-bounce':
+          if (!{'pending', 'deferred', 'delivering'}.contains(entry.status)) {
+            continue;
+          }
+          entry.status = 'bounced';
+          entry.lastError = 'manually bounced by admin (bulk)';
+        case 'bulk-delete':
+          _queue.remove(entry.id);
+      }
+      affected++;
+    }
+    return _json({
+      'data': {'affected': affected},
+    });
+  }
+
   /// The real server's `limit` and `offset`: 50 by default, 200 at most.
   // ── Grants and escalation ─────────────────────────────────────────────
 
-  /// What [box] holds at `*`: what the test gave it with [grant] or
-  /// [addAccount], and what each of its grants in force at `*` gives.
-  Set<String> _held(FakeMailbox box) {
+  /// Same grammar and hierarchy as grants.ParseScope/Covers, independently
+  /// implemented here so client scope bugs cannot make the fake agree with it.
+  static String? _parseScope(Object? value) {
+    if (value is! String) return null;
+    final scope = value.trim().toLowerCase();
+    if (scope == '*') return scope;
+    bool domain(String name) =>
+        name.isNotEmpty &&
+        name.length <= 253 &&
+        name
+            .split('.')
+            .every(
+              (label) =>
+                  label.isNotEmpty &&
+                  label.length <= 63 &&
+                  RegExp(r'^[a-z0-9-]+$').hasMatch(label),
+            );
+    if (scope.startsWith('domain:') && domain(scope.substring(7))) return scope;
+    if (scope.startsWith('mailbox:')) {
+      final address = scope.substring(8), at = scope.substring(8).indexOf('@');
+      if (at > 0 &&
+          !RegExp(r'[ \t\r\n@]').hasMatch(address.substring(0, at)) &&
+          domain(address.substring(at + 1))) {
+        return scope;
+      }
+    }
+    return null;
+  }
+
+  static bool _covers(String scope, String target) =>
+      scope == '*' ||
+      scope == target ||
+      (scope.startsWith('domain:') &&
+          target.startsWith('mailbox:') &&
+          target.substring(target.lastIndexOf('@') + 1) == scope.substring(7));
+
+  Set<(String, String)> _heldEntries(FakeMailbox box) {
     final now = _clock();
     return {
-      ...box.capabilities,
+      for (final capability in box.capabilities) (capability, '*'),
       for (final row in _grantRows.values)
-        if (row.holderId == box.id && row.scope == '*' && row.inForce(now))
-          ...roles[row.role]!,
+        if (row.holderId == box.id && row.inForce(now))
+          for (final capability in roles[row.role]!) (capability, row.scope),
+      // Active accounts hold the owner role on their own and linked mailboxes.
+      for (final id in [box.id, ...?_owned[box.id]])
+        if (box.active && _mailboxes[id]?.active == true)
+          for (final capability in ownerRole)
+            (capability, 'mailbox:${_mailboxes[id]!.address.toLowerCase()}'),
     };
   }
+
+  Set<String> _held(FakeMailbox box) {
+    final names = {
+      for (final (capability, scope) in _heldEntries(box))
+        if (scope == '*') capability,
+    };
+    return names.contains('*') ? {'*'} : names;
+  }
+
+  List<Map<String, String>> _scopedHeld(FakeMailbox box) {
+    final entries = _heldEntries(box).where((entry) => entry.$2 != '*').toList()
+      ..sort((a, b) {
+        final byScope = a.$2.compareTo(b.$2);
+        return byScope == 0 ? a.$1.compareTo(b.$1) : byScope;
+      });
+    return [
+      for (final (capability, scope) in entries)
+        {'capability': capability, 'scope': scope},
+    ];
+  }
+
+  bool _allowsHeld(FakeMailbox box, String capability, String target) =>
+      _heldEntries(box).any(
+        (entry) =>
+            (entry.$1 == '*' || entry.$1 == capability) &&
+            _covers(entry.$2, target),
+      );
+
+  bool _usableSuperadmin(_GrantRow row) =>
+      row.scope == '*' &&
+      (roles[row.role]?.contains('*') ?? false) &&
+      _mailboxes[row.holderId]?.active == true &&
+      (row.expiresAt == null || row.expiresAt!.isAfter(_clock())) &&
+      (row.mode == 'active' ||
+          (row.mode == 'eligible' &&
+              _mailboxes[row.holderId]?.totpCode != null &&
+              _mailboxes[row.holderId]?.totpPending == false));
 
   Map<String, Object?> _grantJson(_GrantRow row) {
     final now = _clock();
@@ -2980,12 +3218,13 @@ class FakeRestmail {
     }
   }
 
-  /// The granter must hold everything [role] gives. The fake knows only
-  /// what is held at `*`, so a scoped grant is checked as if it were wide.
-  void _authorizeGrant(http.BaseRequest request, String role) {
-    final held = _held(_mailboxes[_sessionOf(request).primary]!);
-    final gives = roles[role] ?? const <String>{};
-    if (!held.contains('*') && !held.containsAll(gives)) {
+  /// CanGrant requires every role capability at a scope covering the target.
+  /// A cached login snapshot never authorizes a grant change.
+  void _authorizeGrant(http.BaseRequest request, String role, String scope) {
+    final box = _mailboxes[_sessionOf(request).primary]!;
+    if (!(roles[role] ?? const <String>{}).every(
+      (capability) => _allowsHeld(box, capability, scope),
+    )) {
       _fail(403, 'grant_exceeds_held', 'grant exceeds what the granter holds');
     }
   }
@@ -3005,10 +3244,8 @@ class FakeRestmail {
     }
     final role = body['role'] as String? ?? '';
     if (role.isEmpty) problems['role'] = 'required: a role name';
-    final scope = body['scope'] as String? ?? '';
-    if (scope != '*' &&
-        !RegExp(r'^domain:[^@\s]+\.[^@\s]+$').hasMatch(scope) &&
-        !RegExp(r'^mailbox:[^@\s]+@[^@\s]+$').hasMatch(scope)) {
+    final scope = _parseScope(body['scope']);
+    if (scope == null) {
       problems['scope'] = 'must be "*", "domain:<name>" or "mailbox:<address>"';
     }
     final mode = body['mode'] as String? ?? 'active';
@@ -3038,7 +3275,7 @@ class FakeRestmail {
         fields: {'role': 'no such role'},
       );
     }
-    _authorizeGrant(request, role);
+    _authorizeGrant(request, role, scope!);
     if (_grantRows.values.any(
       (g) => g.holderId == holderId && g.role == role && g.scope == scope,
     )) {
@@ -3169,8 +3406,7 @@ class FakeRestmail {
           ..mode = 'eligible'
           ..activation = null;
     }
-    // The real server checks grants live on every request; the fake checks
-    // the token, so the token takes what the account now holds.
+    // The reply updates the UI snapshot; authorization reads live grants.
     final held = _held(box);
     final bearer = _bearer(request)!;
     final token = _accessTokens[bearer]!;
@@ -3179,6 +3415,7 @@ class FakeRestmail {
       'data': {
         'grant': _grantJson(row),
         'capabilities': [...held],
+        'scoped_capabilities': _scopedHeld(box),
       },
     }, status: status);
   }
@@ -3849,41 +4086,77 @@ class FakeRestmail {
     'created_at': _time(ban.createdAt),
   };
 
+  Never _banFieldError(String field, String message) => _fail(
+    422,
+    'validation_failed',
+    'Request body failed validation',
+    fields: {field: message},
+  );
+
+  // The fake accepts Go duration units and compound/decimal values. Its clock
+  // has microsecond precision; sub-microsecond durations are rounded here.
+  Duration _banDuration(String raw) {
+    if (raw == '0') return Duration.zero;
+    var text = raw;
+    var sign = 1;
+    if (text.startsWith('-') || text.startsWith('+')) {
+      if (text.startsWith('-')) sign = -1;
+      text = text.substring(1);
+    }
+    if (text == '0') return Duration.zero;
+    final token = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)');
+    const units = {
+      'ns': .001,
+      'us': 1.0,
+      'µs': 1.0,
+      'μs': 1.0,
+      'ms': 1000.0,
+      's': 1000000.0,
+      'm': 60000000.0,
+      'h': 3600000000.0,
+    };
+    var offset = 0;
+    var microseconds = 0.0;
+    while (offset < text.length) {
+      final match = token.matchAsPrefix(text, offset);
+      if (match == null) {
+        _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+      }
+      microseconds += double.parse(match[1]!) * units[match[2]]!;
+      offset = match.end;
+    }
+    if (offset == 0 ||
+        !microseconds.isFinite ||
+        microseconds > 9223372036854775) {
+      _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+    }
+    return Duration(microseconds: (sign * microseconds).round());
+  }
+
   http.StreamedResponse _createBan(Map<String, dynamic> body) {
-    final ip = (body['ip'] as String? ?? '').trim();
-    if (ip.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'ip': 'IP address is required'},
+    final ip = body['ip'] as String? ?? '';
+    if (ip.isEmpty) _banFieldError('ip', 'IP address is required');
+    if (body['created_by'] is! String) _banFieldError('created_by', 'required');
+    if (!const ['smtp', 'imap', 'pop3', 'all'].contains(body['protocol'])) {
+      _banFieldError(
+        'protocol',
+        'protocol must be one of smtp, imap, pop3, all',
       );
     }
-    Duration? lasts;
-    if (body['duration'] case final String raw) {
-      final minutes = RegExp(r'^(\d+)m$').firstMatch(raw)?.group(1);
-      final hours = RegExp(r'^(\d+)h$').firstMatch(raw)?.group(1);
-      lasts = minutes != null
-          ? Duration(minutes: int.parse(minutes))
-          : hours != null
-          ? Duration(hours: int.parse(hours))
-          : _fail(
-              422,
-              'validation_failed',
-              'Request body failed validation',
-              fields: {'duration': 'invalid duration format (e.g. 24h, 168h)'},
-            );
-    }
-    final ban = _bans[_nextRowId] = FakeBan(
-      id: _nextRowId++,
+    final duration = body['duration'] as String?;
+    final lasts = duration == null ? null : _banDuration(duration);
+    final existing = _bans.values.where((ban) => ban.ip == ip).firstOrNull;
+    final id = existing?.id ?? _nextRowId++;
+    final ban = _bans[id] = FakeBan(
+      id: id,
       ip: ip,
-      protocol: body['protocol'] as String? ?? 'all',
+      protocol: body['protocol'] as String,
       reason: body['reason'] as String? ?? '',
-      createdBy: body['created_by'] as String? ?? '',
-      createdAt: _clock(),
+      createdBy: body['created_by'] as String,
+      createdAt: existing?.createdAt ?? _clock(),
       expiresAt: lasts == null ? null : _clock().add(lasts),
     );
-    return _json({'data': _banJson(ban)}, status: 201);
+    return _json({'data': _banJson(ban)}, status: existing == null ? 201 : 200);
   }
 
   http.StreamedResponse _createAlias(Map<String, dynamic> body) {
@@ -3969,7 +4242,7 @@ class _GrantRow {
   bool inForce(DateTime now) {
     if (expiresAt case final ends? when !ends.isAfter(now)) return false;
     if (mode == 'active') return true;
-    return activation?.expiresAt.isAfter(now) ?? false;
+    return mode == 'eligible' && (activation?.expiresAt.isAfter(now) ?? false);
   }
 }
 
