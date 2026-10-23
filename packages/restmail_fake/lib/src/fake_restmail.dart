@@ -1814,6 +1814,7 @@ class FakeRestmail {
     _domains[host]!.mtaSts = FakeMtaStsPolicy(
       id: _nextRowId++,
       mxHosts: 'mx.$host',
+      createdAt: now,
     );
     // A week of the audit log, oldest first: sign-ins, a few changes, and
     // someone guessing passwords.
@@ -3783,8 +3784,8 @@ class FakeRestmail {
     'mx_hosts': p.mxHosts,
     'max_age': p.maxAge,
     'active': p.active,
-    'created_at': _time(_clock()),
-    'updated_at': _time(_clock()),
+    'created_at': _time(p.createdAt),
+    'updated_at': _time(p.updatedAt),
     'domain': _noDomain,
   };
 
@@ -3832,9 +3833,6 @@ class FakeRestmail {
   /// The server's upsert: what is left out or empty stays as it was, and a
   /// new policy starts in testing, for a week.
   http.StreamedResponse _setMtaSts(String id, Map<String, dynamic> body) {
-    final domain =
-        _domains.values.where((d) => d.id == int.tryParse(id)).firstOrNull ??
-        _fail(404, 'not_found', 'Domain not found');
     final mode = body['mode'] as String? ?? '';
     if (mode.isNotEmpty &&
         !const {'none', 'testing', 'enforce'}.contains(mode)) {
@@ -3854,14 +3852,21 @@ class FakeRestmail {
         fields: {'max_age': 'Must be a non-negative integer (seconds)'},
       );
     }
+    final domain =
+        _domains.values.where((d) => d.id == int.tryParse(id)).firstOrNull ??
+        _fail(404, 'not_found', 'Domain not found');
     final created = domain.mtaSts == null;
-    final policy = domain.mtaSts ??= FakeMtaStsPolicy(id: _nextRowId++);
+    final policy = domain.mtaSts ??= FakeMtaStsPolicy(
+      id: _nextRowId++,
+      createdAt: _clock(),
+    );
     if (mode.isNotEmpty) policy.mode = mode;
     if (body['mx_hosts'] case final String hosts when hosts.isNotEmpty) {
       policy.mxHosts = hosts;
     }
     if (maxAge != null) policy.maxAge = maxAge;
     if (body['active'] case final bool active) policy.active = active;
+    policy.updatedAt = _clock();
     return _json({
       'data': _mtaStsJson(domain, policy),
     }, status: created ? 201 : 200);
