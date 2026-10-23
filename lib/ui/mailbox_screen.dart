@@ -212,7 +212,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
         if (error != null)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ErrorText(describeError(error, host: m.backend.host)),
+            child: ErrorText(
+              describeError(context, error, host: m.backend.host),
+            ),
           )
         else if (_searching && results == null)
           const Padding(
@@ -280,7 +282,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
         if (!mounted) return;
         await openCompose(context, mailbox: m, seed: draftSeed(draft));
       } on ApiException catch (e) {
-        if (mounted) showToast(context, describeError(e));
+        if (mounted) {
+          showToast(context, describeError(context, e));
+        }
       }
       return;
     }
@@ -364,7 +368,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
     }
     if (m.messages.isEmpty && error != null) {
       return _Problem(
-        text: describeError(error, host: m.backend.host),
+        text: describeError(context, error, host: m.backend.host),
         onRetry: () => unawaited(m.retry()),
       );
     }
@@ -687,7 +691,7 @@ class _SignedOutState extends State<_SignedOut> {
           setState(() {
             _busy = false;
             // Closing the sign-in page is an answer, not a failure.
-            _error = e.code == 'cancelled' ? null : describeError(e);
+            _error = e.code == 'cancelled' ? null : describeError(context, e);
           });
         }
     }
@@ -766,7 +770,7 @@ class _ComposeButton extends StatelessWidget {
     final c = context.rm;
     final shape = BorderRadius.circular(19);
     return Tooltip(
-      message: 'New message',
+      message: tr(context, 'compose.title.fresh'),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: shape,

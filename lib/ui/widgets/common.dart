@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../../l10n/voice.dart';
 import '../../state/mailbox_state.dart';
 import '../../theme/tokens.dart';
 
@@ -40,7 +41,7 @@ class RmTopBar extends StatelessWidget {
           if (onBack != null)
             RmIconButton(
               icon: Icons.arrow_back_ios_new_rounded,
-              tooltip: 'Back',
+              tooltip: tr(context, 'common.back'),
               color: c.accent,
               onPressed: onBack,
             )
@@ -517,12 +518,6 @@ class SyncDot extends StatelessWidget {
   );
 }
 
-String liveLabel(LiveStatus status) => switch (status) {
-  LiveStatus.live => 'Live',
-  LiveStatus.connecting => 'Connecting…',
-  LiveStatus.offline => 'Offline · retrying',
-};
-
 /// A text field with no box, for rows that draw their own.
 InputDecoration bareInput(
   BuildContext context,
@@ -571,18 +566,23 @@ class ErrorText extends StatelessWidget {
   }
 }
 
-/// What to tell a person about a failed request.
-String describeError(Object error, {String? host}) {
-  if (error is! ApiException) return 'Something went wrong.';
-  final where = host ?? 'the server';
-  return switch (error.code) {
-    'network_error' => "Can't reach $where.",
-    'timeout' => '$where took too long to answer.',
-    'tls_error' => "$where's certificate isn't trusted.",
-    'http_404' => 'No rest-mail server at $where.',
-    'bad_response' => "$where didn't answer like a rest-mail server.",
-    _ => error.message,
+/// What to tell a person about a failed request, in their language. A
+/// connection failure names [host] when there is one; anything the server
+/// explained itself keeps the server's own words.
+String describeError(BuildContext context, Object error, {String? host}) {
+  if (error is! ApiException) return tr(context, 'error.generic');
+  final key = switch (error.code) {
+    'network_error' => 'error.unreachable',
+    'timeout' => 'error.timeout',
+    'tls_error' => 'error.tls',
+    'http_404' => 'error.notRestMail',
+    'bad_response' => 'error.badResponse',
+    _ => null,
   };
+  if (key == null) return error.message;
+  return host == null
+      ? tr(context, '$key.anyServer')
+      : trArgs(context, key, {'host': host});
 }
 
 void showToast(BuildContext context, String message, {SnackBarAction? action}) {
@@ -614,7 +614,7 @@ Future<bool> confirmAction(
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: Text(
-            'Cancel',
+            tr(context, 'common.cancel'),
             style: rmText(14.5, color: c.ink2, weight: FontWeight.w600),
           ),
         ),

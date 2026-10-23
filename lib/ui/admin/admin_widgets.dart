@@ -16,7 +16,7 @@ import '../widgets/common.dart';
 const noPermission = "You don't have permission for this";
 
 /// What to tell an admin about a failed request.
-String describeAdminError(Object error, {String? host}) {
+String describeAdminError(BuildContext context, Object error, {String? host}) {
   if (error is ApiException) {
     if (error.statusCode == 403) return noPermission;
     if (error.fields.entries.firstOrNull case final field?) {
@@ -24,7 +24,7 @@ String describeAdminError(Object error, {String? host}) {
       return '${name[0].toUpperCase()}${name.substring(1)} ${field.value}.';
     }
   }
-  return describeError(error, host: host);
+  return describeError(context, error, host: host);
 }
 
 /// Bytes for a size typed in MB, or null when nothing was typed.
@@ -188,7 +188,7 @@ class AdminDetailBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (error case final failure?) {
       return AdminMessage(
-        describeAdminError(failure, host: host),
+        describeAdminError(context, failure, host: host),
         onRetry: () => unawaited(onRefresh()),
       );
     }
@@ -323,7 +323,7 @@ class AdminListView<T> extends StatelessWidget {
           );
         } else if (error != null) {
           content = AdminMessage(
-            describeAdminError(error, host: host),
+            describeAdminError(context, error, host: host),
             onRetry: () => unawaited(list.reload()),
           );
         } else if (list.items.isEmpty) {
@@ -511,7 +511,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = describeAdminError(e, host: widget.host);
+        _error = describeAdminError(context, e, host: widget.host);
       });
     }
   }
@@ -668,7 +668,7 @@ Future<bool> runAdminChange(
     return true;
   } on ApiException catch (e) {
     if (context.mounted) {
-      showToast(context, describeAdminError(e, host: host));
+      showToast(context, describeAdminError(context, e, host: host));
     }
     return false;
   }

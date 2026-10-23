@@ -406,7 +406,7 @@ class _AccountSelector extends StatelessWidget {
                   SyncDot(live),
                   const SizedBox(width: 6),
                   Text(
-                    liveLabel(live),
+                    liveLabelOf(context, live),
                     style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
                   ),
                 ],
@@ -583,7 +583,7 @@ class _ServerHealth extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                describeError(error!, host: host),
+                describeError(context, error!, host: host),
                 style: rmText(13, color: c.ink2, height: 1.4),
               ),
             ),

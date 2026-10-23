@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart' show FakeAccounts;
 
 import '../imap/mail_settings.dart';
+import '../l10n/voice.dart';
 import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
@@ -217,10 +218,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       setState(() {
         _busy = false;
         _error = e.code == 'unauthorized'
-            ? (_needsCode
-                  ? "That code didn't work."
-                  : 'Wrong address or password.')
-            : describeError(e, host: server.host);
+            ? tr(context, _needsCode ? 'signIn.badCode' : 'signIn.badPassword')
+            : describeError(context, e, host: server.host);
       });
     }
   }
@@ -235,7 +234,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Add account',
+              title: tr(context, 'signIn.title'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -244,7 +243,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                   children: [
                     Text(
-                      "Type your address. We'll find your rest-mail server — nothing to configure.",
+                      tr(context, 'signIn.intro'),
                       style: rmText(15, color: c.ink2, height: 1.45),
                     ),
                     if (sampleMode) ...[
@@ -262,7 +261,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ),
                     ],
                     const SizedBox(height: 22),
-                    const SectionLabel('Email address'),
+                    SectionLabel(tr(context, 'signIn.email')),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _email,
@@ -285,7 +284,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     ],
                     if (_provider == null) ...[
                       const SizedBox(height: 22),
-                      const SectionLabel('Password'),
+                      SectionLabel(tr(context, 'signIn.password')),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _password,
@@ -297,18 +296,25 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         onChanged: (_) => setState(() => _error = null),
                         onSubmitted: (_) => unawaited(_continue()),
                         style: rmText(16, color: c.ink),
-                        decoration: const InputDecoration(hintText: 'Password'),
+                        decoration: InputDecoration(
+                          hintText: tr(context, 'signIn.password'),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sent once, over TLS, to sign in. Only the session is kept, in the system keychain.',
+                        tr(context, 'signIn.passwordNote'),
                         style: rmText(12.5, color: c.ink3, height: 1.4),
                       ),
                     ],
                     if (_needsCode) ...[
                       const SizedBox(height: 22),
                       SectionLabel(
-                        _useRecovery ? 'Recovery code' : 'Two-factor code',
+                        tr(
+                          context,
+                          _useRecovery
+                              ? 'signIn.recoveryCode'
+                              : 'signIn.twoFactorCode',
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextField(
@@ -325,9 +331,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         onSubmitted: (_) => unawaited(_continue()),
                         style: rmText(16, color: c.ink, tracking: 0.08),
                         decoration: InputDecoration(
-                          hintText: _useRecovery
-                              ? 'A recovery code'
-                              : '6-digit code',
+                          hintText: tr(
+                            context,
+                            _useRecovery
+                                ? 'signIn.recoveryHint'
+                                : 'signIn.codeHint',
+                          ),
                         ),
                       ),
                       Align(
@@ -338,9 +347,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                             _code.clear();
                           }),
                           child: Text(
-                            _useRecovery
-                                ? 'Use an authenticator code'
-                                : 'Use a recovery code instead',
+                            tr(
+                              context,
+                              _useRecovery
+                                  ? 'signIn.useAuthenticator'
+                                  : 'signIn.useRecovery',
+                            ),
                             style: rmText(
                               13.5,
                               color: c.accent,
@@ -356,7 +368,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     ],
                     const SizedBox(height: 26),
                     RmPrimaryButton(
-                      label: 'Continue',
+                      label: tr(context, 'signIn.continue'),
                       busy: _busy,
                       onPressed: _canContinue
                           ? () => unawaited(_continue())
@@ -367,9 +379,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       child: TextButton(
                         onPressed: () => unawaited(_chooseServer()),
                         child: Text(
-                          _serverChosen
-                              ? 'Change server'
-                              : 'Configure manually',
+                          tr(
+                            context,
+                            _serverChosen
+                                ? 'signIn.changeServer'
+                                : 'signIn.configure',
+                          ),
                           style: rmText(
                             14,
                             color: c.accent,
@@ -382,7 +397,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       child: TextButton(
                         onPressed: _otherMail,
                         child: Text(
-                          'Other mail (IMAP)',
+                          tr(context, 'signIn.otherMail'),
                           style: rmText(
                             14,
                             color: c.accent,
@@ -409,43 +424,42 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       return _Card(
         tone: blocked ? _Tone.missing : _Tone.good,
         title: provider.name,
-        detail: blocked
-            ? "Needs Sign in with Microsoft, which REST Mail doesn't have yet."
-            : provider.needsMicrosoftSignIn
-            ? 'Added over IMAP and SMTP, signed in with Microsoft. Continue to '
-                  'set it up.'
-            : provider.usesAppPassword
-            ? 'Added over IMAP and SMTP, with an app password. Continue to '
-                  'set it up.'
-            : 'Added over IMAP and SMTP. Continue to set it up.',
+        detail: tr(
+          context,
+          blocked
+              ? 'signIn.needsMicrosoft'
+              : provider.needsMicrosoftSignIn
+              ? 'signIn.viaMicrosoft'
+              : provider.usesAppPassword
+              ? 'signIn.viaAppPassword'
+              : 'signIn.viaImap',
+        ),
       );
     }
     final server = _server;
     if (_serverChosen && server != null) {
       return _Card(
         tone: _Tone.good,
-        title: 'Using ${server.host}',
-        detail: 'Chosen by hand · rest-mail API over HTTPS',
+        title: trArgs(context, 'signIn.using', {'host': server.host}),
+        detail: tr(context, 'signIn.chosenByHand'),
       );
     }
     return switch (_discovery) {
       _Discovery.idle => null,
       _Discovery.searching => _Card(
         tone: _Tone.pending,
-        title: 'Looking for $_searchedDomain…',
-        detail: 'Asking the domain and mail.$_searchedDomain',
+        title: trArgs(context, 'signIn.looking', {'domain': _searchedDomain}),
+        detail: trArgs(context, 'signIn.asking', {'domain': _searchedDomain}),
       ),
       _Discovery.found => _Card(
         tone: _Tone.good,
-        title: 'Found ${server?.host}',
-        detail: 'rest-mail API over HTTPS',
+        title: trArgs(context, 'signIn.found', {'host': '${server?.host}'}),
+        detail: tr(context, 'signIn.api'),
       ),
       _Discovery.notFound => _Card(
         tone: _Tone.missing,
-        title: 'No rest-mail server at $_searchedDomain',
-        detail:
-            'Add it as Other mail (IMAP), or enter a server with Configure '
-            'manually.',
+        title: trArgs(context, 'signIn.notFound', {'domain': _searchedDomain}),
+        detail: tr(context, 'signIn.notFoundHint'),
       ),
     };
   }

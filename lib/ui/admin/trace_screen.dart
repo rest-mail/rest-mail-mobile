@@ -191,7 +191,11 @@ class _MessageTraceScreenState extends State<MessageTraceScreen> {
                 ? 'There is no trace for message ${widget.messageId}. Mail '
                       'that was turned away never became a message, and '
                       'traces are kept for a while only.'
-                : describeAdminError(error, host: widget.account.server.host),
+                : describeAdminError(
+                    context,
+                    error,
+                    host: widget.account.server.host,
+                  ),
             onRetry: error.statusCode == 404 ? null : () => unawaited(_load()),
           );
         }

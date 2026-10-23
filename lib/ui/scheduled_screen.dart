@@ -58,7 +58,10 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
       showToast(context, 'Cancelled');
     } on ApiException catch (e) {
       if (!mounted) return;
-      showToast(context, describeError(e, host: _mailbox.backend.host));
+      showToast(
+        context,
+        describeError(context, e, host: _mailbox.backend.host),
+      );
     } finally {
       _cancelling.remove(item.id);
       if (mounted) setState(() {});
@@ -98,7 +101,7 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                describeError(error, host: _mailbox.backend.host),
+                describeError(context, error, host: _mailbox.backend.host),
                 textAlign: TextAlign.center,
                 style: rmText(14, color: c.ink2, height: 1.4),
               ),

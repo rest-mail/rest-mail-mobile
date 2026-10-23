@@ -53,9 +53,12 @@ Future<void> openAttachment(
       ),
     );
   } on ApiException catch (e) {
+    // The messenger's own context: the screen that asked may be gone.
+    final words = messenger.context;
+    if (!words.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(describeError(e))));
+      ..showSnackBar(SnackBar(content: Text(describeError(words, e))));
   } on FileSystemException {
     messenger
       ..hideCurrentSnackBar()

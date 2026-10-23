@@ -427,7 +427,7 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
       if (mounted) {
         showToast(
           context,
-          describeAdminError(error, host: widget.account.server.host),
+          describeAdminError(context, error, host: widget.account.server.host),
         );
       }
       return;
