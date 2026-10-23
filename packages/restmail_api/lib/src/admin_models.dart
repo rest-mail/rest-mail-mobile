@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// One page of an admin list, which pages by offset rather than by cursor.
 class OffsetPage<T> {
   const OffsetPage(this.items, {required this.offset, required this.total});
@@ -52,6 +54,8 @@ class QueueEntry {
     this.expiresAt,
     this.lastError = '',
     this.lastErrorCode = 0,
+    this.bodyType = '',
+    this.failureCategory = '',
   });
 
   factory QueueEntry.fromJson(Map<String, dynamic> json) => QueueEntry(
@@ -69,6 +73,8 @@ class QueueEntry {
     expiresAt: _time(json['expires_at']),
     lastError: json['last_error'] as String? ?? '',
     lastErrorCode: _int(json['last_error_code'] ?? 0),
+    bodyType: json['body_type'] as String? ?? '',
+    failureCategory: json['failure_category'] as String? ?? '',
   );
 
   final int id;
@@ -92,6 +98,8 @@ class QueueEntry {
   /// What the receiving server said the last time, if it refused.
   final String lastError;
   final int lastErrorCode;
+  final String bodyType;
+  final String failureCategory;
 }
 
 /// How many queue entries are in each state.
@@ -390,6 +398,9 @@ class TraceStage {
     this.result = '',
     this.detail = '',
     this.error = '',
+    this.filterType = '',
+    this.durationNanos = 0,
+    this.log = const {},
   });
 
   factory TraceStage.fromJson(Map<String, dynamic> json) {
@@ -399,8 +410,11 @@ class TraceStage {
       action: json['action'] as String? ?? '',
       skipped: json['skipped'] as bool? ?? false,
       skipReason: json['skip_reason'] as String? ?? '',
-      result: log['result'] as String? ?? '',
-      detail: log['detail'] as String? ?? '',
+      result: _logText(log['result']),
+      detail: _logText(log['detail']),
+      log: Map.unmodifiable(log),
+      filterType: json['filter_type'] as String? ?? '',
+      durationNanos: _int(json['duration_ms'] ?? 0),
       error: json['error'] as String? ?? '',
     );
   }
@@ -416,7 +430,19 @@ class TraceStage {
   final String result;
   final String detail;
   final String error;
+  final String filterType;
+
+  /// StepResult uses Go time.Duration: nanoseconds despite its JSON key.
+  final int durationNanos;
+  double get durationMilliseconds => durationNanos / 1000000;
+  final Map<String, dynamic> log;
 }
+
+String _logText(Object? value) => value == null
+    ? ''
+    : value is String
+    ? value
+    : jsonEncode(value);
 
 /// What happened to a message on its way in or out: each filter it passed,
 /// and how it ended.
@@ -428,6 +454,9 @@ class MessageTrace {
     required this.finalAction,
     required this.createdAt,
     this.messageId,
+    this.pipelineId = 0,
+    this.sampled = false,
+    this.expiresAt,
     this.rfcMessageId = '',
     this.transport = '',
     this.mailFrom = '',
@@ -442,6 +471,9 @@ class MessageTrace {
   factory MessageTrace.fromJson(Map<String, dynamic> json) => MessageTrace(
     id: _int(json['id']),
     messageId: (json['message_id'] as num?)?.toInt(),
+    pipelineId: _int(json['pipeline_id'] ?? 0),
+    sampled: json['sampled'] as bool? ?? false,
+    expiresAt: _time(json['expires_at']),
     rfcMessageId: json['rfc_message_id'] as String? ?? '',
     direction: json['direction'] as String? ?? '',
     transport: json['transport'] as String? ?? '',
@@ -462,6 +494,9 @@ class MessageTrace {
 
   final int id;
   final int? messageId;
+  final int pipelineId;
+  final bool sampled;
+  final DateTime? expiresAt;
   final String rfcMessageId;
 
   /// `inbound` or `outbound`.
@@ -504,6 +539,9 @@ class TlsReport {
     this.successful = 0,
     this.failed = 0,
     this.failureDetails,
+    this.rawReport = '',
+    this.createdAt,
+    this.domain,
   });
 
   factory TlsReport.fromJson(Map<String, dynamic> json) => TlsReport(
@@ -518,6 +556,11 @@ class TlsReport {
     successful: _int(json['total_successful'] ?? 0),
     failed: _int(json['total_failure'] ?? 0),
     failureDetails: json['failure_details'],
+    rawReport: json['raw_report'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    domain: json['domain'] is Map<String, dynamic>
+        ? AdminDomain.fromJson(json['domain'] as Map<String, dynamic>)
+        : null,
   );
 
   final int id;
@@ -537,6 +580,9 @@ class TlsReport {
 
   /// The report's `failure-details`, as it sent them.
   final Object? failureDetails;
+  final String rawReport;
+  final DateTime? createdAt;
+  final AdminDomain? domain;
 }
 
 /// One entry of the audit log: a request, who made it, and how it ended.
@@ -551,6 +597,7 @@ class AuditEntry {
     required this.action,
     required this.outcome,
     this.actorId,
+    this.credentialId,
     this.sessionId = '',
     this.errorCode = '',
     this.method = '',
@@ -569,6 +616,7 @@ class AuditEntry {
     occurredAt: _time(json['occurred_at']) ?? DateTime.now(),
     actorKind: json['actor_kind'] as String? ?? '',
     actorId: (json['actor_id'] as num?)?.toInt(),
+    credentialId: (json['credential_id'] as num?)?.toInt(),
     actorName: json['actor_name'] as String? ?? '',
     sessionId: json['session_id'] as String? ?? '',
     action: json['action'] as String? ?? '',
@@ -598,6 +646,7 @@ class AuditEntry {
 
   /// The account's id, set once the request proved it.
   final int? actorId;
+  final int? credentialId;
 
   /// The account's address at the time.
   final String actorName;
@@ -633,6 +682,7 @@ class AuditCheck {
     this.brokenAtSeq,
     this.reason = '',
     this.note = '',
+    this.anchor,
   });
 
   factory AuditCheck.fromJson(Map<String, dynamic> json) => AuditCheck(
@@ -644,6 +694,9 @@ class AuditCheck {
     brokenAtSeq: (json['broken_at_seq'] as num?)?.toInt(),
     reason: json['reason'] as String? ?? '',
     note: json['note'] as String? ?? '',
+    anchor: json['anchor'] is Map<String, dynamic>
+        ? AuditAnchor.fromJson(json['anchor'] as Map<String, dynamic>)
+        : null,
   );
 
   /// Whether every entry follows the one before and hashes as it says.
@@ -663,6 +716,17 @@ class AuditCheck {
 
   /// Set when the log does not start at 1.
   final String note;
+  final AuditAnchor? anchor;
+}
+
+/// An independently saved audit entry used to detect rewritten history.
+class AuditAnchor {
+  const AuditAnchor({required this.seq, required this.hash});
+  factory AuditAnchor.fromJson(Map<String, dynamic> json) =>
+      AuditAnchor(seq: _int(json['seq']), hash: json['hash'] as String? ?? '');
+  final int seq;
+  final String hash;
+  String get value => '$seq:$hash';
 }
 
 /// The key a domain's outgoing mail is signed with. The server never shows
@@ -834,10 +898,8 @@ class CustomFilter {
 /// What the filters did with the mail over a window of time: how it
 /// arrived, how senders fared on SPF, DKIM and DMARC, what each filter
 /// decided, how each message ended, and why mail was turned away.
-class PipelineAnalytics {
-  const PipelineAnalytics({
-    required this.since,
-    required this.until,
+class PipelineFunnel {
+  const PipelineFunnel({
     this.received = const [],
     this.senderChecks = const [],
     this.decisions = const [],
@@ -845,20 +907,17 @@ class PipelineAnalytics {
     this.rejectReasons = const [],
   });
 
-  factory PipelineAnalytics.fromJson(Map<String, dynamic> json) {
-    final window = json['window'] as Map<String, dynamic>? ?? const {};
-    final funnel = json['funnel'] as Map<String, dynamic>? ?? const {};
+  factory PipelineFunnel.fromJson(Map<String, dynamic> json) {
+    final funnel = json;
     // Go writes an empty list as null.
     List<Map<String, dynamic>> rows(String key) => [
       for (final row in funnel[key] as List? ?? const [])
         if (row is Map<String, dynamic>) row,
     ];
-    int count(Map<String, dynamic> row) => (row['count'] as num? ?? 0).round();
+    num count(Map<String, dynamic> row) => row['count'] as num? ?? 0;
     String text(Map<String, dynamic> row, String key) =>
         row[key] as String? ?? '';
-    return PipelineAnalytics(
-      since: _time(window['since']) ?? DateTime.now(),
-      until: _time(window['until']) ?? DateTime.now(),
+    return PipelineFunnel(
       received: [
         for (final row in rows('received'))
           (transport: text(row, 'transport'), count: count(row)),
@@ -894,23 +953,20 @@ class PipelineAnalytics {
     );
   }
 
-  final DateTime since;
-  final DateTime until;
-
   /// Mail other servers handed over, by `tls` or `plaintext`.
-  final List<({String transport, int count})> received;
+  final List<({String transport, num count})> received;
 
   /// `spf`, `dkim` or `dmarc`, and how the check came out.
-  final List<({String mechanism, String result, int count})> senderChecks;
+  final List<({String mechanism, String result, num count})> senderChecks;
 
   /// What each filter did: `continue`, `reject` and so on.
-  final List<({String filter, String action, int count})> decisions;
+  final List<({String filter, String action, num count})> decisions;
 
   /// How messages ended, each way.
-  final List<({String direction, String outcome, int count})> outcomes;
+  final List<({String direction, String outcome, num count})> outcomes;
 
   /// Why mail was turned away, most often first.
-  final List<({String reason, int count})> rejectReasons;
+  final List<({String reason, num count})> rejectReasons;
 
   bool get isEmpty =>
       received.isEmpty &&
@@ -918,6 +974,45 @@ class PipelineAnalytics {
       decisions.isEmpty &&
       outcomes.isEmpty &&
       rejectReasons.isEmpty;
+}
+
+/// Windowed rollups and, when available, counters since process start.
+class PipelineAnalytics extends PipelineFunnel {
+  const PipelineAnalytics({
+    required this.since,
+    required this.until,
+    this.windowLabel = '',
+    this.liveTotals,
+    super.received,
+    super.senderChecks,
+    super.decisions,
+    super.outcomes,
+    super.rejectReasons,
+  });
+
+  factory PipelineAnalytics.fromJson(Map<String, dynamic> json) {
+    final window = json['window'] as Map<String, dynamic>? ?? const {};
+    final funnel = PipelineFunnel.fromJson(
+      json['funnel'] as Map<String, dynamic>? ?? const {},
+    );
+    return PipelineAnalytics(
+      since: _time(window['since']) ?? DateTime.now(),
+      until: _time(window['until']) ?? DateTime.now(),
+      windowLabel: window['label'] as String? ?? '',
+      liveTotals: json['live_totals'] is Map<String, dynamic>
+          ? PipelineFunnel.fromJson(json['live_totals'] as Map<String, dynamic>)
+          : null,
+      received: funnel.received,
+      senderChecks: funnel.senderChecks,
+      decisions: funnel.decisions,
+      outcomes: funnel.outcomes,
+      rejectReasons: funnel.rejectReasons,
+    );
+  }
+  final DateTime since;
+  final DateTime until;
+  final String windowLabel;
+  final PipelineFunnel? liveTotals;
 }
 
 /// A domain's two lists of senders: the one let past the spam checks, and
