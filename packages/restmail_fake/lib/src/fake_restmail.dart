@@ -2400,7 +2400,7 @@ class FakeRestmail {
         final body = _object(bytes);
         if (body['destination_address'] case final String to
             when to.contains('@')) {
-          alias.destination = to.trim().toLowerCase();
+          alias.destination = to;
         }
         if (body['active'] case final bool active) alias.active = active;
         return _json({'data': _aliasJson(alias)});
@@ -2653,6 +2653,9 @@ class FakeRestmail {
         .fold<int>(0, (sum, m) => sum + m.sizeBytes),
     'active': b.active,
     'last_login_at': null,
+    'password_change_required': b.mustChangePassword,
+    'two_factor_required': b.owesTwoFactor,
+    if (_domains[b.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -2663,6 +2666,7 @@ class FakeRestmail {
     'source_address': a.source,
     'destination_address': a.destination,
     'active': a.active,
+    if (_domains[a.domain] case final domain?) 'domain': _domainJson(domain),
     'created_at': _time(_clock()),
   };
 
@@ -3164,9 +3168,7 @@ class FakeRestmail {
     final source = (body['source_address'] as String? ?? '')
         .trim()
         .toLowerCase();
-    final destination = (body['destination_address'] as String? ?? '')
-        .trim()
-        .toLowerCase();
+    final destination = body['destination_address'] as String? ?? '';
     final fields = {
       if (!source.contains('@'))
         'source_address': 'must be a valid email address',

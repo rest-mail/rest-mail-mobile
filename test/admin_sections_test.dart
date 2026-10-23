@@ -880,6 +880,141 @@ void main() {
     dana.close();
     await close(tester, fake, state);
   });
+  for (final (resource, section, selected, fresh, delete) in [
+    ('domains', 'Domains', FakeAccounts.host, 'Bulk', 'Delete domain'),
+    (
+      'mailboxes',
+      'Mailboxes',
+      FakeAccounts.email,
+      'Fresh detail name',
+      'Delete mailbox',
+    ),
+    (
+      'aliases',
+      'Aliases',
+      'hello@${FakeAccounts.host}',
+      'MixedCase@Remote.test',
+      'Delete alias',
+    ),
+  ]) {
+    testWidgets('$resource detail fetches fresh values and refreshes', (
+      tester,
+    ) async {
+      late _DetailTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) => transport = _DetailTransport(inner, resource),
+      );
+      await tap(tester, section);
+      await tap(tester, selected);
+      expect(transport.detailRequests, 1);
+      expect(find.text(fresh), findsOneWidget);
+      final refresh = tester.widget<RefreshIndicator>(
+        find.byType(RefreshIndicator).last,
+      );
+      await refresh.onRefresh();
+      await tester.pumpAndSettle();
+      expect(transport.detailRequests, 2);
+      expect(find.text(fresh), findsOneWidget);
+      await close(tester, fake, state);
+    });
+
+    for (final status in [403, 404]) {
+      testWidgets('$resource $status hides stale actions and can be retried', (
+        tester,
+      ) async {
+        late _DetailTransport transport;
+        final (fake, state) = await open(
+          tester,
+          through: (inner) =>
+              transport = _DetailTransport(inner, resource)
+                ..failureStatus = status,
+        );
+        await tap(tester, section);
+        await tap(tester, selected);
+        expect(transport.detailRequests, 1);
+        expect(find.text(delete), findsNothing);
+        expect(find.text('Try again'), findsOneWidget);
+        if (status == 403) expect(find.text(noPermission), findsOneWidget);
+        expect((state.current! as RestAccount).client.tokens, isNotNull);
+        transport.failureStatus = null;
+        await tap(tester, 'Try again');
+        expect(transport.detailRequests, 2);
+        expect(find.text(fresh), findsOneWidget);
+        expect(find.text('Try again'), findsNothing);
+        await close(tester, fake, state);
+      });
+    }
+  }
+
+  testWidgets('a refresh refusal removes previously loaded mailbox actions', (
+    tester,
+  ) async {
+    late _DetailTransport transport;
+    final (fake, state) = await open(
+      tester,
+      through: (inner) => transport = _DetailTransport(inner, 'mailboxes'),
+    );
+    await tap(tester, 'Mailboxes');
+    await tap(tester, FakeAccounts.email);
+    expect(find.text('Fresh detail name'), findsOneWidget);
+    transport.failureStatus = 403;
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator).last)
+        .onRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Fresh detail name'), findsNothing);
+    expect(find.text('End sessions'), findsNothing);
+    expect(find.text('Delete mailbox'), findsNothing);
+    expect(find.text(noPermission), findsOneWidget);
+    expect((state.current! as RestAccount).client.tokens, isNotNull);
+    transport.failureStatus = null;
+    await tap(tester, 'Try again');
+    expect(find.text('Fresh detail name'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'alias creation opens its response and preserves destination case',
+    (tester) async {
+      final (fake, state) = await open(tester);
+      await tap(tester, 'Aliases');
+      await tap(tester, 'Add an alias');
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'new-alias@${FakeAccounts.host}',
+      );
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'MixedCase@Remote.test',
+      );
+      await tester.pump();
+      await tap(tester, 'Add alias');
+      expect(find.text('Delivers to'), findsOneWidget);
+      expect(find.text('MixedCase@Remote.test'), findsOneWidget);
+      expect(
+        fake.aliases
+            .singleWhere((a) => a.source.startsWith('new-alias@'))
+            .destination,
+        'MixedCase@Remote.test',
+      );
+      await tap(tester, 'Delivers to');
+      await tester.enterText(
+        find.byType(TextField),
+        'AnotherCase@Elsewhere.test',
+      );
+      await tester.pump();
+      await tap(tester, 'Save');
+      expect(find.text('AnotherCase@Elsewhere.test'), findsOneWidget);
+      expect(
+        fake.aliases
+            .singleWhere((a) => a.source.startsWith('new-alias@'))
+            .destination,
+        'AnotherCase@Elsewhere.test',
+      );
+      await close(tester, fake, state);
+    },
+  );
 }
 
 /// Answers creating a domain as a server with other sending policies would:
@@ -915,5 +1050,57 @@ class _Refusing extends http.BaseClient {
       );
     }
     return _inner.send(request);
+  }
+}
+
+/// Lists carry older data; each resource GET answers with the latest values.
+class _DetailTransport extends http.BaseClient {
+  _DetailTransport(this.inner, this.resource);
+  final http.Client inner;
+  final String resource;
+  int detailRequests = 0;
+  int? failureStatus;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method != 'GET' ||
+        !RegExp('/api/v1/admin/$resource/[0-9]+\$')
+            .hasMatch(request.url.path)) {
+      return inner.send(request);
+    }
+    detailRequests++;
+    final status = failureStatus;
+    if (status != null) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'error': {
+                'code': status == 403 ? 'forbidden' : 'not_found',
+                'message': 'Resource unavailable',
+              },
+            }),
+          ),
+        ),
+        status,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final response = await http.Response.fromStream(await inner.send(request));
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>;
+    switch (resource) {
+      case 'domains':
+        data['sending_policy'] = 'bulk';
+      case 'mailboxes':
+        data['display_name'] = 'Fresh detail name';
+      case 'aliases':
+        data['destination_address'] = 'MixedCase@Remote.test';
+    }
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      response.statusCode,
+      headers: response.headers,
+    );
   }
 }

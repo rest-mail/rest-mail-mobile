@@ -120,6 +120,8 @@ class AdminDomain {
     required this.defaultQuotaBytes,
     this.dkimSelector = '',
     this.sendingPolicy = '',
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory AdminDomain.fromJson(Map<String, dynamic> json) => AdminDomain(
@@ -130,6 +132,8 @@ class AdminDomain {
     defaultQuotaBytes: _int(json['default_quota_bytes'] ?? 0),
     dkimSelector: json['dkim_selector'] as String? ?? '',
     sendingPolicy: json['sending_policy'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
 
   /// The server types a domain can be created with.
@@ -150,6 +154,37 @@ class AdminDomain {
 
   /// `transactional`, `bulk`, or empty when the send API applies no rule.
   final String sendingPolicy;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
+/// The stored quota breakdown, which may be absent on a fresh mailbox.
+class AdminQuotaUsage {
+  const AdminQuotaUsage({
+    required this.mailboxId,
+    required this.subjectBytes,
+    required this.bodyBytes,
+    required this.attachmentBytes,
+    required this.messageCount,
+    this.updatedAt,
+  });
+
+  factory AdminQuotaUsage.fromJson(Map<String, dynamic> json) =>
+      AdminQuotaUsage(
+        mailboxId: _int(json['mailbox_id'] ?? 0),
+        subjectBytes: _int(json['subject_bytes'] ?? 0),
+        bodyBytes: _int(json['body_bytes'] ?? 0),
+        attachmentBytes: _int(json['attachment_bytes'] ?? 0),
+        messageCount: _int(json['message_count'] ?? 0),
+        updatedAt: _time(json['updated_at']),
+      );
+
+  final int mailboxId;
+  final int subjectBytes;
+  final int bodyBytes;
+  final int attachmentBytes;
+  final int messageCount;
+  final DateTime? updatedAt;
 }
 
 /// A mailbox, as an admin sees it.
@@ -163,6 +198,14 @@ class AdminMailbox {
     required this.quotaBytes,
     required this.quotaUsedBytes,
     this.lastLoginAt,
+    this.localPart = '',
+    this.domain,
+    this.quotaUsage,
+    this.passwordChangeRequired = false,
+    this.twoFactorRequired = false,
+    this.lastPasswordChange,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory AdminMailbox.fromJson(Map<String, dynamic> json) => AdminMailbox(
@@ -174,6 +217,21 @@ class AdminMailbox {
     quotaBytes: _int(json['quota_bytes'] ?? 0),
     quotaUsedBytes: _int(json['quota_used_bytes'] ?? 0),
     lastLoginAt: _time(json['last_login_at']),
+    localPart: json['local_part'] as String? ?? '',
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain when domain['name'] is String =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
+    quotaUsage: switch (json['quota_usage']) {
+      final Map<String, dynamic> usage => AdminQuotaUsage.fromJson(usage),
+      _ => null,
+    },
+    passwordChangeRequired: json['password_change_required'] as bool? ?? false,
+    twoFactorRequired: json['two_factor_required'] as bool? ?? false,
+    lastPasswordChange: _time(json['last_password_change']),
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
 
   final int id;
@@ -184,6 +242,14 @@ class AdminMailbox {
   final int quotaBytes;
   final int quotaUsedBytes;
   final DateTime? lastLoginAt;
+  final String localPart;
+  final AdminDomain? domain;
+  final AdminQuotaUsage? quotaUsage;
+  final bool passwordChangeRequired;
+  final bool twoFactorRequired;
+  final DateTime? lastPasswordChange;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 /// Mail to [source] goes to [destination].
@@ -194,6 +260,8 @@ class AdminAlias {
     required this.source,
     required this.destination,
     required this.active,
+    this.domain,
+    this.createdAt,
   });
 
   factory AdminAlias.fromJson(Map<String, dynamic> json) => AdminAlias(
@@ -202,6 +270,12 @@ class AdminAlias {
     source: json['source_address'] as String,
     destination: json['destination_address'] as String,
     active: json['active'] as bool? ?? false,
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain when domain['name'] is String =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
+    createdAt: _time(json['created_at']),
   );
 
   final int id;
@@ -209,6 +283,8 @@ class AdminAlias {
   final String source;
   final String destination;
   final bool active;
+  final AdminDomain? domain;
+  final DateTime? createdAt;
 }
 
 /// An IP address kept out of the server's mail protocols.
