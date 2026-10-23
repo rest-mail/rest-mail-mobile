@@ -13,6 +13,7 @@ import '../util/format.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'admin/overview_screen.dart';
+import 'contacts_screen.dart';
 import 'quarantine_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
@@ -265,26 +266,44 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                       unawaited(m.selectFolder(folder.name));
                     },
                   ),
-                  if (m.backend.hasQuarantine && m.account != null) ...[
+                  if (m.account != null &&
+                      (m.backend.hasQuarantine || m.backend.hasContacts)) ...[
                     const SizedBox(height: 12),
                     RmGroup(
                       children: [
-                        _QuarantineRow(
-                          held: _held,
-                          onTap: () async {
-                            final accountId = m.account!.id;
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => QuarantineScreen(
-                                  mailbox: m,
-                                  accountId: accountId,
+                        if (m.backend.hasQuarantine)
+                          _QuarantineRow(
+                            held: _held,
+                            onTap: () async {
+                              final accountId = m.account!.id;
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => QuarantineScreen(
+                                    mailbox: m,
+                                    accountId: accountId,
+                                  ),
+                                ),
+                              );
+                              if (mounted) {
+                                unawaited(_refreshHeld(force: true));
+                              }
+                            },
+                          ),
+                        if (m.backend.hasContacts)
+                          _ContactsRow(
+                            onTap: () => unawaited(
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ContactsScreen(
+                                    mailbox: m,
+                                    accountId: m.account!.id,
+                                  ),
                                 ),
                               ),
-                            );
-                            if (mounted) unawaited(_refreshHeld(force: true));
-                          },
-                        ),
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -1122,6 +1141,36 @@ class _QuarantineRow extends StatelessWidget {
                 style: rmText(13.5, color: c.accent, weight: FontWeight.w700),
               ),
             const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContactsRow extends StatelessWidget {
+  const _ContactsRow({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(Icons.contacts_outlined, size: 18, color: c.ink2),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                tr(context, 'mailboxes.contacts'),
+                style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
+              ),
+            ),
             Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
           ],
         ),

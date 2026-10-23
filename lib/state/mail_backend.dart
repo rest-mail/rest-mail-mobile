@@ -116,6 +116,37 @@ abstract interface class MailBackend {
 
   Future<void> deleteQuarantined(int accountId, int id);
 
+  /// Whether the server keeps the account's contacts, which its filters
+  /// trust or refuse mail by (REST Mail).
+  bool get hasContacts;
+
+  /// One page of [accountId]'s contacts, by address.
+  Future<OffsetPage<Contact>> contacts(
+    int accountId, {
+    String? search,
+    TrustLevel? trustLevel,
+    int offset = 0,
+  });
+
+  Future<Contact> createContact(
+    int accountId, {
+    required String email,
+    String? name,
+    TrustLevel? trustLevel,
+  });
+
+  Future<Contact> updateContact(
+    int accountId,
+    int contactId, {
+    String? name,
+    TrustLevel? trustLevel,
+  });
+
+  Future<void> deleteContact(int accountId, int contactId);
+
+  /// Refuses mail from [email] from now on.
+  Future<Contact> blockSender(int accountId, String email);
+
   Future<Message> saveDraft(OutgoingMessage draft);
 
   Future<Message> updateDraft(int id, OutgoingMessage draft);
@@ -260,6 +291,56 @@ class RestBackend implements MailBackend {
   @override
   Future<void> deleteQuarantined(int accountId, int id) =>
       client.deleteQuarantined(accountId, id);
+
+  @override
+  bool get hasContacts => true;
+
+  @override
+  Future<OffsetPage<Contact>> contacts(
+    int accountId, {
+    String? search,
+    TrustLevel? trustLevel,
+    int offset = 0,
+  }) => client.contacts(
+    accountId,
+    search: search,
+    trustLevel: trustLevel,
+    offset: offset,
+  );
+
+  @override
+  Future<Contact> createContact(
+    int accountId, {
+    required String email,
+    String? name,
+    TrustLevel? trustLevel,
+  }) => client.createContact(
+    accountId,
+    email: email,
+    name: name,
+    trustLevel: trustLevel,
+  );
+
+  @override
+  Future<Contact> updateContact(
+    int accountId,
+    int contactId, {
+    String? name,
+    TrustLevel? trustLevel,
+  }) => client.updateContact(
+    accountId,
+    contactId,
+    name: name,
+    trustLevel: trustLevel,
+  );
+
+  @override
+  Future<void> deleteContact(int accountId, int contactId) =>
+      client.deleteContact(accountId, contactId);
+
+  @override
+  Future<Contact> blockSender(int accountId, String email) =>
+      client.blockSender(accountId, email);
 
   @override
   Future<Message> saveDraft(OutgoingMessage draft) => client.saveDraft(draft);

@@ -988,6 +988,42 @@ class ImapBackend implements MailBackend {
   Future<void> deleteQuarantined(int accountId, int id) =>
       throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
 
+  // IMAP keeps no contacts: an address book is the provider's own service.
+  @override
+  bool get hasContacts => false;
+
+  @override
+  Future<OffsetPage<Contact>> contacts(
+    int accountId, {
+    String? search,
+    TrustLevel? trustLevel,
+    int offset = 0,
+  }) async => OffsetPage(const [], offset: offset, total: 0);
+
+  @override
+  Future<Contact> createContact(
+    int accountId, {
+    required String email,
+    String? name,
+    TrustLevel? trustLevel,
+  }) => throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+
+  @override
+  Future<Contact> updateContact(
+    int accountId,
+    int contactId, {
+    String? name,
+    TrustLevel? trustLevel,
+  }) => throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+
+  @override
+  Future<void> deleteContact(int accountId, int contactId) =>
+      throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+
+  @override
+  Future<Contact> blockSender(int accountId, String email) =>
+      throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+
   final _drafts = <int, OutgoingMessage>{};
 
   @override
