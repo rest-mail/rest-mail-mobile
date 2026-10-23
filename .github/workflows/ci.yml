@@ -125,6 +125,34 @@ jobs:
         env:
           GREENMAIL_HOST: 127.0.0.1
 
+  # The API client against a real REST Mail server: the image main publishes,
+  # fresh, with Postgres (tool/ci/live_server.sh). The tests sign in as a
+  # fresh install's admin does, then call the admin API through the client,
+  # so a request the server refuses or an answer the client cannot read fails
+  # here, not in someone's hands.
+  live-server:
+    name: API against a real server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/restmail_api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Start the server
+        working-directory: .
+        run: tool/ci/live_server.sh up
+      - run: dart pub get
+      - run: dart test test/live --concurrency=1 --reporter=expanded
+      - name: The server's log
+        if: failure()
+        working-directory: .
+        run: docker logs rm-live-api 2>&1 | tail -200
+
   android:
     name: Android build
     runs-on: ubuntu-latest
@@ -180,7 +208,7 @@ jobs:
   # above did, so adding or renaming a job never strands a required check.
   ci:
     name: CI
-    needs: [api-client, fake-server, app, imap, android, ios]
+    needs: [api-client, fake-server, app, imap, live-server, android, ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -191,6 +219,7 @@ jobs:
             fake-server=${{ needs.fake-server.result }}
             app=${{ needs.app.result }}
             imap=${{ needs.imap.result }}
+            live-server=${{ needs.live-server.result }}
             android=${{ needs.android.result }}
             ios=${{ needs.ios.result }}
         run: |
@@ -198,7 +227,7 @@ jobs:
           fail=0
           while IFS='=' read -r job result; do
             [ -n "$job" ] || continue
-            printf '  %-10s %s\n' "$job" "$result"
+            printf '  %-12s %s\n' "$job" "$result"
             case "$result" in
               success | skipped) ;;
               *) fail=1 ;;
