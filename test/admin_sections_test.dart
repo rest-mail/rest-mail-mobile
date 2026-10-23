@@ -260,6 +260,18 @@ void main() {
     await close(tester, fake, state);
   });
 
+  Future<void> pickDkimDomain(WidgetTester tester, String name) async {
+    // The global list remains behind the sheet and may have the same name.
+    final tile = find.widgetWithText(ListTile, name);
+    await tester.scrollUntilVisible(
+      tile,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+  }
+
   void clipboard(WidgetTester tester, String text) {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -349,7 +361,7 @@ void main() {
     clipboard(tester, testDkimKey);
     await tap(tester, 'DKIM keys');
     await tap(tester, 'Set a key for a domain');
-    await tap(tester, 'unsigned.test');
+    await pickDkimDomain(tester, 'unsigned.test');
     await tester.enterText(find.byType(TextField).first, 'newkey');
     await tap(tester, 'Paste');
     await tap(tester, 'Set key');
@@ -365,7 +377,7 @@ void main() {
     clipboard(tester, testDkimKey);
     await tap(tester, 'DKIM keys');
     await tap(tester, 'Set a key for a domain');
-    await tap(tester, FakeAccounts.host);
+    await pickDkimDomain(tester, FakeAccounts.host);
     await tester.enterText(find.byType(TextField).first, 'bad_selector');
     await tap(tester, 'Paste');
     await tap(tester, 'Set key');
@@ -413,7 +425,7 @@ void main() {
       clipboard(tester, testDkimKey);
       await tap(tester, 'DKIM keys');
       await tap(tester, 'Set a key for a domain');
-      await tap(tester, FakeAccounts.host);
+      await pickDkimDomain(tester, FakeAccounts.host);
       await tester.enterText(find.byType(TextField).first, 'refused');
       await tap(tester, 'Paste');
       await tap(tester, 'Set key');
