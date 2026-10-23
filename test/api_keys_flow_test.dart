@@ -8,7 +8,6 @@ import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
 import 'package:restmail/util/secret_clipboard.dart';
-import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 const _token = 'rmk_ABCDEFGHIJKL_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
