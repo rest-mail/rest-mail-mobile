@@ -46,7 +46,10 @@ class _RelayScreenState extends State<RelayScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities).canRead(AdminSection.relay)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.relay)) {
       unawaited(_load());
     }
   }
@@ -179,6 +182,7 @@ class _RelayScreenState extends State<RelayScreen> {
     final c = context.rm;
     final relay = _relay, loadError = _loadError, error = _error;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.relay,
       title: 'Outgoing mail',
