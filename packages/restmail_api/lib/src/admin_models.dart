@@ -102,6 +102,75 @@ class QueueEntry {
   final String failureCategory;
 }
 
+/// Queue filters have identical semantics for listing and bulk operations.
+class QueueFilter {
+  const QueueFilter({this.status, this.domain, this.sender, this.recipient});
+
+  final QueueStatus? status;
+  final String? domain;
+  final String? sender;
+  final String? recipient;
+
+  Map<String, String> toJson() => {
+    'status': ?status?.name,
+    'domain': ?domain,
+    'sender': ?sender,
+    'recipient': ?recipient,
+  };
+}
+
+/// The server's acknowledgement of a single queue retry or bounce.
+class QueueActionResult {
+  const QueueActionResult({required this.status});
+
+  factory QueueActionResult.fromJson(Map<String, dynamic> json) {
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Queue acknowledgement needs a status');
+    }
+    return QueueActionResult(status: status);
+  }
+
+  /// `retrying` for retry and `bounced` for bounce, validated by the client.
+  final String status;
+}
+
+/// Exactly one selection: IDs, or all entries matching a filter across pages.
+class QueueSelection {
+  QueueSelection.ids(List<int> ids)
+    : ids = List<int>.unmodifiable(ids),
+      filter = null {
+    if (ids.isEmpty || ids.length > 1000 || ids.any((id) => id < 1)) {
+      throw ArgumentError.value(
+        ids,
+        'ids',
+        'Select between 1 and 1000 positive IDs',
+      );
+    }
+  }
+
+  const QueueSelection.filter(QueueFilter this.filter) : ids = null;
+
+  final List<int>? ids;
+  final QueueFilter? filter;
+
+  Map<String, Object> toJson() => {'ids': ?ids, 'filter': ?filter?.toJson()};
+}
+
+class BulkQueueResult {
+  const BulkQueueResult({required this.affected});
+
+  factory BulkQueueResult.fromJson(Map<String, dynamic> json) {
+    final affected = json['affected'];
+    if (affected is! int || affected < 0) {
+      throw const FormatException('Missing bulk queue result');
+    }
+    return BulkQueueResult(affected: affected);
+  }
+
+  final int affected;
+}
+
 /// How many queue entries are in each state.
 class QueueStats {
   const QueueStats(this.counts);

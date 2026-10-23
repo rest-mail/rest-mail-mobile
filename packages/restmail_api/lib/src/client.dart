@@ -293,6 +293,9 @@ class RestmailClient {
   /// [status]. Needs `queue:read`.
   Future<OffsetPage<QueueEntry>> queue({
     QueueStatus? status,
+    String? domain,
+    String? sender,
+    String? recipient,
     int offset = 0,
     int limit = 50,
   }) async {
@@ -302,6 +305,9 @@ class RestmailClient {
         ['admin', 'queue'],
         query: {
           'status': ?status?.name,
+          'domain': ?domain,
+          'sender': ?sender,
+          'recipient': ?recipient,
           'limit': '$limit',
           'offset': '$offset',
         },
@@ -329,18 +335,61 @@ class RestmailClient {
   );
 
   /// Tries a waiting entry again now. Needs `queue:manage`.
-  Future<void> retryQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'retry']);
-  }
+  Future<QueueActionResult> retryQueueEntry(int id) =>
+      _queueAction(id, 'retry', 'retrying');
 
   /// Gives up on an entry and bounces it to its sender. Needs `queue:manage`.
-  Future<void> bounceQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'bounce']);
+  Future<QueueActionResult> bounceQueueEntry(int id) =>
+      _queueAction(id, 'bounce', 'bounced');
+
+  Future<QueueActionResult> _queueAction(
+    int id,
+    String action,
+    String expectedStatus,
+  ) async {
+    final response = await _authed('POST', ['admin', 'queue', '$id', action]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      final result = QueueActionResult.fromJson(_data(response));
+      if (result.status != expectedStatus) throw _unreadable(response);
+      return result;
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Drops an entry without telling its sender. Needs `queue:manage`.
   Future<void> deleteQueueEntry(int id) async {
     await _authed('DELETE', ['admin', 'queue', '$id']);
+  }
+
+  /// Retry pending/deferred entries in the selection. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkRetryQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-retry', selection);
+
+  /// Bounce entries still in flight. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkBounceQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-bounce', selection);
+
+  /// Delete matching entries without notification. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkDeleteQueue(QueueSelection selection) =>
+      _bulkQueue('DELETE', 'bulk-delete', selection);
+
+  Future<BulkQueueResult> _bulkQueue(
+    String method,
+    String operation,
+    QueueSelection selection,
+  ) async {
+    final response = await _authed(method, [
+      'admin',
+      'queue',
+      operation,
+    ], body: selection.toJson());
+    try {
+      return BulkQueueResult.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
   }
 
   /// Needs `domains:read`.
@@ -514,35 +563,70 @@ class RestmailClient {
   Future<ServerStats> stats() async =>
       ServerStats.fromJson(_data(await _authed('GET', ['admin', 'stats'])));
 
-  /// The bans in force. Needs `bans:read`.
-  Future<OffsetPage<Ban>> bans({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'bans'], Ban.fromJson, offset, limit);
+  /// Global `bans:read`. By default only unexpired bans are returned.
+  /// [active] false includes both current and expired bans. [protocol]
+  /// includes bans on that protocol plus bans on all protocols.
+  Future<OffsetPage<Ban>> bans({
+    String? protocol,
+    bool? active,
+    String? ip,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'bans'],
+    Ban.fromJson,
+    offset,
+    limit,
+    {'protocol': ?protocol, 'active': ?active?.toString(), 'ip': ?ip},
+  );
 
-  /// Keeps [ip] out of [protocol] (`all` of them unless named) for
-  /// [duration], or for good. Needs `bans:write`.
-  Future<void> createBan({
+  /// Creates or replaces a ban by IP. The server requires [createdBy]; the
+  /// mobile form supplies the signed-in address. Needs global `bans:write`.
+  /// Omit both durations for a permanent ban. [durationText] accepts the
+  /// server's complete Go duration syntax; it cannot be combined with [duration].
+  Future<Ban> createBan({
     required String ip,
     required String createdBy,
     String reason = '',
     String protocol = 'all',
     Duration? duration,
+    String? durationText,
   }) async {
-    await _authed(
-      'POST',
-      ['admin', 'bans'],
-      body: {
-        'ip': ip,
-        'reason': reason,
-        'protocol': protocol,
-        'created_by': createdBy,
-        if (duration != null) 'duration': '${duration.inMinutes}m',
-      },
+    if (duration != null && durationText != null) {
+      throw ArgumentError('Supply duration or durationText, not both.');
+    }
+    final wireDuration =
+        durationText ??
+        (duration == null
+            ? null
+            : duration.inMicroseconds % Duration.microsecondsPerMinute == 0
+            ? '${duration.inMinutes}m'
+            : '${duration.inMicroseconds}us');
+    return Ban.fromJson(
+      _data(
+        await _authed(
+          'POST',
+          ['admin', 'bans'],
+          body: {
+            'ip': ip,
+            'reason': reason,
+            'protocol': protocol,
+            'created_by': createdBy,
+            'duration': ?wireDuration,
+          },
+        ),
+      ),
     );
   }
 
-  /// Lifts a ban. Needs `bans:delete`.
+  /// Lifts a ban. Needs global `bans:delete`.
   Future<void> deleteBan(int id) async {
     await _authed('DELETE', ['admin', 'bans', '$id']);
+  }
+
+  /// Removes a ban by its exact IPv4 or IPv6 address; answers 404 if absent.
+  Future<void> unbanIP(String ip) async {
+    await _authed('DELETE', ['admin', 'bans', 'ip', ip]);
   }
 
   /// Mail sent to other servers, newest first, with how each went: the

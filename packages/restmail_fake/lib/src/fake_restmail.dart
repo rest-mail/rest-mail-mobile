@@ -2380,6 +2380,13 @@ class FakeRestmail {
         return _json({
           'data': {...counts, 'total': _queue.length},
         });
+      case ('POST', ['queue', final operation])
+          when operation == 'bulk-retry' || operation == 'bulk-bounce':
+        need('queue:manage');
+        return _bulkQueue(operation, _object(bytes));
+      case ('DELETE', ['queue', 'bulk-delete']):
+        need('queue:manage');
+        return _bulkQueue('bulk-delete', _object(bytes));
       case ('GET', ['queue', final id]):
         need('queue:read');
         return _json({'data': _queueJson(_queueEntry(id))});
@@ -2648,8 +2655,30 @@ class FakeRestmail {
 
       case ('GET', ['bans']):
         need('bans:read');
+        final protocol = query['protocol'], active = query['active'];
+        if (protocol != null &&
+            !const ['smtp', 'imap', 'pop3', 'all'].contains(protocol)) {
+          _banFieldError(
+            'protocol',
+            'protocol must be one of smtp, imap, pop3, all',
+          );
+        }
+        if (active != null && active != 'true' && active != 'false') {
+          _banFieldError('active', 'must be true or false');
+        }
         return _listPage(
-          _bans.values.toList()
+          _bans.values
+              .where(
+                (ban) =>
+                    (query['ip'] == null || query['ip'] == ban.ip) &&
+                    (protocol == null ||
+                        protocol == ban.protocol ||
+                        ban.protocol == 'all') &&
+                    (active == 'false' ||
+                        ban.expiresAt == null ||
+                        ban.expiresAt!.isAfter(_clock())),
+              )
+              .toList()
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
           query,
           _banJson,
@@ -2657,6 +2686,19 @@ class FakeRestmail {
       case ('POST', ['bans']):
         need('bans:write');
         return _createBan(_object(bytes));
+      case ('DELETE', ['bans', 'ip', final ip]):
+        need('bans:delete');
+        final matches = _bans.values
+            .where((ban) => ban.ip == ip)
+            .map((ban) => ban.id)
+            .toList();
+        if (matches.isEmpty) {
+          _fail(404, 'not_found', 'No ban found for this IP');
+        }
+        for (final id in matches) {
+          _bans.remove(id);
+        }
+        return _noContent();
       case ('DELETE', ['bans', final id]):
         need('bans:delete');
         _bans.remove(int.tryParse(id));
@@ -2961,12 +3003,28 @@ class FakeRestmail {
 
   http.StreamedResponse _queueList(Map<String, String> query) {
     final status = query['status'];
+    if (status != null &&
+        !{
+          'pending',
+          'delivering',
+          'deferred',
+          'delivered',
+          'bounced',
+          'expired',
+        }.contains(status)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {
+          'status':
+              'must be one of pending, delivering, deferred, delivered, bounced, expired',
+        },
+      );
+    }
     final (limit, offset) = _paging(query);
-    final all =
-        _queue.values
-            .where((e) => status == null || e.status == status)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final all = _queue.values.where((e) => _queueMatches(e, query)).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return _json({
       'data': {
         'items': [for (final e in all.skip(offset).take(limit)) _queueJson(e)],
@@ -2974,6 +3032,74 @@ class FakeRestmail {
         'limit': limit,
         'offset': offset,
       },
+    });
+  }
+
+  bool _queueMatches(FakeQueueEntry entry, Map<String, dynamic> filter) {
+    bool contains(String value, Object? part) =>
+        part == null ||
+        part == '' ||
+        value.toLowerCase().contains((part as String).toLowerCase());
+    return (filter['status'] == null ||
+            filter['status'] == '' ||
+            entry.status == filter['status']) &&
+        (filter['domain'] == null ||
+            filter['domain'] == '' ||
+            entry.domain == filter['domain']) &&
+        contains(entry.sender, filter['sender']) &&
+        contains(entry.recipient, filter['recipient']);
+  }
+
+  http.StreamedResponse _bulkQueue(
+    String operation,
+    Map<String, dynamic> body,
+  ) {
+    final ids = body['ids'];
+    final filter = body['filter'];
+    if ((ids != null && ids is! List<Object?>) ||
+        (filter != null && filter is! Map<String, dynamic>)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    final values = ids as List<Object?>? ?? const <Object?>[];
+    if (filter is Map<String, dynamic> &&
+        filter.values.any((value) => value != null && value is! String)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.any((id) => id is! int || id < 0)) {
+      _fail(400, 'bad_request', 'Invalid request body');
+    }
+    if (values.length > 1000) {
+      _fail(400, 'bad_request', 'max 1000 IDs per request');
+    }
+    if (values.isEmpty && filter == null) {
+      _fail(400, 'bad_request', 'ids or filter required');
+    }
+    final selected = _queue.values
+        .where(
+          (entry) => values.isNotEmpty
+              ? values.contains(entry.id)
+              : _queueMatches(entry, filter as Map<String, dynamic>),
+        )
+        .toList();
+    var affected = 0;
+    for (final entry in selected) {
+      switch (operation) {
+        case 'bulk-retry':
+          if (!{'pending', 'deferred'}.contains(entry.status)) continue;
+          entry.status = 'pending';
+        case 'bulk-bounce':
+          if (!{'pending', 'deferred', 'delivering'}.contains(entry.status)) {
+            continue;
+          }
+          entry.status = 'bounced';
+          entry.lastError = 'manually bounced by admin (bulk)';
+        case 'bulk-delete':
+          _queue.remove(entry.id);
+      }
+      affected++;
+    }
+    return _json({
+      'data': {'affected': affected},
     });
   }
 
@@ -3919,41 +4045,77 @@ class FakeRestmail {
     'created_at': _time(ban.createdAt),
   };
 
+  Never _banFieldError(String field, String message) => _fail(
+    422,
+    'validation_failed',
+    'Request body failed validation',
+    fields: {field: message},
+  );
+
+  // The fake accepts Go duration units and compound/decimal values. Its clock
+  // has microsecond precision; sub-microsecond durations are rounded here.
+  Duration _banDuration(String raw) {
+    if (raw == '0') return Duration.zero;
+    var text = raw;
+    var sign = 1;
+    if (text.startsWith('-') || text.startsWith('+')) {
+      if (text.startsWith('-')) sign = -1;
+      text = text.substring(1);
+    }
+    if (text == '0') return Duration.zero;
+    final token = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)');
+    const units = {
+      'ns': .001,
+      'us': 1.0,
+      'µs': 1.0,
+      'μs': 1.0,
+      'ms': 1000.0,
+      's': 1000000.0,
+      'm': 60000000.0,
+      'h': 3600000000.0,
+    };
+    var offset = 0;
+    var microseconds = 0.0;
+    while (offset < text.length) {
+      final match = token.matchAsPrefix(text, offset);
+      if (match == null) {
+        _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+      }
+      microseconds += double.parse(match[1]!) * units[match[2]]!;
+      offset = match.end;
+    }
+    if (offset == 0 ||
+        !microseconds.isFinite ||
+        microseconds > 9223372036854775) {
+      _banFieldError('duration', 'invalid duration format (e.g. 24h, 168h)');
+    }
+    return Duration(microseconds: (sign * microseconds).round());
+  }
+
   http.StreamedResponse _createBan(Map<String, dynamic> body) {
-    final ip = (body['ip'] as String? ?? '').trim();
-    if (ip.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'ip': 'IP address is required'},
+    final ip = body['ip'] as String? ?? '';
+    if (ip.isEmpty) _banFieldError('ip', 'IP address is required');
+    if (body['created_by'] is! String) _banFieldError('created_by', 'required');
+    if (!const ['smtp', 'imap', 'pop3', 'all'].contains(body['protocol'])) {
+      _banFieldError(
+        'protocol',
+        'protocol must be one of smtp, imap, pop3, all',
       );
     }
-    Duration? lasts;
-    if (body['duration'] case final String raw) {
-      final minutes = RegExp(r'^(\d+)m$').firstMatch(raw)?.group(1);
-      final hours = RegExp(r'^(\d+)h$').firstMatch(raw)?.group(1);
-      lasts = minutes != null
-          ? Duration(minutes: int.parse(minutes))
-          : hours != null
-          ? Duration(hours: int.parse(hours))
-          : _fail(
-              422,
-              'validation_failed',
-              'Request body failed validation',
-              fields: {'duration': 'invalid duration format (e.g. 24h, 168h)'},
-            );
-    }
-    final ban = _bans[_nextRowId] = FakeBan(
-      id: _nextRowId++,
+    final duration = body['duration'] as String?;
+    final lasts = duration == null ? null : _banDuration(duration);
+    final existing = _bans.values.where((ban) => ban.ip == ip).firstOrNull;
+    final id = existing?.id ?? _nextRowId++;
+    final ban = _bans[id] = FakeBan(
+      id: id,
       ip: ip,
-      protocol: body['protocol'] as String? ?? 'all',
+      protocol: body['protocol'] as String,
       reason: body['reason'] as String? ?? '',
-      createdBy: body['created_by'] as String? ?? '',
-      createdAt: _clock(),
+      createdBy: body['created_by'] as String,
+      createdAt: existing?.createdAt ?? _clock(),
       expiresAt: lasts == null ? null : _clock().add(lasts),
     );
-    return _json({'data': _banJson(ban)}, status: 201);
+    return _json({'data': _banJson(ban)}, status: existing == null ? 201 : 200);
   }
 
   http.StreamedResponse _createAlias(Map<String, dynamic> body) {
