@@ -84,6 +84,10 @@ class FakeRestmail {
   final _aliases = <int, FakeAlias>{};
   final _queue = <int, FakeQueueEntry>{};
   final _bans = <int, FakeBan>{};
+  // Kept private and never included in metadata or domain responses.
+  final _dkimSecrets = <int, String>{};
+  final _dkimInstalledAt = <int, DateTime>{};
+  final _dkimIntervals = <int, int>{};
   final _certificates = <int, FakeCertificate>{};
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
@@ -2466,23 +2470,91 @@ class FakeRestmail {
       case ('GET', ['dkim']):
         need('domains:read');
         final signing = _domains.values.where((d) => d.signs).toList();
-        // Go's nil slice: no keys at all is null, not [].
         return _json({
-          'data': signing.isEmpty
-              ? null
-              : [
-                  for (final d in signing)
-                    {
-                      'domain_id': d.id,
-                      'domain': d.name,
-                      'selector': d.dkimSelector,
-                      'has_key': true,
-                    },
-                ],
+          'data': [for (final d in signing) _dkimJson(d)],
         });
+      case ('PUT', ['dkim', final id]):
+        need('domains:write');
+        final domain = _domain(id), body = _object(bytes);
+        final selector = body['selector'] as String? ?? '',
+            key = body['private_key'] as String? ?? '';
+        if (selector.isEmpty || key.isEmpty) {
+          _fail(400, 'bad_request', 'selector and private_key are required');
+        }
+        if (selector.length > 63 ||
+            !selector
+                .split('.')
+                .every(
+                  (s) => RegExp(
+                    r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
+                  ).hasMatch(s),
+                )) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid selector',
+            fields: {'selector': 'must be DNS labels, at most 63 characters'},
+          );
+        }
+        // Demo validation only. Real RSA/Ed25519 signing and verification stay
+        // on the production server; this fake checks the PEM envelope and DER.
+        final pem = RegExp(
+          r'^\s*-----BEGIN (RSA PRIVATE KEY|PRIVATE KEY)-----\s*([A-Za-z0-9+/=\s]+)-----END \1-----\s*$',
+        ).firstMatch(key);
+        List<int>? der;
+        try {
+          if (pem != null) {
+            der = base64Decode(pem[2]!.replaceAll(RegExp(r'\s'), ''));
+          }
+        } on FormatException {
+          der = null;
+        }
+        if (der == null || der.isEmpty || der.first != 0x30) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid DKIM private key',
+            fields: {
+              'private_key': 'must be a PEM-encoded RSA or Ed25519 private key',
+            },
+          );
+        }
+        if (_dkimSecrets[domain.id] != key) {
+          _dkimInstalledAt[domain.id] = _clock();
+        }
+        _dkimSecrets[domain.id] = key;
+        domain.dkimSelector = selector;
+        return _json({'data': _dkimJson(domain)});
+      case ('GET', ['dkim', final id, 'rotation']):
+        need('domains:read');
+        return _json({'data': _rotationJson(_domain(id))});
+      case ('PUT', ['dkim', final id, 'rotation']):
+        need('domains:write');
+        final domain = _domain(id), body = _object(bytes);
+        if (body.keys.any((k) => k != 'rotation_interval_days')) {
+          _fail(400, 'bad_request', 'Invalid request body');
+        }
+        final days = body['rotation_interval_days'];
+        if (days is! int || days < 0 || days > 3650) {
+          _fail(
+            422,
+            'validation_failed',
+            'Invalid DKIM rotation interval',
+            fields: {
+              'rotation_interval_days':
+                  'Must be an integer between 0 and 3650 days; 0 disables rotation',
+            },
+          );
+        }
+        _dkimIntervals[domain.id] = days;
+        return _json({'data': _rotationJson(domain)});
       case ('DELETE', ['dkim', final id]):
         need('domains:write');
-        _domain(id).dkimSelector = '';
+        final domain = _domain(id);
+        domain.dkimSelector = '';
+        _dkimSecrets.remove(domain.id);
+        _dkimInstalledAt.remove(domain.id);
+        // Removing a key does not remove its configured rotation policy.
         return _noContent();
 
       case ('GET', ['certificates']):
@@ -2952,6 +3024,28 @@ class FakeRestmail {
     };
   }
 
+  Map<String, Object?> _dkimJson(FakeDomain domain) => {
+    'domain_id': domain.id,
+    'domain': domain.name,
+    'selector': domain.dkimSelector,
+    'has_key': domain.signs,
+    'created_at': _dkimInstalledAt[domain.id] == null
+        ? null
+        : _time(_dkimInstalledAt[domain.id]!),
+    'age_seconds': _dkimInstalledAt[domain.id] == null
+        ? null
+        : max(
+            0,
+            _clock().difference(_dkimInstalledAt[domain.id]!).inMicroseconds /
+                1000000,
+          ),
+  };
+
+  Map<String, Object?> _rotationJson(FakeDomain domain) => {
+    'domain_id': domain.id,
+    'rotation_interval_days': _dkimIntervals[domain.id] ?? 0,
+  };
+
   FakeQueueEntry _queueEntry(String id) =>
       _queue[int.tryParse(id)] ??
       _fail(404, 'not_found', 'Queue entry not found');
@@ -3000,6 +3094,7 @@ class FakeRestmail {
     // As on the server, a new domain is not live until it is turned on.
     final domain = _domainNamed(name)
       ..active = false
+      ..dkimSelector = ''
       ..serverType = body['server_type'] as String
       ..sendingPolicy = policy;
     if (body['default_quota_bytes'] case final num quota) {

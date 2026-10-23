@@ -20,7 +20,10 @@ Widget _addedElsewhere(BuildContext context, String text) => Padding(
 /// published under. The keys themselves never leave the server: one is
 /// sent once, when it is set or replaced, and never shown again.
 class DkimScreen extends StatefulWidget {
-  const DkimScreen({super.key, required this.account});
+  const DkimScreen({super.key, required this.account, this.domain});
+
+  /// No global key-list request is made when opened for one domain.
+  final AdminDomain? domain;
 
   final RestAccount account;
 
@@ -29,7 +32,19 @@ class DkimScreen extends StatefulWidget {
 }
 
 class _DkimScreenState extends State<DkimScreen> {
+  AdminSection get _section =>
+      widget.domain == null ? AdminSection.dkim : AdminSection.domainDkim;
   late final _list = AdminList<DkimKey>((offset) async {
+    if (widget.domain case final domain?) {
+      final fresh = await widget.account.client.domain(domain.id);
+      final key = DkimKey(
+        domainId: fresh.id,
+        domain: fresh.name,
+        selector: fresh.dkimSelector,
+        hasKey: fresh.dkimSelector.isNotEmpty,
+      );
+      return OffsetPage([key], offset: 0, total: 1);
+    }
     final keys = await widget.account.client.dkimKeys();
     return OffsetPage(keys, offset: 0, total: keys.length);
   });
@@ -39,7 +54,7 @@ class _DkimScreenState extends State<DkimScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities).canRead(AdminSection.dkim)) {
+    if (AdminAccess(widget.account.capabilities).canRead(_section)) {
       unawaited(_list.reload());
     }
   }
@@ -53,7 +68,7 @@ class _DkimScreenState extends State<DkimScreen> {
   /// Tapping a key: its rotation, or with `domains:write` the choice of
   /// rotation or a replacement key.
   Future<void> _rotationOrKey(DkimKey key, AdminAccess access) async {
-    if (!access.canWrite(AdminSection.dkim)) return _rotation(key, access);
+    if (!access.canWrite(_section)) return _rotation(key, access);
     final choice = await showModalBottomSheet<bool>(
       context: context,
       builder: (sheet) => SafeArea(
@@ -99,7 +114,7 @@ class _DkimScreenState extends State<DkimScreen> {
 
   /// Sets or replaces a domain's key. [domain] is null to pick one.
   Future<void> _setKey({AdminDomain? domain, DkimKey? key}) async {
-    var target = domain;
+    var target = domain ?? widget.domain;
     if (target == null && key == null) {
       final domains = <AdminDomain>[];
       try {
@@ -194,8 +209,20 @@ class _DkimScreenState extends State<DkimScreen> {
     final now = current.enabled
         ? 'Rotated every ${current.intervalDays} days.'
         : 'Never rotated.';
-    if (!access.canWrite(AdminSection.dkim)) {
-      showToast(context, '${key.domain}: $now');
+    if (!access.canWrite(_section)) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: const Text('Key rotation'),
+          content: Text('${key.domain}: $now'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
       return;
     }
     DkimRotation? saved;
@@ -239,27 +266,31 @@ class _DkimScreenState extends State<DkimScreen> {
   String _age(DkimKey key) {
     final created = key.createdAt;
     if (created == null) return '';
-    return ' · set ${DateFormat.yMMMd().format(created)}';
+    return ' · set ${DateFormat.yMMMd().format(created)}${key.ageSeconds == null ? '' : ' · ${key.ageSeconds} seconds old'}';
   }
 
   @override
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
-    section: AdminSection.dkim,
-    title: 'DKIM keys',
+    section: _section,
+    title: widget.domain == null ? 'DKIM keys' : 'DKIM signing',
     body: (access) => AdminListView(
       list: _list,
       host: _host,
       empty: 'No domain signs its mail.',
       header: [
-        if (access.canWrite(AdminSection.dkim))
+        if (access.canWrite(_section))
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Set a key for a domain'),
+                label: Text(
+                  widget.domain == null
+                      ? 'Set a key for a domain'
+                      : 'Install or replace key',
+                ),
                 onPressed: () => unawaited(_setKey()),
               ),
             ),
@@ -269,9 +300,11 @@ class _DkimScreenState extends State<DkimScreen> {
       ],
       row: (key) => RmRow(
         label: key.domain,
-        subtitle: '${key.selector}._domainkey.${key.domain}${_age(key)}',
+        subtitle: key.hasKey
+            ? '${key.selector}._domainkey.${key.domain}${_age(key)}'
+            : 'No signing selector is configured',
         onTap: () => unawaited(_rotationOrKey(key, access)),
-        trailing: access.canDelete(AdminSection.dkim)
+        trailing: key.hasKey && access.canDelete(_section)
             ? RmIconButton(
                 icon: Icons.close_rounded,
                 tooltip: 'Remove the key for ${key.domain}',

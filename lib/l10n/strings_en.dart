@@ -121,6 +121,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'admin.section.audit.title': 'Audit log',
     'admin.section.audit.subtitle':
         'Every sign-in and change, chained so tampering shows',
+    'admin.section.domainDkim.title': 'DKIM signing',
+    'admin.section.domainDkim.subtitle':
+        'Signing key and automatic rotation for this domain',
     'admin.section.dkim.title': 'DKIM keys',
     'admin.section.dkim.subtitle':
         'The keys mail from each domain is signed with',
