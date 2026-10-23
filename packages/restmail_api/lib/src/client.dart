@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
+import 'grants_models.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -55,6 +56,9 @@ class RestmailClient {
   final http.Client _http;
   SessionTokens? _tokens;
   Future<SessionTokens>? _refreshing;
+  // Rotating tokens belong to the same session. A later login or sign-out is
+  // a different one and must survive a late security-change response.
+  int _sessionEpoch = 0;
 
   /// An access token this close to expiry is renewed before use rather than
   /// sent to be refused.
@@ -114,6 +118,7 @@ class RestmailClient {
     _throwIfError(response);
     final data = _data(response);
     final tokens = _tokensFrom(response, data);
+    _sessionEpoch++;
     _setTokens(tokens);
     return LoginResult(
       user: User.fromJson(data['user'] as Map<String, dynamic>),
@@ -157,8 +162,10 @@ class RestmailClient {
     // Signed out, or handed another session, while the refresh was in
     // flight: the answer is about tokens that are no longer this session's,
     // so it neither ends nor overwrites what took their place.
-    if (!identical(_tokens, current)) {
-      final latest = _tokens;
+    final latest = _tokens;
+    if (latest == null ||
+        latest.accessToken != current.accessToken ||
+        latest.refreshToken != current.refreshToken) {
       if (latest == null) throw const SessionExpiredException();
       return latest;
     }
@@ -167,7 +174,18 @@ class RestmailClient {
       throw const SessionExpiredException();
     }
     _throwIfError(response);
-    final tokens = _tokensFrom(response, _data(response));
+    final renewed = _tokensFrom(response, _data(response));
+    // An escalation may have updated only capabilities while this request
+    // was in flight. Keep that newer metadata and still persist the rotated
+    // credentials; ignoring the rotation would leave a spent refresh token.
+    final tokens = identical(latest, current)
+        ? renewed
+        : SessionTokens(
+            accessToken: renewed.accessToken,
+            refreshToken: renewed.refreshToken,
+            accessExpiresAt: renewed.accessExpiresAt,
+            capabilities: latest.capabilities,
+          );
     _setTokens(tokens);
     return tokens;
   }
@@ -189,20 +207,64 @@ class RestmailClient {
 
   // ── Setup ────────────────────────────────────────────────────────────
 
+  /// The session owner's own status, never a linked mailbox's.
+  Future<TwoFactorStatus> twoFactorStatus() async {
+    final response = await _authed('GET', ['auth', '2fa']);
+    try {
+      return TwoFactorStatus.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
   /// Starts enrolling an authenticator. Show the result once, then
   /// [confirmTwoFactor] with a code the authenticator produces.
-  Future<TotpEnrollment> enrollTwoFactor() async => TotpEnrollment.fromJson(
-    _data(await _authed('POST', ['auth', '2fa', 'enroll'])),
-  );
+  Future<TotpEnrollment> enrollTwoFactor() async {
+    final response = await _authed('POST', ['auth', '2fa', 'enroll']);
+    try {
+      final enrollment = TotpEnrollment.fromJson(_data(response));
+      if (enrollment.secret.isEmpty ||
+          enrollment.otpauthUri.scheme != 'otpauth' ||
+          enrollment.recoveryCodes.isEmpty) {
+        throw const FormatException('Invalid enrollment');
+      }
+      return enrollment;
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
 
   /// Finishes enrolling: from now on signing in also takes a code. A wrong
   /// code is 403 `invalid_totp`, never 401: the session is still good.
   Future<void> confirmTwoFactor(String code) async {
-    await _authed(
+    final response = await _authed(
       'POST',
       ['auth', '2fa', 'confirm'],
       body: {'totp_code': code},
     );
+    if (response.statusCode != 204) throw _unreadable(response);
+  }
+
+  /// Turns off the session owner's authenticator using a current code or an
+  /// unused recovery code. Success ends all of that account's sessions, this
+  /// one included; the token callback also clears persisted credentials.
+  /// Wrong proof and mandatory-2FA refusals are 403 and keep the session.
+  Future<void> disableTwoFactor({
+    String? totpCode,
+    String? recoveryCode,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = await _authed(
+      'POST',
+      ['auth', '2fa', 'disable'],
+      body: {
+        if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+        if (recoveryCode != null && recoveryCode.isNotEmpty)
+          'recovery_code': recoveryCode,
+      },
+    );
+    if (response.statusCode != 204) throw _unreadable(response);
+    if (_sessionEpoch == epoch) _setTokens(null);
   }
 
   /// Replaces the signed-in account's password. The server ends every
@@ -213,12 +275,13 @@ class RestmailClient {
     required String current,
     required String next,
   }) async {
+    final epoch = _sessionEpoch;
     await _authed(
       'POST',
       ['auth', 'password'],
       body: {'current_password': current, 'new_password': next},
     );
-    _setTokens(null);
+    if (_sessionEpoch == epoch) _setTokens(null);
   }
 
   // ── Admin ────────────────────────────────────────────────────────────
@@ -284,28 +347,56 @@ class RestmailClient {
   Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
       _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
 
-  /// Creates a domain whose mail rest-mail serves itself. Throws
-  /// [ApiException] with code `already_exists` when it is there already.
-  /// Needs `domains:write`.
-  Future<void> createDomain(String name) async {
-    await _authed(
-      'POST',
-      ['admin', 'domains'],
-      body: {'name': name, 'server_type': 'restmail'},
-    );
-  }
+  /// Fresh detail. Needs `domains:read` on this domain.
+  Future<AdminDomain> domain(int id) async => AdminDomain.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$id'])),
+  );
 
-  /// Turns a domain's mail on or off. Needs `domains:write`.
-  Future<AdminDomain> updateDomain(int id, {bool? active}) async =>
-      AdminDomain.fromJson(
-        _data(
-          await _authed(
-            'PATCH',
-            ['admin', 'domains', '$id'],
-            body: {'active': ?active},
-          ),
-        ),
-      );
+  /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
+  /// or `traditional`. A new domain is never live: going live is
+  /// [updateDomain] with `active`. Throws [ApiException] with code
+  /// `already_exists` when it is there already. Needs `domains:write`.
+  Future<AdminDomain> createDomain(
+    String name, {
+    String serverType = 'restmail',
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'domains'],
+        body: {
+          'name': name,
+          'server_type': serverType,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
+
+  /// Changes what is given: whether the domain's mail is on, the quota new
+  /// mailboxes get, and its sending policy (empty clears it).
+  /// Needs `domains:write`.
+  Future<AdminDomain> updateDomain(
+    int id, {
+    bool? active,
+    int? defaultQuotaBytes,
+    String? sendingPolicy,
+  }) async => AdminDomain.fromJson(
+    _data(
+      await _authed(
+        'PATCH',
+        ['admin', 'domains', '$id'],
+        body: {
+          'active': ?active,
+          'default_quota_bytes': ?defaultQuotaBytes,
+          'sending_policy': ?sendingPolicy,
+        },
+      ),
+    ),
+  );
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
@@ -325,6 +416,11 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. Needs `mailboxes:read` on this mailbox.
+  Future<AdminMailbox> adminMailbox(int id) async => AdminMailbox.fromJson(
+    _data(await _authed('GET', ['admin', 'mailboxes', '$id'])),
+  );
+
   /// Changes what is given; a new [password] ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
@@ -332,6 +428,7 @@ class RestmailClient {
     String? displayName,
     String? password,
     bool? active,
+    int? quotaBytes,
   }) async => AdminMailbox.fromJson(
     _data(
       await _authed(
@@ -341,10 +438,18 @@ class RestmailClient {
           'display_name': ?displayName,
           'password': ?password,
           'active': ?active,
+          'quota_bytes': ?quotaBytes,
         },
       ),
     ),
   );
+
+  /// Signs the mailbox out everywhere: its refresh tokens are revoked and
+  /// every access token it holds is refused. Passwords and app passwords
+  /// stay. Needs `mailboxes:write`.
+  Future<void> endMailboxSessions(int id) async {
+    await _authed('DELETE', ['admin', 'mailboxes', '$id', 'sessions']);
+  }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
@@ -364,18 +469,25 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. The server currently needs global `mailboxes:read`.
+  Future<AdminAlias> alias(int id) async => AdminAlias.fromJson(
+    _data(await _authed('GET', ['admin', 'aliases', '$id'])),
+  );
+
   /// Sends mail for [source], on a domain the server has, to [destination].
   /// Needs `mailboxes:write`.
-  Future<void> createAlias({
+  Future<AdminAlias> createAlias({
     required String source,
     required String destination,
-  }) async {
-    await _authed(
-      'POST',
-      ['admin', 'aliases'],
-      body: {'source_address': source, 'destination_address': destination},
-    );
-  }
+  }) async => AdminAlias.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'aliases'],
+        body: {'source_address': source, 'destination_address': destination},
+      ),
+    ),
+  );
 
   /// Needs `mailboxes:write`.
   Future<AdminAlias> updateAlias(
@@ -530,6 +642,43 @@ class RestmailClient {
   Future<List<DkimKey>> dkimKeys() async =>
       _list(await _authed('GET', ['admin', 'dkim']), DkimKey.fromJson);
 
+  /// Signs [domainId]'s mail with [privateKey], a PEM private key published
+  /// under [selector], replacing any key it had. Needs `domains:write`. The
+  /// server refuses a key it cannot sign with (422) and never sends the key
+  /// back: the answer holds only the selector and when the key was set.
+  Future<DkimKey> setDkimKey(
+    int domainId, {
+    required String selector,
+    required String privateKey,
+  }) async => DkimKey.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'dkim', '$domainId'],
+        body: {'selector': selector, 'private_key': privateKey},
+      ),
+    ),
+  );
+
+  /// How often [domainId]'s key is due to be replaced. Needs `domains:read`.
+  Future<DkimRotation> dkimRotation(int domainId) async =>
+      DkimRotation.fromJson(
+        _data(await _authed('GET', ['admin', 'dkim', '$domainId', 'rotation'])),
+      );
+
+  /// Sets [domainId]'s rotation to every [intervalDays] days, 0 to never
+  /// rotate, at most [DkimRotation.maxIntervalDays]. Needs `domains:write`.
+  Future<DkimRotation> setDkimRotation(int domainId, int intervalDays) async =>
+      DkimRotation.fromJson(
+        _data(
+          await _authed(
+            'PUT',
+            ['admin', 'dkim', '$domainId', 'rotation'],
+            body: {'rotation_interval_days': intervalDays},
+          ),
+        ),
+      );
+
   /// Stops signing [domainId]'s mail and forgets its key. Needs
   /// `domains:write`, as the server asks.
   Future<void> deleteDkimKey(int domainId) async {
@@ -545,6 +694,35 @@ class RestmailClient {
     TlsCertificate.fromJson,
     offset,
     limit,
+  );
+
+  /// One certificate as the server holds it now, with its PEM. Needs
+  /// `domains:read`.
+  Future<TlsCertificate> certificate(int id) async => TlsCertificate.fromJson(
+    _data(await _authed('GET', ['admin', 'certificates', '$id'])),
+  );
+
+  /// Stores a certificate and its private key for [domainId]. The server
+  /// reads the issuer and validity from [certPem]; it renews by itself
+  /// unless [autoRenew] says not. Needs `domains:write`.
+  Future<TlsCertificate> uploadCertificate({
+    required int domainId,
+    required String certPem,
+    required String keyPem,
+    bool? autoRenew,
+  }) async => TlsCertificate.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'certificates'],
+        body: {
+          'domain_id': domainId,
+          'cert_pem': certPem,
+          'key_pem': keyPem,
+          'auto_renew': ?autoRenew,
+        },
+      ),
+    ),
   );
 
   /// Needs `domains:write`, as the server asks.
@@ -771,6 +949,164 @@ class RestmailClient {
   Future<DnsCheck> dnsCheck(int domainId) async => DnsCheck.fromJson(
     _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
   );
+
+  // ── Roles, grants and escalation ─────────────────────────────────────
+  //
+  // Changing grants needs `users:write` and a session signed in with a second
+  // factor; the server also refuses a role, or a scope, wider than the
+  // granter's own. Each account's own grants, and switching its eligible ones
+  // on and off, need no capability.
+
+  /// The roles that can be granted, each with its capabilities. Needs
+  /// `users:read`.
+  Future<List<AdminRole>> roles() async =>
+      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
+
+  /// Every capability the server checks, by name. Needs `users:read`.
+  Future<List<CapabilityDefinition>> capabilityDefinitions() async => _list(
+    await _authed('GET', ['admin', 'capabilities']),
+    CapabilityDefinition.fromJson,
+  );
+
+  /// One page of grants, oldest first: only [holder]'s, or only those at
+  /// [scope], when given. Needs `users:read`.
+  Future<OffsetPage<Grant>> grants({
+    GrantHolder? holder,
+    String? scope,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'grants'],
+    Grant.fromJson,
+    offset,
+    limit,
+    {
+      'holder_kind': ?holder?.kind,
+      'holder_id': ?holder?.id.toString(),
+      'scope': ?scope,
+    },
+  );
+
+  /// Grants [role] to [holder] at [scope] (`*`, `domain:<name>` or
+  /// `mailbox:<address>`): [GrantMode.active] when [mode] is not given, until
+  /// [expiresAt] or until removed. Throws [ApiException] with a
+  /// [GrantErrorCode], or `validation_failed` naming the field. Needs
+  /// `users:write`.
+  Future<Grant> createGrant({
+    required GrantHolder holder,
+    required String role,
+    required String scope,
+    GrantMode? mode,
+    DateTime? expiresAt,
+  }) async => Grant.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'grants'],
+        body: {
+          'holder': holder.toJson(),
+          'role': role,
+          'scope': scope,
+          'mode': ?(mode == null || mode == GrantMode.unknown
+              ? null
+              : mode.name),
+          'expires_at': ?expiresAt?.toUtc().toIso8601String(),
+        },
+      ),
+    ),
+  );
+
+  /// Removes a grant. Needs `users:write`.
+  Future<void> deleteGrant(int id) async {
+    await _authed('DELETE', ['admin', 'grants', '$id']);
+  }
+
+  /// The signed-in account's own grants, each with any activation running
+  /// now.
+  Future<List<Grant>> myGrants() async =>
+      _list(await _authed('GET', ['admin', 'grants', 'mine']), Grant.fromJson);
+
+  /// Switches one of the account's own eligible grants on for [minutes] (the
+  /// server's 60 when not given, at most 240), saying why. Needs a fresh
+  /// [totpCode] from the authenticator, or an unused [recoveryCode]: without
+  /// either it throws [TotpRequiredException], and a wrong one is
+  /// [GrantErrorCode.invalidTotp]. The session's capabilities become the ones
+  /// the server answers with.
+  Future<Escalation> activateGrant(
+    int id, {
+    required String reason,
+    int? minutes,
+    String? totpCode,
+    String? recoveryCode,
+  }) => _escalationRequest(
+    id,
+    'activate',
+    body: {
+      'reason': reason,
+      'minutes': ?minutes,
+      'totp_code': ?totpCode,
+      'recovery_code': ?recoveryCode,
+    },
+  );
+
+  /// Switches one of the account's own grants off before its activation runs
+  /// out. The session's capabilities become the ones the server answers with.
+  Future<Escalation> deactivateGrant(int id) =>
+      _escalationRequest(id, 'deactivate');
+
+  /// Makes one of the account's own active grants eligible: from then on it
+  /// gives nothing until switched on. Needs a fresh code, as [activateGrant]
+  /// does. The session's capabilities become the ones the server answers
+  /// with.
+  Future<Escalation> makeGrantEligible(
+    int id, {
+    String? totpCode,
+    String? recoveryCode,
+  }) => _escalationRequest(
+    id,
+    'make-eligible',
+    body: {'totp_code': ?totpCode, 'recovery_code': ?recoveryCode},
+  );
+
+  Future<Escalation> _escalationRequest(
+    int id,
+    String operation, {
+    Map<String, Object?>? body,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = await _authed('POST', [
+      'admin',
+      'grants',
+      '$id',
+      operation,
+    ], body: body);
+    if (response.statusCode != (operation == 'activate' ? 201 : 200)) {
+      throw _unreadable(response);
+    }
+    return _escalated(response, epoch);
+  }
+
+  /// Reads a step of escalation, and keeps what it says the account now
+  /// holds as the session's capabilities until the next refresh brings them.
+  /// A late answer cannot apply the old account's grants to a replacement
+  /// login or restore a signed-out session. Normal rotation keeps the epoch.
+  Escalation _escalated(http.Response response, int epoch) {
+    final data = _data(response);
+    if (data['grant'] is! Map<String, dynamic>) throw _unreadable(response);
+    final step = Escalation.fromJson(data);
+    final tokens = _tokens;
+    if (tokens != null && _sessionEpoch == epoch) {
+      _setTokens(
+        SessionTokens(
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          accessExpiresAt: tokens.accessExpiresAt,
+          capabilities: step.capabilities,
+        ),
+      );
+    }
+    return step;
+  }
 
   // ── Accounts and folders ─────────────────────────────────────────────
 
@@ -1430,6 +1766,7 @@ class RestmailClient {
   }
 
   void _setTokens(SessionTokens? tokens) {
+    if (tokens == null) _sessionEpoch++;
     _tokens = tokens;
     onTokensChanged?.call(tokens);
   }

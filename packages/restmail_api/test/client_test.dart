@@ -996,6 +996,82 @@ void main() {
       expect(result.tokens.capabilities.isEmpty, isTrue);
     });
 
+    test('sets a DKIM key and reads and changes its rotation', () async {
+      final seen = <String>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          seen.add('${request.method} ${request.url.path}');
+          if (request.url.path == '/api/v1/admin/dkim/4' &&
+              request.method == 'PUT') {
+            expect(jsonDecode(request.body), {
+              'selector': 'mail2026',
+              'private_key': 'PEM',
+            });
+            return _json({
+              'data': {
+                'domain_id': 4,
+                'domain': 'example.test',
+                'selector': 'mail2026',
+                'has_key': true,
+                'created_at': '2026-10-20T00:00:00Z',
+                'age_seconds': 86400.5,
+              },
+            });
+          }
+          if (request.url.path == '/api/v1/admin/dkim/4/rotation') {
+            if (request.method == 'PUT') {
+              expect(jsonDecode(request.body), {'rotation_interval_days': 0});
+              return _json({
+                'data': {'domain_id': 4, 'rotation_interval_days': 0},
+              });
+            }
+            return _json({
+              'data': {'domain_id': 4, 'rotation_interval_days': 90},
+            });
+          }
+          return _json({
+            'error': {
+              'code': 'validation_failed',
+              'message': 'Invalid DKIM rotation interval',
+            },
+          }, status: 422);
+        }),
+      );
+
+      final key = await client.setDkimKey(
+        4,
+        selector: 'mail2026',
+        privateKey: 'PEM',
+      );
+      expect(key.domainId, 4);
+      expect(key.selector, 'mail2026');
+      expect(key.hasKey, isTrue);
+      expect(key.createdAt, DateTime.utc(2026, 10, 20).toLocal());
+      expect(key.ageSeconds, 86400.5);
+
+      final rotation = await client.dkimRotation(4);
+      expect(rotation.domainId, 4);
+      expect(rotation.intervalDays, 90);
+      expect(rotation.enabled, isTrue);
+
+      final off = await client.setDkimRotation(4, 0);
+      expect(off.intervalDays, 0);
+      expect(off.enabled, isFalse);
+
+      await expectLater(
+        client.setDkimRotation(5, 9999),
+        throwsA(isA<ApiException>()),
+      );
+      expect(seen, [
+        'PUT /api/v1/admin/dkim/4',
+        'GET /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/5/rotation',
+      ]);
+    });
+
     test('reads the queue page and the domain list as the server sends '
         'them', () async {
       final client = RestmailClient(
@@ -1062,6 +1138,131 @@ void main() {
       final domains = await client.domains();
       expect(domains.items.single.name, 'example.test');
       expect(domains.hasMore, isFalse);
+    });
+
+    group('domain and mailbox changes', () {
+      late List<http.Request> sent;
+      late RestmailClient client;
+
+      const domain = {
+        'id': 4,
+        'name': 'new.test',
+        'server_type': 'traditional',
+        'active': false,
+        'default_quota_bytes': 524288000,
+        'sending_policy': 'bulk',
+      };
+      const mailbox = {
+        'id': 9,
+        'domain_id': 4,
+        'address': 'ada@new.test',
+        'display_name': 'Ada',
+        'active': true,
+        'quota_bytes': 2097152,
+        'quota_used_bytes': 0,
+      };
+
+      setUp(() {
+        sent = [];
+        client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          httpClient: MockClient((request) async {
+            sent.add(request);
+            if (request.url.path.endsWith('/sessions')) {
+              return http.Response('', 204);
+            }
+            return _json({
+              'data': request.url.path.contains('/mailboxes/')
+                  ? mailbox
+                  : domain,
+            });
+          }),
+        );
+      });
+
+      Map<String, dynamic> body(http.Request r) =>
+          jsonDecode(r.body) as Map<String, dynamic>;
+
+      test('createDomain sends type, quota and policy and reads the domain '
+          'back', () async {
+        final created = await client.createDomain(
+          'new.test',
+          serverType: 'traditional',
+          defaultQuotaBytes: 524288000,
+          sendingPolicy: 'bulk',
+        );
+
+        expect(sent.single.method, 'POST');
+        expect(sent.single.url.path, '/api/v1/admin/domains');
+        expect(body(sent.single), {
+          'name': 'new.test',
+          'server_type': 'traditional',
+          'default_quota_bytes': 524288000,
+          'sending_policy': 'bulk',
+        });
+        expect(created.id, 4);
+        expect(created.serverType, 'traditional');
+        expect(created.active, isFalse);
+        expect(created.defaultQuotaBytes, 524288000);
+        expect(created.sendingPolicy, 'bulk');
+      });
+
+      test('createDomain leaves out what was not given', () async {
+        await client.createDomain('new.test');
+
+        expect(body(sent.single), {
+          'name': 'new.test',
+          'server_type': 'restmail',
+        });
+      });
+
+      test('updateDomain sends only what changes; an empty policy clears '
+          'it', () async {
+        await client.updateDomain(4, defaultQuotaBytes: 1048576);
+        await client.updateDomain(4, sendingPolicy: '');
+        final updated = await client.updateDomain(4, active: true);
+
+        expect(sent.map((r) => r.method), everyElement('PATCH'));
+        expect(
+          sent.map((r) => r.url.path),
+          everyElement('/api/v1/admin/domains/4'),
+        );
+        expect(body(sent[0]), {'default_quota_bytes': 1048576});
+        expect(body(sent[1]), {'sending_policy': ''});
+        expect(body(sent[2]), {'active': true});
+        expect(updated.sendingPolicy, 'bulk');
+      });
+
+      test('a domain without a sending policy reads as empty', () {
+        final read = AdminDomain.fromJson({
+          'id': 1,
+          'name': 'old.test',
+          'server_type': 'restmail',
+          'active': true,
+          'default_quota_bytes': 0,
+        });
+
+        expect(read.sendingPolicy, '');
+      });
+
+      test('updateMailbox sends a new quota alone', () async {
+        final updated = await client.updateMailbox(9, quotaBytes: 2097152);
+
+        expect(sent.single.method, 'PATCH');
+        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
+        expect(body(sent.single), {'quota_bytes': 2097152});
+        expect(updated.quotaBytes, 2097152);
+        expect(updated.address, 'ada@new.test');
+      });
+
+      test('endMailboxSessions deletes the mailbox sessions', () async {
+        await client.endMailboxSessions(9);
+
+        expect(sent.single.method, 'DELETE');
+        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9/sessions');
+        expect(sent.single.body, isEmpty);
+      });
     });
   });
 
@@ -1397,6 +1598,123 @@ void main() {
       await client.clearSuppression(4, 9);
       expect(sent.method, 'DELETE');
       expect(sent.url.path, '/api/v1/admin/domains/4/suppressions/9');
+    });
+  });
+  group('certificates', () {
+    const pem =
+        '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n';
+
+    test('reads one fresh from the server, with its PEM', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {
+              'id': 4,
+              'domain_id': 7,
+              'cert_pem': pem,
+              'issuer': "CN=R11,O=Let's Encrypt,C=US",
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'created_at': '2026-09-02T10:00:00Z',
+              'updated_at': '2026-09-03T10:00:00Z',
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.certificate(4);
+      expect(sent.method, 'GET');
+      expect(sent.url.path, '/api/v1/admin/certificates/4');
+      expect(cert.id, 4);
+      expect(cert.domainId, 7);
+      expect(cert.domain, 'a.test');
+      expect(cert.certPem, pem);
+      expect(cert.autoRenew, isFalse);
+      expect(cert.notAfter.toUtc(), DateTime.utc(2026, 12));
+      expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 9, 2, 10));
+      expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 9, 3, 10));
+    });
+
+    test('uploads the certificate, key and domain it is given', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {
+              'id': 9,
+              'domain_id': 7,
+              'issuer': 'CN=a.test',
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.uploadCertificate(
+        domainId: 7,
+        certPem: pem,
+        keyPem: 'KEY',
+        autoRenew: false,
+      );
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/v1/admin/certificates');
+      expect(jsonDecode(sent.body), {
+        'domain_id': 7,
+        'cert_pem': pem,
+        'key_pem': 'KEY',
+        'auto_renew': false,
+      });
+      expect(cert.id, 9);
+      expect(cert.certPem, isEmpty);
+    });
+
+    test('leaves renewal to the server when not told', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {'id': 9, 'domain_id': 7},
+          });
+        }),
+      );
+      await client.uploadCertificate(domainId: 7, certPem: pem, keyPem: 'K');
+      expect((jsonDecode(sent.body) as Map).containsKey('auto_renew'), isFalse);
+    });
+
+    test("the server's objection to a certificate comes through", () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json(status: 400, {
+            'error': {
+              'code': 'bad_request',
+              'message': 'Invalid certificate PEM',
+            },
+          }),
+        ),
+      );
+      await expectLater(
+        client.uploadCertificate(domainId: 7, certPem: 'x', keyPem: 'y'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 400)
+              .having((e) => e.message, 'message', 'Invalid certificate PEM'),
+        ),
+      );
     });
   });
 }
