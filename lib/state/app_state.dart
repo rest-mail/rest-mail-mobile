@@ -720,9 +720,9 @@ class AppState extends ChangeNotifier {
   /// first is still renewing waits on it rather than asking again.
   Future<void>? _renewing;
 
-  /// The app is back on screen: each signed-in REST Mail account whose access
-  /// token ran out, or is about to, while it was away is renewed now, rather
-  /// than by the first request to be refused.
+  /// The app is back on screen: renew each signed-in REST Mail session and
+  /// its live capability snapshot. A grant can expire or be removed while
+  /// the access token still has time left.
   ///
   /// A server that can't be reached leaves the session, and its refresh
   /// token, as they were; only a refresh the server refuses signs the account
@@ -737,7 +737,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _renew(RestAccount account) async {
     try {
-      await account.client.renewIfExpiring();
+      await account.client.refresh();
     } on SessionExpiredException {
       // Already signed out, through the client's onTokensChanged.
     } on ApiException {

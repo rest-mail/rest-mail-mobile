@@ -14,6 +14,7 @@ import 'keys_screen.dart';
 import 'logs_screen.dart';
 import 'mailboxes_screen.dart';
 import 'overview_screen.dart';
+import 'permissions_screen.dart';
 import 'pipeline_log_screen.dart';
 import 'pipelines_screen.dart';
 import 'queue_screen.dart';
@@ -34,6 +35,7 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.mailboxes => MailboxesScreen(account: account),
     AdminSection.aliases => AliasesScreen(account: account),
     AdminSection.bans => BansScreen(account: account),
+    AdminSection.permissions => PermissionsScreen(account: account),
     AdminSection.overview => OverviewScreen(account: account),
     AdminSection.deliveryLog => DeliveryLogScreen(account: account),
     AdminSection.activity => ActivityScreen(account: account),
@@ -47,6 +49,7 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.pipelines => PipelinesScreen(account: account),
     AdminSection.customFilters => CustomFiltersScreen(account: account),
     // Each about one domain, so opened from it, and never listed here.
+    AdminSection.domainDkim ||
     AdminSection.dnsCheck ||
     AdminSection.senderLists ||
     AdminSection.mtaSts ||
