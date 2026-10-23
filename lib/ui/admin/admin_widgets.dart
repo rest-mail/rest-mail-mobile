@@ -20,8 +20,15 @@ String describeAdminError(BuildContext context, Object error, {String? host}) {
   if (error is ApiException) {
     if (error.statusCode == 403) return noPermission;
     if (error.fields.entries.firstOrNull case final field?) {
+      // A message that starts with a capital is a sentence of its own
+      // ("Invalid certificate PEM"); a phrase follows the field's name
+      // ("Domain id required").
+      final message = field.value;
+      if (message.isNotEmpty && message[0] != message[0].toLowerCase()) {
+        return RegExp(r'[.!?]$').hasMatch(message) ? message : '$message.';
+      }
       final name = field.key.replaceAll('_', ' ');
-      return '${name[0].toUpperCase()}${name.substring(1)} ${field.value}.';
+      return '${name[0].toUpperCase()}${name.substring(1)} $message.';
     }
   }
   return describeError(context, error, host: host);
