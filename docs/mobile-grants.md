@@ -65,20 +65,25 @@ resume calls share the refresh, and rotated tokens and the resulting capability
 snapshot use the existing ordered persistence. A transient network failure
 keeps the session; a refused refresh ends it.
 
-The fake still models only `superadmin` and `admin`, and its grantor checks do
-not fully model scoped holdings. Scoped snapshots/permissions depend on #108
-and server #619. The deadline timer belongs to My permissions; after leaving
+The scoped-access branch now models all four seeded roles (`superadmin`,
+`admin`, `readonly`, `owner`), including the admin role's `users:read`. It checks
+grant creation/removal against live capabilities covering the target scope,
+models owner capabilities on own/linked mailboxes, and returns scoped snapshots
+at login, refresh and escalation. Global admin routes now authorize live grants
+rather than cached token metadata. General fake list/resource routes still need
+the full server #619 scoped filtering behavior; this is not a complete scoped
+server substitute. See `mobile-scoped-grants.md` for exact checks and limits. The deadline timer belongs to My permissions; after leaving
 it, other screens learn permission changes through ordinary token renewal,
 app resume, or another server request. This is not evidence of complete live
 scoped authorization or the whole admin parity objective.
 
 ## Verification
 
-- **195 API tests pass**, including seven deadline-boundary regressions and
+- **204 API tests pass**, including seven deadline-boundary regressions and
   the 12 session-generation/rotation/status regressions across all three
   own-grant mutation methods. API analysis passes with `--fatal-infos`.
-- **76 fake tests pass**, including its existing grants, DKIM and two-factor
-  suites. Fake analysis passes with `--fatal-infos`.
+- **99 fake tests pass**, including 23 new scoped-grant cases and the existing
+  grants, DKIM and two-factor suites. Fake analysis passes with `--fatal-infos`.
 - Pinned Dart 3.13.1 formatting, package formats and `git diff --check` pass.
 - Three new widget tests cover combined filters/reset/invalid input; paging
   beyond 200, manual holder entry and eligible create/delete; and read-only
@@ -86,11 +91,13 @@ scoped authorization or the whole admin parity objective.
   background/resume, refusal/retry and an out-of-order grant response. Two
   additional AppState tests cover removal of permissions while the access
   token remains fresh, coalesced renewal/persistence, and a revoked refresh.
-  The existing eligible-activation and phone-width tests remain. These Flutter
+  A further scoped activation widget scenario checks grouped scope details
+  and that domain access never turns into global capabilities. The existing
+  eligible-activation and phone-width tests remain. These Flutter
   tests, full app analysis/tour and Android/iOS builds have not run locally;
   normal GitHub CI supplies that evidence.
 
 Local logs live under `/tmp/restmail-mobile-api-audit/grants-integrated-*`
-and `grants-expiry-*`;
+and `grants-expiry-*` / `scoped-grants-*`;
 the durable overnight state records exact branch heads and subsequent CI
 results. No production account or credential was used.

@@ -52,8 +52,10 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
   @override
   void initState() {
     super.initState();
-    if (AdminAccess(widget.account.capabilities)
-        .canRead(AdminSection.suppressions)) {
+    if (AdminAccess(
+      widget.account.capabilities,
+      scope: CapabilityScope.domain(widget.domain.name),
+    ).canRead(AdminSection.suppressions)) {
       unawaited(_list.reload());
     }
   }
@@ -89,6 +91,7 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
   Widget build(BuildContext context) {
     final c = context.rm;
     return AdminPage(
+      scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.suppressions,
       title: 'Suppressed recipients',

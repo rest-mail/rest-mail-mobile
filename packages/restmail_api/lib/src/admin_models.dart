@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// One page of an admin list, which pages by offset rather than by cursor.
 class OffsetPage<T> {
   const OffsetPage(this.items, {required this.offset, required this.total});
@@ -52,6 +54,8 @@ class QueueEntry {
     this.expiresAt,
     this.lastError = '',
     this.lastErrorCode = 0,
+    this.bodyType = '',
+    this.failureCategory = '',
   });
 
   factory QueueEntry.fromJson(Map<String, dynamic> json) => QueueEntry(
@@ -69,6 +73,8 @@ class QueueEntry {
     expiresAt: _time(json['expires_at']),
     lastError: json['last_error'] as String? ?? '',
     lastErrorCode: _int(json['last_error_code'] ?? 0),
+    bodyType: json['body_type'] as String? ?? '',
+    failureCategory: json['failure_category'] as String? ?? '',
   );
 
   final int id;
@@ -92,6 +98,77 @@ class QueueEntry {
   /// What the receiving server said the last time, if it refused.
   final String lastError;
   final int lastErrorCode;
+  final String bodyType;
+  final String failureCategory;
+}
+
+/// Queue filters have identical semantics for listing and bulk operations.
+class QueueFilter {
+  const QueueFilter({this.status, this.domain, this.sender, this.recipient});
+
+  final QueueStatus? status;
+  final String? domain;
+  final String? sender;
+  final String? recipient;
+
+  Map<String, String> toJson() => {
+    'status': ?status?.name,
+    'domain': ?domain,
+    'sender': ?sender,
+    'recipient': ?recipient,
+  };
+}
+
+/// The server's acknowledgement of a single queue retry or bounce.
+class QueueActionResult {
+  const QueueActionResult({required this.status});
+
+  factory QueueActionResult.fromJson(Map<String, dynamic> json) {
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Queue acknowledgement needs a status');
+    }
+    return QueueActionResult(status: status);
+  }
+
+  /// `retrying` for retry and `bounced` for bounce, validated by the client.
+  final String status;
+}
+
+/// Exactly one selection: IDs, or all entries matching a filter across pages.
+class QueueSelection {
+  QueueSelection.ids(List<int> ids)
+    : ids = List<int>.unmodifiable(ids),
+      filter = null {
+    if (ids.isEmpty || ids.length > 1000 || ids.any((id) => id < 1)) {
+      throw ArgumentError.value(
+        ids,
+        'ids',
+        'Select between 1 and 1000 positive IDs',
+      );
+    }
+  }
+
+  const QueueSelection.filter(QueueFilter this.filter) : ids = null;
+
+  final List<int>? ids;
+  final QueueFilter? filter;
+
+  Map<String, Object> toJson() => {'ids': ?ids, 'filter': ?filter?.toJson()};
+}
+
+class BulkQueueResult {
+  const BulkQueueResult({required this.affected});
+
+  factory BulkQueueResult.fromJson(Map<String, dynamic> json) {
+    final affected = json['affected'];
+    if (affected is! int || affected < 0) {
+      throw const FormatException('Missing bulk queue result');
+    }
+    return BulkQueueResult(affected: affected);
+  }
+
+  final int affected;
 }
 
 /// How many queue entries are in each state.
@@ -219,7 +296,9 @@ class AdminMailbox {
     lastLoginAt: _time(json['last_login_at']),
     localPart: json['local_part'] as String? ?? '',
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },
@@ -271,7 +350,9 @@ class AdminAlias {
     destination: json['destination_address'] as String,
     active: json['active'] as bool? ?? false,
     domain: switch (json['domain']) {
-      final Map<String, dynamic> domain when domain['name'] is String =>
+      final Map<String, dynamic> domain
+          when domain['name'] is String &&
+              (domain['name'] as String).isNotEmpty =>
         AdminDomain.fromJson(domain),
       _ => null,
     },
@@ -390,6 +471,9 @@ class TraceStage {
     this.result = '',
     this.detail = '',
     this.error = '',
+    this.filterType = '',
+    this.durationNanos = 0,
+    this.log = const {},
   });
 
   factory TraceStage.fromJson(Map<String, dynamic> json) {
@@ -399,8 +483,11 @@ class TraceStage {
       action: json['action'] as String? ?? '',
       skipped: json['skipped'] as bool? ?? false,
       skipReason: json['skip_reason'] as String? ?? '',
-      result: log['result'] as String? ?? '',
-      detail: log['detail'] as String? ?? '',
+      result: _logText(log['result']),
+      detail: _logText(log['detail']),
+      log: Map.unmodifiable(log),
+      filterType: json['filter_type'] as String? ?? '',
+      durationNanos: _int(json['duration_ms'] ?? 0),
       error: json['error'] as String? ?? '',
     );
   }
@@ -416,7 +503,19 @@ class TraceStage {
   final String result;
   final String detail;
   final String error;
+  final String filterType;
+
+  /// StepResult uses Go time.Duration: nanoseconds despite its JSON key.
+  final int durationNanos;
+  double get durationMilliseconds => durationNanos / 1000000;
+  final Map<String, dynamic> log;
 }
+
+String _logText(Object? value) => value == null
+    ? ''
+    : value is String
+    ? value
+    : jsonEncode(value);
 
 /// What happened to a message on its way in or out: each filter it passed,
 /// and how it ended.
@@ -428,6 +527,9 @@ class MessageTrace {
     required this.finalAction,
     required this.createdAt,
     this.messageId,
+    this.pipelineId = 0,
+    this.sampled = false,
+    this.expiresAt,
     this.rfcMessageId = '',
     this.transport = '',
     this.mailFrom = '',
@@ -442,6 +544,9 @@ class MessageTrace {
   factory MessageTrace.fromJson(Map<String, dynamic> json) => MessageTrace(
     id: _int(json['id']),
     messageId: (json['message_id'] as num?)?.toInt(),
+    pipelineId: _int(json['pipeline_id'] ?? 0),
+    sampled: json['sampled'] as bool? ?? false,
+    expiresAt: _time(json['expires_at']),
     rfcMessageId: json['rfc_message_id'] as String? ?? '',
     direction: json['direction'] as String? ?? '',
     transport: json['transport'] as String? ?? '',
@@ -462,6 +567,9 @@ class MessageTrace {
 
   final int id;
   final int? messageId;
+  final int pipelineId;
+  final bool sampled;
+  final DateTime? expiresAt;
   final String rfcMessageId;
 
   /// `inbound` or `outbound`.
@@ -504,6 +612,9 @@ class TlsReport {
     this.successful = 0,
     this.failed = 0,
     this.failureDetails,
+    this.rawReport = '',
+    this.createdAt,
+    this.domain,
   });
 
   factory TlsReport.fromJson(Map<String, dynamic> json) => TlsReport(
@@ -518,6 +629,11 @@ class TlsReport {
     successful: _int(json['total_successful'] ?? 0),
     failed: _int(json['total_failure'] ?? 0),
     failureDetails: json['failure_details'],
+    rawReport: json['raw_report'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    domain: json['domain'] is Map<String, dynamic>
+        ? AdminDomain.fromJson(json['domain'] as Map<String, dynamic>)
+        : null,
   );
 
   final int id;
@@ -537,6 +653,9 @@ class TlsReport {
 
   /// The report's `failure-details`, as it sent them.
   final Object? failureDetails;
+  final String rawReport;
+  final DateTime? createdAt;
+  final AdminDomain? domain;
 }
 
 /// One entry of the audit log: a request, who made it, and how it ended.
@@ -551,6 +670,7 @@ class AuditEntry {
     required this.action,
     required this.outcome,
     this.actorId,
+    this.credentialId,
     this.sessionId = '',
     this.errorCode = '',
     this.method = '',
@@ -569,6 +689,7 @@ class AuditEntry {
     occurredAt: _time(json['occurred_at']) ?? DateTime.now(),
     actorKind: json['actor_kind'] as String? ?? '',
     actorId: (json['actor_id'] as num?)?.toInt(),
+    credentialId: (json['credential_id'] as num?)?.toInt(),
     actorName: json['actor_name'] as String? ?? '',
     sessionId: json['session_id'] as String? ?? '',
     action: json['action'] as String? ?? '',
@@ -598,6 +719,7 @@ class AuditEntry {
 
   /// The account's id, set once the request proved it.
   final int? actorId;
+  final int? credentialId;
 
   /// The account's address at the time.
   final String actorName;
@@ -633,6 +755,7 @@ class AuditCheck {
     this.brokenAtSeq,
     this.reason = '',
     this.note = '',
+    this.anchor,
   });
 
   factory AuditCheck.fromJson(Map<String, dynamic> json) => AuditCheck(
@@ -644,6 +767,9 @@ class AuditCheck {
     brokenAtSeq: (json['broken_at_seq'] as num?)?.toInt(),
     reason: json['reason'] as String? ?? '',
     note: json['note'] as String? ?? '',
+    anchor: json['anchor'] is Map<String, dynamic>
+        ? AuditAnchor.fromJson(json['anchor'] as Map<String, dynamic>)
+        : null,
   );
 
   /// Whether every entry follows the one before and hashes as it says.
@@ -663,6 +789,17 @@ class AuditCheck {
 
   /// Set when the log does not start at 1.
   final String note;
+  final AuditAnchor? anchor;
+}
+
+/// An independently saved audit entry used to detect rewritten history.
+class AuditAnchor {
+  const AuditAnchor({required this.seq, required this.hash});
+  factory AuditAnchor.fromJson(Map<String, dynamic> json) =>
+      AuditAnchor(seq: _int(json['seq']), hash: json['hash'] as String? ?? '');
+  final int seq;
+  final String hash;
+  String get value => '$seq:$hash';
 }
 
 /// The key a domain's outgoing mail is signed with. The server never shows
@@ -785,6 +922,7 @@ class PipelineFilter {
     required this.type,
     required this.enabled,
     this.unskippable = false,
+    this.config,
   });
 
   factory PipelineFilter.fromJson(Map<String, dynamic> json) => PipelineFilter(
@@ -792,6 +930,7 @@ class PipelineFilter {
     type: json['type'] as String? ?? '',
     enabled: json['enabled'] as bool? ?? false,
     unskippable: json['unskippable'] as bool? ?? false,
+    config: json['config'] as Map<String, dynamic>?,
   );
 
   final String name;
@@ -802,6 +941,15 @@ class PipelineFilter {
 
   /// Runs even when an earlier filter would skip the rest.
   final bool unskippable;
+  final Map<String, dynamic>? config;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'type': type,
+    'enabled': enabled,
+    'unskippable': unskippable,
+    'config': ?config,
+  };
 }
 
 /// The filters a domain's mail goes through, in order, one way.
@@ -813,6 +961,8 @@ class Pipeline {
     required this.active,
     required this.filters,
     this.updatedAt,
+    this.createdAt,
+    this.domain = '',
   });
 
   factory Pipeline.fromJson(Map<String, dynamic> json) => Pipeline(
@@ -825,6 +975,8 @@ class Pipeline {
         if (filter is Map<String, dynamic>) PipelineFilter.fromJson(filter),
     ],
     updatedAt: _time(json['updated_at']),
+    createdAt: _time(json['created_at']),
+    domain: (json['domain'] as Map<String, dynamic>?)?['name'] as String? ?? '',
   );
 
   final int id;
@@ -835,6 +987,8 @@ class Pipeline {
   final bool active;
   final List<PipelineFilter> filters;
   final DateTime? updatedAt;
+  final DateTime? createdAt;
+  final String domain;
 }
 
 /// A filter an admin wrote, which pipelines can use like the built-in ones.
@@ -849,6 +1003,8 @@ class CustomFilter {
     this.description = '',
     this.config,
     this.updatedAt,
+    this.createdAt,
+    this.domain = '',
   });
 
   factory CustomFilter.fromJson(Map<String, dynamic> json) => CustomFilter(
@@ -861,6 +1017,8 @@ class CustomFilter {
     enabled: json['enabled'] as bool? ?? false,
     config: json['config'],
     updatedAt: _time(json['updated_at']),
+    createdAt: _time(json['created_at']),
+    domain: (json['domain'] as Map<String, dynamic>?)?['name'] as String? ?? '',
   );
 
   final int id;
@@ -878,15 +1036,15 @@ class CustomFilter {
   /// What it does, as JSON.
   final Object? config;
   final DateTime? updatedAt;
+  final DateTime? createdAt;
+  final String domain;
 }
 
 /// What the filters did with the mail over a window of time: how it
 /// arrived, how senders fared on SPF, DKIM and DMARC, what each filter
 /// decided, how each message ended, and why mail was turned away.
-class PipelineAnalytics {
-  const PipelineAnalytics({
-    required this.since,
-    required this.until,
+class PipelineFunnel {
+  const PipelineFunnel({
     this.received = const [],
     this.senderChecks = const [],
     this.decisions = const [],
@@ -894,20 +1052,17 @@ class PipelineAnalytics {
     this.rejectReasons = const [],
   });
 
-  factory PipelineAnalytics.fromJson(Map<String, dynamic> json) {
-    final window = json['window'] as Map<String, dynamic>? ?? const {};
-    final funnel = json['funnel'] as Map<String, dynamic>? ?? const {};
+  factory PipelineFunnel.fromJson(Map<String, dynamic> json) {
+    final funnel = json;
     // Go writes an empty list as null.
     List<Map<String, dynamic>> rows(String key) => [
       for (final row in funnel[key] as List? ?? const [])
         if (row is Map<String, dynamic>) row,
     ];
-    int count(Map<String, dynamic> row) => (row['count'] as num? ?? 0).round();
+    num count(Map<String, dynamic> row) => row['count'] as num? ?? 0;
     String text(Map<String, dynamic> row, String key) =>
         row[key] as String? ?? '';
-    return PipelineAnalytics(
-      since: _time(window['since']) ?? DateTime.now(),
-      until: _time(window['until']) ?? DateTime.now(),
+    return PipelineFunnel(
       received: [
         for (final row in rows('received'))
           (transport: text(row, 'transport'), count: count(row)),
@@ -943,23 +1098,20 @@ class PipelineAnalytics {
     );
   }
 
-  final DateTime since;
-  final DateTime until;
-
   /// Mail other servers handed over, by `tls` or `plaintext`.
-  final List<({String transport, int count})> received;
+  final List<({String transport, num count})> received;
 
   /// `spf`, `dkim` or `dmarc`, and how the check came out.
-  final List<({String mechanism, String result, int count})> senderChecks;
+  final List<({String mechanism, String result, num count})> senderChecks;
 
   /// What each filter did: `continue`, `reject` and so on.
-  final List<({String filter, String action, int count})> decisions;
+  final List<({String filter, String action, num count})> decisions;
 
   /// How messages ended, each way.
-  final List<({String direction, String outcome, int count})> outcomes;
+  final List<({String direction, String outcome, num count})> outcomes;
 
   /// Why mail was turned away, most often first.
-  final List<({String reason, int count})> rejectReasons;
+  final List<({String reason, num count})> rejectReasons;
 
   bool get isEmpty =>
       received.isEmpty &&
@@ -967,6 +1119,45 @@ class PipelineAnalytics {
       decisions.isEmpty &&
       outcomes.isEmpty &&
       rejectReasons.isEmpty;
+}
+
+/// Windowed rollups and, when available, counters since process start.
+class PipelineAnalytics extends PipelineFunnel {
+  const PipelineAnalytics({
+    required this.since,
+    required this.until,
+    this.windowLabel = '',
+    this.liveTotals,
+    super.received,
+    super.senderChecks,
+    super.decisions,
+    super.outcomes,
+    super.rejectReasons,
+  });
+
+  factory PipelineAnalytics.fromJson(Map<String, dynamic> json) {
+    final window = json['window'] as Map<String, dynamic>? ?? const {};
+    final funnel = PipelineFunnel.fromJson(
+      json['funnel'] as Map<String, dynamic>? ?? const {},
+    );
+    return PipelineAnalytics(
+      since: _time(window['since']) ?? DateTime.now(),
+      until: _time(window['until']) ?? DateTime.now(),
+      windowLabel: window['label'] as String? ?? '',
+      liveTotals: json['live_totals'] is Map<String, dynamic>
+          ? PipelineFunnel.fromJson(json['live_totals'] as Map<String, dynamic>)
+          : null,
+      received: funnel.received,
+      senderChecks: funnel.senderChecks,
+      decisions: funnel.decisions,
+      outcomes: funnel.outcomes,
+      rejectReasons: funnel.rejectReasons,
+    );
+  }
+  final DateTime since;
+  final DateTime until;
+  final String windowLabel;
+  final PipelineFunnel? liveTotals;
 }
 
 /// A domain's two lists of senders: the one let past the spam checks, and
@@ -990,6 +1181,7 @@ class SenderRule {
     required this.pattern,
     required this.list,
     this.reason = '',
+    this.createdBy,
     this.createdAt,
   });
 
@@ -997,8 +1189,13 @@ class SenderRule {
     id: _int(json['id']),
     domainId: _int(json['domain_id'] ?? 0),
     pattern: json['pattern'] as String? ?? '',
-    list: json['list_type'] == 'allow' ? SenderList.allow : SenderList.block,
+    list: switch (json['list_type']) {
+      'allow' => SenderList.allow,
+      'block' => SenderList.block,
+      _ => throw const FormatException('Unknown sender rule list'),
+    },
     reason: json['reason'] as String? ?? '',
+    createdBy: json['created_by'] == null ? null : _int(json['created_by']),
     createdAt: _time(json['created_at']),
   );
 
@@ -1009,6 +1206,10 @@ class SenderRule {
   final String pattern;
   final SenderList list;
   final String reason;
+
+  /// The recorded account ID, if the server has one. New sender-rule
+  /// requests do not accept a creator chosen by the client.
+  final int? createdBy;
   final DateTime? createdAt;
 }
 
@@ -1036,26 +1237,41 @@ enum MtaStsMode {
 /// `https://mta-sts.<domain>/.well-known/mta-sts.txt`.
 class MtaStsPolicy {
   const MtaStsPolicy({
+    this.id = 0,
     required this.domainId,
     required this.mode,
     required this.mxHosts,
-    required this.maxAge,
+    required Duration maxAge,
+    int? maxAgeSeconds,
     required this.active,
+    this.createdAt,
     this.updatedAt,
-  });
+    this.domain,
+  }) : _maxAge = maxAge,
+       _maxAgeSeconds = maxAgeSeconds;
 
   factory MtaStsPolicy.fromJson(Map<String, dynamic> json) => MtaStsPolicy(
+    id: _int(json['id'] ?? 0),
     domainId: _int(json['domain_id'] ?? 0),
     mode: MtaStsMode.parse(json['mode']),
     mxHosts: [
       for (final host in (json['mx_hosts'] as String? ?? '').split(','))
         if (host.trim().isNotEmpty) host.trim(),
     ],
-    maxAge: Duration(seconds: _int(json['max_age'] ?? 0)),
+    maxAge: Duration.zero,
+    maxAgeSeconds: _int(json['max_age'] ?? 0),
     active: json['active'] as bool? ?? false,
+    createdAt: _time(json['created_at']),
     updatedAt: _time(json['updated_at']),
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain
+          when domain['id'] is num && (domain['id'] as num) > 0 =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
   );
 
+  final int id;
   final int domainId;
   final MtaStsMode mode;
 
@@ -1063,11 +1279,23 @@ class MtaStsPolicy {
   final List<String> mxHosts;
 
   /// How long other servers may keep the policy before fetching it again.
-  final Duration maxAge;
+  /// The exact wire value, including lifetimes too large for [Duration]'s
+  /// microsecond representation. Use this when editing or sending it back.
+  int get maxAgeSeconds => _maxAgeSeconds ?? _maxAge.inSeconds;
+
+  final Duration _maxAge;
+  final int? _maxAgeSeconds;
+
+  Duration get maxAge =>
+      _maxAgeSeconds == null ? _maxAge : Duration(seconds: maxAgeSeconds);
 
   /// Whether the server publishes it. One that is not is as good as none.
   final bool active;
+  final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// Present only when the server loads the domain association.
+  final AdminDomain? domain;
 }
 
 /// One DNS record the server looked up for a domain, and whether it is
