@@ -1600,4 +1600,121 @@ void main() {
       expect(sent.url.path, '/api/v1/admin/domains/4/suppressions/9');
     });
   });
+  group('certificates', () {
+    const pem =
+        '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n';
+
+    test('reads one fresh from the server, with its PEM', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {
+              'id': 4,
+              'domain_id': 7,
+              'cert_pem': pem,
+              'issuer': "CN=R11,O=Let's Encrypt,C=US",
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'created_at': '2026-09-02T10:00:00Z',
+              'updated_at': '2026-09-03T10:00:00Z',
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.certificate(4);
+      expect(sent.method, 'GET');
+      expect(sent.url.path, '/api/v1/admin/certificates/4');
+      expect(cert.id, 4);
+      expect(cert.domainId, 7);
+      expect(cert.domain, 'a.test');
+      expect(cert.certPem, pem);
+      expect(cert.autoRenew, isFalse);
+      expect(cert.notAfter.toUtc(), DateTime.utc(2026, 12));
+      expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 9, 2, 10));
+      expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 9, 3, 10));
+    });
+
+    test('uploads the certificate, key and domain it is given', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {
+              'id': 9,
+              'domain_id': 7,
+              'issuer': 'CN=a.test',
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.uploadCertificate(
+        domainId: 7,
+        certPem: pem,
+        keyPem: 'KEY',
+        autoRenew: false,
+      );
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/v1/admin/certificates');
+      expect(jsonDecode(sent.body), {
+        'domain_id': 7,
+        'cert_pem': pem,
+        'key_pem': 'KEY',
+        'auto_renew': false,
+      });
+      expect(cert.id, 9);
+      expect(cert.certPem, isEmpty);
+    });
+
+    test('leaves renewal to the server when not told', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {'id': 9, 'domain_id': 7},
+          });
+        }),
+      );
+      await client.uploadCertificate(domainId: 7, certPem: pem, keyPem: 'K');
+      expect((jsonDecode(sent.body) as Map).containsKey('auto_renew'), isFalse);
+    });
+
+    test("the server's objection to a certificate comes through", () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json(status: 400, {
+            'error': {
+              'code': 'bad_request',
+              'message': 'Invalid certificate PEM',
+            },
+          }),
+        ),
+      );
+      await expectLater(
+        client.uploadCertificate(domainId: 7, certPem: 'x', keyPem: 'y'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 400)
+              .having((e) => e.message, 'message', 'Invalid certificate PEM'),
+        ),
+      );
+    });
+  });
 }
