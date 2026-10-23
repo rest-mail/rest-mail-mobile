@@ -4440,6 +4440,11 @@ class FakeRestmail {
     fields: {field: message},
   );
 
+  // The request type's pattern for a Go duration, checked while binding.
+  static final _goDuration = RegExp(
+    r'^[+-]?(0|(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$',
+  );
+
   // The fake accepts Go duration units and compound/decimal values. Its clock
   // has microsecond precision; sub-microsecond durations are rounded here.
   Duration _banDuration(String raw) {
@@ -4481,25 +4486,63 @@ class FakeRestmail {
   }
 
   http.StreamedResponse _createBan(Map<String, dynamic> body) {
-    final ip = body['ip'] as String? ?? '';
-    if (ip.isEmpty) _banFieldError('ip', 'IP address is required');
-    if (body['created_by'] is! String) _banFieldError('created_by', 'required');
-    if (!const ['smtp', 'imap', 'pop3', 'all'].contains(body['protocol'])) {
-      _banFieldError(
-        'protocol',
-        'protocol must be one of smtp, imap, pop3, all',
-      );
+    const protocolRule = 'protocol must be one of smtp, imap, pop3, all';
+    final problems = _undeclared(body, const {
+      'ip',
+      'reason',
+      'protocol',
+      'duration',
+      'created_by',
+    });
+    final ip = _requiredString(
+      body,
+      'ip',
+      problems,
+      broken: 'IP address is required',
+      missing: 'IP address is required',
+    );
+    final protocol = _requiredString(
+      body,
+      'protocol',
+      problems,
+      broken: protocolRule,
+      missing: protocolRule,
+      valid: const {'smtp', 'imap', 'pop3', 'all'}.contains,
+    );
+    final createdBy = _requiredString(
+      body,
+      'created_by',
+      problems,
+      broken: 'required',
+      emptyBreaks: false,
+    );
+    final reason = body['reason'];
+    if (body.containsKey('reason') && reason is! String) {
+      problems['reason'] = reason == null
+          ? 'must not be null'
+          : 'must be a string';
     }
-    final duration = body['duration'] as String?;
-    final lasts = duration == null ? null : _banDuration(duration);
+    final duration = body['duration'];
+    if (duration != null && duration is! String) {
+      problems['duration'] = 'must be a string';
+    } else if (duration is String && !_goDuration.hasMatch(duration)) {
+      problems['duration'] = 'invalid duration format (e.g. 24h, 168h)';
+    }
+    if (problems.isNotEmpty ||
+        ip == null ||
+        protocol == null ||
+        createdBy == null) {
+      _invalid(problems);
+    }
+    final lasts = duration is String ? _banDuration(duration) : null;
     final existing = _bans.values.where((ban) => ban.ip == ip).firstOrNull;
     final id = existing?.id ?? _nextRowId++;
     final ban = _bans[id] = FakeBan(
       id: id,
       ip: ip,
-      protocol: body['protocol'] as String,
-      reason: body['reason'] as String? ?? '',
-      createdBy: body['created_by'] as String,
+      protocol: protocol,
+      reason: reason as String? ?? '',
+      createdBy: createdBy,
       createdAt: existing?.createdAt ?? _clock(),
       expiresAt: lasts == null ? null : _clock().add(lasts),
     );
@@ -4670,24 +4713,27 @@ Map<String, String> _undeclared(
     if (!declared.contains(key)) '$prefix$key': 'not allowed',
 };
 
-/// A required string field as binding reads it: absent is "required", null
-/// or another type says what it must be, and an empty value or one [valid]
-/// refuses breaks its rule, worded [broken]. Null when it is refused.
+/// A required string field as binding reads it: absent is [missing], null
+/// or another type says what it must be, and a value [valid] refuses breaks
+/// its rule, worded [broken]. An empty value breaks it too unless
+/// [emptyBreaks] is false. Null when it is refused.
 String? _requiredString(
   Map<String, dynamic> body,
   String name,
   Map<String, String> problems, {
   required String broken,
+  String missing = 'required',
+  bool emptyBreaks = true,
   bool Function(String value)? valid,
 }) {
   final value = body[name];
   if (!body.containsKey(name)) {
-    problems[name] = 'required';
+    problems[name] = missing;
   } else if (value == null) {
     problems[name] = 'must not be null';
   } else if (value is! String) {
     problems[name] = 'must be a string';
-  } else if (value.isEmpty || !(valid?.call(value) ?? true)) {
+  } else if ((emptyBreaks && value.isEmpty) || !(valid?.call(value) ?? true)) {
     problems[name] = broken;
   } else {
     return value;

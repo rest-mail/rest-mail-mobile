@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 import 'package:test/test.dart';
@@ -93,6 +96,65 @@ void main() {
       await client.deleteBan(ban.id);
     },
   );
+  test(
+    'a create body is bound as the server binds it, every field at once',
+    () async {
+      Future<http.Response> create(Object body) => fake.client.post(
+        Uri.parse('https://${FakeAccounts.host}/api/v1/admin/bans'),
+        headers: {
+          'authorization': 'Bearer ${client.tokens!.accessToken}',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+      const protocolRule = 'protocol must be one of smtp, imap, pop3, all';
+      final cases = <Map<String, Object?>, Map<String, String>>{
+        {}: {
+          'ip': 'IP address is required',
+          'protocol': protocolRule,
+          'created_by': 'required',
+        },
+        {
+          'ip': '',
+          'protocol': 'ftp',
+          'duration': 'forever',
+          'created_by': 'admin',
+        }: {
+          'ip': 'IP address is required',
+          'protocol': protocolRule,
+          'duration': 'invalid duration format (e.g. 24h, 168h)',
+        },
+        {
+          'ip': 7,
+          'protocol': 'all',
+          'reason': null,
+          'created_by': 'admin',
+          'expires': 'soon',
+        }: {
+          'ip': 'must be a string',
+          'reason': 'must not be null',
+          'expires': 'not allowed',
+        },
+      };
+      for (final MapEntry(key: body, value: want) in cases.entries) {
+        final response = await create(body);
+        expect(response.statusCode, 422, reason: '$body');
+        expect(
+          (jsonDecode(response.body)
+              as Map<String, dynamic>)['error']['details']['fields'],
+          want,
+          reason: '$body',
+        );
+      }
+      final made = await create({
+        'ip': '192.0.2.9',
+        'protocol': 'all',
+        'created_by': '',
+      });
+      expect(made.statusCode, 201);
+    },
+  );
+
   test(
     'bad protocol and duration refuse before changing an existing ban',
     () async {
