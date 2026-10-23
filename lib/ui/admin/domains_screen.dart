@@ -12,7 +12,9 @@ import 'aliases_screen.dart';
 import 'dns_check_screen.dart';
 import 'mailboxes_screen.dart';
 import 'mta_sts_screen.dart';
+import 'relay_screen.dart';
 import 'sender_lists_screen.dart';
+import 'suppressions_screen.dart';
 
 /// The `server_type` values a domain may have, with what they mean.
 const serverTypes = [
@@ -164,6 +166,11 @@ class _DomainScreenState extends State<DomainScreen> {
       domain: _domain,
     ),
     AdminSection.mtaSts => MtaStsScreen(
+      account: widget.account,
+      domain: _domain,
+    ),
+    AdminSection.relay => RelayScreen(account: widget.account, domain: _domain),
+    AdminSection.suppressions => SuppressionsScreen(
       account: widget.account,
       domain: _domain,
     ),

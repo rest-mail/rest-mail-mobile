@@ -154,16 +154,37 @@ class RestmailClient {
       _uri(['auth', 'refresh']),
       body: {'refresh_token': current.refreshToken},
     );
+    // Signed out, or handed another session, while the refresh was in
+    // flight: the answer is about tokens that are no longer this session's,
+    // so it neither ends nor overwrites what took their place.
+    if (!identical(_tokens, current)) {
+      final latest = _tokens;
+      if (latest == null) throw const SessionExpiredException();
+      return latest;
+    }
     if (response.statusCode == 401 || response.statusCode == 403) {
       _setTokens(null);
       throw const SessionExpiredException();
     }
     _throwIfError(response);
     final tokens = _tokensFrom(response, _data(response));
-    // Signed out while the refresh was in flight: stay signed out.
-    if (_tokens == null) throw const SessionExpiredException();
     _setTokens(tokens);
     return tokens;
+  }
+
+  /// Renews the session now if its access token runs out within [margin], as
+  /// when the app comes back to the foreground after a while away. It shares
+  /// any refresh already in flight, so calling it again costs nothing more.
+  ///
+  /// Throws [SessionExpiredException] when the server refuses the refresh
+  /// token, and [ApiException] when it can't be reached; then the session is
+  /// kept as it was, to be renewed by the next request.
+  Future<void> renewIfExpiring({
+    Duration margin = const Duration(minutes: 2),
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null || !tokens.expiresWithin(margin)) return;
+    await refresh();
   }
 
   // ── Setup ────────────────────────────────────────────────────────────
@@ -639,6 +660,62 @@ class RestmailClient {
       'domains',
       '$domainId',
       list.path,
+      '$id',
+    ]);
+  }
+
+  /// How [domainId]'s outgoing mail leaves the server. Needs
+  /// `domains:read`.
+  Future<DomainRelay> domainRelay(int domainId) async => DomainRelay.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'relay'])),
+  );
+
+  /// Replaces [domainId]'s outbound transport. For a relay, [host], [port]
+  /// and [tlsMode] are needed. A [password] left out keeps the stored one;
+  /// an empty one clears it. Needs `domains:write` on every domain, as the
+  /// server asks.
+  Future<DomainRelay> setDomainRelay(
+    int domainId, {
+    required OutboundTransport transport,
+    String host = '',
+    int? port,
+    RelayTlsMode? tlsMode,
+    String username = '',
+    String? password,
+  }) async => DomainRelay.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'domains', '$domainId', 'relay'],
+        body: {
+          'transport': transport.value,
+          if (transport == OutboundTransport.relay) ...{
+            'host': host,
+            'port': ?port,
+            'tls_mode': ?tlsMode?.value,
+            'username': username,
+            'password': ?password,
+          },
+        },
+      ),
+    ),
+  );
+
+  /// The recipients [domainId]'s mail is no longer sent to, most recently
+  /// bounced first. Needs `domains:read`.
+  Future<List<Suppression>> suppressions(int domainId) async => _list(
+    await _authed('GET', ['admin', 'domains', '$domainId', 'suppressions']),
+    Suppression.fromJson,
+  );
+
+  /// Clears a suppression, so mail to the address is tried again. Needs
+  /// `domains:write`.
+  Future<void> clearSuppression(int domainId, int id) async {
+    await _authed('DELETE', [
+      'admin',
+      'domains',
+      '$domainId',
+      'suppressions',
       '$id',
     ]);
   }

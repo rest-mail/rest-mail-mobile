@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -1186,6 +1187,341 @@ void main() {
         expect(sent.single.url.path, '/api/v1/admin/mailboxes/9/sessions');
         expect(sent.single.body, isEmpty);
       });
+    });
+  });
+
+  group('renewal', () {
+    test('a refresh answered after sign-out neither revives the session nor '
+        'reports new tokens', () async {
+      final answer = Completer<http.Response>();
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        onTokensChanged: changes.add,
+        httpClient: MockClient(
+          (request) => _isRefresh(request)
+              ? answer.future
+              : Future.value(_json({'data': null})),
+        ),
+      );
+
+      final refreshing = client.refresh();
+      await Future<void>.delayed(Duration.zero);
+      await client.logout();
+      answer.complete(_signedIn('2'));
+
+      await expectLater(refreshing, throwsA(isA<SessionExpiredException>()));
+      expect(client.tokens, isNull);
+      expect(changes, [null]);
+    });
+
+    test(
+      'a refusal answered after sign-out does not report a second end',
+      () async {
+        final answer = Completer<http.Response>();
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient(
+            (request) => _isRefresh(request)
+                ? answer.future
+                : Future.value(_json({'data': null})),
+          ),
+        );
+
+        final refreshing = client.refresh();
+        await Future<void>.delayed(Duration.zero);
+        await client.logout();
+        answer.complete(_json(_expired, status: 401));
+
+        await expectLater(refreshing, throwsA(isA<SessionExpiredException>()));
+        expect(changes, [null]);
+      },
+    );
+
+    test('renewIfExpiring leaves a token with time left alone', () async {
+      var asked = 0;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((_) async {
+          asked++;
+          return _signedIn('2');
+        }),
+      );
+
+      await client.renewIfExpiring();
+
+      expect(asked, 0);
+      expect(client.tokens!.refreshToken, 'refresh-1');
+    });
+
+    test('renewIfExpiring renews a token about to run out, once however '
+        'often it is asked', () async {
+      var refreshes = 0;
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1', validFor: const Duration(seconds: 20)),
+        onTokensChanged: changes.add,
+        httpClient: MockClient((request) async {
+          if (_isRefresh(request)) refreshes++;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return _signedIn('2');
+        }),
+      );
+
+      await Future.wait([
+        client.renewIfExpiring(),
+        client.renewIfExpiring(),
+        client.renewIfExpiring(),
+      ]);
+
+      expect(refreshes, 1);
+      expect(client.tokens!.refreshToken, 'refresh-2');
+      expect(changes.map((t) => t?.refreshToken), ['refresh-2']);
+    });
+
+    test('renewIfExpiring with the server unreachable keeps the refresh '
+        'token', () async {
+      final changes = <SessionTokens?>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1', validFor: Duration.zero),
+        onTokensChanged: changes.add,
+        httpClient: MockClient(
+          (_) async => throw http.ClientException('Connection refused'),
+        ),
+      );
+
+      await expectLater(
+        client.renewIfExpiring(),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'network_error'),
+        ),
+      );
+      expect(client.tokens!.refreshToken, 'refresh-1');
+      expect(changes, isEmpty);
+    });
+
+    test(
+      'renewIfExpiring with the refresh token refused ends the session',
+      () async {
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1', validFor: Duration.zero),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((_) async => _json(_expired, status: 401)),
+        );
+
+        await expectLater(
+          client.renewIfExpiring(),
+          throwsA(isA<SessionExpiredException>()),
+        );
+        expect(client.tokens, isNull);
+        expect(changes, [null]);
+      },
+    );
+  });
+
+  group('domain delivery', () {
+    RestmailClient clientFor(
+      FutureOr<http.Response> Function(http.Request) handler,
+    ) => RestmailClient(
+      server: _server,
+      tokens: _tokens('1'),
+      httpClient: MockClient((request) async => handler(request)),
+    );
+
+    test('reads a domain relay without its password', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 587,
+            'tls_mode': 'starttls',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final relay = await client.domainRelay(4);
+      expect(relay.domainId, 4);
+      expect(relay.transport, OutboundTransport.relay);
+      expect(relay.host, 'smtp.relay.test');
+      expect(relay.port, 587);
+      expect(relay.tlsMode, RelayTlsMode.starttls);
+      expect(relay.username, 'ada');
+      expect(relay.passwordSet, isTrue);
+    });
+
+    test('reads a direct transport with no relay fields', () async {
+      final client = clientFor(
+        (_) => _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        }),
+      );
+      final relay = await client.domainRelay(4);
+      expect(relay.transport, OutboundTransport.direct);
+      expect(relay.host, '');
+      expect(relay.port, isNull);
+      expect(relay.tlsMode, isNull);
+      expect(relay.passwordSet, isFalse);
+    });
+
+    test('sets a relay, leaving the password out to keep it', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 465,
+            'tls_mode': 'implicit',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final saved = await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 465,
+        tlsMode: RelayTlsMode.implicit,
+        username: 'ada',
+      );
+      expect(sent, {
+        'transport': 'relay',
+        'host': 'smtp.relay.test',
+        'port': 465,
+        'tls_mode': 'implicit',
+        'username': 'ada',
+      });
+      expect(saved.tlsMode, RelayTlsMode.implicit);
+      expect(saved.passwordSet, isTrue);
+    });
+
+    test('sends a new or empty relay password as given', () async {
+      final bodies = <Map<String, dynamic>>[];
+      final client = clientFor((request) {
+        bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+        return _json({
+          'data': {'domain_id': 4, 'transport': 'relay', 'password_set': false},
+        });
+      });
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        username: 'ada',
+        password: 's3cret',
+      );
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        password: '',
+      );
+      expect(bodies[0]['password'], 's3cret');
+      expect(bodies[1]['username'], '');
+      expect(bodies[1]['password'], '');
+    });
+
+    test('switches to direct with only the transport', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        });
+      });
+      await client.setDomainRelay(4, transport: OutboundTransport.direct);
+      expect(sent, {'transport': 'direct'});
+    });
+
+    test('lists suppressions with every field the server sends', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/suppressions');
+        return _json({
+          'data': [
+            {
+              'id': 9,
+              'domain_id': 4,
+              'address': 'gone@far.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_mailbox',
+              'last_error': '550 5.1.1 no such user',
+              'message_id': 31,
+              'created_at': '2026-10-20T08:00:00Z',
+              'updated_at': '2026-10-21T08:00:00Z',
+              'expires_at': '2026-11-20T08:00:00Z',
+            },
+            {
+              'id': 10,
+              'domain_id': 4,
+              'address': 'nobody@nowhere.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_domain',
+              'last_error': '',
+              'message_id': null,
+              'created_at': '2026-10-19T08:00:00Z',
+              'updated_at': '2026-10-19T08:00:00Z',
+              'expires_at': '2026-11-19T08:00:00Z',
+            },
+          ],
+        });
+      });
+      final list = await client.suppressions(4);
+      expect(list, hasLength(2));
+      final first = list.first;
+      expect(first.id, 9);
+      expect(first.domainId, 4);
+      expect(first.address, 'gone@far.test');
+      expect(first.reason, 'hard_bounce');
+      expect(first.failureCategory, 'bad_mailbox');
+      expect(first.lastError, '550 5.1.1 no such user');
+      expect(first.messageId, 31);
+      expect(first.createdAt!.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(first.updatedAt!.toUtc(), DateTime.utc(2026, 10, 21, 8));
+      expect(first.expiresAt!.toUtc(), DateTime.utc(2026, 11, 20, 8));
+      expect(list.last.messageId, isNull);
+    });
+
+    test('clears a suppression', () async {
+      late http.Request sent;
+      final client = clientFor((request) {
+        sent = request;
+        return http.Response('', 204);
+      });
+      await client.clearSuppression(4, 9);
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/api/v1/admin/domains/4/suppressions/9');
     });
   });
 }
