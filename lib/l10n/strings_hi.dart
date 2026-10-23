@@ -36,6 +36,7 @@ const Map<String, Map<String, String>> stringsHi = {
     'mailboxes.title': 'मेलबॉक्स',
     'mailboxes.switch': 'खाता बदलें',
     'mailboxes.folders': 'फ़ोल्डर',
+    'mailboxes.quarantine': 'क्वारंटीन',
     'mailboxes.inboxUnread': 'इनबॉक्स में अपठित',
     'mailboxes.unread': 'अपठित',
     'mailboxes.messages': 'संदेश',

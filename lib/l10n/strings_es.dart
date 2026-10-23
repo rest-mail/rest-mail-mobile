@@ -38,6 +38,7 @@ const Map<String, Map<String, String>> stringsEs = {
     'mailboxes.title': 'Buzones',
     'mailboxes.switch': 'Cambiar de cuenta',
     'mailboxes.folders': 'Carpetas',
+    'mailboxes.quarantine': 'Cuarentena',
     'mailboxes.inboxUnread': 'Sin leer en Recibidos',
     'mailboxes.unread': 'Sin leer',
     'mailboxes.messages': 'Mensajes',

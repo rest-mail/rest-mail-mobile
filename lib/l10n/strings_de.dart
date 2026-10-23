@@ -38,6 +38,7 @@ const Map<String, Map<String, String>> stringsDe = {
     'mailboxes.title': 'Postfächer',
     'mailboxes.switch': 'Konto wechseln',
     'mailboxes.folders': 'Ordner',
+    'mailboxes.quarantine': 'Quarantäne',
     'mailboxes.inboxUnread': 'Ungelesen im Posteingang',
     'mailboxes.unread': 'Ungelesen',
     'mailboxes.messages': 'Nachrichten',

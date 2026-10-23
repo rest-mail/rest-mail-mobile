@@ -639,6 +639,61 @@ class ScheduledSend {
   final String status;
 }
 
+/// A message the account's filters held back instead of delivering, waiting
+/// to be released into the inbox or deleted. REST Mail only.
+class QuarantinedMessage {
+  const QuarantinedMessage({
+    required this.id,
+    required this.mailboxId,
+    required this.sender,
+    required this.subject,
+    required this.bodyPreview,
+    required this.reason,
+    this.spamScore,
+    this.receivedAt,
+    this.expiresAt,
+  });
+
+  factory QuarantinedMessage.fromJson(Map<String, dynamic> json) =>
+      QuarantinedMessage(
+        id: (json['id'] as num).toInt(),
+        mailboxId: (json['mailbox_id'] as num?)?.toInt() ?? 0,
+        sender: json['sender'] as String? ?? '',
+        subject: json['subject'] as String? ?? '',
+        bodyPreview: json['body_preview'] as String? ?? '',
+        reason: json['quarantine_reason'] as String? ?? '',
+        spamScore: (json['spam_score'] as num?)?.toDouble(),
+        receivedAt: _quarantineTime(json['received_at']),
+        expiresAt: _quarantineTime(json['expires_at']),
+      );
+
+  final int id;
+  final int mailboxId;
+  final String sender;
+  final String subject;
+
+  /// The start of the body, up to 200 characters.
+  final String bodyPreview;
+
+  /// Why it was held: the reason code of the filter step that held it
+  /// (dmarc_quarantine, spf_fail, spam_threshold, ...), or `pipeline` when the
+  /// server did not record one.
+  final String reason;
+  final double? spamScore;
+  final DateTime? receivedAt;
+
+  /// When the server deletes it if nobody releases it.
+  final DateTime? expiresAt;
+}
+
+/// A timestamp, or null for none. Go writes an unset time as year 1.
+DateTime? _quarantineTime(Object? value) {
+  if (value is! String || value.isEmpty) return null;
+  final at = DateTime.tryParse(value);
+  if (at == null || at.year <= 1) return null;
+  return at.toLocal();
+}
+
 /// Filters for a mailbox search. Every field is optional; the server ANDs
 /// whichever are given.
 class SearchQuery {

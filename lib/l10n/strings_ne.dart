@@ -36,6 +36,7 @@ const Map<String, Map<String, String>> stringsNe = {
     'mailboxes.title': 'मेलबक्स',
     'mailboxes.switch': 'खाता बदल्नुहोस्',
     'mailboxes.folders': 'फोल्डरहरू',
+    'mailboxes.quarantine': 'क्वारेन्टाइन',
     'mailboxes.inboxUnread': 'इनबक्समा नपढिएको',
     'mailboxes.unread': 'नपढिएको',
     'mailboxes.messages': 'सन्देशहरू',

@@ -44,6 +44,7 @@ const Map<String, Map<String, String>> stringsEn = {
     'mailboxes.title': 'Mailboxes',
     'mailboxes.switch': 'Switch account',
     'mailboxes.folders': 'Folders',
+    'mailboxes.quarantine': 'Quarantine',
     'mailboxes.inboxUnread': 'Inbox unread',
     'mailboxes.unread': 'Unread',
     'mailboxes.messages': 'Messages',

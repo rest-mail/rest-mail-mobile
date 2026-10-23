@@ -101,6 +101,21 @@ abstract interface class MailBackend {
 
   Future<void> cancelScheduledSend(int id);
 
+  /// Whether the server holds back mail its filters doubt, for the account
+  /// to release or delete (REST Mail).
+  bool get hasQuarantine;
+
+  /// One page of [accountId]'s held messages, newest first.
+  Future<OffsetPage<QuarantinedMessage>> quarantine(
+    int accountId, {
+    int offset = 0,
+  });
+
+  /// Delivers a held message to the inbox; the id of the message it becomes.
+  Future<int> releaseQuarantined(int accountId, int id);
+
+  Future<void> deleteQuarantined(int accountId, int id);
+
   Future<Message> saveDraft(OutgoingMessage draft);
 
   Future<Message> updateDraft(int id, OutgoingMessage draft);
@@ -228,6 +243,23 @@ class RestBackend implements MailBackend {
 
   @override
   Future<void> cancelScheduledSend(int id) => client.cancelScheduledSend(id);
+
+  @override
+  bool get hasQuarantine => true;
+
+  @override
+  Future<OffsetPage<QuarantinedMessage>> quarantine(
+    int accountId, {
+    int offset = 0,
+  }) => client.quarantine(accountId, offset: offset);
+
+  @override
+  Future<int> releaseQuarantined(int accountId, int id) =>
+      client.releaseQuarantined(accountId, id);
+
+  @override
+  Future<void> deleteQuarantined(int accountId, int id) =>
+      client.deleteQuarantined(accountId, id);
 
   @override
   Future<Message> saveDraft(OutgoingMessage draft) => client.saveDraft(draft);
