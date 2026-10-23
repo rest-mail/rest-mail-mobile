@@ -137,6 +137,8 @@ void main() {
 
     // Signing out ends only the session and keeps the account on the phone.
     await _openMailboxSettings(tester);
+    await tester.ensureVisible(find.text('Sign out'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(

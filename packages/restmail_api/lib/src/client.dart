@@ -1207,6 +1207,59 @@ class RestmailClient {
     await _authed('DELETE', ['accounts', '$accountId', 'credentials', '$id']);
   }
 
+  // ── API keys ─────────────────────────────────────────────────────────
+  //
+  // For the session's own account, or one it manages. Creating and revoking
+  // need a two-factor sign-in, and creating the session's current password
+  // too: the server answers 403 otherwise, a refusal of the request, not of
+  // the session, so it never renews or ends it.
+
+  /// The account's API keys: metadata only, never a token.
+  Future<List<APIKey>> apiKeys(int accountId) async => _list(
+    await _authed('GET', ['accounts', '$accountId', 'api-keys']),
+    APIKey.fromJson,
+  );
+
+  /// Makes an API key holding [permissions] (1 to 64), each within what the
+  /// session and the account hold, and returns it with its token, which the
+  /// server shows this once. Without [expiresAt] the server picks 90 days.
+  Future<CreatedAPIKey> createAPIKey(
+    int accountId, {
+    required String name,
+    required String password,
+    required List<APIKeyPermission> permissions,
+    DateTime? expiresAt,
+  }) async {
+    final response = await _authed(
+      'POST',
+      ['accounts', '$accountId', 'api-keys'],
+      body: {
+        'name': name,
+        'password': password,
+        'permissions': [
+          for (final permission in permissions) permission.toJson(),
+        ],
+        if (expiresAt != null)
+          'expires_at': expiresAt.toUtc().toIso8601String(),
+      },
+    );
+    try {
+      return CreatedAPIKey.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
+  /// Revokes an API key. The server refuses it from the next request on.
+  Future<void> revokeAPIKey(int accountId, int credentialId) async {
+    await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'api-keys',
+      '$credentialId',
+    ]);
+  }
+
   // ── Push devices ─────────────────────────────────────────────────────
   //
   // A device registered here belongs to this session: the server pushes to
