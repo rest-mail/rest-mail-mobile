@@ -448,12 +448,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       _Discovery.idle => null,
       _Discovery.searching => _Card(
         tone: _Tone.pending,
-        title: trArgs(context, 'signIn.looking', {
-          'domain': '$_searchedDomain',
-        }),
-        detail: trArgs(context, 'signIn.asking', {
-          'domain': '$_searchedDomain',
-        }),
+        title: trArgs(context, 'signIn.looking', {'domain': _searchedDomain}),
+        detail: trArgs(context, 'signIn.asking', {'domain': _searchedDomain}),
       ),
       _Discovery.found => _Card(
         tone: _Tone.good,
@@ -462,9 +458,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       ),
       _Discovery.notFound => _Card(
         tone: _Tone.missing,
-        title: trArgs(context, 'signIn.notFound', {
-          'domain': '$_searchedDomain',
-        }),
+        title: trArgs(context, 'signIn.notFound', {'domain': _searchedDomain}),
         detail: tr(context, 'signIn.notFoundHint'),
       ),
     };
