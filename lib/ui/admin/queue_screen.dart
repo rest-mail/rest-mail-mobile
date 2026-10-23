@@ -98,7 +98,9 @@ class _QueueScreenState extends State<QueueScreen> {
     try {
       fresh = await widget.account.client.queueEntry(entry.id);
     } on ApiException catch (error) {
-      if (mounted) showToast(context, describeAdminError(error, host: _host));
+      if (mounted) {
+        showToast(context, describeAdminError(context, error, host: _host));
+      }
       return;
     } finally {
       _opening = false;
@@ -187,7 +189,9 @@ class _QueueScreenState extends State<QueueScreen> {
       showToast(context, '${result.affected} queue entries changed');
       await _reload();
     } on ApiException catch (error) {
-      if (mounted) showToast(context, describeAdminError(error, host: _host));
+      if (mounted) {
+        showToast(context, describeAdminError(context, error, host: _host));
+      }
     } finally {
       if (mounted) setState(() => _changing = false);
     }

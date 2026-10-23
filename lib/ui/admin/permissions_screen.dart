@@ -147,7 +147,9 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     try {
       await widget.account.client.deleteGrant(grant.id);
     } on ApiException catch (e) {
-      if (mounted) showToast(context, describeGrantError(e, host: _host));
+      if (mounted) {
+        showToast(context, describeGrantError(context, e, host: _host));
+      }
       return;
     }
     if (!mounted) return;
@@ -290,7 +292,7 @@ class _CatalogView extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return AdminMessage(
-              describeAdminError(snapshot.error!, host: host),
+              describeAdminError(context, snapshot.error!, host: host),
               onRetry: onRetry,
             );
           }
@@ -476,7 +478,11 @@ class _GrantFormState extends State<_GrantForm> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = describeGrantError(e, host: widget.account.server.host);
+        _error = describeGrantError(
+          context,
+          e,
+          host: widget.account.server.host,
+        );
       });
     }
   }
@@ -559,6 +565,7 @@ class _GrantFormState extends State<_GrantForm> {
                       if (snapshot.hasError) {
                         return ErrorText(
                           describeAdminError(
+                            context,
                             snapshot.error!,
                             host: widget.account.server.host,
                           ),

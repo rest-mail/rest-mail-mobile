@@ -248,7 +248,11 @@ class _BanFormState extends State<_BanForm> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = describeAdminError(e, host: widget.account.server.host);
+        _error = describeAdminError(
+          context,
+          e,
+          host: widget.account.server.host,
+        );
       });
     }
   }

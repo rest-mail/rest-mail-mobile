@@ -343,7 +343,11 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
             ),
             if (error != null)
               AdminMessage(
-                describeAdminError(error, host: widget.account.server.host),
+                describeAdminError(
+                  context,
+                  error,
+                  host: widget.account.server.host,
+                ),
                 onRetry: () => unawaited(_load()),
               )
             else if (analytics == null)

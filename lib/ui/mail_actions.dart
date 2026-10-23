@@ -44,10 +44,18 @@ Future<void> removeWithUndo({
         ),
       );
   } on ApiException catch (e) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(describeError(e))));
+    _failed(messenger, e);
   }
+}
+
+/// Says why a removal or its undo failed, in the messenger's own words: the
+/// screen that asked may be gone, the messenger is not.
+void _failed(ScaffoldMessengerState messenger, ApiException e) {
+  final context = messenger.context;
+  if (!context.mounted) return;
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(describeError(context, e))));
 }
 
 Future<void> _undo(
@@ -60,7 +68,7 @@ Future<void> _undo(
       await mailbox.undoRemoval(message);
     }
   } on ApiException catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(describeError(e))));
+    _failed(messenger, e);
   }
 }
 

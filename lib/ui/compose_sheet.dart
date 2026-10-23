@@ -249,7 +249,7 @@ class _ComposeSheetState extends State<ComposeSheet>
       _undo.reset();
       setState(() {
         _sending = false;
-        _error = describeError(e, host: _backend.host);
+        _error = describeError(context, e, host: _backend.host);
       });
     }
   }
@@ -313,7 +313,7 @@ class _ComposeSheetState extends State<ComposeSheet>
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = describeError(e, host: _backend.host);
+        _error = describeError(context, e, host: _backend.host);
       });
     }
   }
@@ -435,7 +435,7 @@ class _ComposeSheetState extends State<ComposeSheet>
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = describeError(e, host: _backend.host);
+        _error = describeError(context, e, host: _backend.host);
       });
     }
   }

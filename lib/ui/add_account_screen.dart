@@ -219,7 +219,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         _busy = false;
         _error = e.code == 'unauthorized'
             ? tr(context, _needsCode ? 'signIn.badCode' : 'signIn.badPassword')
-            : describeError(e, host: server.host);
+            : describeError(context, e, host: server.host);
       });
     }
   }

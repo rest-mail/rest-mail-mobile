@@ -23,12 +23,12 @@ String _lastUsed(BuildContext context, DateTime when, DateTime now) =>
     : trArgs(context, 'date.lastUsed', {'date': _day(when)});
 
 /// What a refused request says, its fields named as a person would.
-String _describe(ApiException e, String host) {
+String _describe(BuildContext context, ApiException e, String host) {
   if (e.fields.entries.firstOrNull case final field?) {
     final name = field.key == 'expires_at' ? 'Expiry' : 'Name';
     return '$name ${field.value}.';
   }
-  return describeError(e, host: host);
+  return describeError(context, e, host: host);
 }
 
 /// A mailbox's app passwords: what mail apps such as Thunderbird or the
@@ -114,7 +114,7 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
       if (e.statusCode == 404) {
         unawaited(_load());
       } else {
-        showToast(context, describeError(e, host: _host));
+        showToast(context, describeError(context, e, host: _host));
       }
     } finally {
       if (mounted) setState(() => _revoking.remove(item.id));
@@ -136,7 +136,7 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
             Expanded(
               child: switch ((error, items)) {
                 (final error?, _) => AdminMessage(
-                  describeError(error, host: _host),
+                  describeError(context, error, host: _host),
                   onRetry: () => unawaited(_load()),
                 ),
                 (null, final items?) => RefreshIndicator(
@@ -384,7 +384,7 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
           ApiException(statusCode: 429, :final retryAfter) =>
             'Too many attempts. Try again '
                 '${retryAfter == null ? 'shortly' : 'in ${_wait(retryAfter)}'}.',
-          _ => _describe(e, host),
+          _ => _describe(context, e, host),
         };
       });
       if (e.code == 'reauth_required' || e.code == 'invalid_password') {

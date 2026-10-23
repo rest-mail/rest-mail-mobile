@@ -140,7 +140,9 @@ class _AuditScreenState extends State<AuditScreen> {
       if (mounted) setState(() => _check = check);
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() => _checkError = describeAdminError(e, host: _host));
+        setState(
+          () => _checkError = describeAdminError(context, e, host: _host),
+        );
       }
     } finally {
       if (mounted) setState(() => _checking = false);

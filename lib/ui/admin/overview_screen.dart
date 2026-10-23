@@ -61,7 +61,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
       body: (_) {
         if (error != null) {
           return AdminMessage(
-            describeAdminError(error, host: widget.account.server.host),
+            describeAdminError(
+              context,
+              error,
+              host: widget.account.server.host,
+            ),
             onRetry: () => unawaited(_load()),
           );
         }

@@ -142,7 +142,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       // stays: say which, and let them try again.
       'invalid_totp' => tr(context, 'signIn.badCode'),
       'invalid_password' => tr(context, 'setup.notCurrentPassword'),
-      _ => describeError(e, host: widget.server.host),
+      _ => describeError(context, e, host: widget.server.host),
     };
   }
 

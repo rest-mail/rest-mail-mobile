@@ -255,7 +255,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
             'host': settings.imapHost,
             'reason': e.message,
           }),
-          _ => describeError(e),
+          _ => describeError(context, e),
         };
       });
     }
@@ -274,7 +274,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       ),
       'unauthorized' ||
       'web_login_required' => tr(context, 'signIn.badPassword'),
-      _ => describeError(e),
+      _ => describeError(context, e),
     };
   }
 

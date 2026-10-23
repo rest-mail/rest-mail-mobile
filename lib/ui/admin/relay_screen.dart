@@ -121,7 +121,7 @@ class _RelayScreenState extends State<RelayScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = describeAdminError(e, host: _server);
+        _error = describeAdminError(context, e, host: _server);
       });
     }
   }
@@ -189,7 +189,7 @@ class _RelayScreenState extends State<RelayScreen> {
       body: (access) {
         if (loadError != null) {
           return AdminMessage(
-            describeAdminError(loadError, host: _server),
+            describeAdminError(context, loadError, host: _server),
             onRetry: () => unawaited(_load()),
           );
         }

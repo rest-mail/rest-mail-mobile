@@ -61,7 +61,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     'conflict' => tr(context, 'twoFactor.alreadyOn'),
     'forbidden' => e.message,
     _ when e.fields.isNotEmpty => e.fields.values.first,
-    _ => describeError(e, host: widget.account.server.host),
+    _ => describeError(context, e, host: widget.account.server.host),
   };
 
   Future<void> _load() async {

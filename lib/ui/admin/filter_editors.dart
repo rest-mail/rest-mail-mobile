@@ -176,6 +176,7 @@ class _DomainFieldState extends State<_DomainField> {
       if (mounted) {
         setState(
           () => _error = describeAdminError(
+            context,
             error,
             host: widget.account.server.host,
           ),
@@ -274,7 +275,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
   }
 
   String _errorFor(ApiException error) =>
-      describeAdminError(error, host: widget.account.server.host);
+      describeAdminError(context, error, host: widget.account.server.host);
 
   @override
   Widget build(BuildContext context) => _EditorFrame(
@@ -512,7 +513,7 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
   }
 
   String _errorFor(ApiException error) =>
-      describeAdminError(error, host: widget.account.server.host);
+      describeAdminError(context, error, host: widget.account.server.host);
 
   Future<void> _validate() async {
     try {
@@ -686,6 +687,7 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
       if (mounted) {
         setState(
           () => _error = describeAdminError(
+            context,
             error,
             host: widget.account.server.host,
           ),

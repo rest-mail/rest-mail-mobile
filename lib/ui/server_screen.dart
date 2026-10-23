@@ -79,7 +79,10 @@ class _ServerScreenState extends State<ServerScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(
-        () => _result = (ok: false, text: describeError(e, host: server.host)),
+        () => _result = (
+          ok: false,
+          text: describeError(context, e, host: server.host),
+        ),
       );
     } finally {
       probe.close();

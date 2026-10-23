@@ -22,7 +22,7 @@ RestAccount _currentSession(BuildContext context, RestAccount original) =>
       orElse: () => original,
     );
 
-String _keyError(ApiException error, String host) {
+String _keyError(BuildContext context, ApiException error, String host) {
   if (error.fields.isNotEmpty) {
     return error.fields.entries
         .map((field) => '${field.key.replaceAll('_', ' ')}: ${field.value}')
@@ -39,7 +39,7 @@ String _keyError(ApiException error, String host) {
     'forbidden' =>
       'These permissions exceed what you or this mailbox currently hold.',
     'session_required' => 'Sign in with your password and a second factor.',
-    _ => describeError(error, host: host),
+    _ => describeError(context, error, host: host),
   };
 }
 
@@ -166,7 +166,7 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                           if (error != null) ...[
                             const SizedBox(height: 16),
                             Text(
-                              _keyError(error, _account.host),
+                              _keyError(context, error, _account.host),
                               style: rmText(14, color: c.danger),
                             ),
                             if (error.code == 'two_factor_required')
@@ -495,7 +495,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   if (error != null) ...[
                     const SizedBox(height: 16),
                     Text(
-                      _keyError(error, widget.account.host),
+                      _keyError(context, error, widget.account.host),
                       style: rmText(14, color: c.danger),
                     ),
                     if (error.code == 'two_factor_required')
