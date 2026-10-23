@@ -93,6 +93,7 @@ class FakeRestmail {
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
   final _senderRules = <int, FakeSenderRule>{};
+  final _suppressions = <int, FakeSuppression>{};
   final _audit = <FakeAuditEntry>[];
 
   /// The owner grants: by account, the accounts it created or linked.
@@ -330,6 +331,36 @@ class FakeRestmail {
   List<FakePipeline> get pipelines => [..._pipelines.values];
   List<FakeCustomFilter> get customFilters => [..._customFilters.values];
   List<FakeSenderRule> get senderRules => [..._senderRules.values];
+  List<FakeSuppression> get suppressions => [..._suppressions.values];
+
+  /// Stops [domain]'s mail to [address], as a hard bounce does, for
+  /// [lasts]; a suppression already past it is kept but not listed.
+  /// Returns its id.
+  int addSuppression(
+    String domain,
+    String address, {
+    String failureCategory = 'bad_mailbox',
+    String lastError = '',
+    int? messageId,
+    Duration lasts = const Duration(days: 30),
+  }) {
+    if (!_domains.containsKey(domain)) {
+      throw ArgumentError.value(domain, 'domain', 'No such domain');
+    }
+    final now = _clock();
+    final id = _nextRowId++;
+    _suppressions[id] = FakeSuppression(
+      id: id,
+      domain: domain,
+      address: address,
+      failureCategory: failureCategory,
+      lastError: lastError,
+      messageId: messageId,
+      createdAt: now,
+      expiresAt: now.add(lasts),
+    );
+    return id;
+  }
 
   /// The audit log, oldest first.
   List<FakeAuditEntry> get auditLog => [..._audit];
@@ -2865,7 +2896,7 @@ class FakeRestmail {
       case ('GET', ['domains', final id, final list])
           when list == 'allowlist' || list == 'blocklist':
         need('domains:read');
-        final domainId = int.tryParse(id);
+        final domainId = _pathId(id);
         return _json({
           'data': [
             for (final rule
@@ -2884,10 +2915,11 @@ class FakeRestmail {
           when list == 'allowlist' || list == 'blocklist':
         need('domains:write');
         final type = _listType(list);
-        final rule = _senderRules[int.tryParse(ruleId)];
+        final domainId = _pathId(id);
+        final rule = _senderRules[_pathId(ruleId, 'eid')];
         if (rule == null ||
             rule.list != type ||
-            _domains[rule.domain]?.id != int.tryParse(id)) {
+            _domains[rule.domain]?.id != domainId) {
           _fail(
             404,
             'not_found',
@@ -2899,10 +2931,7 @@ class FakeRestmail {
 
       case ('GET', ['domains', final id, 'mta-sts']):
         need('domains:read');
-        final domain = _domains.values
-            .where((d) => d.id == int.tryParse(id))
-            .firstOrNull;
-        if (domain == null) _fail(404, 'not_found', 'Domain not found');
+        final domain = _policyDomain(id);
         final policy =
             domain.mtaSts ??
             _fail(404, 'not_found', 'No MTA-STS policy found for this domain');
@@ -2912,13 +2941,50 @@ class FakeRestmail {
         return _setMtaSts(id, _object(bytes));
       case ('DELETE', ['domains', final id, 'mta-sts']):
         need('domains:write');
+        final domainId = _pathId(id);
         final domain = _domains.values
-            .where((d) => d.id == int.tryParse(id))
+            .where((d) => d.id == domainId)
             .firstOrNull;
         if (domain?.mtaSts == null) {
           _fail(404, 'not_found', 'No MTA-STS policy found for this domain');
         }
         domain!.mtaSts = null;
+        return _noContent();
+
+      case ('GET', ['domains', final id, 'relay']):
+        need('domains:read');
+        return _json({'data': _relayJson(_policyDomain(id))});
+      case ('PUT', ['domains', final id, 'relay']):
+        need('domains:write');
+        return _setRelay(id, _object(bytes));
+
+      case ('GET', ['domains', final id, 'suppressions']):
+        need('domains:read');
+        final domainId = _pathId(id);
+        final now = _clock();
+        return _json({
+          'data': [
+            for (final suppression
+                in _suppressions.values.toList()..sort(
+                  (a, b) => switch (b.createdAt.compareTo(a.createdAt)) {
+                    0 => b.id.compareTo(a.id),
+                    final order => order,
+                  },
+                ))
+              if (_domains[suppression.domain]?.id == domainId &&
+                  suppression.expiresAt.isAfter(now))
+                _suppressionJson(suppression),
+          ],
+        });
+      case ('DELETE', ['domains', final id, 'suppressions', final sid]):
+        need('domains:write');
+        final domainId = _pathId(id);
+        final suppression = _suppressions[_pathId(sid, 'sid')];
+        if (suppression == null ||
+            _domains[suppression.domain]?.id != domainId) {
+          _fail(404, 'not_found', 'Suppression not found');
+        }
+        _suppressions.remove(suppression.id);
         return _noContent();
 
       case ('GET', ['mailboxes']):
@@ -3156,11 +3222,7 @@ class FakeRestmail {
         });
       case ('GET', ['tls-reports']):
         need('domains:read');
-        _reportEnum(query, 'policy_type', const {'sts', 'tlsa', 'no-policy'});
-        final domain = int.tryParse(query['domain_id'] ?? '');
-        if (query['domain_id'] != null && (domain == null || domain < 0)) {
-          _fail(400, 'bad_request', 'Invalid domain_id');
-        }
+        final domain = _tlsReportFilters(query);
         return _listPage(
           _tlsReports
               .where(
@@ -4200,15 +4262,16 @@ class FakeRestmail {
     String list,
     Map<String, dynamic> body,
   ) {
-    final pattern = body['pattern'] as String? ?? '';
-    if (pattern.isEmpty) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'pattern': 'required'},
-      );
-    }
+    _pathId(id);
+    final problems = _undeclared(body, const {'pattern', 'reason'});
+    final pattern = _requiredString(
+      body,
+      'pattern',
+      problems,
+      broken: 'required',
+    );
+    _typed<String>(body, 'reason', 'a string', problems, nullable: false);
+    if (problems.isNotEmpty || pattern == null) _invalid(problems);
     final domain = _domain(id);
     final name = list == 'allow' ? 'allowlist' : 'blocklist';
     // A duplicate on this list is a conflict. The same sender can still
@@ -4232,28 +4295,28 @@ class FakeRestmail {
   /// The server's upsert: what is left out or empty stays as it was, and a
   /// new policy starts in testing, for a week.
   http.StreamedResponse _setMtaSts(String id, Map<String, dynamic> body) {
-    final mode = body['mode'] as String? ?? '';
+    _pathId(id);
+    final problems = _undeclared(body, const {
+      'mode',
+      'mx_hosts',
+      'max_age',
+      'active',
+    });
+    _typed<String>(body, 'mode', 'a string', problems, nullable: false);
+    _typed<String>(body, 'mx_hosts', 'a string', problems, nullable: false);
+    _typed<int>(body, 'max_age', 'an integer', problems);
+    _typed<bool>(body, 'active', 'a boolean', problems);
+    final mode = body['mode'] is String ? body['mode'] as String : '';
     if (mode.isNotEmpty &&
         !const {'none', 'testing', 'enforce'}.contains(mode)) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'mode': 'Must be one of: none, testing, enforce'},
-      );
+      problems['mode'] = 'Must be one of: none, testing, enforce';
     }
-    final maxAge = body['max_age'] as int?;
+    final maxAge = body['max_age'] is int ? body['max_age'] as int : null;
     if (maxAge != null && maxAge < 0) {
-      _fail(
-        422,
-        'validation_failed',
-        'Request body failed validation',
-        fields: {'max_age': 'Must be a non-negative integer (seconds)'},
-      );
+      problems['max_age'] = 'Must be a non-negative integer (seconds)';
     }
-    final domain =
-        _domains.values.where((d) => d.id == int.tryParse(id)).firstOrNull ??
-        _fail(404, 'not_found', 'Domain not found');
+    if (problems.isNotEmpty) _invalid(problems);
+    final domain = _policyDomain(id);
     final created = domain.mtaSts == null;
     final policy = domain.mtaSts ??= FakeMtaStsPolicy(
       id: _nextRowId++,
@@ -4269,6 +4332,161 @@ class FakeRestmail {
     return _json({
       'data': _mtaStsJson(domain, policy),
     }, status: created ? 201 : 200);
+  }
+
+  /// The domain a policy route names, refused as those routes refuse it.
+  FakeDomain _policyDomain(String id) {
+    final domainId = _pathId(id);
+    return _domains.values.where((d) => d.id == domainId).firstOrNull ??
+        _fail(404, 'not_found', 'Domain not found');
+  }
+
+  Map<String, Object?> _relayJson(FakeDomain domain) => switch (domain.relay) {
+    null => {
+      'domain_id': domain.id,
+      'transport': 'direct',
+      'password_set': false,
+    },
+    final relay => {
+      'domain_id': domain.id,
+      'transport': 'relay',
+      'host': relay.host,
+      'port': relay.port,
+      'tls_mode': relay.tlsMode,
+      if (relay.username.isNotEmpty) 'username': relay.username,
+      'password_set': relay.password.isNotEmpty,
+    },
+  };
+
+  /// The server's replacement of a domain's outbound transport: binding
+  /// first, then each field's shape whatever the transport, then what a
+  /// relay needs. A password left out keeps the stored one; an empty one
+  /// clears it. Direct keeps nothing of a relay.
+  http.StreamedResponse _setRelay(String id, Map<String, dynamic> body) {
+    const transportRule = 'Must be one of: direct, relay';
+    const portRule = 'Must be between 1 and 65535';
+    const tlsRule = 'Must be one of: starttls, implicit';
+    const usernameRule =
+        'Must be at most 255 characters with no control characters';
+    _pathId(id);
+    final problems = _undeclared(body, const {
+      'transport',
+      'host',
+      'port',
+      'tls_mode',
+      'username',
+      'password',
+    });
+    final transport = _requiredString(
+      body,
+      'transport',
+      problems,
+      broken: transportRule,
+      missing: transportRule,
+      valid: const {'direct', 'relay'}.contains,
+    );
+    _typed<String>(body, 'host', 'a string', problems, nullable: false);
+    _typed<int>(body, 'port', 'an integer', problems);
+    _typed<String>(body, 'tls_mode', 'a string', problems);
+    _typed<String>(body, 'username', 'a string', problems, nullable: false);
+    _typed<String>(body, 'password', 'a string', problems);
+    final port = body['port'] is int ? body['port'] as int : null;
+    if (port != null && (port < 1 || port > 65535)) problems['port'] = portRule;
+    final tlsMode = body['tls_mode'] is String
+        ? body['tls_mode'] as String
+        : null;
+    if (tlsMode != null && !const {'starttls', 'implicit'}.contains(tlsMode)) {
+      problems['tls_mode'] = tlsRule;
+    }
+    final username = body['username'] is String
+        ? body['username'] as String
+        : '';
+    if (username.runes.length > 255) problems['username'] = usernameRule;
+    if (problems.isNotEmpty || transport == null) _invalid(problems);
+
+    final domain = _policyDomain(id);
+    final host = body['host'] is String ? body['host'] as String : '';
+    final password = body['password'] as String?;
+    final fields = {
+      if (_hasControl(username) || utf8.encode(username).length > 255)
+        'username': usernameRule,
+      if (password != null && _hasControl(password))
+        'password': 'Must not contain control characters',
+    };
+    if (transport == 'direct') {
+      if (fields.isNotEmpty) _invalid(fields);
+      domain.relay = null;
+      return _json({'data': _relayJson(domain)});
+    }
+    if (!_validRelayHost(host)) {
+      fields['host'] =
+          'Must be a bare host name or IP address, with no scheme, port or path';
+    }
+    if (port == null) fields['port'] = portRule;
+    if (tlsMode == null) fields['tls_mode'] = tlsRule;
+    final kept = domain.relay?.password ?? '';
+    final secret = password ?? kept;
+    if (username.isNotEmpty != secret.isNotEmpty) {
+      fields['password'] =
+          'A username and a password are set together, or neither';
+    }
+    if (fields.isNotEmpty || port == null || tlsMode == null) {
+      _invalid(fields);
+    }
+    domain.relay = FakeRelay(
+      host: host,
+      port: port,
+      tlsMode: tlsMode,
+      username: username,
+      password: secret,
+    );
+    return _json({'data': _relayJson(domain)});
+  }
+
+  Map<String, Object?> _suppressionJson(FakeSuppression s) => {
+    'id': s.id,
+    'domain_id': _domains[s.domain]?.id ?? 0,
+    'address': s.address,
+    'reason': 'hard_bounce',
+    'failure_category': s.failureCategory,
+    'last_error': s.lastError,
+    'message_id': s.messageId,
+    'created_at': _time(s.createdAt),
+    // Only a second bounce would update it, and the fake sends none.
+    'updated_at': _time(s.createdAt),
+    'expires_at': _time(s.expiresAt),
+  };
+
+  /// The TLS report list's filters as the server binds them, every problem
+  /// at once; the domain id, if one is given.
+  int? _tlsReportFilters(Map<String, String> query) {
+    final problems = <String, String>{};
+    int? integer(String name, String broken) {
+      final raw = query[name] ?? '';
+      if (raw.isEmpty) return null;
+      final n = RegExp(r'^[-+]?[0-9]+$').hasMatch(raw)
+          ? int.tryParse(raw)
+          : null;
+      if (n == null) problems[name] = broken;
+      return n;
+    }
+
+    final domain = integer('domain_id', 'must be a non-negative integer');
+    if (domain != null && domain < 0) {
+      problems['domain_id'] = 'must be a non-negative integer';
+    }
+    final limit = integer('limit', 'must be an integer');
+    if (limit != null && limit > 200) {
+      problems['limit'] = 'exceeds the maximum page size';
+    }
+    integer('offset', 'must be an integer');
+    final policyType = query['policy_type'];
+    if (policyType != null &&
+        !const {'sts', 'tlsa', 'no-policy'}.contains(policyType)) {
+      problems['policy_type'] = 'must be one of sts, tlsa, no-policy';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    return domain;
   }
 
   /// What the fake's DNS holds: the sample host is set up, Oakline only
@@ -4825,9 +5043,7 @@ class FakeRestmail {
     const fields = {'source_address', 'destination_address'};
     final problems = _undeclared(body, fields);
     for (final name in fields) {
-      if (!body.containsKey(name)) continue;
-      if (body[name] == null) problems[name] = 'must not be null';
-      _typed<String>(body, name, 'a string', problems);
+      _typed<String>(body, name, 'a string', problems, nullable: false);
     }
     if (problems.isNotEmpty) _invalid(problems);
     final given = body['source_address'] as String? ?? '';
@@ -4989,28 +5205,56 @@ Map<String, String> _undeclared(
     if (!declared.contains(key)) '$prefix$key': 'not allowed',
 };
 
-/// An optional field of [body] given a value other than a [T] or null,
-/// worded as binding words it: `must be [described]`.
+/// A field of [body] given a value other than a [T], worded as binding
+/// words it: `must be [described]`. Null leaves a [nullable] field as it
+/// is; any other refuses it.
 void _typed<T>(
   Map<String, dynamic> body,
   String name,
   String described,
-  Map<String, String> problems,
-) {
+  Map<String, String> problems, {
+  bool nullable = true,
+}) {
+  if (!body.containsKey(name)) return;
   final value = body[name];
-  if (value != null && value is! T) problems[name] = 'must be $described';
+  if (value == null && !nullable) {
+    problems[name] = 'must not be null';
+  } else if (value != null && value is! T) {
+    problems[name] = 'must be $described';
+  }
 }
 
-/// A path id as binding reads it before anything is looked up: digits that
-/// fit an unsigned 32-bit id, and never 0.
-int _pathId(String id) {
+/// The path parameter [name], an id, as binding reads it before anything
+/// is looked up: digits that fit an unsigned 32-bit id, and never 0.
+int _pathId(String id, [String name = 'id']) {
   final n = RegExp(r'^[0-9]+$').hasMatch(id) ? int.tryParse(id) : null;
   if (n == null || n > 0xffffffff) {
-    _invalid({'id': 'must be a non-negative integer'});
+    _invalid({name: 'must be a non-negative integer'});
   }
-  if (n == 0) _invalid({'id': 'must be at least 1'});
+  if (n == 0) _invalid({name: 'must be at least 1'});
   return n;
 }
+
+/// A bare host name or IP address, as the server's relay check reads one:
+/// no scheme, port or path.
+bool _validRelayHost(String host) {
+  for (final parse in [Uri.parseIPv4Address, Uri.parseIPv6Address]) {
+    try {
+      parse(host);
+      return true;
+    } on FormatException {
+      // Not this kind of address.
+    }
+  }
+  final label = RegExp(r'^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$');
+  return host.isNotEmpty &&
+      host.length <= 253 &&
+      host.split('.').every(label.hasMatch);
+}
+
+/// What could end an SMTP line or forge a header: an ASCII control
+/// character.
+bool _hasControl(String value) => value.runes.any((r) => r < 0x20 || r == 0x7f);
 
 /// A required string field as binding reads it: absent is [missing], null
 /// or another type says what it must be, and a value [valid] refuses breaks

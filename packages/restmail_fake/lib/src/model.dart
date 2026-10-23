@@ -63,6 +63,10 @@ class FakeDomain {
   /// What it tells other servers about sending to it over TLS.
   FakeMtaStsPolicy? mtaSts;
 
+  /// The SMTP relay its outgoing mail leaves through; none sends it
+  /// straight to each recipient's MX.
+  FakeRelay? relay;
+
   bool get signs => dkimSelector.isNotEmpty;
 }
 
@@ -92,6 +96,57 @@ class FakeMtaStsPolicy {
   bool active;
   final DateTime createdAt;
   DateTime updatedAt;
+}
+
+/// The SMTP relay a domain's outgoing mail leaves through. Its password
+/// is never answered, only whether there is one.
+class FakeRelay {
+  FakeRelay({
+    required this.host,
+    required this.port,
+    required this.tlsMode,
+    this.username = '',
+    this.password = '',
+  });
+
+  final String host;
+  final int port;
+
+  /// `starttls` or `implicit`.
+  final String tlsMode;
+  final String username;
+  final String password;
+}
+
+/// A recipient a domain's mail is no longer sent to, after it hard bounced.
+class FakeSuppression {
+  FakeSuppression({
+    required this.id,
+    required this.domain,
+    required this.address,
+    required this.createdAt,
+    required this.expiresAt,
+    this.failureCategory = 'bad_mailbox',
+    this.lastError = '',
+    this.messageId,
+  });
+
+  final int id;
+
+  /// The sending domain.
+  final String domain;
+
+  /// The recipient that bounced.
+  final String address;
+
+  /// `bad_mailbox` or `bad_domain`.
+  final String failureCategory;
+  final String lastError;
+  final int? messageId;
+  final DateTime createdAt;
+
+  /// Once past, it no longer suppresses and is not listed.
+  final DateTime expiresAt;
 }
 
 /// A sender on one of a domain's lists.
