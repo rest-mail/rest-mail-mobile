@@ -323,7 +323,7 @@ void main() {
       expect(find.text('promo@deals.test'), findsNothing);
       await tap(tester, 'news@deals.test');
       await tap(tester, 'domain_allowlist');
-      expect(find.textContaining('18.0 ms'), findsOneWidget);
+      expect(find.textContaining('18 ms'), findsOneWidget);
       expect(find.textContaining('"result": "blocked"'), findsOneWidget);
       await close(tester, fake, state);
     },
