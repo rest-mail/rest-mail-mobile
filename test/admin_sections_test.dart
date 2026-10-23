@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
@@ -10,6 +12,8 @@ import 'package:restmail/ui/admin/admin_widgets.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
+
+import '../packages/restmail_fake/test/fixtures/certificate.dart';
 
 final _server = Uri.parse('https://${FakeAccounts.host}');
 
@@ -96,6 +100,60 @@ void main() {
     state.dispose();
     fake.close();
     await tester.pump(const Duration(seconds: 5));
+  }
+
+  Future<void> certificateField(
+    WidgetTester tester,
+    int index,
+    String value,
+  ) async {
+    final field = find.byKey(ValueKey('admin-field-$index'));
+    for (final step in const [300.0, -300.0]) {
+      for (var i = 0; i < 15 && field.evaluate().isEmpty; i++) {
+        await tester.drag(find.byType(ListView).last, Offset(0, step));
+        await tester.pumpAndSettle();
+      }
+    }
+    await tester.ensureVisible(field);
+    await tester.enterText(field, value);
+    await tester.pump();
+  }
+
+  Future<void> fillCertificate(
+    WidgetTester tester, {
+    required String domain,
+    String certificate = testCertificatePem,
+    String renewal = 'No',
+  }) async {
+    final key = testCertificateKey.replaceAll('\n', '\r\n');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async => call.method == 'Clipboard.getData'
+          ? <String, Object>{'text': key}
+          : null,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await certificateField(tester, 0, domain);
+    await certificateField(tester, 1, certificate);
+    await tap(tester, 'Paste');
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('admin-field-2')),
+    );
+    expect(field.readOnly, isTrue);
+    expect(field.obscureText, isTrue);
+    expect(field.controller!.text, key);
+    // Check rendered text separately: an obscured EditableText still contains
+    // its controller's secret and must not be searched with find.text.
+    expect(
+      find.byWidgetPredicate((w) => w is Text && w.data == key),
+      findsNothing,
+    );
+    await tap(tester, renewal);
   }
 
   const sections = [
@@ -282,6 +340,209 @@ void main() {
 
     await close(tester, fake, state);
   });
+
+  testWidgets(
+    'certificate upload preserves PEM and opens fresh public detail',
+    (tester) async {
+      late _CertificateTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) => transport = _CertificateTransport(inner),
+      );
+      await tap(tester, 'Certificates');
+      await tap(tester, 'Add a certificate');
+      await fillCertificate(tester, domain: FakeAccounts.host.toUpperCase());
+      await tap(tester, 'Add certificate');
+      expect(transport.lastUpload!['cert_pem'], testCertificatePem);
+      expect(
+        transport.lastUpload!['key_pem'],
+        testCertificateKey.replaceAll('\n', '\r\n'),
+      );
+      expect(transport.lastUpload!['auto_renew'], isFalse);
+      expect(transport.detailRequests, 1);
+      final created = fake.certificates.last;
+      expect(created.autoRenew, isFalse);
+      expect(created.issuer, testCertificateIssuer);
+      expect(find.text('Certificate'), findsOneWidget);
+      await reveal(tester, 'CERTIFICATE');
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is SelectableText && w.data == testCertificatePem.trim(),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is SelectableText && (w.data?.contains('PRIVATE KEY') ?? false),
+        ),
+        findsNothing,
+      );
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets('a bad certificate stays on the form and can be corrected', (
+    tester,
+  ) async {
+    final (fake, state) = await open(tester);
+    final count = fake.certificates.length;
+    await tap(tester, 'Certificates');
+    await tap(tester, 'Add a certificate');
+    await fillCertificate(
+      tester,
+      domain: '${fake.domains.first.id}',
+      certificate: 'not PEM',
+    );
+    await tap(tester, 'Add certificate');
+    expect(find.text('Invalid certificate PEM'), findsOneWidget);
+    expect(fake.certificates, hasLength(count));
+    await certificateField(tester, 1, testCertificatePem);
+    await tap(tester, 'Add certificate');
+    expect(fake.certificates, hasLength(count + 1));
+    expect(find.text('Certificate'), findsOneWidget);
+    await close(tester, fake, state);
+  });
+
+  testWidgets('certificate readers get detail without mutation controls', (
+    tester,
+  ) async {
+    final (fake, state) = await open(
+      tester,
+      name: 'certificate-reader',
+      capabilities: {Capability.domainsRead},
+    );
+    await tap(tester, 'Certificates');
+    expect(find.text('Add a certificate'), findsNothing);
+    expect(
+      find.byTooltip('Delete the certificate for ${FakeAccounts.host}'),
+      findsNothing,
+    );
+    await tap(tester, FakeAccounts.host);
+    expect(find.text('Issuer'), findsOneWidget);
+    expect(find.text('Certificate'), findsOneWidget);
+    expect((state.current! as RestAccount).client.tokens, isNotNull);
+    await close(tester, fake, state);
+  });
+
+  testWidgets(
+    'the server refuses certificate upload by a modified reader app',
+    (tester) async {
+      final (fake, state) = await open(
+        tester,
+        name: 'certificate-modified',
+        capabilities: {Capability.domainsRead},
+        modified: const Capabilities({'*'}),
+      );
+      final count = fake.certificates.length;
+      final tokens = (state.current! as RestAccount).client.tokens;
+      await tap(tester, 'Certificates');
+      await tap(tester, 'Add a certificate');
+      await fillCertificate(tester, domain: '${fake.domains.first.id}');
+      await tap(tester, 'Add certificate');
+      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text('Add a certificate'), findsOneWidget);
+      expect(fake.certificates, hasLength(count));
+      expect((state.current! as RestAccount).client.tokens, same(tokens));
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets(
+    'certificate domain names page beyond 200 and use server renewal default',
+    (tester) async {
+      late _CertificateTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) => transport = _CertificateTransport(inner),
+      );
+      for (var i = 0; i < 201; i++) {
+        fake.addAccount('user@page-$i.test');
+      }
+      fake.addAccount('user@zz-last.test');
+      await tap(tester, 'Certificates');
+      await tap(tester, 'Add a certificate');
+      await fillCertificate(
+        tester,
+        domain: 'ZZ-LAST.TEST',
+        renewal: 'Server default',
+      );
+      await tap(tester, 'Add certificate');
+      expect(transport.domainOffsets, containsAllInOrder([0, 200]));
+      expect(transport.lastUpload!.containsKey('auto_renew'), isFalse);
+      expect(fake.certificates.last.domain, 'zz-last.test');
+      expect(fake.certificates.last.autoRenew, isTrue);
+      expect(find.text('Certificate'), findsOneWidget);
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets(
+    'certificate refresh clears stale data while pending and after refusal',
+    (tester) async {
+      late _CertificateTransport transport;
+      final (fake, state) = await open(
+        tester,
+        through: (inner) =>
+            transport = _CertificateTransport(inner)
+              ..detailIssuer = 'O=Fresh issuer',
+      );
+      await tap(tester, 'Certificates');
+      await tap(tester, FakeAccounts.host);
+      expect(transport.detailRequests, 1);
+      expect(find.text('Fresh issuer'), findsOneWidget);
+      final refresh = tester.widget<RefreshIndicator>(
+        find.byType(RefreshIndicator).last,
+      );
+      final gate = Completer<void>();
+      transport.detailGate = gate;
+      final pending = refresh.onRefresh();
+      await tester.pump();
+      expect(find.text('Fresh issuer'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      gate.complete();
+      await pending;
+      await tester.pumpAndSettle();
+      expect(transport.detailRequests, 2);
+      expect(find.text('Fresh issuer'), findsOneWidget);
+      transport.failureStatus = 403;
+      await tester
+          .widget<RefreshIndicator>(find.byType(RefreshIndicator).last)
+          .onRefresh();
+      await tester.pumpAndSettle();
+      expect(find.text('Fresh issuer'), findsNothing);
+      expect(find.text(noPermission), findsOneWidget);
+      expect((state.current! as RestAccount).client.tokens, isNotNull);
+      transport.failureStatus = null;
+      await tap(tester, 'Try again');
+      expect(find.text('Fresh issuer'), findsOneWidget);
+      await close(tester, fake, state);
+    },
+  );
+
+  for (final status in [403, 404]) {
+    testWidgets(
+      'certificate GET $status is explained and retry keeps the session',
+      (tester) async {
+        late _CertificateTransport transport;
+        final (fake, state) = await open(
+          tester,
+          through: (inner) =>
+              transport = _CertificateTransport(inner)..failureStatus = status,
+        );
+        await tap(tester, 'Certificates');
+        await tap(tester, FakeAccounts.host);
+        expect(find.text('Try again'), findsOneWidget);
+        if (status == 403) expect(find.text(noPermission), findsOneWidget);
+        expect((state.current! as RestAccount).client.tokens, isNotNull);
+        transport.failureStatus = null;
+        await tap(tester, 'Try again');
+        expect(find.text('Issuer'), findsOneWidget);
+        expect(transport.detailRequests, 2);
+        await close(tester, fake, state);
+      },
+    );
+  }
 
   testWidgets('a pipeline and a custom filter turned off, and deleted', (
     tester,
@@ -1015,6 +1276,71 @@ void main() {
       await close(tester, fake, state);
     },
   );
+}
+
+/// Records certificate requests without logging secret bodies. Detail responses
+/// can differ from list data, wait in flight, or be refused by the server.
+class _CertificateTransport extends http.BaseClient {
+  _CertificateTransport(this.inner);
+
+  final http.Client inner;
+  Map<String, dynamic>? lastUpload;
+  final domainOffsets = <int>[];
+  int detailRequests = 0;
+  int? failureStatus;
+  String? detailIssuer;
+  Completer<void>? detailGate;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method == 'GET' &&
+        request.url.path.endsWith('/admin/domains')) {
+      domainOffsets.add(
+        int.parse(request.url.queryParameters['offset'] ?? '0'),
+      );
+    }
+    if (request.method == 'POST' &&
+        request.url.path.endsWith('/admin/certificates') &&
+        request is http.Request) {
+      lastUpload = jsonDecode(request.body) as Map<String, dynamic>;
+    }
+    if (request.method != 'GET' ||
+        !RegExp(r'/admin/certificates/[0-9]+$').hasMatch(request.url.path)) {
+      return inner.send(request);
+    }
+    detailRequests++;
+    final gate = detailGate;
+    detailGate = null;
+    if (gate != null) await gate.future;
+    final status = failureStatus;
+    if (status != null) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'error': {
+                'code': status == 403 ? 'forbidden' : 'not_found',
+                'message': 'Certificate unavailable',
+              },
+            }),
+          ),
+        ),
+        status,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final response = await http.Response.fromStream(await inner.send(request));
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final issuer = detailIssuer;
+    if (issuer != null && response.statusCode == 200) {
+      (body['data'] as Map<String, dynamic>)['issuer'] = issuer;
+    }
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      response.statusCode,
+      headers: response.headers,
+    );
+  }
 }
 
 /// Answers creating a domain as a server with other sending policies would:

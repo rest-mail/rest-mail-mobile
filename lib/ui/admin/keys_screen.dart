@@ -9,6 +9,7 @@ import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
+import 'domains_screen.dart';
 
 /// A note above a list whose things are added from a computer.
 Widget _addedElsewhere(BuildContext context, String text) => Padding(
@@ -104,7 +105,7 @@ String _issuer(String name) =>
 
 /// The TLS certificates each domain is served with, and when they run out.
 /// A new one is pasted in as PEM with its private key, which the server
-/// keeps encrypted and never sends back.
+/// never sends back.
 class CertificatesScreen extends StatefulWidget {
   const CertificatesScreen({super.key, required this.account});
 
@@ -144,8 +145,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
         title: 'Add a certificate',
         intro:
             'Paste the certificate and its private key as PEM. The server '
-            'reads who issued it and when it runs out, keeps the key '
-            'encrypted, and never shows it again.',
+            'reads who issued it and when it runs out. Its private key '
+            'is never returned.',
         host: _host,
         action: 'Add certificate',
         fields: const [
@@ -163,9 +164,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
           ),
           AdminField(
             'Renews by itself',
-            hint: 'yes or no',
             initial: 'yes',
-            optional: true,
+            choices: [('', 'Server default'), ('yes', 'Yes'), ('no', 'No')],
           ),
         ],
         submit: (values) async {
@@ -190,15 +190,30 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
       ),
     );
     if (!added || !mounted) return;
-    showToast(context, 'Added the certificate for ${_name(_added!)}');
-    unawaited(_list.reload());
+    final cert = _added!;
+    showToast(context, 'Added the certificate for ${_name(cert)}');
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CertificateScreen(account: widget.account, id: cert.id),
+      ),
+    );
+    if (mounted) unawaited(_list.reload());
   }
 
   TlsCertificate? _added;
 
   /// The id of the domain called [value], or [value] itself when it is one.
   Future<int> _domainId(String value) async {
-    if (int.tryParse(value) case final id?) return id;
+    if (int.tryParse(value) case final id?) {
+      if (id > 0) return id;
+      throw const ApiException(
+        422,
+        'validation_failed',
+        'Invalid domain',
+        fields: {'domain': 'must be a positive domain number'},
+      );
+    }
     final names = await domainNames(widget.account);
     for (final MapEntry(:key, value: name) in names.entries) {
       if (name.toLowerCase() == value.toLowerCase()) return key;
@@ -310,6 +325,9 @@ class _CertificateScreenState extends State<CertificateScreen> {
     body: (_) => FutureBuilder<TlsCertificate>(
       future: _cert,
       builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
         if (snapshot.hasError) {
           return AdminMessage(
             describeAdminError(
@@ -335,9 +353,22 @@ class _CertificateScreenState extends State<CertificateScreen> {
             }
           },
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
             children: [
-              RmRow(label: 'Domain', value: _name(cert)),
+              RmRow(
+                label: 'Domain',
+                value: _name(cert),
+                onTap: cert.domainDetails == null
+                    ? null
+                    : () => pushScreen(
+                        context,
+                        DomainScreen(
+                          account: widget.account,
+                          domain: cert.domainDetails!,
+                        ),
+                      ),
+              ),
               RmRow(label: 'Expiry', value: _expiry(cert)),
               RmRow(label: 'Valid from', value: _when(cert.notBefore)),
               RmRow(label: 'Valid until', value: _when(cert.notAfter)),
@@ -352,6 +383,8 @@ class _CertificateScreenState extends State<CertificateScreen> {
               ),
               RmRow(label: 'Added', value: _when(cert.createdAt)),
               RmRow(label: 'Changed', value: _when(cert.updatedAt)),
+              RmRow(label: 'Certificate number', value: '${cert.id}'),
+              RmRow(label: 'Domain number', value: '${cert.domainId}'),
               if (cert.certPem.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 const SectionLabel('Certificate'),

@@ -701,6 +701,7 @@ class TlsCertificate {
     required this.notBefore,
     required this.notAfter,
     this.domain = '',
+    this.domainDetails,
     this.autoRenew = false,
     this.certPem = '',
     this.createdAt,
@@ -714,6 +715,11 @@ class TlsCertificate {
       {'name': final String name} => name,
       _ => '',
     },
+    domainDetails:
+        json['domain'] is Map<String, dynamic> &&
+            ((json['domain'] as Map<String, dynamic>)['id'] as num? ?? 0) > 0
+        ? AdminDomain.fromJson(json['domain'] as Map<String, dynamic>)
+        : null,
     issuer: json['issuer'] as String? ?? '',
     notBefore: _time(json['not_before']) ?? DateTime.now(),
     notAfter: _time(json['not_after']) ?? DateTime.now(),
@@ -728,6 +734,7 @@ class TlsCertificate {
 
   /// Its domain's name, when the server sent it along.
   final String domain;
+  final AdminDomain? domainDetails;
   final String issuer;
   final DateTime notBefore;
   final DateTime notAfter;
