@@ -292,6 +292,9 @@ class FakeCertificate {
     required this.notAfter,
     this.issuer = "CN=R11,O=Let's Encrypt,C=US",
     this.autoRenew = true,
+    this.certPem = '',
+    this.createdAt,
+    this.updatedAt,
   });
 
   final int id;
@@ -300,6 +303,9 @@ class FakeCertificate {
   final DateTime notBefore;
   final DateTime notAfter;
   final bool autoRenew;
+  final String certPem;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 /// The filters a domain's mail goes through one way, in order.
