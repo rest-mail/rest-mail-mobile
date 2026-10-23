@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
@@ -64,12 +65,15 @@ class _ServerScreenState extends State<ServerScreen> {
         _result = health.isHealthy
             ? (
                 ok: true,
-                text:
-                    'Connection verified — ${watch.elapsedMilliseconds} ms, rest-mail is healthy.',
+                text: trArgs(context, 'server.verified', {
+                  'ms': '${watch.elapsedMilliseconds}',
+                }),
               )
             : (
                 ok: false,
-                text: 'rest-mail answered but reports "${health.status}".',
+                text: trArgs(context, 'server.unhealthy', {
+                  'status': health.status,
+                }),
               );
       });
     } on ApiException catch (e) {
@@ -92,16 +96,16 @@ class _ServerScreenState extends State<ServerScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Server',
+              title: tr(context, 'server.title'),
               onBack: () => Navigator.pop(context),
-              trailingText: 'Test',
+              trailingText: tr(context, 'server.test'),
               onTrailing: _checking ? null : () => unawaited(_test()),
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
                 children: [
-                  const SectionLabel('rest-mail server'),
+                  SectionLabel(tr(context, 'server.section')),
                   const SizedBox(height: 10),
                   RmGroup(
                     children: [
@@ -109,7 +113,10 @@ class _ServerScreenState extends State<ServerScreen> {
                         padding: const EdgeInsets.all(14),
                         child: Row(
                           children: [
-                            Text('Address', style: rmText(14, color: c.ink2)),
+                            Text(
+                              tr(context, 'server.address'),
+                              style: rmText(14, color: c.ink2),
+                            ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: TextField(
@@ -140,13 +147,16 @@ class _ServerScreenState extends State<ServerScreen> {
                           ],
                         ),
                       ),
-                      const RmRow(label: 'Protocol', value: 'HTTPS · REST'),
+                      RmRow(
+                        label: tr(context, 'server.protocol'),
+                        value: 'HTTPS · REST',
+                      ),
                       const RmRow(label: 'API', value: '/api/v1'),
                     ],
                   ),
                   const SizedBox(height: 24),
                   if (_checking)
-                    const _Status(color: null, text: 'Checking…')
+                    _Status(color: null, text: tr(context, 'server.checking'))
                   else if (result != null)
                     _Status(
                       color: result.ok ? c.good : c.danger,
@@ -154,14 +164,14 @@ class _ServerScreenState extends State<ServerScreen> {
                     ),
                   const SizedBox(height: 24),
                   RmPrimaryButton(
-                    label: 'Use this server',
+                    label: tr(context, 'server.use'),
                     onPressed: verified == null
                         ? null
                         : () => Navigator.pop(context, verified),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'The app only talks to servers over HTTPS; a plain http:// address is refused.',
+                    tr(context, 'server.httpsOnly'),
                     textAlign: TextAlign.center,
                     style: rmText(12.5, color: c.ink3, height: 1.4),
                   ),
