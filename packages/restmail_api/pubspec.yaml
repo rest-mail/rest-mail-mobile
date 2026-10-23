@@ -12,5 +12,8 @@ dependencies:
   http: ^1.6.0
 
 dev_dependencies:
+  # dart-lang, BSD-3. The live tests' authenticator codes (HMAC-SHA1); test
+  # already brings it in.
+  crypto: ^3.0.7
   lints: ^6.1.0
   test: ^1.31.1
