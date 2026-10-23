@@ -284,6 +284,11 @@ class RestmailClient {
   Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
       _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
 
+  /// Fresh detail. Needs `domains:read` on this domain.
+  Future<AdminDomain> domain(int id) async => AdminDomain.fromJson(
+    _data(await _authed('GET', ['admin', 'domains', '$id'])),
+  );
+
   /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
   /// or `traditional`. A new domain is never live: going live is
   /// [updateDomain] with `active`. Throws [ApiException] with code
@@ -348,6 +353,11 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. Needs `mailboxes:read` on this mailbox.
+  Future<AdminMailbox> adminMailbox(int id) async => AdminMailbox.fromJson(
+    _data(await _authed('GET', ['admin', 'mailboxes', '$id'])),
+  );
+
   /// Changes what is given; a new [password] ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
@@ -396,18 +406,25 @@ class RestmailClient {
     {'domain_id': ?domainId?.toString()},
   );
 
+  /// Fresh detail. The server currently needs global `mailboxes:read`.
+  Future<AdminAlias> alias(int id) async => AdminAlias.fromJson(
+    _data(await _authed('GET', ['admin', 'aliases', '$id'])),
+  );
+
   /// Sends mail for [source], on a domain the server has, to [destination].
   /// Needs `mailboxes:write`.
-  Future<void> createAlias({
+  Future<AdminAlias> createAlias({
     required String source,
     required String destination,
-  }) async {
-    await _authed(
-      'POST',
-      ['admin', 'aliases'],
-      body: {'source_address': source, 'destination_address': destination},
-    );
-  }
+  }) async => AdminAlias.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'aliases'],
+        body: {'source_address': source, 'destination_address': destination},
+      ),
+    ),
+  );
 
   /// Needs `mailboxes:write`.
   Future<AdminAlias> updateAlias(

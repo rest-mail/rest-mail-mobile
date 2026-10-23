@@ -140,6 +140,37 @@ class AdminMessage extends StatelessWidget {
   }
 }
 
+/// A detail is usable only after a successful resource GET. A refusal or a
+/// missing resource replaces the old rows, including their change actions.
+class AdminDetailBody extends StatelessWidget {
+  const AdminDetailBody({
+    super.key,
+    required this.ready,
+    required this.error,
+    required this.host,
+    required this.onRefresh,
+    required this.child,
+  });
+
+  final bool ready;
+  final Object? error;
+  final String host;
+  final Future<void> Function() onRefresh;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error case final failure?) {
+      return AdminMessage(
+        describeAdminError(failure, host: host),
+        onRetry: () => unawaited(onRefresh()),
+      );
+    }
+    if (!ready) return const Center(child: CircularProgressIndicator());
+    return RefreshIndicator(onRefresh: onRefresh, child: child);
+  }
+}
+
 /// An admin list, loaded a page at a time.
 class AdminList<T> extends ChangeNotifier {
   /// One the server pages by offset, as most admin lists are.
