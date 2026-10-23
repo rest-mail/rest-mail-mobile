@@ -29,6 +29,8 @@ const Map<String, Map<String, String>> stringsEs = {
     'settings.linkMailbox': 'Vincular otro buzón',
     'settings.server': 'Servidor',
     'settings.administration': 'Administración',
+    'settings.myPermissions': 'Mis permisos',
+    'settings.myPermissionsSubtitle': 'Tus roles, y activarlos',
     'settings.sending': 'Envío',
     'settings.scheduled': 'Programados',
     'settings.scheduledSubtitle': 'Mensajes que el servidor enviará más tarde',
@@ -96,6 +98,8 @@ const Map<String, Map<String, String>> stringsEs = {
     'admin.section.aliases.subtitle': 'Direcciones que entregan a otra',
     'admin.section.bans.title': 'Bloqueos',
     'admin.section.bans.subtitle': 'Direcciones excluidas de SMTP, IMAP y POP3',
+    'admin.section.permissions.title': 'Permisos',
+    'admin.section.permissions.subtitle': 'Quién tiene qué rol, y dónde',
     'admin.section.overview.title': 'Resumen',
     'admin.section.overview.subtitle':
         'Volumen de correo, cola y TLS de un vistazo',

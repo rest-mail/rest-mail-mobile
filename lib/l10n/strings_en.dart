@@ -34,6 +34,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'settings.linkMailbox': 'Link another mailbox',
     'settings.server': 'Server',
     'settings.administration': 'Administration',
+    'settings.myPermissions': 'My permissions',
+    'settings.myPermissionsSubtitle':
+        'The roles you hold, and switching them on',
     'settings.sending': 'Sending',
     'settings.scheduled': 'Scheduled',
     'settings.scheduledSubtitle': 'Messages the server will send later',
@@ -100,6 +103,8 @@ const Map<String, Map<String, String>> stringsEn = {
     'admin.section.aliases.subtitle': 'Addresses that deliver to another',
     'admin.section.bans.title': 'Bans',
     'admin.section.bans.subtitle': 'Addresses kept out of SMTP, IMAP and POP3',
+    'admin.section.permissions.title': 'Permissions',
+    'admin.section.permissions.subtitle': 'Who holds which role, and where',
     'admin.section.overview.title': 'Overview',
     'admin.section.overview.subtitle':
         'Mail volume, the queue and TLS at a glance',

@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
+import 'grants_models.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -161,8 +162,10 @@ class RestmailClient {
     // Signed out, or handed another session, while the refresh was in
     // flight: the answer is about tokens that are no longer this session's,
     // so it neither ends nor overwrites what took their place.
-    if (!identical(_tokens, current)) {
-      final latest = _tokens;
+    final latest = _tokens;
+    if (latest == null ||
+        latest.accessToken != current.accessToken ||
+        latest.refreshToken != current.refreshToken) {
       if (latest == null) throw const SessionExpiredException();
       return latest;
     }
@@ -171,7 +174,18 @@ class RestmailClient {
       throw const SessionExpiredException();
     }
     _throwIfError(response);
-    final tokens = _tokensFrom(response, _data(response));
+    final renewed = _tokensFrom(response, _data(response));
+    // An escalation may have updated only capabilities while this request
+    // was in flight. Keep that newer metadata and still persist the rotated
+    // credentials; ignoring the rotation would leave a spent refresh token.
+    final tokens = identical(latest, current)
+        ? renewed
+        : SessionTokens(
+            accessToken: renewed.accessToken,
+            refreshToken: renewed.refreshToken,
+            accessExpiresAt: renewed.accessExpiresAt,
+            capabilities: latest.capabilities,
+          );
     _setTokens(tokens);
     return tokens;
   }
@@ -647,6 +661,35 @@ class RestmailClient {
     limit,
   );
 
+  /// One certificate as the server holds it now, with its PEM. Needs
+  /// `domains:read`.
+  Future<TlsCertificate> certificate(int id) async => TlsCertificate.fromJson(
+    _data(await _authed('GET', ['admin', 'certificates', '$id'])),
+  );
+
+  /// Stores a certificate and its private key for [domainId]. The server
+  /// reads the issuer and validity from [certPem]; it renews by itself
+  /// unless [autoRenew] says not. Needs `domains:write`.
+  Future<TlsCertificate> uploadCertificate({
+    required int domainId,
+    required String certPem,
+    required String keyPem,
+    bool? autoRenew,
+  }) async => TlsCertificate.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'certificates'],
+        body: {
+          'domain_id': domainId,
+          'cert_pem': certPem,
+          'key_pem': keyPem,
+          'auto_renew': ?autoRenew,
+        },
+      ),
+    ),
+  );
+
   /// Needs `domains:write`, as the server asks.
   Future<void> deleteCertificate(int id) async {
     await _authed('DELETE', ['admin', 'certificates', '$id']);
@@ -872,6 +915,164 @@ class RestmailClient {
     _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
   );
 
+  // ── Roles, grants and escalation ─────────────────────────────────────
+  //
+  // Changing grants needs `users:write` and a session signed in with a second
+  // factor; the server also refuses a role, or a scope, wider than the
+  // granter's own. Each account's own grants, and switching its eligible ones
+  // on and off, need no capability.
+
+  /// The roles that can be granted, each with its capabilities. Needs
+  /// `users:read`.
+  Future<List<AdminRole>> roles() async =>
+      _list(await _authed('GET', ['admin', 'roles']), AdminRole.fromJson);
+
+  /// Every capability the server checks, by name. Needs `users:read`.
+  Future<List<CapabilityDefinition>> capabilityDefinitions() async => _list(
+    await _authed('GET', ['admin', 'capabilities']),
+    CapabilityDefinition.fromJson,
+  );
+
+  /// One page of grants, oldest first: only [holder]'s, or only those at
+  /// [scope], when given. Needs `users:read`.
+  Future<OffsetPage<Grant>> grants({
+    GrantHolder? holder,
+    String? scope,
+    int offset = 0,
+    int limit = 100,
+  }) => _offsetPage(
+    ['admin', 'grants'],
+    Grant.fromJson,
+    offset,
+    limit,
+    {
+      'holder_kind': ?holder?.kind,
+      'holder_id': ?holder?.id.toString(),
+      'scope': ?scope,
+    },
+  );
+
+  /// Grants [role] to [holder] at [scope] (`*`, `domain:<name>` or
+  /// `mailbox:<address>`): [GrantMode.active] when [mode] is not given, until
+  /// [expiresAt] or until removed. Throws [ApiException] with a
+  /// [GrantErrorCode], or `validation_failed` naming the field. Needs
+  /// `users:write`.
+  Future<Grant> createGrant({
+    required GrantHolder holder,
+    required String role,
+    required String scope,
+    GrantMode? mode,
+    DateTime? expiresAt,
+  }) async => Grant.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['admin', 'grants'],
+        body: {
+          'holder': holder.toJson(),
+          'role': role,
+          'scope': scope,
+          'mode': ?(mode == null || mode == GrantMode.unknown
+              ? null
+              : mode.name),
+          'expires_at': ?expiresAt?.toUtc().toIso8601String(),
+        },
+      ),
+    ),
+  );
+
+  /// Removes a grant. Needs `users:write`.
+  Future<void> deleteGrant(int id) async {
+    await _authed('DELETE', ['admin', 'grants', '$id']);
+  }
+
+  /// The signed-in account's own grants, each with any activation running
+  /// now.
+  Future<List<Grant>> myGrants() async =>
+      _list(await _authed('GET', ['admin', 'grants', 'mine']), Grant.fromJson);
+
+  /// Switches one of the account's own eligible grants on for [minutes] (the
+  /// server's 60 when not given, at most 240), saying why. Needs a fresh
+  /// [totpCode] from the authenticator, or an unused [recoveryCode]: without
+  /// either it throws [TotpRequiredException], and a wrong one is
+  /// [GrantErrorCode.invalidTotp]. The session's capabilities become the ones
+  /// the server answers with.
+  Future<Escalation> activateGrant(
+    int id, {
+    required String reason,
+    int? minutes,
+    String? totpCode,
+    String? recoveryCode,
+  }) => _escalationRequest(
+    id,
+    'activate',
+    body: {
+      'reason': reason,
+      'minutes': ?minutes,
+      'totp_code': ?totpCode,
+      'recovery_code': ?recoveryCode,
+    },
+  );
+
+  /// Switches one of the account's own grants off before its activation runs
+  /// out. The session's capabilities become the ones the server answers with.
+  Future<Escalation> deactivateGrant(int id) =>
+      _escalationRequest(id, 'deactivate');
+
+  /// Makes one of the account's own active grants eligible: from then on it
+  /// gives nothing until switched on. Needs a fresh code, as [activateGrant]
+  /// does. The session's capabilities become the ones the server answers
+  /// with.
+  Future<Escalation> makeGrantEligible(
+    int id, {
+    String? totpCode,
+    String? recoveryCode,
+  }) => _escalationRequest(
+    id,
+    'make-eligible',
+    body: {'totp_code': ?totpCode, 'recovery_code': ?recoveryCode},
+  );
+
+  Future<Escalation> _escalationRequest(
+    int id,
+    String operation, {
+    Map<String, Object?>? body,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = await _authed('POST', [
+      'admin',
+      'grants',
+      '$id',
+      operation,
+    ], body: body);
+    if (response.statusCode != (operation == 'activate' ? 201 : 200)) {
+      throw _unreadable(response);
+    }
+    return _escalated(response, epoch);
+  }
+
+  /// Reads a step of escalation, and keeps what it says the account now
+  /// holds as the session's capabilities until the next refresh brings them.
+  /// A late answer cannot apply the old account's grants to a replacement
+  /// login or restore a signed-out session. Normal rotation keeps the epoch.
+  Escalation _escalated(http.Response response, int epoch) {
+    final data = _data(response);
+    if (data['grant'] is! Map<String, dynamic>) throw _unreadable(response);
+    final step = Escalation.fromJson(data);
+    final tokens = _tokens;
+    if (tokens != null && _sessionEpoch == epoch) {
+      _setTokens(
+        SessionTokens(
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          accessExpiresAt: tokens.accessExpiresAt,
+          capabilities: step.capabilities,
+        ),
+      );
+    }
+    return step;
+  }
+
   // ── Accounts and folders ─────────────────────────────────────────────
 
   Future<List<Account>> accounts() async =>
@@ -1004,6 +1205,59 @@ class RestmailClient {
   /// sessions too.
   Future<void> revokeAppPassword(int accountId, int id) async {
     await _authed('DELETE', ['accounts', '$accountId', 'credentials', '$id']);
+  }
+
+  // ── API keys ─────────────────────────────────────────────────────────
+  //
+  // For the session's own account, or one it manages. Creating and revoking
+  // need a two-factor sign-in, and creating the session's current password
+  // too: the server answers 403 otherwise, a refusal of the request, not of
+  // the session, so it never renews or ends it.
+
+  /// The account's API keys: metadata only, never a token.
+  Future<List<APIKey>> apiKeys(int accountId) async => _list(
+    await _authed('GET', ['accounts', '$accountId', 'api-keys']),
+    APIKey.fromJson,
+  );
+
+  /// Makes an API key holding [permissions] (1 to 64), each within what the
+  /// session and the account hold, and returns it with its token, which the
+  /// server shows this once. Without [expiresAt] the server picks 90 days.
+  Future<CreatedAPIKey> createAPIKey(
+    int accountId, {
+    required String name,
+    required String password,
+    required List<APIKeyPermission> permissions,
+    DateTime? expiresAt,
+  }) async {
+    final response = await _authed(
+      'POST',
+      ['accounts', '$accountId', 'api-keys'],
+      body: {
+        'name': name,
+        'password': password,
+        'permissions': [
+          for (final permission in permissions) permission.toJson(),
+        ],
+        if (expiresAt != null)
+          'expires_at': expiresAt.toUtc().toIso8601String(),
+      },
+    );
+    try {
+      return CreatedAPIKey.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
+  }
+
+  /// Revokes an API key. The server refuses it from the next request on.
+  Future<void> revokeAPIKey(int accountId, int credentialId) async {
+    await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'api-keys',
+      '$credentialId',
+    ]);
   }
 
   // ── Push devices ─────────────────────────────────────────────────────

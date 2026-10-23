@@ -7,6 +7,8 @@ environment:
   sdk: ^3.9.0
 
 dependencies:
+  # Already used by the app; parse certificate metadata in the HTTP fake.
+  basic_utils: ^5.8.2
   http: ^1.6.0
 
 dev_dependencies:
