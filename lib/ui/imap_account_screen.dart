@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../imap/discovery.dart';
 import '../imap/mail_settings.dart';
 import '../imap/oauth.dart';
+import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
@@ -247,10 +248,14 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
         _error = switch (e.code) {
           // Closing the sign-in page is an answer, not a failure.
           'cancelled' => null,
-          'unauthorized' || 'app_password_required' || 'web_login_required' =>
-            '${kind.label} signed you in, but ${settings.imapHost} turned '
-                'REST Mail away: ${e.message}',
-          _ => describeError(e),
+          'unauthorized' ||
+          'app_password_required' ||
+          'web_login_required' => trArgs(context, 'imap.turnedAway', {
+            'provider': kind.label,
+            'host': settings.imapHost,
+            'reason': e.message,
+          }),
+          _ => describeError(context, e),
         };
       });
     }
@@ -259,20 +264,17 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   String _describe(ApiException e, MailProvider? provider) {
     final gmail = provider?.isGmail ?? false;
     return switch (e.code) {
-      'app_password_required' =>
-        'Gmail wants an app password here, not your Google password. Make '
-            'one with the two steps above and paste it in.',
-      'web_login_required' when gmail =>
-        "Google wants an app password instead. If you've made one, sign in "
-            'to Gmail in a browser once, then try again.',
-      'unauthorized' when gmail =>
-        "Gmail didn't take that password. It needs an app password: turn on "
-            '2-Step Verification, then make one with the steps above.',
-      'unauthorized' when provider?.usesAppPassword ?? false =>
-        'Wrong address or password. ${provider!.name} needs an app password '
-            'here, not your usual one.',
-      'unauthorized' || 'web_login_required' => 'Wrong address or password.',
-      _ => describeError(e),
+      'app_password_required' => tr(context, 'imap.gmailAppPassword'),
+      'web_login_required' when gmail => tr(context, 'imap.gmailWebLogin'),
+      'unauthorized' when gmail => tr(context, 'imap.gmailRefused'),
+      'unauthorized' when provider?.usesAppPassword ?? false => trArgs(
+        context,
+        'imap.needsAppPassword',
+        {'provider': provider!.name},
+      ),
+      'unauthorized' ||
+      'web_login_required' => tr(context, 'signIn.badPassword'),
+      _ => describeError(context, e),
     };
   }
 
@@ -283,7 +285,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     } on Exception {
       opened = false;
     }
-    if (!opened && mounted) showToast(context, "Couldn't open that link.");
+    if (!opened && mounted) showToast(context, tr(context, 'imap.linkFailed'));
   }
 
   @override
@@ -299,7 +301,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: provider?.name ?? 'Other mail',
+              title: provider?.name ?? tr(context, 'imap.title'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -308,12 +310,11 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                   children: [
                     Text(
-                      'Gmail, iCloud, Fastmail or any mail that speaks IMAP and '
-                      'SMTP, beside your REST Mail accounts.',
+                      tr(context, 'imap.intro'),
                       style: rmText(15, color: c.ink2, height: 1.45),
                     ),
                     const SizedBox(height: 22),
-                    const SectionLabel('Email address'),
+                    SectionLabel(tr(context, 'signIn.email')),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _email,
@@ -333,14 +334,11 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                     if (microsoft) ...[
                       const SizedBox(height: 22),
                       _Guide(
-                        title:
-                            '${provider?.name ?? 'This account'} signs in '
-                            'with Microsoft',
-                        lines: const [
-                          "Microsoft's own page asks for your password, and "
-                              'whether REST Mail may read and send your mail. '
-                              'REST Mail never sees the password.',
-                        ],
+                        title: trArgs(context, 'imap.microsoftTitle', {
+                          'provider':
+                              provider?.name ?? tr(context, 'imap.thisAccount'),
+                        }),
+                        lines: [tr(context, 'imap.microsoftNote')],
                       ),
                       const SizedBox(height: 22),
                       _nameField(c),
@@ -349,51 +347,62 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                     ] else if (provider?.needsMicrosoftSignIn ?? false) ...[
                       const SizedBox(height: 22),
                       _Guide(
-                        title: '${provider!.name} needs Microsoft sign-in',
-                        lines: const [
-                          'Microsoft turned off passwords for other mail apps '
-                              'in September 2024, so Outlook.com can only be '
-                              'added with Sign in with Microsoft.',
-                          "REST Mail doesn't have that yet. It's coming.",
+                        title: trArgs(context, 'imap.needsMicrosoft', {
+                          'provider': provider!.name,
+                        }),
+                        lines: [
+                          tr(context, 'imap.microsoftOff'),
+                          tr(context, 'imap.microsoftComing'),
                         ],
                       ),
                     ] else ...[
                       if (provider?.isGmail ?? false) ...[
                         const SizedBox(height: 22),
                         _Guide(
-                          title: 'Gmail needs an app password',
-                          lines: const [
-                            '1. Turn on 2-Step Verification for your Google '
-                                'account.',
-                            '2. Make an app password (call it REST Mail) and '
-                                'paste the 16 letters below.',
+                          title: tr(context, 'imap.gmailTitle'),
+                          lines: [
+                            tr(context, 'imap.gmailStep1'),
+                            tr(context, 'imap.gmailStep2'),
                           ],
                           actions: [
                             (
-                              'Turn on 2-Step Verification',
+                              tr(context, 'imap.turnOnTwoStep'),
                               _twoStepVerification,
                             ),
-                            ('Make an app password', provider!.appPasswordUrl!),
+                            (
+                              tr(context, 'imap.makeAppPassword'),
+                              provider!.appPasswordUrl!,
+                            ),
                           ],
                           onOpen: _open,
                         ),
                       ] else if (appPassword) ...[
                         const SizedBox(height: 22),
                         _Guide(
-                          title: '${provider!.name} needs an app password',
+                          title: trArgs(context, 'imap.appPasswordTitle', {
+                            'provider': provider!.name,
+                          }),
                           lines: [
-                            'Make one in your ${provider.name} account '
-                                'settings and use it here instead of your '
-                                'usual password.',
+                            trArgs(context, 'imap.appPasswordNote', {
+                              'provider': provider.name,
+                            }),
                           ],
                           actions: [
-                            ('How to make one', provider.appPasswordUrl!),
+                            (
+                              tr(context, 'imap.howToMake'),
+                              provider.appPasswordUrl!,
+                            ),
                           ],
                           onOpen: _open,
                         ),
                       ],
                       const SizedBox(height: 22),
-                      SectionLabel(appPassword ? 'App password' : 'Password'),
+                      SectionLabel(
+                        tr(
+                          context,
+                          appPassword ? 'imap.appPassword' : 'signIn.password',
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _password,
@@ -405,7 +414,12 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                         onSubmitted: (_) => unawaited(_continue()),
                         style: rmText(16, color: c.ink),
                         decoration: InputDecoration(
-                          hintText: appPassword ? 'App password' : 'Password',
+                          hintText: tr(
+                            context,
+                            appPassword
+                                ? 'imap.appPassword'
+                                : 'signIn.password',
+                          ),
                         ),
                       ),
                       const SizedBox(height: 22),
@@ -414,8 +428,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                       _servers(c),
                       const SizedBox(height: 10),
                       Text(
-                        'Kept in the system keychain on this phone and sent '
-                        'only to these servers, only over TLS.',
+                        tr(context, 'imap.keychainNote'),
                         style: rmText(12.5, color: c.ink3, height: 1.4),
                       ),
                     ],
@@ -426,7 +439,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                     const SizedBox(height: 26),
                     if (microsoft)
                       RmPrimaryButton(
-                        label: 'Sign in with Microsoft',
+                        label: tr(context, 'imap.signInMicrosoft'),
                         busy: _busy,
                         onPressed: _canSignIn
                             ? () => unawaited(_signIn(OAuthKind.microsoft))
@@ -434,7 +447,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                       )
                     else
                       RmPrimaryButton(
-                        label: 'Add account',
+                        label: tr(context, 'signIn.title'),
                         busy: _busy,
                         onPressed: _canContinue
                             ? () => unawaited(_continue())
@@ -446,16 +459,14 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                     if (oauth == OAuthKind.google) ...[
                       const SizedBox(height: 12),
                       RmOutlineButton(
-                        label: 'Sign in with Google (personal use)',
+                        label: tr(context, 'imap.signInGoogle'),
                         onPressed: _canSignIn
                             ? () => unawaited(_signIn(OAuthKind.google))
                             : null,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "For personal use only. Google warns that it hasn't "
-                        'verified REST Mail, and lets at most 100 people sign '
-                        'in this way. An app password works for everyone.',
+                        tr(context, 'imap.googleNote'),
                         style: rmText(12.5, color: c.ink3, height: 1.4),
                       ),
                     ],
@@ -472,16 +483,14 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   Widget _nameField(RmColors c) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const SectionLabel('Your name (optional)'),
+      SectionLabel(tr(context, 'imap.name')),
       const SizedBox(height: 8),
       TextField(
         controller: _name,
         textCapitalization: TextCapitalization.words,
         autofillHints: const [AutofillHints.name],
         style: rmText(16, color: c.ink),
-        decoration: const InputDecoration(
-          hintText: 'Shown to the people you write to',
-        ),
+        decoration: InputDecoration(hintText: tr(context, 'imap.nameHint')),
       ),
     ],
   );
@@ -490,8 +499,8 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     final found = _found;
     if (_looking) {
       return _Card(
-        title: 'Looking up $_searchedDomain…',
-        detail: 'Finding its IMAP and SMTP servers',
+        title: trArgs(context, 'imap.lookingUp', {'domain': _searchedDomain}),
+        detail: tr(context, 'imap.finding'),
         busy: true,
       );
     }
@@ -500,13 +509,17 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       final s = found.settings;
       return _Card(
         title: '${s.imapHost} · ${s.smtpHost}',
-        detail:
-            '${found.source.label} · IMAP over TLS, SMTP '
-            '${s.smtpSecurity == SmtpSecurity.tls ? 'over TLS' : 'with STARTTLS'}',
+        detail: trArgs(
+          context,
+          s.smtpSecurity == SmtpSecurity.tls
+              ? 'imap.foundTls'
+              : 'imap.foundStarttls',
+          {'source': tr(context, 'imap.source.${found.source.name}')},
+        ),
         action: TextButton(
           onPressed: () => setState(() => _manual = true),
           child: Text(
-            'Change',
+            tr(context, 'imap.change'),
             style: rmText(13.5, color: c.accent, weight: FontWeight.w600),
           ),
         ),
@@ -530,13 +543,12 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       children: [
         if (found == null && _searchedDomain.isNotEmpty) ...[
           Text(
-            "Couldn't find the servers for $_searchedDomain. Your provider's "
-            'help pages list them.',
+            trArgs(context, 'imap.notFound', {'domain': _searchedDomain}),
             style: rmText(13.5, color: c.ink2, height: 1.4),
           ),
           const SizedBox(height: 14),
         ],
-        const SectionLabel('IMAP server (TLS)'),
+        SectionLabel(tr(context, 'imap.imapServer')),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -546,7 +558,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        const SectionLabel('SMTP server'),
+        SectionLabel(tr(context, 'imap.smtpServer')),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -574,9 +586,9 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        const SectionLabel('Username'),
+        SectionLabel(tr(context, 'imap.username')),
         const SizedBox(height: 8),
-        field(_username, 'The email address'),
+        field(_username, tr(context, 'imap.usernameHint')),
       ],
     );
   }

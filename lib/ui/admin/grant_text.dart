@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../../util/format.dart';
@@ -54,11 +55,14 @@ const _fieldNames = {
 /// means no authenticator is enrolled, rather than a session signed in
 /// without one.
 String describeGrantError(
+  BuildContext context,
   Object error, {
   String? host,
   bool escalating = false,
 }) {
-  if (error is! ApiException) return describeError(error, host: host);
+  if (error is! ApiException) {
+    return describeError(context, error, host: host);
+  }
   if (error.fields.entries.firstOrNull case final field?) {
     final name = _fieldNames[field.key] ?? field.key.replaceAll('_', ' ');
     return '$name: ${field.value}.';
@@ -88,6 +92,6 @@ String describeGrantError(
     GrantErrorCode.grantExpired => 'This grant has ended.',
     GrantErrorCode.alreadyEligible => 'It is eligible already.',
     'not_found' => 'That grant is gone, or is not yours.',
-    _ => describeAdminError(error, host: host),
+    _ => describeAdminError(context, error, host: host),
   };
 }

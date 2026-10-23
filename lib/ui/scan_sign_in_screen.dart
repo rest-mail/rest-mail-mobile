@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import '../util/sign_in_link.dart';
 import 'widgets/common.dart';
@@ -55,16 +56,13 @@ class _ScanSignInScreenState extends State<ScanSignInScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Scan the sign-in code',
+              title: tr(context, 'scan.title'),
               onBack: () => Navigator.pop(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
               child: Text(
-                _notACode
-                    ? "That QR code isn't a rest-mail sign-in. Point at the "
-                          'one the installer showed.'
-                    : 'Point the camera at the QR code the installer showed.',
+                tr(context, _notACode ? 'scan.notACode' : 'scan.point'),
                 style: rmText(15, color: c.ink2, height: 1.45),
               ),
             ),
@@ -78,13 +76,13 @@ class _ScanSignInScreenState extends State<ScanSignInScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Text(
-                        error.errorCode ==
-                                MobileScannerErrorCode.permissionDenied
-                            ? 'rest-mail needs the camera to scan the code. '
-                                  'Allow it in Settings, or type the password '
-                                  'instead.'
-                            : "The camera didn't start. Type the password "
-                                  'instead.',
+                        tr(
+                          context,
+                          error.errorCode ==
+                                  MobileScannerErrorCode.permissionDenied
+                              ? 'scan.noPermission'
+                              : 'scan.noCamera',
+                        ),
                         textAlign: TextAlign.center,
                         style: rmText(15, color: c.ink2, height: 1.45),
                       ),

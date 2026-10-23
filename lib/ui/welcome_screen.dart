@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import 'add_account_screen.dart';
 import 'server_screen.dart';
@@ -48,7 +49,7 @@ class WelcomeScreen extends StatelessWidget {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 290),
                           child: Text(
-                            'Mail that keeps up with you.',
+                            tr(context, 'welcome.tagline'),
                             style: rmText(
                               40,
                               color: c.ink,
@@ -65,14 +66,14 @@ class WelcomeScreen extends StatelessWidget {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 300),
                           child: Text(
-                            'A native client for your rest-mail server. New mail shows up the moment it lands.',
+                            tr(context, 'welcome.intro'),
                             style: rmText(16, color: c.ink2, height: 1.45),
                           ),
                         ),
                       ),
                       const Spacer(),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 18),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 18),
                         // Each stat takes half the width and wraps inside it,
                         // so large text sizes cannot push the row off screen.
                         child: Row(
@@ -80,22 +81,22 @@ class WelcomeScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: _Stat(
-                                value: 'Live',
-                                label: 'pushed, never polled',
+                                value: tr(context, 'welcome.live'),
+                                label: tr(context, 'welcome.liveLabel'),
                               ),
                             ),
-                            SizedBox(width: 22),
+                            const SizedBox(width: 22),
                             Expanded(
                               child: _Stat(
                                 value: 'TLS',
-                                label: 'or it will not connect',
+                                label: tr(context, 'welcome.tlsLabel'),
                               ),
                             ),
                           ],
                         ),
                       ),
                       RmPrimaryButton(
-                        label: 'Add an account',
+                        label: tr(context, 'settings.addAccount'),
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute<void>(
@@ -105,7 +106,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       RmOutlineButton(
-                        label: 'Enter a server address',
+                        label: tr(context, 'welcome.enterServer'),
                         onPressed: () => unawaited(_chooseServerFirst(context)),
                       ),
                       const SizedBox(height: 6),
@@ -113,7 +114,7 @@ class WelcomeScreen extends StatelessWidget {
                         child: TextButton(
                           onPressed: () => unawaited(_setUpServer(context)),
                           child: Text(
-                            'Set up a new server',
+                            tr(context, 'welcome.setUpServer'),
                             style: rmText(
                               13.5,
                               color: c.accent,

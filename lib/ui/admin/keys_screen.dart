@@ -149,7 +149,9 @@ class _DkimScreenState extends State<DkimScreen> {
           offset = page.next;
         }
       } on ApiException catch (e) {
-        if (mounted) showToast(context, describeAdminError(e, host: _host));
+        if (mounted) {
+          showToast(context, describeAdminError(context, e, host: _host));
+        }
         return;
       }
       if (!mounted) return;
@@ -226,7 +228,9 @@ class _DkimScreenState extends State<DkimScreen> {
     try {
       current = await widget.account.client.dkimRotation(key.domainId);
     } on ApiException catch (e) {
-      if (mounted) showToast(context, describeAdminError(e, host: _host));
+      if (mounted) {
+        showToast(context, describeAdminError(context, e, host: _host));
+      }
       return;
     }
     if (!mounted) return;
@@ -580,6 +584,7 @@ class _CertificateScreenState extends State<CertificateScreen> {
         if (snapshot.hasError) {
           return AdminMessage(
             describeAdminError(
+              context,
               snapshot.error!,
               host: widget.account.server.host,
             ),

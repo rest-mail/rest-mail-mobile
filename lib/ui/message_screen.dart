@@ -278,7 +278,9 @@ class _MessageScreenState extends State<MessageScreen> {
           );
       }
     } on ApiException catch (e) {
-      if (mounted) showToast(context, describeError(e));
+      if (mounted) {
+        showToast(context, describeError(context, e));
+      }
     }
   }
 
@@ -544,7 +546,13 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                     )
                   else if (error != null)
-                    ErrorText(describeError(error, host: _mailbox.backend.host))
+                    ErrorText(
+                      describeError(
+                        context,
+                        error,
+                        host: _mailbox.backend.host,
+                      ),
+                    )
                   else
                     MessageBody(
                       message: m,

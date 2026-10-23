@@ -162,7 +162,7 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
       body: (access) {
         if (error != null) {
           return AdminMessage(
-            describeAdminError(error, host: _host),
+            describeAdminError(context, error, host: _host),
             onRetry: () => unawaited(_load()),
           );
         }
@@ -358,7 +358,11 @@ class _MtaStsFormState extends State<_MtaStsForm> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = describeAdminError(e, host: widget.account.server.host);
+        _error = describeAdminError(
+          context,
+          e,
+          host: widget.account.server.host,
+        );
       });
     }
   }

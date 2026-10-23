@@ -109,7 +109,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      showToast(context, describeError(e, host: host));
+      showToast(context, describeError(context, e, host: host));
     }
   }
 
@@ -929,7 +929,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
             'That account has to sign in and choose its own password first.',
           ApiException(statusCode: 409) =>
             'That mailbox is already linked, or is this account.',
-          _ => describeError(e, host: host),
+          _ => describeError(context, e, host: host),
         };
       });
     }
@@ -1159,7 +1159,7 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
           ApiException(statusCode: 404) =>
             "$host can't create mailboxes: its REST Mail is older than "
                 'this app.',
-          _ => describeError(e, host: host),
+          _ => describeError(context, e, host: host),
         };
       });
     }
