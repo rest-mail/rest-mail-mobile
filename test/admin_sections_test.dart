@@ -1047,6 +1047,9 @@ void main() {
       find.textContaining('${FakeAccounts.host} has no MTA-STS policy'),
       findsOneWidget,
     );
+    // The toast goes first: it sits over the form's Save.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
 
     await tap(tester, 'Set up a policy');
     await tester.enterText(

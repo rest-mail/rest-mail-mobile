@@ -180,6 +180,9 @@ void main() {
     final domain = fake.domains.firstWhere((d) => d.name == FakeAccounts.host);
     await tap(tester, 'Delete policy');
     await tap(tester, 'Delete');
+    // The toast goes first: it sits over the form's Save.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     await tap(tester, 'Set up a policy');
     await tap(tester, 'None');
     await seconds(tester, '0');
