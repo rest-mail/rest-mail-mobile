@@ -7,6 +7,7 @@ import 'package:restmail_fake/restmail_fake.dart' show FakeAccounts;
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/voice.dart';
 import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
@@ -133,12 +134,14 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   String _describe(ApiException e) {
     if (e.fields.isNotEmpty) return e.fields.values.first;
     return switch (e.code) {
-      'unauthorized' when _step == _Step.signIn =>
-        _needsCode ? "That code didn't work." : 'Wrong address or password.',
+      'unauthorized' when _step == _Step.signIn => tr(
+        context,
+        _needsCode ? 'signIn.badCode' : 'signIn.badPassword',
+      ),
       // A wrong code or password once signed in is 403, and the session
       // stays: say which, and let them try again.
-      'invalid_totp' => "That code didn't work.",
-      'invalid_password' => "That isn't the current password.",
+      'invalid_totp' => tr(context, 'signIn.badCode'),
+      'invalid_password' => tr(context, 'setup.notCurrentPassword'),
       _ => describeError(e, host: widget.server.host),
     };
   }
@@ -151,8 +154,10 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     final server = scan.server;
     if (server != null && server.host != widget.server.host) {
       setState(
-        () => _error =
-            'That code is for ${server.host}, not ${widget.server.host}.',
+        () => _error = trArgs(context, 'setup.otherServer', {
+          'code': server.host,
+          'server': widget.server.host,
+        }),
       );
       return;
     }
@@ -217,7 +222,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   Future<void> _changePassword() => _run(() async {
     final next = _newPassword.text;
     if (next != _repeatPassword.text) {
-      setState(() => _error = "The passwords don't match.");
+      setState(() => _error = tr(context, 'setup.mismatch'));
       return;
     }
     await _admin.changePassword(current: _password.text, next: next);
@@ -281,10 +286,8 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   }
 
   _StepView _signInStep(RmColors c) => (
-    'Set up ${widget.server.host}',
-    'Sign in as the account your install created, admin at your domain, '
-        'with the password the installer showed you: scan its QR code, or '
-        'type it. You will replace it in a moment.',
+    trArgs(context, 'setup.title', {'host': widget.server.host}),
+    tr(context, 'setup.signInIntro'),
     [
       if (sampleMode) ...[
         const SizedBox(height: 14),
@@ -295,11 +298,11 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       ],
       const SizedBox(height: 18),
       RmOutlineButton(
-        label: 'Scan the QR code',
+        label: tr(context, 'setup.scan'),
         onPressed: _busy ? null : () => unawaited(_scan()),
       ),
       const SizedBox(height: 22),
-      const SectionLabel('Email address'),
+      SectionLabel(tr(context, 'signIn.email')),
       const SizedBox(height: 8),
       _field(
         _address,
@@ -308,24 +311,24 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         autofill: const [AutofillHints.email],
       ),
       const SizedBox(height: 22),
-      const SectionLabel('Password'),
+      SectionLabel(tr(context, 'signIn.password')),
       const SizedBox(height: 8),
       _field(
         _password,
         obscure: true,
-        hint: 'From the installer',
+        hint: tr(context, 'setup.fromInstaller'),
         autofill: const [AutofillHints.password],
         onSubmitted: _signIn,
       ),
       if (_needsCode) ...[
         const SizedBox(height: 22),
-        const SectionLabel('Two-factor code'),
+        SectionLabel(tr(context, 'signIn.twoFactorCode')),
         const SizedBox(height: 8),
         _codeField(onSubmitted: _signIn),
       ],
     ],
     _primary(
-      'Continue',
+      tr(context, 'signIn.continue'),
       _signIn,
       ready: _address.text.contains('@') && _password.text.isNotEmpty,
     ),
@@ -335,20 +338,19 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     final enrollment = _enrollment;
     if (enrollment == null) {
       return (
-        'Two-factor sign-in',
-        'This account needs an authenticator app: from now on, signing in to '
-            'it takes a code from it as well as the password.',
+        tr(context, 'twoFactor.title'),
+        tr(context, 'setup.needsAuthenticator'),
         const [],
-        _primary('Set up authenticator', _startEnrollment),
+        _primary(tr(context, 'twoFactor.setUp'), _startEnrollment),
       );
     }
     return (
-      'Two-factor sign-in',
-      'Add this account to your authenticator, then type the code it shows.',
+      tr(context, 'twoFactor.title'),
+      tr(context, 'setup.addToAuthenticator'),
       [
         const SizedBox(height: 18),
         RmOutlineButton(
-          label: 'Open authenticator app',
+          label: tr(context, 'twoFactor.openApp'),
           onPressed: () => unawaited(
             launchUrl(
               enrollment.otpauthUri,
@@ -363,20 +365,19 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
               unawaited(
                 Clipboard.setData(ClipboardData(text: enrollment.secret)),
               );
-              showToast(context, 'Setup key copied');
+              showToast(context, tr(context, 'setup.keyCopied'));
             },
             child: Text(
-              'Or copy the setup key',
+              tr(context, 'setup.copyKey'),
               style: rmText(13.5, color: c.accent, weight: FontWeight.w600),
             ),
           ),
         ),
         const SizedBox(height: 18),
-        const SectionLabel('Recovery codes'),
+        SectionLabel(tr(context, 'twoFactor.recoveryCodes')),
         const SizedBox(height: 8),
         Text(
-          'The only way back in if you lose this phone. Keep them somewhere '
-          'else; they are not shown again.',
+          tr(context, 'setup.recoveryNote'),
           style: rmText(13, color: c.ink3, height: 1.4),
         ),
         const SizedBox(height: 10),
@@ -386,13 +387,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         ),
         const SizedBox(height: 10),
         RmOutlineButton(
-          label: 'Save recovery codes',
+          label: tr(context, 'setup.saveCodes'),
           onPressed: () => unawaited(
             SharePlus.instance.share(
               ShareParams(
                 text:
-                    'REST Mail recovery codes for '
-                    '${_address.text.trim()} on ${widget.server.host}:\n'
+                    '${trArgs(context, 'setup.codesFor', {'address': _address.text.trim(), 'host': widget.server.host})}\n'
                     '${enrollment.recoveryCodes.join('\n')}',
               ),
             ),
@@ -404,17 +404,17 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
           value: _savedCodes,
           onChanged: (v) => setState(() => _savedCodes = v ?? false),
           title: Text(
-            "I've saved my recovery codes",
+            tr(context, 'twoFactor.saved'),
             style: rmText(14.5, color: c.ink),
           ),
         ),
         const SizedBox(height: 12),
-        const SectionLabel('Code from your authenticator'),
+        SectionLabel(tr(context, 'twoFactor.codeHint')),
         const SizedBox(height: 8),
         _codeField(onSubmitted: _confirmAuthenticator),
       ],
       _primary(
-        'Confirm',
+        tr(context, 'setup.confirm'),
         _confirmAuthenticator,
         ready: _savedCodes && _code.text.trim().length >= 6,
       ),
@@ -422,12 +422,11 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   }
 
   _StepView _passwordStep(RmColors c) => (
-    'Your own password',
-    'The password you signed in with came from the deploy. Choose one only '
-        'you know: 12 characters or more. Then sign in again with it.',
+    tr(context, 'setup.passwordTitle'),
+    tr(context, 'setup.passwordIntro'),
     [
       const SizedBox(height: 22),
-      const SectionLabel('New password'),
+      SectionLabel(tr(context, 'setup.newPassword')),
       const SizedBox(height: 8),
       _field(
         _newPassword,
@@ -435,28 +434,31 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         autofill: const [AutofillHints.newPassword],
       ),
       const SizedBox(height: 22),
-      const SectionLabel('Repeat it'),
+      SectionLabel(tr(context, 'setup.repeatPassword')),
       const SizedBox(height: 8),
       _field(_repeatPassword, obscure: true, onSubmitted: _changePassword),
     ],
     _primary(
-      'Change password',
+      tr(context, 'setup.changePassword'),
       _changePassword,
       ready: _newPassword.text.length >= 12,
     ),
   );
 
   _StepView _signBackInStep(RmColors c) => (
-    'Sign back in',
-    'The account is set up. Sign in again with a fresh code from your '
-        'authenticator to open its mail.',
+    tr(context, 'setup.signBackIn'),
+    tr(context, 'setup.signBackInIntro'),
     [
       const SizedBox(height: 22),
-      const SectionLabel('Two-factor code'),
+      SectionLabel(tr(context, 'signIn.twoFactorCode')),
       const SizedBox(height: 8),
       _codeField(onSubmitted: _signBackIn),
     ],
-    _primary('Continue', _signBackIn, ready: _code.text.trim().length >= 6),
+    _primary(
+      tr(context, 'signIn.continue'),
+      _signBackIn,
+      ready: _code.text.trim().length >= 6,
+    ),
   );
 
   // ── Pieces ─────────────────────────────────────────────────────────────
@@ -491,7 +493,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
         onChanged: (_) => setState(() => _error = null),
         onSubmitted: (_) => unawaited(onSubmitted()),
         style: rmText(16, color: context.rm.ink, tracking: 0.08),
-        decoration: const InputDecoration(hintText: '6-digit code'),
+        decoration: InputDecoration(hintText: tr(context, 'signIn.codeHint')),
       );
 
   Widget _primary(
@@ -523,7 +525,7 @@ class _Progress extends StatelessWidget {
       _Step.password || _Step.signBackIn => 2,
     };
     return Text(
-      'Step ${index + 1} of 3',
+      trArgs(context, 'setup.step', {'step': '${index + 1}', 'of': '3'}),
       style: rmText(12.5, color: c.ink3, weight: FontWeight.w600),
     );
   }

@@ -191,17 +191,12 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     final c = context.rm;
     if (_hidden) {
       return [
-        Text(
-          tr(context, 'twoFactor.hidden'),
-          style: rmText(14, color: c.ink3),
-        ),
+        Text(tr(context, 'twoFactor.hidden'), style: rmText(14, color: c.ink3)),
       ];
     }
     return [
       Text(
-        trArgs(context, 'twoFactor.addTo', {
-          'address': widget.account.address,
-        }),
+        trArgs(context, 'twoFactor.addTo', {'address': widget.account.address}),
         style: rmText(14, color: c.ink2, height: 1.45),
       ),
       const SizedBox(height: 18),
