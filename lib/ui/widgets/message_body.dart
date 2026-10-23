@@ -6,9 +6,12 @@ import '../../l10n/voice.dart';
 import '../../theme/packs.dart';
 import '../../theme/tokens.dart';
 import '../../util/html_sanitizer.dart';
+import '../../util/quote_split.dart';
 
 /// A message's body: its HTML, sanitized and drawn as Flutter widgets, or
-/// its plain text. Remote images stay blocked until the reader asks.
+/// its plain text. Remote images stay blocked until the reader asks. Quoted
+/// history at the end (a reply's earlier messages) is folded behind "Show
+/// quoted text"; what the sender wrote now is always shown.
 class MessageBody extends StatefulWidget {
   const MessageBody({
     super.key,
@@ -25,16 +28,47 @@ class MessageBody extends StatefulWidget {
 
 class _MessageBodyState extends State<MessageBody> {
   bool _allowRemote = false;
+  bool _showQuote = false;
+  QuoteSplit? _split;
   SanitizedHtml? _sanitized;
+  SanitizedHtml? _sanitizedQuote;
 
   @override
   void didUpdateWidget(MessageBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.message.id != widget.message.id ||
-        oldWidget.message.bodyHtml != widget.message.bodyHtml) {
+        oldWidget.message.bodyHtml != widget.message.bodyHtml ||
+        oldWidget.message.bodyText != widget.message.bodyText) {
       _allowRemote = false;
+      _showQuote = false;
+      _split = null;
       _sanitized = null;
+      _sanitizedQuote = null;
     }
+  }
+
+  Widget _toggle(BuildContext context) {
+    final c = context.rm;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        onPressed: () => setState(() => _showQuote = !_showQuote),
+        icon: Icon(
+          _showQuote ? Icons.expand_less_rounded : Icons.more_horiz_rounded,
+          size: 18,
+          color: c.accent,
+        ),
+        label: Text(
+          _showQuote ? 'Hide quoted text' : 'Show quoted text',
+          style: rmText(13, color: c.accent, weight: FontWeight.w700),
+        ),
+      ),
+    );
   }
 
   @override
@@ -48,46 +82,84 @@ class _MessageBodyState extends State<MessageBody> {
     );
     final html = widget.message.bodyHtml;
     if (html == null) {
-      return SelectableText(widget.message.bodyText ?? '', style: text);
+      final split = _split ??= splitPlainQuote(widget.message.bodyText ?? '');
+      final quote = split.quote;
+      if (quote == null) return SelectableText(split.body, style: text);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SelectableText(split.body, style: text),
+          const SizedBox(height: 10),
+          _toggle(context),
+          if (_showQuote) ...[
+            const SizedBox(height: 6),
+            SelectableText(quote, style: text.copyWith(color: c.ink2)),
+          ],
+        ],
+      );
     }
+    final split = _split ??= splitHtmlQuote(html);
+    final quote = split.quote;
     final sanitized = _sanitized ??= sanitizeHtml(
-      html,
+      split.body,
       allowRemoteImages: _allowRemote,
     );
+    final sanitizedQuote = quote == null
+        ? null
+        : _sanitizedQuote ??= sanitizeHtml(
+            quote,
+            allowRemoteImages: _allowRemote,
+          );
+    final blocked =
+        sanitized.blockedImages + (sanitizedQuote?.blockedImages ?? 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (sanitized.blockedImages > 0)
+        if (blocked > 0)
           _RemoteImagesNotice(
-            count: sanitized.blockedImages,
+            count: blocked,
             onLoad: () => setState(() {
               _allowRemote = true;
               _sanitized = null;
+              _sanitizedQuote = null;
             }),
           ),
-        HtmlWidget(
-          sanitized.html,
-          textStyle: text,
-          onTapUrl: (url) {
-            if (Uri.tryParse(url) case final uri?) widget.onOpenLink(uri);
-            return true;
-          },
-          customStylesBuilder: (element) => switch (element.localName) {
-            'a' => {'color': cssColor(c.accent), 'text-decoration': 'none'},
-            'blockquote' => {
-              'border-left': '3px solid ${cssColor(c.line)}',
-              'margin': '0 0 0 4px',
-              'padding-left': '12px',
-              'color': cssColor(c.ink2),
-            },
-            'pre' ||
-            'code' => {'font-family': 'monospace', 'white-space': 'pre-wrap'},
-            'td' || 'th' => {'padding': '4px 8px', 'vertical-align': 'top'},
-            'hr' => {'border-top': '1px solid ${cssColor(c.line)}'},
-            _ => null,
-          },
-        ),
+        _html(context, sanitized.html, text),
+        if (sanitizedQuote != null) ...[
+          const SizedBox(height: 10),
+          _toggle(context),
+          if (_showQuote) ...[
+            const SizedBox(height: 6),
+            _html(context, sanitizedQuote.html, text.copyWith(color: c.ink2)),
+          ],
+        ],
       ],
+    );
+  }
+
+  Widget _html(BuildContext context, String html, TextStyle text) {
+    final c = context.rm;
+    return HtmlWidget(
+      html,
+      textStyle: text,
+      onTapUrl: (url) {
+        if (Uri.tryParse(url) case final uri?) widget.onOpenLink(uri);
+        return true;
+      },
+      customStylesBuilder: (element) => switch (element.localName) {
+        'a' => {'color': cssColor(c.accent), 'text-decoration': 'none'},
+        'blockquote' => {
+          'border-left': '3px solid ${cssColor(c.line)}',
+          'margin': '0 0 0 4px',
+          'padding-left': '12px',
+          'color': cssColor(c.ink2),
+        },
+        'pre' ||
+        'code' => {'font-family': 'monospace', 'white-space': 'pre-wrap'},
+        'td' || 'th' => {'padding': '4px 8px', 'vertical-align': 'top'},
+        'hr' => {'border-top': '1px solid ${cssColor(c.line)}'},
+        _ => null,
+      },
     );
   }
 }
