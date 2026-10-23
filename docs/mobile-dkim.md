@@ -31,3 +31,18 @@ scoped administration is enabled in main or deployed.
   sign-and-verify validation.
 - Local formatting is checked with the pinned Dart SDK. Flutter analysis,
   tests, screen tour and platform builds run through the normal PR workflow.
+
+## Scoped-access integration on PR #108
+
+This branch carries the DKIM work from #103 together with the grants/session
+changes from #99. The per-domain screen passes its domain scope into `AdminPage`
+and its initial read. Key-row writes/removal use the row's domain; a global reader
+with write access to only one domain can therefore manage only that row. The
+installation picker filters to domains the session may write.
+
+The combined branch passes 161 API tests, 67 fake tests, both fatal-info package
+analyses and all seven policy cases in a Dart-only harness importing the real
+`AdminAccess`. That harness does not run Flutter. Three additional scoped DKIM
+widget flows remain for CI, as do the original four scoped session flows and five
+DKIM lifecycle flows. #99, #103, server #619 and final main integration are still
+required; none of these branch artifacts establishes deployment.

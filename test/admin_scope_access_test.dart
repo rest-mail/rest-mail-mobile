@@ -122,6 +122,48 @@ void main() {
     expect(domain.canWrite(AdminSection.relay), isFalse);
   });
 
+  test('DKIM collection remains global while per-domain reads and writes are scoped', () {
+    final scoped = at('domain:a.test', {'domains:read', 'domains:write'});
+    expect(AdminAccess(scoped).canRead(AdminSection.dkim), isFalse);
+    final target = AdminAccess(scoped, scope: 'domain:a.test');
+    expect(target.domainSections, contains(AdminSection.domainDkim));
+    expect(target.canRead(AdminSection.domainDkim), isTrue);
+    expect(target.canWrite(AdminSection.domainDkim), isTrue);
+    expect(target.canDelete(AdminSection.domainDkim), isTrue);
+    final other = AdminAccess(scoped, scope: 'domain:b.test');
+    expect(other.canRead(AdminSection.domainDkim), isFalse);
+    expect(other.canWrite(AdminSection.domainDkim), isFalse);
+    expect(other.canDelete(AdminSection.domainDkim), isFalse);
+    final mixed = Capabilities.fromJson(
+      ['domains:read'],
+      scoped: [
+        {'capability': 'domains:write', 'scope': 'domain:a.test'},
+      ],
+    );
+    expect(AdminAccess(mixed).canRead(AdminSection.dkim), isTrue);
+    expect(
+      AdminAccess(
+        mixed,
+        scope: 'domain:a.test',
+      ).canWrite(AdminSection.domainDkim),
+      isTrue,
+    );
+    expect(
+      AdminAccess(
+        mixed,
+        scope: 'domain:b.test',
+      ).canWrite(AdminSection.domainDkim),
+      isFalse,
+    );
+    expect(
+      AdminAccess(
+        at('mailbox:x@a.test', {'domains:read', 'domains:write'}),
+        scope: 'domain:a.test',
+      ).canRead(AdminSection.domainDkim),
+      isFalse,
+    );
+  });
+
   test('mail owner capabilities alone do not expose administration', () {
     expect(
       AdminAccess(

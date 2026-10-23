@@ -17,6 +17,8 @@ void main() {
   Future<(FakeRestmail, AppState, MemoryKeyValueStore, List<String>)> open(
     WidgetTester tester, {
     required bool mailboxOnly,
+    bool readOnly = false,
+    bool globalDomainRead = false,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -26,8 +28,13 @@ void main() {
     final requests = <String>[];
     final state = AppState(
       store: store,
-      httpClientFactory: () =>
-          _ScopedClient(fake.client, mailboxOnly, requests),
+      httpClientFactory: () => _ScopedClient(
+        fake.client,
+        mailboxOnly,
+        requests,
+        readOnly: readOnly,
+        globalDomainRead: globalDomainRead,
+      ),
     );
     await state.start();
     await state.signIn(
@@ -119,6 +126,80 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a scoped domain admin manages rotation without requesting the global key list',
+    (tester) async {
+      final (fake, state, _, requests) = await open(tester, mailboxOnly: false);
+      expect(find.text('DKIM keys'), findsNothing);
+      await tap(tester, 'Domains');
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'DKIM signing');
+      expect(find.text('Install or replace key'), findsOneWidget);
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'Key rotation');
+      await tester.enterText(find.byType(TextField), '94');
+      await tap(tester, 'Save');
+      final domain = fake.domains.firstWhere(
+        (d) => d.name == FakeAccounts.host,
+      );
+      final client = (state.current! as RestAccount).client;
+      expect((await client.dkimRotation(domain.id)).intervalDays, 94);
+      expect(
+        requests,
+        contains('PUT /api/v1/admin/dkim/${domain.id}/rotation'),
+      );
+      expect(requests, isNot(contains('GET /api/v1/admin/dkim')));
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets(
+    'a domain-scoped reader can view rotation with no mutation controls',
+    (tester) async {
+      final (fake, state, _, requests) = await open(
+        tester,
+        mailboxOnly: false,
+        readOnly: true,
+      );
+      await tap(tester, 'Domains');
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'DKIM signing');
+      expect(find.text('Install or replace key'), findsNothing);
+      expect(
+        find.byTooltip('Remove the key for ${FakeAccounts.host}'),
+        findsNothing,
+      );
+      await tap(tester, FakeAccounts.host);
+      expect(find.textContaining('Never rotated.'), findsOneWidget);
+      expect(find.text('Save'), findsNothing);
+      expect(requests, isNot(contains('GET /api/v1/admin/dkim')));
+      await tap(tester, 'Done');
+      await close(tester, fake, state);
+    },
+  );
+
+  testWidgets(
+    'global key readers with one writable domain get only that domain’s write controls',
+    (tester) async {
+      final (fake, state, _, _) = await open(
+        tester,
+        mailboxOnly: false,
+        globalDomainRead: true,
+      );
+      await tap(tester, 'DKIM keys');
+      expect(
+        find.byTooltip('Remove the key for ${FakeAccounts.host}'),
+        findsOneWidget,
+      );
+      final other = fake.domains.firstWhere((d) => d.name != FakeAccounts.host);
+      expect(find.byTooltip('Remove the key for ${other.name}'), findsNothing);
+      await tap(tester, 'Set a key for a domain');
+      expect(find.widgetWithText(ListTile, FakeAccounts.host), findsOneWidget);
+      expect(find.widgetWithText(ListTile, other.name), findsNothing);
+      await close(tester, fake, state);
+    },
+  );
+
   testWidgets('mailbox creation starts on a writable grant domain', (
     tester,
   ) async {
@@ -178,7 +259,15 @@ void main() {
 /// A scoped server response fixture. Server tenant enforcement has separate
 /// PostgreSQL tests in server PR #619; these tests exercise the mobile gates.
 class _ScopedClient extends http.BaseClient {
-  _ScopedClient(this.inner, this.mailboxOnly, this.requests);
+  _ScopedClient(
+    this.inner,
+    this.mailboxOnly,
+    this.requests, {
+    this.readOnly = false,
+    this.globalDomainRead = false,
+  });
+  final bool readOnly;
+  final bool globalDomainRead;
   final http.Client inner;
   final bool mailboxOnly;
   final List<String> requests;
@@ -186,6 +275,16 @@ class _ScopedClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     requests.add('${request.method} ${request.url.path}');
+    if (!globalDomainRead && request.url.path == '/api/v1/admin/dkim') {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            '{"error":{"code":"forbidden","message":"Global key listing requires global access"}}',
+          ),
+        ),
+        403,
+      );
+    }
     final response = await http.Response.fromStream(await inner.send(request));
     if (response.statusCode != 200 ||
         !(response.headers['content-type'] ?? '').contains(
@@ -201,12 +300,12 @@ class _ScopedClient extends http.BaseClient {
     final path = request.url.path;
     if (path.endsWith('/auth/login') || path.endsWith('/auth/refresh')) {
       final data = body['data'] as Map<String, dynamic>;
-      data['capabilities'] = <String>[];
+      data['capabilities'] = <String>[if (globalDomainRead) 'domains:read'];
       data['scoped_capabilities'] = [
         for (final capability in [
           'mailboxes:read',
-          'mailboxes:write',
-          if (!mailboxOnly) ...['domains:read', 'domains:write'],
+          if (!readOnly) 'mailboxes:write',
+          if (!mailboxOnly) ...['domains:read', if (!readOnly) 'domains:write'],
         ])
           {
             'capability': capability,
@@ -228,7 +327,9 @@ class _ScopedClient extends http.BaseClient {
       body['data'] = items
           .where(
             (row) => switch (path.split('/').last) {
-              'domains' => !mailboxOnly && row['name'] == FakeAccounts.host,
+              'domains' =>
+                globalDomainRead ||
+                    (!mailboxOnly && row['name'] == FakeAccounts.host),
               'mailboxes' =>
                 mailboxOnly
                     ? row['address'] == FakeAccounts.email
