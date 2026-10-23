@@ -427,9 +427,9 @@ class _ComposeSheetState extends State<ComposeSheet>
       _draftId = saved.id;
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
-      final saved = tr(context, 'compose.draftSaved');
+      final done = tr(context, 'compose.draftSaved');
       Navigator.pop(context);
-      messenger.showSnackBar(SnackBar(content: Text(saved)));
+      messenger.showSnackBar(SnackBar(content: Text(done)));
       unawaited(_mailbox.refresh());
     } on ApiException catch (e) {
       if (!mounted) return;
