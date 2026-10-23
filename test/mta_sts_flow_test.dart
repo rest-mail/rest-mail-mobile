@@ -95,8 +95,9 @@ void main() {
     final email = readOnly
         ? 'policy-reader@${FakeAccounts.host}'
         : FakeAccounts.adminEmail;
-    if (readOnly)
+    if (readOnly) {
       fake.addAccount(email, capabilities: {Capability.domainsRead});
+    }
     final state = AppState(
       store: MemoryKeyValueStore(),
       httpClientFactory: () => transport,

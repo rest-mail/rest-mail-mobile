@@ -386,11 +386,12 @@ class _MtaStsFormState extends State<_MtaStsForm> {
               ],
               value: _mode,
               onChanged: (mode) {
-                if (!_busy)
+                if (!_busy) {
                   setState(() {
                     _mode = mode;
                     _error = null;
                   });
+                }
               },
             ),
           ),
@@ -462,11 +463,12 @@ class _MtaStsFormState extends State<_MtaStsForm> {
               value: _published,
               label: 'Published',
               onChanged: (value) {
-                if (!_busy)
+                if (!_busy) {
                   setState(() {
                     _published = value;
                     _error = null;
                   });
+                }
               },
             ),
           ),
