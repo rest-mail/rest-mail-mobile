@@ -65,6 +65,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Check accumulated release notes
+        run: |
+          python3 -m unittest discover -s tool/ci -p 'test_build_whats_new.py'
+          dart tool/ci/check_whats_new.dart
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze

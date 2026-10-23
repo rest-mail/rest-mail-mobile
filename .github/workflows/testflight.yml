@@ -273,14 +273,26 @@ jobs:
     permissions:
       contents: write
     steps:
-      - env:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Publish release and accumulated notes
+        env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.gate.outputs.version }}
           BUILD: ${{ needs.upload.outputs.build }}
         run: |
           set -euo pipefail
-          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "rest-mail $VERSION" \
-            --notes "TestFlight build $BUILD." \
-            --generate-notes
-          echo "::notice::published v$VERSION (TestFlight build $BUILD)"
+          if ! gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "rest-mail $VERSION" \
+              --notes "TestFlight build $BUILD." \
+              --generate-notes
+          fi
+          # One file, newest first: this release and the previous nine public
+          # versions. Never commit generated notes or create another tag.
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            > "$RUNNER_TEMP/releases.json"
+          python3 tool/ci/build_whats_new.py "$RUNNER_TEMP/releases.json" \
+            "$RUNNER_TEMP/whats-new.json" --require-tag "v$VERSION"
+          gh release upload "v$VERSION" "$RUNNER_TEMP/whats-new.json" \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          echo "::notice::published v$VERSION with the latest ten release notes (TestFlight build $BUILD)"
