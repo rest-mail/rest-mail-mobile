@@ -3249,8 +3249,8 @@ class FakeRestmail {
           'plaintext': 6,
           'tlsPercent': 95.0,
           'plaintextPercent': 5.0,
-          'plaintextAuthPass': 0,
-          'plaintextAuthFail': 0,
+          'plaintextAuthPass': 2,
+          'plaintextAuthFail': 4,
         },
       },
     });

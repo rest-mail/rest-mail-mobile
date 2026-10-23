@@ -324,7 +324,30 @@ class Ban {
   final DateTime? expiresAt;
 }
 
-/// The server at a glance, as its admin dashboard shows it.
+/// An activity record returned by the server's dashboard.
+class DashboardActivity {
+  const DashboardActivity({
+    required this.description,
+    required this.at,
+    this.id = '',
+    this.type = '',
+  });
+
+  factory DashboardActivity.fromJson(Map<String, dynamic> json) =>
+      DashboardActivity(
+        id: json['id'] as String? ?? '',
+        type: json['type'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        at: _time(json['timestamp']),
+      );
+
+  final String id;
+  final String type;
+  final String description;
+  final DateTime? at;
+}
+
+/// The complete DashboardStats response from GET /admin/stats.
 class ServerStats {
   const ServerStats({
     required this.domains,
@@ -335,6 +358,12 @@ class ServerStats {
     required this.recent,
     required this.inboundMx,
     required this.inboundOverTls,
+    this.queueProcessing = 0,
+    this.inboundPlaintext = 0,
+    this.inboundTlsPercent = 0,
+    this.inboundPlaintextPercent = 0,
+    this.plaintextAuthPass = 0,
+    this.plaintextAuthFail = 0,
   });
 
   factory ServerStats.fromJson(Map<String, dynamic> json) {
@@ -345,6 +374,7 @@ class ServerStats {
       domains: _int(json['domainCount'] ?? 0),
       mailboxes: _int(json['mailboxCount'] ?? 0),
       queuePending: _int(queue['pending'] ?? 0),
+      queueProcessing: _int(queue['processing'] ?? 0),
       queueFailed: _int(queue['failed'] ?? 0),
       volume: [
         for (final day in json['messageVolume'] as List? ?? const [])
@@ -353,31 +383,42 @@ class ServerStats {
       ],
       recent: [
         for (final item in json['recentActivity'] as List? ?? const [])
-          if (item case {
-            'description': final String description,
-            'timestamp': final String timestamp,
-          })
-            (description: description, at: _time(timestamp)),
+          if (item is Map<String, dynamic>) DashboardActivity.fromJson(item),
       ],
       inboundMx: _int(tls['totalInboundMX'] ?? 0),
       inboundOverTls: _int(tls['overTLS'] ?? 0),
+      inboundPlaintext: _int(tls['plaintext'] ?? 0),
+      inboundTlsPercent: (tls['tlsPercent'] as num?)?.toDouble() ?? 0,
+      inboundPlaintextPercent:
+          (tls['plaintextPercent'] as num?)?.toDouble() ?? 0,
+      plaintextAuthPass: _int(tls['plaintextAuthPass'] ?? 0),
+      plaintextAuthFail: _int(tls['plaintextAuthFail'] ?? 0),
     );
   }
 
   final int domains;
   final int mailboxes;
 
-  /// Waiting to go out, and given up on.
+  /// Waiting, in flight, and given up on; the server defines the buckets.
   final int queuePending;
+  final int queueProcessing;
   final int queueFailed;
 
   /// Messages a day, oldest first, labelled as the server labels them.
   final List<({String date, int count})> volume;
-  final List<({String description, DateTime? at})> recent;
+  final List<DashboardActivity> recent;
 
-  /// Mail other servers handed over, and how much of it came over TLS.
+  /// Inbound MX delivery counts, excluding authenticated submission and
+  /// other messages for which the server has no transport classification.
   final int inboundMx;
   final int inboundOverTls;
+  final int inboundPlaintext;
+
+  /// Server-calculated percentages; do not round or recompute while parsing.
+  final double inboundTlsPercent;
+  final double inboundPlaintextPercent;
+  final int plaintextAuthPass;
+  final int plaintextAuthFail;
 }
 
 /// One step of a message's way through a pipeline.
