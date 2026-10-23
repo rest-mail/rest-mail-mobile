@@ -74,6 +74,7 @@ class TrustVerdict {
     required this.label,
     required this.detail,
     this.signedBy,
+    this.domain,
     this.auth,
   });
 
@@ -81,6 +82,11 @@ class TrustVerdict {
   final String label;
   final String detail;
   final String? signedBy;
+
+  /// The domain [detail] speaks of, when the header named one: the signer,
+  /// the aligned from domain, or the envelope domain SPF authorised. A
+  /// translated detail puts it in its own words.
+  final String? domain;
   final MailAuth? auth;
 
   bool get isUnchecked => state == TrustState.unchecked;
@@ -242,6 +248,7 @@ TrustVerdict verdictFromAuth(MailAuth? auth) {
             'DMARC failed for the from address, but a forwarder\'s ARC chain '
             'is intact. Common for mailing lists and redirects.',
         signedBy: _domainFor(auth, 'arc'),
+        domain: _domainFor(auth, 'arc'),
         auth: auth,
       );
     }
@@ -264,6 +271,7 @@ TrustVerdict verdictFromAuth(MailAuth? auth) {
           'The message carries a valid DKIM signature for '
           '${domain ?? 'the sending domain'}.',
       signedBy: domain,
+      domain: domain,
       auth: auth,
     );
   }
@@ -278,6 +286,7 @@ TrustVerdict verdictFromAuth(MailAuth? auth) {
           'signature was found. The sending server was authorised, not the '
           'message signed.',
       signedBy: domain,
+      domain: domain,
       auth: auth,
     );
   }
@@ -290,6 +299,7 @@ TrustVerdict verdictFromAuth(MailAuth? auth) {
       detail:
           'The sending server (${domain ?? 'the envelope domain'}) is '
           'authorised for the domain, but the message itself is not signed.',
+      domain: domain,
       auth: auth,
     );
   }

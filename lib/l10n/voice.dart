@@ -94,6 +94,23 @@ String liveLabelOf(BuildContext context, LiveStatus status) => switch (status) {
   LiveStatus.offline => tr(context, 'status.offline'),
 };
 
+/// What a sender verdict calls itself, in the current language.
+String trustLabelOf(BuildContext context, TrustVerdict verdict) =>
+    tr(context, 'trust.${verdict.state.name}');
+
+/// The sentence behind a sender verdict, naming the domain the header gave,
+/// or saying which domain it means when it gave none.
+String trustDetailOf(BuildContext context, TrustVerdict verdict) {
+  final unnamed = switch (verdict.state) {
+    TrustState.aligned => 'trust.fromDomain',
+    TrustState.spfOnly => 'trust.envelopeDomain',
+    _ => 'trust.sendingDomain',
+  };
+  return trArgs(context, 'trust.${verdict.state.name}.detail', {
+    'domain': verdict.domain ?? tr(context, unnamed),
+  });
+}
+
 /// The string for [key] in [pack]'s voice and [locale], falling back
 /// voice+locale → base+locale → voice+en → base+en.
 String voiceLine(ThemePack pack, Locale locale, String key) {
