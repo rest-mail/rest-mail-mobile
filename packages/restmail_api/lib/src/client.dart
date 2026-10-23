@@ -272,13 +272,27 @@ class RestmailClient {
   );
 
   /// Tries a waiting entry again now. Needs `queue:manage`.
-  Future<void> retryQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'retry']);
-  }
+  Future<QueueActionResult> retryQueueEntry(int id) =>
+      _queueAction(id, 'retry', 'retrying');
 
   /// Gives up on an entry and bounces it to its sender. Needs `queue:manage`.
-  Future<void> bounceQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'bounce']);
+  Future<QueueActionResult> bounceQueueEntry(int id) =>
+      _queueAction(id, 'bounce', 'bounced');
+
+  Future<QueueActionResult> _queueAction(
+    int id,
+    String action,
+    String expectedStatus,
+  ) async {
+    final response = await _authed('POST', ['admin', 'queue', '$id', action]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      final result = QueueActionResult.fromJson(_data(response));
+      if (result.status != expectedStatus) throw _unreadable(response);
+      return result;
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Drops an entry without telling its sender. Needs `queue:manage`.

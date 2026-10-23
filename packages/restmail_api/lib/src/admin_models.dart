@@ -117,6 +117,22 @@ class QueueFilter {
   };
 }
 
+/// The server's acknowledgement of a single queue retry or bounce.
+class QueueActionResult {
+  const QueueActionResult({required this.status});
+
+  factory QueueActionResult.fromJson(Map<String, dynamic> json) {
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Queue acknowledgement needs a status');
+    }
+    return QueueActionResult(status: status);
+  }
+
+  /// `retrying` for retry and `bounced` for bounce, validated by the client.
+  final String status;
+}
+
 /// Exactly one selection: IDs, or all entries matching a filter across pages.
 class QueueSelection {
   QueueSelection.ids(List<int> ids)
