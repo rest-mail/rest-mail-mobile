@@ -122,7 +122,7 @@ void main() {
     return (fake, state, store);
   }
 
-  Future<void> tap(WidgetTester tester, Finder target) async {
+  Future<void> reveal(WidgetTester tester, Finder target) async {
     for (final delta in [-250.0, 250.0]) {
       for (var i = 0; i < 25 && target.evaluate().isEmpty; i++) {
         await tester.drag(find.byType(ListView).last, Offset(0, delta));
@@ -132,6 +132,10 @@ void main() {
     expect(target, findsWidgets);
     await tester.ensureVisible(target.last);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> tap(WidgetTester tester, Finder target) async {
+    await reveal(tester, target);
     await tester.tap(target.last);
     await tester.pumpAndSettle();
   }
@@ -248,6 +252,7 @@ void main() {
       );
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       if (code == 'two_factor_required') {
+        await reveal(tester, find.text('Sign in with a code'));
         expect(find.text('Sign in with a code'), findsOneWidget);
       } else if (code == 'validation_failed') {
         expect(find.text('permissions: scope invalid'), findsOneWidget);
