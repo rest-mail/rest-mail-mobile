@@ -108,13 +108,15 @@ void main() {
         await tester.pumpAndSettle();
       }
     }
-    await tester.ensureVisible(finder);
+    await tester.ensureVisible(finder.last);
     await tester.pumpAndSettle();
   }
 
   Future<void> tap(WidgetTester tester, String label) async {
+    // Not `.last` until it is revealed: `.last` of nothing throws, where the
+    // search needs an empty answer to keep scrolling.
+    await reveal(tester, find.text(label));
     final finder = find.text(label).last;
-    await reveal(tester, finder);
     await tester.tap(finder);
     await tester.pumpAndSettle();
   }
