@@ -76,6 +76,7 @@ void main() {
       server: Uri.parse('https://${FakeAccounts.host}'),
       email: 'dashboard@${FakeAccounts.host}',
       password: FakeAccounts.adminPassword,
+      totpCode: FakeAccounts.totpCode,
     );
     await tester.pumpWidget(
       AppScope(
