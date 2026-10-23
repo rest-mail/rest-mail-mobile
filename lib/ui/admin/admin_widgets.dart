@@ -394,6 +394,8 @@ class AdminField {
     this.obscure = false,
     this.email = false,
     this.optional = false,
+    this.multiline = false,
+    this.pasteOnly = false,
     this.number = false,
     this.choices,
   });
@@ -402,6 +404,12 @@ class AdminField {
   final String? hint;
   final String initial;
   final bool obscure;
+
+  /// Several lines for pasted text, except in obscured fields.
+  final bool multiline;
+
+  /// Paste exact text, preserving line breaks in an obscured field.
+  final bool pasteOnly;
 
   /// An address: no autocorrect, the email keyboard.
   final bool email;
@@ -508,6 +516,28 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
     }
   }
 
+  Future<void> _paste(int index) async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      if (!mounted) return;
+      final text = data?.text;
+      setState(() {
+        if (text == null || text.isEmpty) {
+          _error = 'The clipboard has no text to paste.';
+        } else {
+          _controllers[index].text = text;
+          _error = null;
+        }
+      });
+    } on PlatformException {
+      if (mounted) {
+        setState(
+          () => _error = 'Could not read the clipboard. Try pasting again.',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
@@ -548,6 +578,8 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                     else
                       TextField(
                         controller: _controllers[i],
+                        readOnly: widget.fields[i].pasteOnly,
+                        enableInteractiveSelection: !widget.fields[i].pasteOnly,
                         obscureText: widget.fields[i].obscure,
                         autocorrect:
                             !widget.fields[i].obscure &&
@@ -559,20 +591,36 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                             ? TextInputType.number
                             : widget.fields[i].email
                             ? TextInputType.emailAddress
+                            : widget.fields[i].multiline
+                            ? TextInputType.multiline
                             : null,
+                        minLines: widget.fields[i].multiline ? 4 : null,
+                        maxLines: widget.fields[i].multiline ? 8 : 1,
                         inputFormatters: widget.fields[i].number
                             ? [FilteringTextInputFormatter.digitsOnly]
                             : null,
-                        textInputAction: i == widget.fields.length - 1
+                        textInputAction: widget.fields[i].multiline
+                            ? TextInputAction.newline
+                            : i == widget.fields.length - 1
                             ? TextInputAction.done
                             : TextInputAction.next,
                         onChanged: (_) => setState(() => _error = null),
-                        onSubmitted: i == widget.fields.length - 1
+                        onSubmitted:
+                            i == widget.fields.length - 1 &&
+                                !widget.fields[i].multiline
                             ? (_) => unawaited(_send())
                             : null,
                         style: rmText(16, color: c.ink),
                         decoration: InputDecoration(
                           hintText: widget.fields[i].hint,
+                          suffixIcon: widget.fields[i].pasteOnly
+                              ? TextButton(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => unawaited(_paste(i)),
+                                  child: const Text('Paste'),
+                                )
+                              : null,
                         ),
                       ),
                   ],
