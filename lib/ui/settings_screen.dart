@@ -236,33 +236,6 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                 ? 'Pushed live by the server'
                                 : 'Live while the app is open',
                           ),
-                          if (session != null)
-                            RmRow(
-                              label: 'Vacation reply',
-                              subtitle:
-                                  'An automatic answer while you are away',
-                              onTap: () => _push(
-                                context,
-                                VacationReplyScreen(
-                                  account: session,
-                                  mailbox: account,
-                                ),
-                              ),
-                            ),
-                          if (session != null)
-                            RmRow(
-                              label: 'Mail filters',
-                              subtitle:
-                                  'A Sieve script that files, forwards '
-                                  'or refuses mail',
-                              onTap: () => _push(
-                                context,
-                                MailFiltersScreen(
-                                  account: session,
-                                  mailbox: account,
-                                ),
-                              ),
-                            ),
                           if (session != null &&
                               session.signedOut == null &&
                               account.isPrimary)
@@ -382,6 +355,40 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             subtitle: tr(context, 'settings.scheduledSubtitle'),
                             onTap: () =>
                                 _push(context, ScheduledScreen(mailbox: m)),
+                          ),
+                        ],
+                      ),
+                    ],
+                    // Last, so the sections above stay where they were.
+                    if (session != null && m.account != null) ...[
+                      const SizedBox(height: 22),
+                      const SectionLabel('Mail rules'),
+                      const SizedBox(height: 9),
+                      RmGroup(
+                        children: [
+                          RmRow(
+                            label: 'Vacation reply',
+                            subtitle: 'An automatic answer while you are away',
+                            onTap: () => _push(
+                              context,
+                              VacationReplyScreen(
+                                account: session,
+                                mailbox: m.account!,
+                              ),
+                            ),
+                          ),
+                          RmRow(
+                            label: 'Mail filters',
+                            subtitle:
+                                'A Sieve script that files, forwards or '
+                                'refuses mail',
+                            onTap: () => _push(
+                              context,
+                              MailFiltersScreen(
+                                account: session,
+                                mailbox: m.account!,
+                              ),
+                            ),
                           ),
                         ],
                       ),

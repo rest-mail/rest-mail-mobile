@@ -58,12 +58,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// [row] in the mailbox's settings, at the end of the list: scrolled to,
+  /// then tapped.
+  Future<void> tapRule(WidgetTester tester, String row) async {
+    await tester.scrollUntilVisible(
+      find.text(row),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tapText(tester, row);
+  }
+
   /// Settings → the mailbox → [row].
   Future<void> openRow(WidgetTester tester, String row) async {
     await tap(tester, find.byTooltip('Mailboxes'));
     await tap(tester, find.byTooltip('Mailbox settings'));
     await tapText(tester, FakeAccounts.email);
-    await tapText(tester, row);
+    await tapRule(tester, row);
   }
 
   testWidgets('the vacation reply is turned on with its subject and message, '
@@ -92,7 +104,7 @@ void main() {
     await settleToast(tester);
 
     // Opened again, it shows what was saved; turned off, it keeps it.
-    await tapText(tester, 'Vacation reply');
+    await tapRule(tester, 'Vacation reply');
     expect(find.text('Away'), findsOneWidget);
     await tap(tester, find.byType(RmSwitch));
     await tapText(tester, 'Save');
@@ -131,7 +143,7 @@ void main() {
     expect(fake.sieveScriptOf(FakeAccounts.email)!['active'], isTrue);
     await settleToast(tester);
 
-    await tapText(tester, 'Mail filters');
+    await tapRule(tester, 'Mail filters');
     expect(find.text(script), findsOneWidget);
     await tapText(tester, 'Delete filters');
     expect(find.text('Delete the filters?'), findsOneWidget);
