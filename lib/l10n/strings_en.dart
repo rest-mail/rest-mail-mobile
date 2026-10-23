@@ -34,6 +34,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'settings.linkMailbox': 'Link another mailbox',
     'settings.server': 'Server',
     'settings.administration': 'Administration',
+    'settings.myPermissions': 'My permissions',
+    'settings.myPermissionsSubtitle':
+        'The roles you hold, and switching them on',
     'settings.sending': 'Sending',
     'settings.scheduled': 'Scheduled',
     'settings.scheduledSubtitle': 'Messages the server will send later',
@@ -98,6 +101,8 @@ const Map<String, Map<String, String>> stringsEn = {
     'admin.section.aliases.subtitle': 'Addresses that deliver to another',
     'admin.section.bans.title': 'Bans',
     'admin.section.bans.subtitle': 'Addresses kept out of SMTP, IMAP and POP3',
+    'admin.section.permissions.title': 'Permissions',
+    'admin.section.permissions.subtitle': 'Who holds which role, and where',
     'admin.section.overview.title': 'Overview',
     'admin.section.overview.subtitle':
         'Mail volume, the queue and TLS at a glance',
@@ -121,6 +126,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'admin.section.audit.title': 'Audit log',
     'admin.section.audit.subtitle':
         'Every sign-in and change, chained so tampering shows',
+    'admin.section.domainDkim.title': 'DKIM signing',
+    'admin.section.domainDkim.subtitle':
+        'Signing key and automatic rotation for this domain',
     'admin.section.dkim.title': 'DKIM keys',
     'admin.section.dkim.subtitle':
         'The keys mail from each domain is signed with',

@@ -633,6 +633,88 @@ void main() {
       expect((await client.mailboxes()).total, 4);
     });
 
+    test('a domain is created and edited with its type, quota and sending '
+        'policy, and a bad policy is refused by field', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+
+      final created = await client.createDomain(
+        'new.test',
+        serverType: 'traditional',
+        defaultQuotaBytes: 512 * 1024 * 1024,
+        sendingPolicy: 'bulk',
+      );
+      expect(created.name, 'new.test');
+      expect(created.serverType, 'traditional');
+      expect(created.defaultQuotaBytes, 512 * 1024 * 1024);
+      expect(created.sendingPolicy, 'bulk');
+      expect(created.active, isFalse);
+
+      final edited = await client.updateDomain(
+        created.id,
+        defaultQuotaBytes: 2048 * 1024 * 1024,
+        sendingPolicy: '',
+      );
+      expect(edited.defaultQuotaBytes, 2048 * 1024 * 1024);
+      expect(edited.sendingPolicy, '');
+      expect(edited.serverType, 'traditional');
+
+      for (final send in [
+        () => client.updateDomain(created.id, sendingPolicy: 'spam'),
+        () => client.createDomain('other.test', sendingPolicy: 'spam'),
+      ]) {
+        await expectLater(
+          send(),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'status', 422)
+                .having((e) => e.fields.keys, 'fields', ['sending_policy']),
+          ),
+        );
+      }
+      await expectLater(
+        client.createDomain('other.test', serverType: 'exchange'),
+        throwsA(
+          isA<ApiException>().having((e) => e.fields.keys, 'fields', [
+            'server_type',
+          ]),
+        ),
+      );
+    });
+
+    test('a mailbox quota is changed and its sessions ended, with '
+        'mailboxes:write', () async {
+      final fake = FakeRestmail();
+      final client = await admin(fake);
+      final box = (await client.mailboxes()).items.first;
+
+      final resized = await client.updateMailbox(
+        box.id,
+        quotaBytes: 5 * 1024 * 1024 * 1024,
+      );
+      expect(resized.quotaBytes, 5 * 1024 * 1024 * 1024);
+      await client.endMailboxSessions(box.id);
+
+      final watcher = await admin(fake, FakeAccounts.queueWatcher);
+      await expectLater(
+        watcher.endMailboxSessions(box.id),
+        refused('forbidden'),
+      );
+      await expectLater(
+        watcher.updateMailbox(box.id, quotaBytes: 1),
+        refused('forbidden'),
+      );
+    });
+
+    test('the stats behind the overview need domains:read', () async {
+      final fake = FakeRestmail();
+      await (await admin(fake)).stats();
+      await expectLater(
+        (await admin(fake, FakeAccounts.queueWatcher)).stats(),
+        refused('forbidden'),
+      );
+    });
+
     test('queue:read reads the queue and nothing else', () async {
       final fake = FakeRestmail();
       final client = await admin(fake, FakeAccounts.queueWatcher);
