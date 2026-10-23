@@ -219,9 +219,23 @@ void main() {
     expect(find.text('Switch off'), findsOneWidget);
     final before = transport.refreshes;
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    // Follow the platform lifecycle, including the hidden/inactive states
+    // required by Flutter's AppLifecycleListener when leaving and returning.
+    for (final phase in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(phase);
+    }
     now = now.add(const Duration(minutes: 2));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    for (final phase in [
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(phase);
+    }
     await tester.pumpAndSettle();
 
     expect(transport.refreshes, before + 1);
