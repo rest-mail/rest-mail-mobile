@@ -293,6 +293,9 @@ class RestmailClient {
   /// [status]. Needs `queue:read`.
   Future<OffsetPage<QueueEntry>> queue({
     QueueStatus? status,
+    String? domain,
+    String? sender,
+    String? recipient,
     int offset = 0,
     int limit = 50,
   }) async {
@@ -302,6 +305,9 @@ class RestmailClient {
         ['admin', 'queue'],
         query: {
           'status': ?status?.name,
+          'domain': ?domain,
+          'sender': ?sender,
+          'recipient': ?recipient,
           'limit': '$limit',
           'offset': '$offset',
         },
@@ -329,18 +335,61 @@ class RestmailClient {
   );
 
   /// Tries a waiting entry again now. Needs `queue:manage`.
-  Future<void> retryQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'retry']);
-  }
+  Future<QueueActionResult> retryQueueEntry(int id) =>
+      _queueAction(id, 'retry', 'retrying');
 
   /// Gives up on an entry and bounces it to its sender. Needs `queue:manage`.
-  Future<void> bounceQueueEntry(int id) async {
-    await _authed('POST', ['admin', 'queue', '$id', 'bounce']);
+  Future<QueueActionResult> bounceQueueEntry(int id) =>
+      _queueAction(id, 'bounce', 'bounced');
+
+  Future<QueueActionResult> _queueAction(
+    int id,
+    String action,
+    String expectedStatus,
+  ) async {
+    final response = await _authed('POST', ['admin', 'queue', '$id', action]);
+    if (response.statusCode != 200) throw _unreadable(response);
+    try {
+      final result = QueueActionResult.fromJson(_data(response));
+      if (result.status != expectedStatus) throw _unreadable(response);
+      return result;
+    } on FormatException {
+      throw _unreadable(response);
+    }
   }
 
   /// Drops an entry without telling its sender. Needs `queue:manage`.
   Future<void> deleteQueueEntry(int id) async {
     await _authed('DELETE', ['admin', 'queue', '$id']);
+  }
+
+  /// Retry pending/deferred entries in the selection. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkRetryQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-retry', selection);
+
+  /// Bounce entries still in flight. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkBounceQueue(QueueSelection selection) =>
+      _bulkQueue('POST', 'bulk-bounce', selection);
+
+  /// Delete matching entries without notification. Needs `queue:manage`.
+  Future<BulkQueueResult> bulkDeleteQueue(QueueSelection selection) =>
+      _bulkQueue('DELETE', 'bulk-delete', selection);
+
+  Future<BulkQueueResult> _bulkQueue(
+    String method,
+    String operation,
+    QueueSelection selection,
+  ) async {
+    final response = await _authed(method, [
+      'admin',
+      'queue',
+      operation,
+    ], body: selection.toJson());
+    try {
+      return BulkQueueResult.fromJson(_data(response));
+    } on Object {
+      throw _unreadable(response);
+    }
   }
 
   /// Needs `domains:read`.
