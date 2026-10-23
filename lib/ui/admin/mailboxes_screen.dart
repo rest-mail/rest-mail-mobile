@@ -210,6 +210,49 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
     if (changed && mounted) showToast(context, 'Password changed');
   }
 
+  Future<void> _editQuota() async {
+    await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'Mailbox size',
+        fields: [
+          AdminField(
+            'Mailbox size in MB',
+            initial: '${_mailbox.quotaBytes ~/ (1024 * 1024)}',
+            number: true,
+          ),
+        ],
+        action: 'Save',
+        host: _host,
+        submit: (values) async => _mailbox = await _client.updateMailbox(
+          _mailbox.id,
+          quotaBytes: megabytes(values[0]),
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _endSessions() async {
+    setState(() => _busy = true);
+    final address = _mailbox.address;
+    final ok = await runAdminChange(
+      context,
+      host: _host,
+      change: () => _client.endMailboxSessions(_mailbox.id),
+      confirm: (
+        title: 'Sign $address out everywhere?',
+        message:
+            'Every app signed in to it has to sign in again. Its password '
+            'and app passwords stay.',
+        action: 'End sessions',
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) showToast(context, 'Signed out everywhere');
+  }
+
   Future<void> _delete() async {
     setState(() => _busy = true);
     final address = _mailbox.address;
@@ -264,6 +307,14 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                       : null,
                 ),
                 RmRow(label: 'Storage', value: _storage(box)),
+                if (write)
+                  RmRow(
+                    label: 'Mailbox size',
+                    value: box.quotaBytes > 0
+                        ? sizeLabel(box.quotaBytes)
+                        : 'No limit',
+                    onTap: _busy ? null : () => unawaited(_editQuota()),
+                  ),
                 if (box.lastLoginAt case final last?)
                   RmRow(label: 'Last signed in', value: longDate(last)),
               ],
@@ -275,6 +326,11 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                   RmRow(
                     label: 'Set a new password',
                     onTap: _busy ? null : () => unawaited(_newPassword()),
+                  ),
+                  RmRow(
+                    label: 'End sessions',
+                    subtitle: 'Sign it out of every app',
+                    onTap: _busy ? null : () => unawaited(_endSessions()),
                   ),
                 ],
               ),

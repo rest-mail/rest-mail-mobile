@@ -119,6 +119,7 @@ class AdminDomain {
     required this.active,
     required this.defaultQuotaBytes,
     this.dkimSelector = '',
+    this.sendingPolicy = '',
   });
 
   factory AdminDomain.fromJson(Map<String, dynamic> json) => AdminDomain(
@@ -128,7 +129,14 @@ class AdminDomain {
     active: json['active'] as bool? ?? false,
     defaultQuotaBytes: _int(json['default_quota_bytes'] ?? 0),
     dkimSelector: json['dkim_selector'] as String? ?? '',
+    sendingPolicy: json['sending_policy'] as String? ?? '',
   );
+
+  /// The server types a domain can be created with.
+  static const serverTypes = ['restmail', 'traditional'];
+
+  /// The sending policies a domain can have; empty means no rule.
+  static const sendingPolicies = ['', 'transactional', 'bulk'];
 
   final int id;
   final String name;
@@ -139,6 +147,9 @@ class AdminDomain {
   final bool active;
   final int defaultQuotaBytes;
   final String dkimSelector;
+
+  /// `transactional`, `bulk`, or empty when the send API applies no rule.
+  final String sendingPolicy;
 }
 
 /// A mailbox, as an admin sees it.
@@ -1003,4 +1014,138 @@ DateTime? _time(Object? value) {
   final parsed = DateTime.tryParse(value);
   if (parsed == null || parsed.year < 1971) return null;
   return parsed.toLocal();
+}
+
+/// How a domain's outgoing mail leaves the server.
+enum OutboundTransport {
+  /// Straight to each recipient's mail servers, found by MX lookup.
+  direct('direct'),
+
+  /// Handed to an SMTP relay, which delivers it.
+  relay('relay');
+
+  const OutboundTransport(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static OutboundTransport parse(Object? value) =>
+      value == 'relay' ? relay : direct;
+}
+
+/// How the server secures its connection to a relay.
+enum RelayTlsMode {
+  /// A plain connection, upgraded with STARTTLS (usually port 587).
+  starttls('starttls'),
+
+  /// TLS from the start (usually port 465).
+  implicit('implicit');
+
+  const RelayTlsMode(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static RelayTlsMode? parse(Object? value) => switch (value) {
+    'starttls' => starttls,
+    'implicit' => implicit,
+    _ => null,
+  };
+}
+
+/// A domain's outbound transport. The server never sends the relay
+/// password back, only whether one is stored.
+class DomainRelay {
+  const DomainRelay({
+    required this.domainId,
+    required this.transport,
+    this.host = '',
+    this.port,
+    this.tlsMode,
+    this.username = '',
+    this.passwordSet = false,
+  });
+
+  factory DomainRelay.fromJson(Map<String, dynamic> json) => DomainRelay(
+    domainId: _int(json['domain_id'] ?? 0),
+    transport: OutboundTransport.parse(json['transport']),
+    host: json['host'] as String? ?? '',
+    port: switch (json['port']) {
+      final num port when port > 0 => port.toInt(),
+      _ => null,
+    },
+    tlsMode: RelayTlsMode.parse(json['tls_mode']),
+    username: json['username'] as String? ?? '',
+    passwordSet: json['password_set'] == true,
+  );
+
+  final int domainId;
+  final OutboundTransport transport;
+
+  /// The relay's host name or IP address; empty for direct.
+  final String host;
+  final int? port;
+  final RelayTlsMode? tlsMode;
+
+  /// Empty when the relay takes mail without signing in.
+  final String username;
+
+  /// Whether the server holds a password for [username].
+  final bool passwordSet;
+}
+
+/// A recipient the server no longer sends a domain's mail to, because
+/// mail to them bounced for good. It lapses at [expiresAt].
+class Suppression {
+  const Suppression({
+    required this.id,
+    required this.domainId,
+    required this.address,
+    this.reason = '',
+    this.failureCategory = '',
+    this.lastError = '',
+    this.messageId,
+    this.createdAt,
+    this.updatedAt,
+    this.expiresAt,
+  });
+
+  factory Suppression.fromJson(Map<String, dynamic> json) => Suppression(
+    id: _int(json['id']),
+    domainId: _int(json['domain_id'] ?? 0),
+    address: json['address'] as String? ?? '',
+    reason: json['reason'] as String? ?? '',
+    failureCategory: json['failure_category'] as String? ?? '',
+    lastError: json['last_error'] as String? ?? '',
+    messageId: switch (json['message_id']) {
+      final num id => id.toInt(),
+      _ => null,
+    },
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
+    expiresAt: _time(json['expires_at']),
+  );
+
+  final int id;
+  final int domainId;
+
+  /// The recipient, lower-cased.
+  final String address;
+
+  /// Why: `hard_bounce`.
+  final String reason;
+
+  /// What the bounce said was wrong: `bad_mailbox` or `bad_domain`.
+  final String failureCategory;
+
+  /// The remote server's reply.
+  final String lastError;
+
+  /// The sent message whose bounce suppressed the address, when known.
+  final int? messageId;
+  final DateTime? createdAt;
+
+  /// When it last bounced.
+  final DateTime? updatedAt;
+  final DateTime? expiresAt;
 }
