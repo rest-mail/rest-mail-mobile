@@ -444,7 +444,7 @@ class AdminFormScreen extends StatefulWidget {
   final String action;
   final String host;
 
-  /// Sends the values, in the order of [fields], trimmed except passwords.
+  /// Sends values in field order, preserving passwords and multiline text.
   final Future<void> Function(List<String> values) submit;
 
   /// Opens the form; true when it was sent.
@@ -477,7 +477,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
 
   List<String> get _values => [
     for (var i = 0; i < widget.fields.length; i++)
-      widget.fields[i].obscure
+      widget.fields[i].obscure || widget.fields[i].multiline
           ? _controllers[i].text
           : _controllers[i].text.trim(),
   ];
@@ -577,6 +577,7 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                       )
                     else
                       TextField(
+                        key: ValueKey('admin-field-$i'),
                         controller: _controllers[i],
                         readOnly: widget.fields[i].pasteOnly,
                         enableInteractiveSelection: !widget.fields[i].pasteOnly,
