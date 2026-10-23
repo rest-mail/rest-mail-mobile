@@ -94,14 +94,29 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, Finder target) async {
-    await tester.ensureVisible(target);
+    // Settings can virtualize the grants row below the mailbox/security
+    // controls. Build it by scrolling before asking ensureVisible for it.
+    for (final delta in [-250.0, 250.0]) {
+      for (var i = 0; i < 25 && target.evaluate().isEmpty; i++) {
+        final lists = find.byType(ListView);
+        if (lists.evaluate().isEmpty) break;
+        await tester.drag(lists.last, Offset(0, delta));
+        await tester.pumpAndSettle();
+      }
+    }
+    expect(
+      target,
+      findsWidgets,
+      reason: 'Control is reachable after scrolling',
+    );
+    await tester.ensureVisible(target.last);
     await tester.pumpAndSettle();
-    await tester.tap(target);
+    await tester.tap(target.last);
     await tester.pumpAndSettle();
   }
 
   Future<void> tapText(WidgetTester tester, String text) =>
-      tap(tester, find.text(text).last);
+      tap(tester, find.text(text));
 
   Finder field(String hint) =>
       find.ancestor(of: find.text(hint), matching: find.byType(TextField));
@@ -152,7 +167,7 @@ void main() {
     );
 
     // Back in Settings, Administration is there now.
-    await tap(tester, find.byTooltip('Back').first);
+    await tap(tester, find.byTooltip('Back'));
     expect(find.text('Administration'), findsOneWidget);
 
     await close(tester, fake, state);
@@ -187,7 +202,7 @@ void main() {
     final account = state.current! as RestAccount;
     expect(account.capabilities.allows(Capability.queueRead), isFalse);
     expect(account.signedOut, isNull);
-    await tap(tester, find.byTooltip('Back').first);
+    await tap(tester, find.byTooltip('Back'));
     expect(find.text('Administration'), findsNothing);
     await close(tester, fake, state);
   });
