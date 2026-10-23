@@ -12,6 +12,7 @@ import '../theme/tokens.dart';
 import '../util/format.dart';
 import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
+import 'admin/overview_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
@@ -30,12 +31,62 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
   QuotaInfo? _quota;
   int? _quotaFor;
 
+  ServerStats? _health;
+  ApiException? _healthError;
+  String? _healthFor;
+  bool _healthLoading = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_refreshQuota());
+      if (mounted) {
+        unawaited(_refreshQuota());
+        unawaited(_refreshHealth());
+      }
     });
+  }
+
+  /// The server's own health, for a REST Mail admin who may read the
+  /// overview. It belongs to the account on screen, so it follows a switch.
+  Future<void> _refreshHealth() async {
+    final app = AppScope.read(context);
+    final current = app.current;
+    if (current is! RestAccount ||
+        current.signedOut != null ||
+        !AdminAccess(current.capabilities).canRead(AdminSection.overview)) {
+      if (mounted) {
+        setState(() {
+          _health = null;
+          _healthFor = null;
+          _healthError = null;
+          _healthLoading = false;
+        });
+      }
+      return;
+    }
+    if (_healthFor == current.key && _health != null) return;
+    setState(() {
+      _healthFor = current.key;
+      _healthLoading = true;
+      _healthError = null;
+    });
+    try {
+      final stats = await current.client.stats();
+      if (mounted && _healthFor == current.key) {
+        setState(() {
+          _health = stats;
+          _healthLoading = false;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted && _healthFor == current.key) {
+        setState(() {
+          _healthError = e;
+          _healthLoading = false;
+        });
+      }
+    }
   }
 
   /// Storage is an extra, not a requirement: a backend that cannot answer
@@ -66,7 +117,8 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
     await account.open(StandardFolder.inbox);
     if (!mounted) return;
     _quotaFor = null;
-    await _refreshQuota();
+    _healthFor = null;
+    await Future.wait([_refreshQuota(), _refreshHealth()]);
   }
 
   @override
@@ -106,10 +158,20 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
   Widget _screen(BuildContext context, AppState app, MailboxState m) {
     final current = app.current;
     final signedOut = current?.signedOut != null;
-    final administers =
-        current is RestAccount &&
-        !signedOut &&
-        AdminAccess(current.capabilities).any;
+    final admin = current is RestAccount && !signedOut
+        ? AdminAccess(current.capabilities)
+        : null;
+    final administers = admin?.any ?? false;
+    final adminAccount = administers && current is RestAccount ? current : null;
+    final showsHealth = admin?.canRead(AdminSection.overview) ?? false;
+    final healthAccount = showsHealth && current is RestAccount
+        ? current
+        : null;
+    if (healthAccount != null && _healthFor != healthAccount.key) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_refreshHealth());
+      });
+    }
     final accounts = _accounts(app, m);
     final selected =
         accounts.where((account) => account.current).firstOrNull ??
@@ -165,16 +227,35 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                       unawaited(m.selectFolder(folder.name));
                     },
                   ),
-                  if (administers) ...[
+                  if (adminAccount != null) ...[
                     const SizedBox(height: 22),
                     RmGroup(
                       children: [
                         _LinkRow(
                           icon: Icons.admin_panel_settings_outlined,
                           label: 'Administration',
-                          screen: AdministrationScreen(account: current),
+                          screen: AdministrationScreen(account: adminAccount),
                         ),
                       ],
+                    ),
+                  ],
+                  if (healthAccount != null) ...[
+                    const SizedBox(height: 22),
+                    SectionLabel(tr(context, 'health.title')),
+                    const SizedBox(height: 9),
+                    _ServerHealth(
+                      stats: _health,
+                      loading: _healthLoading,
+                      error: _healthError,
+                      host: healthAccount.server.host,
+                      onRetry: () => unawaited(_refreshHealth()),
+                      onOpen: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              OverviewScreen(account: healthAccount),
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -463,6 +544,170 @@ class _AccountChoice extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The selected REST Mail server's health: the numbers an operator checks
+/// first, with a way into the full overview.
+class _ServerHealth extends StatelessWidget {
+  const _ServerHealth({
+    required this.stats,
+    required this.loading,
+    required this.error,
+    required this.host,
+    required this.onRetry,
+    required this.onOpen,
+  });
+
+  final ServerStats? stats;
+  final bool loading;
+  final ApiException? error;
+  final String host;
+  final VoidCallback onRetry;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    if (error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                describeError(error!, host: host),
+                style: rmText(13, color: c.ink2, height: 1.4),
+              ),
+            ),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                tr(context, 'health.retry'),
+                style: rmText(13, color: c.accent, weight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final values = stats;
+    if (values == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            if (loading) ...[
+              SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: c.accent,
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Text(
+              tr(context, 'health.loading'),
+              style: rmText(13, color: c.ink3, weight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+    final percent = values.inboundMx == 0
+        ? null
+        : (values.inboundOverTls * 100 / values.inboundMx).round();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _Stat(
+                  value: values.domains,
+                  label: tr(context, 'health.domains'),
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  value: values.mailboxes,
+                  label: tr(context, 'health.mailboxes'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _Stat(
+                  value: values.queuePending,
+                  label: tr(context, 'health.waiting'),
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  value: values.queueFailed,
+                  label: tr(context, 'health.failed'),
+                ),
+              ),
+            ],
+          ),
+          if (percent != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              trArgs(context, 'health.tls', {
+                'percent': '$percent',
+                'total': countLabel(values.inboundMx),
+              }),
+              style: rmText(12.5, color: c.ink3, height: 1.4),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Divider(color: c.line, height: 20),
+          InkWell(
+            onTap: onOpen,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tr(context, 'health.open'),
+                      style: rmText(
+                        13.5,
+                        color: c.accent,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, size: 20, color: c.accent),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
