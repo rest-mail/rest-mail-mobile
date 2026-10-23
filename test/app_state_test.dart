@@ -421,7 +421,11 @@ Future<void> _settle() =>
 void _sessionRefreshTests() {
   const key = 'https://mail.example.test|ada@example.test';
 
-  Future<void> saveSession(MemoryKeyValueStore store, Duration validFor) async {
+  Future<void> saveSession(
+    MemoryKeyValueStore store,
+    Duration validFor, {
+    List<String> capabilities = const [],
+  }) async {
     await store.write(
       'accounts',
       jsonEncode({
@@ -438,6 +442,7 @@ void _sessionRefreshTests() {
         'tokens': {
           'access_token': 'a',
           'refresh_token': 'r',
+          'capabilities': capabilities,
           'access_expires_at': DateTime.now()
               .add(validFor)
               .toUtc()
@@ -553,8 +558,8 @@ void _sessionRefreshTests() {
       issued = 0;
       var refreshes = 0;
       final store = MemoryKeyValueStore();
-      // Startup's 30-second margin leaves this token alone, while resume's
-      // two-minute margin must renew it.
+      // Startup's 30-second margin leaves this token alone; resume must
+      // renew it and its permissions.
       await saveSession(store, const Duration(seconds: 90));
       final state = AppState(
         store: store,
@@ -579,6 +584,73 @@ void _sessionRefreshTests() {
         ),
         isFalse,
       );
+    },
+  );
+
+  test('resume reconciles removed permissions even with a fresh access token, '
+      'coalesces concurrent calls and persists the rotated pair', () async {
+    issued = 0;
+    var refreshes = 0;
+    final store = MemoryKeyValueStore();
+    await saveSession(
+      store,
+      const Duration(minutes: 15),
+      capabilities: [Capability.queueRead],
+    );
+    final state = AppState(
+      store: store,
+      httpClientFactory: () => MockClient((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) refreshes++;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return respond(request);
+      }),
+    );
+    addTearDown(state.dispose);
+    await state.start();
+    final account = state.current! as RestAccount;
+    expect(account.capabilities.allows(Capability.queueRead), isTrue);
+    expect(refreshes, 0);
+
+    await Future.wait([state.resumed(), state.resumed()]);
+    await _settle();
+
+    expect(refreshes, 1);
+    expect(account.capabilities.allows(Capability.queueRead), isFalse);
+    expect(account.signedOut, isNull);
+    expect(savedRefreshToken(store), 'r1');
+    final saved =
+        jsonDecode(store.values['account:$key']!) as Map<String, dynamic>;
+    final tokens = SessionTokens.fromJson(
+      saved['tokens'] as Map<String, dynamic>,
+    );
+    expect(tokens.capabilities.allows(Capability.queueRead), isFalse);
+  });
+
+  test(
+    'resume signs out a fresh access session whose refresh was revoked',
+    () async {
+      final store = MemoryKeyValueStore();
+      await saveSession(store, const Duration(minutes: 15));
+      final state = AppState(
+        store: store,
+        httpClientFactory: () => MockClient((request) async {
+          if (request.url.path.endsWith('/auth/refresh')) {
+            return http.Response(
+              '{"error":{"code":"unauthorized","message":"Revoked"}}',
+              401,
+            );
+          }
+          return http.Response('{"data":[]}', 200);
+        }),
+      );
+      addTearDown(state.dispose);
+      await state.start();
+
+      await state.resumed();
+      await _settle();
+
+      expect(state.current!.signedOut, isNotNull);
+      expect(savedRefreshToken(store), isNull);
     },
   );
 
