@@ -60,7 +60,8 @@ enum AdminSection {
   overview.readOnly(
     'Overview',
     'Mail volume, the queue and TLS at a glance',
-    read: Capability.observabilityRead,
+    // GET /admin/stats needs domains:read.
+    read: Capability.domainsRead,
   ),
   deliveryLog.readOnly(
     'Delivery log',

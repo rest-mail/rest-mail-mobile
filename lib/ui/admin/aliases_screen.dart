@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../../state/admin_access.dart';
 import '../../state/app_state.dart';
 import '../../theme/tokens.dart';
+import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
@@ -47,6 +48,7 @@ class _AliasesScreenState extends State<AliasesScreen> {
 
   Future<void> _add() async {
     final domain = widget.domain?.name ?? 'example.com';
+    AdminAlias? created;
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
@@ -60,13 +62,19 @@ class _AliasesScreenState extends State<AliasesScreen> {
         ],
         action: 'Add alias',
         host: _host,
-        submit: (values) => widget.account.client.createAlias(
-          source: values[0].toLowerCase(),
-          destination: values[1].toLowerCase(),
-        ),
+        submit: (values) async =>
+            created = await widget.account.client.createAlias(
+              source: values[0].toLowerCase(),
+              destination: values[1],
+            ),
       ),
     );
-    if (added) unawaited(_list.reload());
+    if (!mounted || !added) return;
+    if (created case final alias?) {
+      await _open(alias);
+    } else {
+      unawaited(_list.reload());
+    }
   }
 
   Future<void> _open(AdminAlias alias) async {
@@ -131,6 +139,38 @@ class AliasScreen extends StatefulWidget {
 class _AliasScreenState extends State<AliasScreen> {
   late var _alias = widget.alias;
   var _busy = false;
+  var _loaded = false;
+  Object? _loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AdminAccess(widget.account.capabilities)
+        .canRead(AdminSection.aliases)) {
+      unawaited(_reload());
+    }
+  }
+
+  Future<void> _reload() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _loaded = false;
+      _loadError = null;
+    });
+    try {
+      final fresh = await widget.account.client.alias(widget.alias.id);
+      if (!mounted) return;
+      setState(() {
+        _alias = fresh;
+        _loaded = true;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _loadError = error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   String get _host => widget.account.server.host;
   RestmailClient get _client => widget.account.client;
@@ -158,7 +198,7 @@ class _AliasScreenState extends State<AliasScreen> {
         host: _host,
         submit: (values) async => _alias = await _client.updateAlias(
           _alias.id,
-          destination: values[0].toLowerCase(),
+          destination: values[0],
         ),
       ),
     );
@@ -195,44 +235,57 @@ class _AliasScreenState extends State<AliasScreen> {
       title: alias.source,
       body: (access) {
         final write = access.canWrite(AdminSection.aliases);
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
-          children: [
-            RmGroup(
-              children: [
-                RmRow(
-                  label: 'Delivers to',
-                  value: alias.destination,
-                  onTap: write ? () => unawaited(_redirect()) : null,
-                ),
-                RmRow(
-                  label: 'Delivering',
-                  value: write ? null : (alias.active ? 'On' : 'Off'),
-                  trailing: write
-                      ? RmSwitch(
-                          value: alias.active,
-                          label: 'Delivering',
-                          onChanged: (value) {
-                            if (!_busy) unawaited(_setActive(value));
-                          },
-                        )
-                      : null,
-                ),
-              ],
-            ),
-            if (access.canDelete(AdminSection.aliases)) ...[
-              const SizedBox(height: 22),
+        return AdminDetailBody(
+          ready: _loaded,
+          error: _loadError,
+          host: _host,
+          onRefresh: _reload,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+            children: [
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Delete alias',
-                    danger: true,
-                    onTap: _busy ? null : () => unawaited(_delete()),
+                    label: 'Delivers to',
+                    value: alias.destination,
+                    onTap: write && !_busy
+                        ? () => unawaited(_redirect())
+                        : null,
+                  ),
+                  if (alias.domain case final domain?)
+                    RmRow(label: 'Domain', value: domain.name),
+                  if (alias.createdAt case final at?)
+                    RmRow(label: 'Added', value: longDate(at)),
+                  RmRow(
+                    label: 'Delivering',
+                    value: write ? null : (alias.active ? 'On' : 'Off'),
+                    trailing: write
+                        ? RmSwitch(
+                            value: alias.active,
+                            label: 'Delivering',
+                            onChanged: (value) {
+                              if (!_busy) unawaited(_setActive(value));
+                            },
+                          )
+                        : null,
                   ),
                 ],
               ),
+              if (access.canDelete(AdminSection.aliases)) ...[
+                const SizedBox(height: 22),
+                RmGroup(
+                  children: [
+                    RmRow(
+                      label: 'Delete alias',
+                      danger: true,
+                      onTap: _busy ? null : () => unawaited(_delete()),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
