@@ -787,6 +787,183 @@ void main() {
     });
   });
 
+  group('API keys', () {
+    const token = 'rm_ak9Lm2Qx7Pz_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
+    const permission = {'capability': 'mail.read', 'scope': 'account:7'};
+    const key = {
+      'id': 12,
+      'name': 'n8n',
+      'kind': 'api_key',
+      'public_id': 'ak9Lm2Qx7Pz',
+      'created_at': '2026-10-20T08:00:00Z',
+      'last_used_at': '2026-10-21T10:30:00Z',
+      'expires_at': '2027-01-18T08:00:00Z',
+      'permissions': [permission],
+    };
+
+    test('lists, creates and revokes on the account', () async {
+      final sent = <http.Request>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent.add(request);
+          return switch (request.method) {
+            'GET' => _json({
+              'data': [key],
+            }),
+            'POST' => _json({
+              'data': {...key, 'token': token},
+            }, status: 201),
+            _ => http.Response('', 204),
+          };
+        }),
+      );
+
+      final listed = (await client.apiKeys(7)).single;
+      final created = await client.createAPIKey(
+        7,
+        name: 'n8n',
+        password: 'current password',
+        permissions: const [
+          APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+        ],
+        expiresAt: DateTime.parse('2027-01-18T09:00:00+01:00'),
+      );
+      await client.revokeAPIKey(7, 12);
+
+      expect(listed.id, 12);
+      expect(listed.kind, 'api_key');
+      expect(listed.publicId, 'ak9Lm2Qx7Pz');
+      expect(listed.createdAt.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(listed.lastUsedAt?.toUtc(), DateTime.utc(2026, 10, 21, 10, 30));
+      expect(listed.expiresAt?.toUtc(), DateTime.utc(2027, 1, 18, 8));
+      expect(listed.permissions, const [
+        APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+      ]);
+      expect(created.token, token);
+      expect(created.key.publicId, 'ak9Lm2Qx7Pz');
+      expect('$created', isNot(contains(token)));
+      expect(
+        [for (final r in sent) '${r.method} ${r.url.path}'],
+        [
+          'GET /api/v1/accounts/7/api-keys',
+          'POST /api/v1/accounts/7/api-keys',
+          'DELETE /api/v1/accounts/7/api-keys/12',
+        ],
+      );
+      expect(sent.last.body, isEmpty);
+      expect(jsonDecode(sent[1].body), {
+        'name': 'n8n',
+        'password': 'current password',
+        'permissions': [permission],
+        'expires_at': '2027-01-18T08:00:00.000Z',
+      });
+    });
+
+    test('metadata without a use or an expiry, and no token', () {
+      final listed = APIKey.fromJson({
+        ...key,
+        'last_used_at': null,
+        'expires_at': null,
+      });
+
+      expect(listed.lastUsedAt, isNull);
+      expect(listed.expiresAt, isNull);
+      expect(listed.isExpiredAt(DateTime.utc(3000)), isFalse);
+      expect(
+        () => CreatedAPIKey.fromJson(key),
+        throwsA(isA<FormatException>()),
+      );
+      expect(APIKeyPermission.fromJson(permission).toJson(), permission);
+    });
+
+    test('create leaves out an expiry it was not given', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {...key, 'token': token},
+          }, status: 201);
+        }),
+      );
+
+      await client.createAPIKey(
+        7,
+        name: 'n8n',
+        password: 'pw',
+        permissions: const [
+          APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+          APIKeyPermission(capability: 'mail.send', scope: 'account:7'),
+        ],
+      );
+
+      expect(jsonDecode(sent.body), {
+        'name': 'n8n',
+        'password': 'pw',
+        'permissions': [
+          permission,
+          {'capability': 'mail.send', 'scope': 'account:7'},
+        ],
+      });
+    });
+
+    for (final code in [
+      'reauth_required',
+      'invalid_password',
+      'two_factor_required',
+      'forbidden',
+    ]) {
+      test('403 $code is the request\'s own refusal: no refresh, and the '
+          'session stays', () async {
+        final seen = <String>[];
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            seen.add('${request.method} ${request.url.path}');
+            if (_isRefresh(request)) return _signedIn('2');
+            return _json({
+              'error': {'code': code, 'message': 'Refused'},
+            }, status: 403);
+          }),
+        );
+
+        await expectLater(
+          client.createAPIKey(
+            7,
+            name: 'n8n',
+            password: 'wrong',
+            permissions: const [
+              APIKeyPermission(capability: 'mail.read', scope: 'account:7'),
+            ],
+          ),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 403)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+        await expectLater(
+          client.revokeAPIKey(7, 12),
+          throwsA(isA<ApiException>()),
+        );
+
+        expect(seen, [
+          'POST /api/v1/accounts/7/api-keys',
+          'DELETE /api/v1/accounts/7/api-keys/12',
+        ]);
+        expect(changes, isEmpty);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
+  });
+
   group('push devices', () {
     test('lists, registers and removes this session\'s devices', () async {
       final sent = <http.Request>[];
@@ -996,6 +1173,82 @@ void main() {
       expect(result.tokens.capabilities.isEmpty, isTrue);
     });
 
+    test('sets a DKIM key and reads and changes its rotation', () async {
+      final seen = <String>[];
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          seen.add('${request.method} ${request.url.path}');
+          if (request.url.path == '/api/v1/admin/dkim/4' &&
+              request.method == 'PUT') {
+            expect(jsonDecode(request.body), {
+              'selector': 'mail2026',
+              'private_key': 'PEM',
+            });
+            return _json({
+              'data': {
+                'domain_id': 4,
+                'domain': 'example.test',
+                'selector': 'mail2026',
+                'has_key': true,
+                'created_at': '2026-10-20T00:00:00Z',
+                'age_seconds': 86400.5,
+              },
+            });
+          }
+          if (request.url.path == '/api/v1/admin/dkim/4/rotation') {
+            if (request.method == 'PUT') {
+              expect(jsonDecode(request.body), {'rotation_interval_days': 0});
+              return _json({
+                'data': {'domain_id': 4, 'rotation_interval_days': 0},
+              });
+            }
+            return _json({
+              'data': {'domain_id': 4, 'rotation_interval_days': 90},
+            });
+          }
+          return _json({
+            'error': {
+              'code': 'validation_failed',
+              'message': 'Invalid DKIM rotation interval',
+            },
+          }, status: 422);
+        }),
+      );
+
+      final key = await client.setDkimKey(
+        4,
+        selector: 'mail2026',
+        privateKey: 'PEM',
+      );
+      expect(key.domainId, 4);
+      expect(key.selector, 'mail2026');
+      expect(key.hasKey, isTrue);
+      expect(key.createdAt, DateTime.utc(2026, 10, 20).toLocal());
+      expect(key.ageSeconds, 86400.5);
+
+      final rotation = await client.dkimRotation(4);
+      expect(rotation.domainId, 4);
+      expect(rotation.intervalDays, 90);
+      expect(rotation.enabled, isTrue);
+
+      final off = await client.setDkimRotation(4, 0);
+      expect(off.intervalDays, 0);
+      expect(off.enabled, isFalse);
+
+      await expectLater(
+        client.setDkimRotation(5, 9999),
+        throwsA(isA<ApiException>()),
+      );
+      expect(seen, [
+        'PUT /api/v1/admin/dkim/4',
+        'GET /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/4/rotation',
+        'PUT /api/v1/admin/dkim/5/rotation',
+      ]);
+    });
+
     test('reads the queue page and the domain list as the server sends '
         'them', () async {
       final client = RestmailClient(
@@ -1062,6 +1315,131 @@ void main() {
       final domains = await client.domains();
       expect(domains.items.single.name, 'example.test');
       expect(domains.hasMore, isFalse);
+    });
+
+    group('domain and mailbox changes', () {
+      late List<http.Request> sent;
+      late RestmailClient client;
+
+      const domain = {
+        'id': 4,
+        'name': 'new.test',
+        'server_type': 'traditional',
+        'active': false,
+        'default_quota_bytes': 524288000,
+        'sending_policy': 'bulk',
+      };
+      const mailbox = {
+        'id': 9,
+        'domain_id': 4,
+        'address': 'ada@new.test',
+        'display_name': 'Ada',
+        'active': true,
+        'quota_bytes': 2097152,
+        'quota_used_bytes': 0,
+      };
+
+      setUp(() {
+        sent = [];
+        client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          httpClient: MockClient((request) async {
+            sent.add(request);
+            if (request.url.path.endsWith('/sessions')) {
+              return http.Response('', 204);
+            }
+            return _json({
+              'data': request.url.path.contains('/mailboxes/')
+                  ? mailbox
+                  : domain,
+            });
+          }),
+        );
+      });
+
+      Map<String, dynamic> body(http.Request r) =>
+          jsonDecode(r.body) as Map<String, dynamic>;
+
+      test('createDomain sends type, quota and policy and reads the domain '
+          'back', () async {
+        final created = await client.createDomain(
+          'new.test',
+          serverType: 'traditional',
+          defaultQuotaBytes: 524288000,
+          sendingPolicy: 'bulk',
+        );
+
+        expect(sent.single.method, 'POST');
+        expect(sent.single.url.path, '/api/v1/admin/domains');
+        expect(body(sent.single), {
+          'name': 'new.test',
+          'server_type': 'traditional',
+          'default_quota_bytes': 524288000,
+          'sending_policy': 'bulk',
+        });
+        expect(created.id, 4);
+        expect(created.serverType, 'traditional');
+        expect(created.active, isFalse);
+        expect(created.defaultQuotaBytes, 524288000);
+        expect(created.sendingPolicy, 'bulk');
+      });
+
+      test('createDomain leaves out what was not given', () async {
+        await client.createDomain('new.test');
+
+        expect(body(sent.single), {
+          'name': 'new.test',
+          'server_type': 'restmail',
+        });
+      });
+
+      test('updateDomain sends only what changes; an empty policy clears '
+          'it', () async {
+        await client.updateDomain(4, defaultQuotaBytes: 1048576);
+        await client.updateDomain(4, sendingPolicy: '');
+        final updated = await client.updateDomain(4, active: true);
+
+        expect(sent.map((r) => r.method), everyElement('PATCH'));
+        expect(
+          sent.map((r) => r.url.path),
+          everyElement('/api/v1/admin/domains/4'),
+        );
+        expect(body(sent[0]), {'default_quota_bytes': 1048576});
+        expect(body(sent[1]), {'sending_policy': ''});
+        expect(body(sent[2]), {'active': true});
+        expect(updated.sendingPolicy, 'bulk');
+      });
+
+      test('a domain without a sending policy reads as empty', () {
+        final read = AdminDomain.fromJson({
+          'id': 1,
+          'name': 'old.test',
+          'server_type': 'restmail',
+          'active': true,
+          'default_quota_bytes': 0,
+        });
+
+        expect(read.sendingPolicy, '');
+      });
+
+      test('updateMailbox sends a new quota alone', () async {
+        final updated = await client.updateMailbox(9, quotaBytes: 2097152);
+
+        expect(sent.single.method, 'PATCH');
+        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
+        expect(body(sent.single), {'quota_bytes': 2097152});
+        expect(updated.quotaBytes, 2097152);
+        expect(updated.address, 'ada@new.test');
+      });
+
+      test('endMailboxSessions deletes the mailbox sessions', () async {
+        await client.endMailboxSessions(9);
+
+        expect(sent.single.method, 'DELETE');
+        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9/sessions');
+        expect(sent.single.body, isEmpty);
+      });
     });
   });
 
@@ -1201,5 +1579,319 @@ void main() {
         expect(changes, [null]);
       },
     );
+  });
+
+  group('domain delivery', () {
+    RestmailClient clientFor(
+      FutureOr<http.Response> Function(http.Request) handler,
+    ) => RestmailClient(
+      server: _server,
+      tokens: _tokens('1'),
+      httpClient: MockClient((request) async => handler(request)),
+    );
+
+    test('reads a domain relay without its password', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 587,
+            'tls_mode': 'starttls',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final relay = await client.domainRelay(4);
+      expect(relay.domainId, 4);
+      expect(relay.transport, OutboundTransport.relay);
+      expect(relay.host, 'smtp.relay.test');
+      expect(relay.port, 587);
+      expect(relay.tlsMode, RelayTlsMode.starttls);
+      expect(relay.username, 'ada');
+      expect(relay.passwordSet, isTrue);
+    });
+
+    test('reads a direct transport with no relay fields', () async {
+      final client = clientFor(
+        (_) => _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        }),
+      );
+      final relay = await client.domainRelay(4);
+      expect(relay.transport, OutboundTransport.direct);
+      expect(relay.host, '');
+      expect(relay.port, isNull);
+      expect(relay.tlsMode, isNull);
+      expect(relay.passwordSet, isFalse);
+    });
+
+    test('sets a relay, leaving the password out to keep it', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/admin/domains/4/relay');
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'relay',
+            'host': 'smtp.relay.test',
+            'port': 465,
+            'tls_mode': 'implicit',
+            'username': 'ada',
+            'password_set': true,
+          },
+        });
+      });
+      final saved = await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 465,
+        tlsMode: RelayTlsMode.implicit,
+        username: 'ada',
+      );
+      expect(sent, {
+        'transport': 'relay',
+        'host': 'smtp.relay.test',
+        'port': 465,
+        'tls_mode': 'implicit',
+        'username': 'ada',
+      });
+      expect(saved.tlsMode, RelayTlsMode.implicit);
+      expect(saved.passwordSet, isTrue);
+    });
+
+    test('sends a new or empty relay password as given', () async {
+      final bodies = <Map<String, dynamic>>[];
+      final client = clientFor((request) {
+        bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+        return _json({
+          'data': {'domain_id': 4, 'transport': 'relay', 'password_set': false},
+        });
+      });
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        username: 'ada',
+        password: 's3cret',
+      );
+      await client.setDomainRelay(
+        4,
+        transport: OutboundTransport.relay,
+        host: 'smtp.relay.test',
+        port: 587,
+        tlsMode: RelayTlsMode.starttls,
+        password: '',
+      );
+      expect(bodies[0]['password'], 's3cret');
+      expect(bodies[1]['username'], '');
+      expect(bodies[1]['password'], '');
+    });
+
+    test('switches to direct with only the transport', () async {
+      late Map<String, dynamic> sent;
+      final client = clientFor((request) {
+        sent = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json({
+          'data': {
+            'domain_id': 4,
+            'transport': 'direct',
+            'password_set': false,
+          },
+        });
+      });
+      await client.setDomainRelay(4, transport: OutboundTransport.direct);
+      expect(sent, {'transport': 'direct'});
+    });
+
+    test('lists suppressions with every field the server sends', () async {
+      final client = clientFor((request) {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/admin/domains/4/suppressions');
+        return _json({
+          'data': [
+            {
+              'id': 9,
+              'domain_id': 4,
+              'address': 'gone@far.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_mailbox',
+              'last_error': '550 5.1.1 no such user',
+              'message_id': 31,
+              'created_at': '2026-10-20T08:00:00Z',
+              'updated_at': '2026-10-21T08:00:00Z',
+              'expires_at': '2026-11-20T08:00:00Z',
+            },
+            {
+              'id': 10,
+              'domain_id': 4,
+              'address': 'nobody@nowhere.test',
+              'reason': 'hard_bounce',
+              'failure_category': 'bad_domain',
+              'last_error': '',
+              'message_id': null,
+              'created_at': '2026-10-19T08:00:00Z',
+              'updated_at': '2026-10-19T08:00:00Z',
+              'expires_at': '2026-11-19T08:00:00Z',
+            },
+          ],
+        });
+      });
+      final list = await client.suppressions(4);
+      expect(list, hasLength(2));
+      final first = list.first;
+      expect(first.id, 9);
+      expect(first.domainId, 4);
+      expect(first.address, 'gone@far.test');
+      expect(first.reason, 'hard_bounce');
+      expect(first.failureCategory, 'bad_mailbox');
+      expect(first.lastError, '550 5.1.1 no such user');
+      expect(first.messageId, 31);
+      expect(first.createdAt!.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(first.updatedAt!.toUtc(), DateTime.utc(2026, 10, 21, 8));
+      expect(first.expiresAt!.toUtc(), DateTime.utc(2026, 11, 20, 8));
+      expect(list.last.messageId, isNull);
+    });
+
+    test('clears a suppression', () async {
+      late http.Request sent;
+      final client = clientFor((request) {
+        sent = request;
+        return http.Response('', 204);
+      });
+      await client.clearSuppression(4, 9);
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/api/v1/admin/domains/4/suppressions/9');
+    });
+  });
+  group('certificates', () {
+    const pem =
+        '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n';
+
+    test('reads one fresh from the server, with its PEM', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({
+            'data': {
+              'id': 4,
+              'domain_id': 7,
+              'cert_pem': pem,
+              'issuer': "CN=R11,O=Let's Encrypt,C=US",
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'created_at': '2026-09-02T10:00:00Z',
+              'updated_at': '2026-09-03T10:00:00Z',
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.certificate(4);
+      expect(sent.method, 'GET');
+      expect(sent.url.path, '/api/v1/admin/certificates/4');
+      expect(cert.id, 4);
+      expect(cert.domainId, 7);
+      expect(cert.domain, 'a.test');
+      expect(cert.certPem, pem);
+      expect(cert.autoRenew, isFalse);
+      expect(cert.notAfter.toUtc(), DateTime.utc(2026, 12));
+      expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 9, 2, 10));
+      expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 9, 3, 10));
+    });
+
+    test('uploads the certificate, key and domain it is given', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {
+              'id': 9,
+              'domain_id': 7,
+              'issuer': 'CN=a.test',
+              'not_before': '2026-09-01T00:00:00Z',
+              'not_after': '2026-12-01T00:00:00Z',
+              'auto_renew': false,
+              'domain': {'id': 7, 'name': 'a.test'},
+            },
+          });
+        }),
+      );
+      final cert = await client.uploadCertificate(
+        domainId: 7,
+        certPem: pem,
+        keyPem: 'KEY',
+        autoRenew: false,
+      );
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/v1/admin/certificates');
+      expect(jsonDecode(sent.body), {
+        'domain_id': 7,
+        'cert_pem': pem,
+        'key_pem': 'KEY',
+        'auto_renew': false,
+      });
+      expect(cert.id, 9);
+      expect(cert.certPem, isEmpty);
+    });
+
+    test('leaves renewal to the server when not told', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json(status: 201, {
+            'data': {'id': 9, 'domain_id': 7},
+          });
+        }),
+      );
+      await client.uploadCertificate(domainId: 7, certPem: pem, keyPem: 'K');
+      expect((jsonDecode(sent.body) as Map).containsKey('auto_renew'), isFalse);
+    });
+
+    test("the server's objection to a certificate comes through", () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (_) async => _json(status: 400, {
+            'error': {
+              'code': 'bad_request',
+              'message': 'Invalid certificate PEM',
+            },
+          }),
+        ),
+      );
+      await expectLater(
+        client.uploadCertificate(domainId: 7, certPem: 'x', keyPem: 'y'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 400)
+              .having((e) => e.message, 'message', 'Invalid certificate PEM'),
+        ),
+      );
+    });
   });
 }

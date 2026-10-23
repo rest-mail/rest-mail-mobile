@@ -131,11 +131,14 @@ void main() {
     // A domain added.
     await tap(tester, 'Domains');
     await tap(tester, 'Add a domain');
-    await tester.enterText(find.byType(TextField), 'new.test');
+    await tester.enterText(find.byType(TextField).first, 'new.test');
     await tester.pump();
     await tap(tester, 'Add domain');
-    expect(find.text('new.test'), findsOneWidget);
     expect(fake.domains.map((d) => d.name), contains('new.test'));
+    // It opens on the new domain; the list has it too.
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('new.test'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 

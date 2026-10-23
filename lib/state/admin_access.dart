@@ -46,10 +46,22 @@ enum AdminSection {
     delete: Capability.bansDelete,
   ),
 
+  /// Who holds which role, and where. The server removes a grant with
+  /// `users:write`, not `users:delete`, and checks each change against what
+  /// the granter holds itself.
+  permissions(
+    'Permissions',
+    'Who holds which role, and where',
+    read: Capability.usersRead,
+    write: Capability.usersWrite,
+    delete: Capability.usersWrite,
+  ),
+
   overview.readOnly(
     'Overview',
     'Mail volume, the queue and TLS at a glance',
-    read: Capability.observabilityRead,
+    // GET /admin/stats needs domains:read.
+    read: Capability.domainsRead,
   ),
   deliveryLog.readOnly(
     'Delivery log',
@@ -139,6 +151,14 @@ enum AdminSection {
   /// they are opened from it. The server reads them with `domains:read`,
   /// and removes a sender or a policy with `domains:write`, not
   /// `domains:delete`.
+  domainDkim(
+    'DKIM signing',
+    'Signing key and automatic rotation for this domain',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
   dnsCheck.readOnly(
     'DNS check',
     'Which records are right, and which are missing',
@@ -156,6 +176,22 @@ enum AdminSection {
   mtaSts(
     'MTA-STS',
     'Whether other servers must send here over TLS',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  relay(
+    'Outgoing mail',
+    'Sent straight to other servers, or through a relay',
+    read: Capability.domainsRead,
+    write: Capability.domainsWrite,
+    delete: Capability.domainsWrite,
+    group: AdminGroup.domain,
+  ),
+  suppressions(
+    'Suppressed recipients',
+    'Addresses no longer sent to, after mail to them bounced',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,

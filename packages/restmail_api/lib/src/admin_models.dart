@@ -194,6 +194,9 @@ class AdminDomain {
     required this.active,
     required this.defaultQuotaBytes,
     this.dkimSelector = '',
+    this.sendingPolicy = '',
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory AdminDomain.fromJson(Map<String, dynamic> json) => AdminDomain(
@@ -203,7 +206,16 @@ class AdminDomain {
     active: json['active'] as bool? ?? false,
     defaultQuotaBytes: _int(json['default_quota_bytes'] ?? 0),
     dkimSelector: json['dkim_selector'] as String? ?? '',
+    sendingPolicy: json['sending_policy'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
+
+  /// The server types a domain can be created with.
+  static const serverTypes = ['restmail', 'traditional'];
+
+  /// The sending policies a domain can have; empty means no rule.
+  static const sendingPolicies = ['', 'transactional', 'bulk'];
 
   final int id;
   final String name;
@@ -214,6 +226,40 @@ class AdminDomain {
   final bool active;
   final int defaultQuotaBytes;
   final String dkimSelector;
+
+  /// `transactional`, `bulk`, or empty when the send API applies no rule.
+  final String sendingPolicy;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
+/// The stored quota breakdown, which may be absent on a fresh mailbox.
+class AdminQuotaUsage {
+  const AdminQuotaUsage({
+    required this.mailboxId,
+    required this.subjectBytes,
+    required this.bodyBytes,
+    required this.attachmentBytes,
+    required this.messageCount,
+    this.updatedAt,
+  });
+
+  factory AdminQuotaUsage.fromJson(Map<String, dynamic> json) =>
+      AdminQuotaUsage(
+        mailboxId: _int(json['mailbox_id'] ?? 0),
+        subjectBytes: _int(json['subject_bytes'] ?? 0),
+        bodyBytes: _int(json['body_bytes'] ?? 0),
+        attachmentBytes: _int(json['attachment_bytes'] ?? 0),
+        messageCount: _int(json['message_count'] ?? 0),
+        updatedAt: _time(json['updated_at']),
+      );
+
+  final int mailboxId;
+  final int subjectBytes;
+  final int bodyBytes;
+  final int attachmentBytes;
+  final int messageCount;
+  final DateTime? updatedAt;
 }
 
 /// A mailbox, as an admin sees it.
@@ -227,6 +273,14 @@ class AdminMailbox {
     required this.quotaBytes,
     required this.quotaUsedBytes,
     this.lastLoginAt,
+    this.localPart = '',
+    this.domain,
+    this.quotaUsage,
+    this.passwordChangeRequired = false,
+    this.twoFactorRequired = false,
+    this.lastPasswordChange,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory AdminMailbox.fromJson(Map<String, dynamic> json) => AdminMailbox(
@@ -238,6 +292,21 @@ class AdminMailbox {
     quotaBytes: _int(json['quota_bytes'] ?? 0),
     quotaUsedBytes: _int(json['quota_used_bytes'] ?? 0),
     lastLoginAt: _time(json['last_login_at']),
+    localPart: json['local_part'] as String? ?? '',
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain when domain['name'] is String =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
+    quotaUsage: switch (json['quota_usage']) {
+      final Map<String, dynamic> usage => AdminQuotaUsage.fromJson(usage),
+      _ => null,
+    },
+    passwordChangeRequired: json['password_change_required'] as bool? ?? false,
+    twoFactorRequired: json['two_factor_required'] as bool? ?? false,
+    lastPasswordChange: _time(json['last_password_change']),
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
 
   final int id;
@@ -248,6 +317,14 @@ class AdminMailbox {
   final int quotaBytes;
   final int quotaUsedBytes;
   final DateTime? lastLoginAt;
+  final String localPart;
+  final AdminDomain? domain;
+  final AdminQuotaUsage? quotaUsage;
+  final bool passwordChangeRequired;
+  final bool twoFactorRequired;
+  final DateTime? lastPasswordChange;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 /// Mail to [source] goes to [destination].
@@ -258,6 +335,8 @@ class AdminAlias {
     required this.source,
     required this.destination,
     required this.active,
+    this.domain,
+    this.createdAt,
   });
 
   factory AdminAlias.fromJson(Map<String, dynamic> json) => AdminAlias(
@@ -266,6 +345,12 @@ class AdminAlias {
     source: json['source_address'] as String,
     destination: json['destination_address'] as String,
     active: json['active'] as bool? ?? false,
+    domain: switch (json['domain']) {
+      final Map<String, dynamic> domain when domain['name'] is String =>
+        AdminDomain.fromJson(domain),
+      _ => null,
+    },
+    createdAt: _time(json['created_at']),
   );
 
   final int id;
@@ -273,6 +358,8 @@ class AdminAlias {
   final String source;
   final String destination;
   final bool active;
+  final AdminDomain? domain;
+  final DateTime? createdAt;
 }
 
 /// An IP address kept out of the server's mail protocols.
@@ -661,6 +748,8 @@ class DkimKey {
     required this.domain,
     required this.selector,
     required this.hasKey,
+    this.createdAt,
+    this.ageSeconds,
   });
 
   factory DkimKey.fromJson(Map<String, dynamic> json) => DkimKey(
@@ -668,6 +757,8 @@ class DkimKey {
     domain: json['domain'] as String? ?? '',
     selector: json['selector'] as String? ?? '',
     hasKey: json['has_key'] as bool? ?? false,
+    createdAt: _time(json['created_at']),
+    ageSeconds: (json['age_seconds'] as num?)?.toDouble(),
   );
 
   final int domainId;
@@ -676,10 +767,37 @@ class DkimKey {
   /// Where the public key is published: `<selector>._domainkey.<domain>`.
   final String selector;
   final bool hasKey;
+
+  /// When the key was set, or null when the server does not know.
+  final DateTime? createdAt;
+
+  /// How old the key is, in seconds, as the server counts it.
+  final double? ageSeconds;
+}
+
+/// How often a domain's DKIM key is due to be replaced.
+class DkimRotation {
+  const DkimRotation({required this.domainId, required this.intervalDays});
+
+  factory DkimRotation.fromJson(Map<String, dynamic> json) => DkimRotation(
+    domainId: _int(json['domain_id']),
+    intervalDays: _int(json['rotation_interval_days']),
+  );
+
+  /// The most days the server accepts between rotations.
+  static const maxIntervalDays = 3650;
+
+  final int domainId;
+
+  /// Days between rotations; 0 means the key is never rotated.
+  final int intervalDays;
+
+  bool get enabled => intervalDays > 0;
 }
 
 /// A TLS certificate the server holds for one of its domains. The server
-/// never shows its private key.
+/// never shows its private key; it sends the certificate itself only when
+/// asked for the one.
 class TlsCertificate {
   const TlsCertificate({
     required this.id,
@@ -688,7 +806,11 @@ class TlsCertificate {
     required this.notBefore,
     required this.notAfter,
     this.domain = '',
+    this.domainDetails,
     this.autoRenew = false,
+    this.certPem = '',
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory TlsCertificate.fromJson(Map<String, dynamic> json) => TlsCertificate(
@@ -698,10 +820,18 @@ class TlsCertificate {
       {'name': final String name} => name,
       _ => '',
     },
+    domainDetails:
+        json['domain'] is Map<String, dynamic> &&
+            ((json['domain'] as Map<String, dynamic>)['id'] as num? ?? 0) > 0
+        ? AdminDomain.fromJson(json['domain'] as Map<String, dynamic>)
+        : null,
     issuer: json['issuer'] as String? ?? '',
     notBefore: _time(json['not_before']) ?? DateTime.now(),
     notAfter: _time(json['not_after']) ?? DateTime.now(),
     autoRenew: json['auto_renew'] as bool? ?? false,
+    certPem: json['cert_pem'] as String? ?? '',
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
   );
 
   final int id;
@@ -709,12 +839,18 @@ class TlsCertificate {
 
   /// Its domain's name, when the server sent it along.
   final String domain;
+  final AdminDomain? domainDetails;
   final String issuer;
   final DateTime notBefore;
   final DateTime notAfter;
 
   /// Whether the server renews it before it runs out.
   final bool autoRenew;
+
+  /// The certificate as PEM; empty in a list, which leaves it out.
+  final String certPem;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 /// One filter in a pipeline.
@@ -1078,4 +1214,138 @@ DateTime? _time(Object? value) {
   final parsed = DateTime.tryParse(value);
   if (parsed == null || parsed.year < 1971) return null;
   return parsed.toLocal();
+}
+
+/// How a domain's outgoing mail leaves the server.
+enum OutboundTransport {
+  /// Straight to each recipient's mail servers, found by MX lookup.
+  direct('direct'),
+
+  /// Handed to an SMTP relay, which delivers it.
+  relay('relay');
+
+  const OutboundTransport(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static OutboundTransport parse(Object? value) =>
+      value == 'relay' ? relay : direct;
+}
+
+/// How the server secures its connection to a relay.
+enum RelayTlsMode {
+  /// A plain connection, upgraded with STARTTLS (usually port 587).
+  starttls('starttls'),
+
+  /// TLS from the start (usually port 465).
+  implicit('implicit');
+
+  const RelayTlsMode(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static RelayTlsMode? parse(Object? value) => switch (value) {
+    'starttls' => starttls,
+    'implicit' => implicit,
+    _ => null,
+  };
+}
+
+/// A domain's outbound transport. The server never sends the relay
+/// password back, only whether one is stored.
+class DomainRelay {
+  const DomainRelay({
+    required this.domainId,
+    required this.transport,
+    this.host = '',
+    this.port,
+    this.tlsMode,
+    this.username = '',
+    this.passwordSet = false,
+  });
+
+  factory DomainRelay.fromJson(Map<String, dynamic> json) => DomainRelay(
+    domainId: _int(json['domain_id'] ?? 0),
+    transport: OutboundTransport.parse(json['transport']),
+    host: json['host'] as String? ?? '',
+    port: switch (json['port']) {
+      final num port when port > 0 => port.toInt(),
+      _ => null,
+    },
+    tlsMode: RelayTlsMode.parse(json['tls_mode']),
+    username: json['username'] as String? ?? '',
+    passwordSet: json['password_set'] == true,
+  );
+
+  final int domainId;
+  final OutboundTransport transport;
+
+  /// The relay's host name or IP address; empty for direct.
+  final String host;
+  final int? port;
+  final RelayTlsMode? tlsMode;
+
+  /// Empty when the relay takes mail without signing in.
+  final String username;
+
+  /// Whether the server holds a password for [username].
+  final bool passwordSet;
+}
+
+/// A recipient the server no longer sends a domain's mail to, because
+/// mail to them bounced for good. It lapses at [expiresAt].
+class Suppression {
+  const Suppression({
+    required this.id,
+    required this.domainId,
+    required this.address,
+    this.reason = '',
+    this.failureCategory = '',
+    this.lastError = '',
+    this.messageId,
+    this.createdAt,
+    this.updatedAt,
+    this.expiresAt,
+  });
+
+  factory Suppression.fromJson(Map<String, dynamic> json) => Suppression(
+    id: _int(json['id']),
+    domainId: _int(json['domain_id'] ?? 0),
+    address: json['address'] as String? ?? '',
+    reason: json['reason'] as String? ?? '',
+    failureCategory: json['failure_category'] as String? ?? '',
+    lastError: json['last_error'] as String? ?? '',
+    messageId: switch (json['message_id']) {
+      final num id => id.toInt(),
+      _ => null,
+    },
+    createdAt: _time(json['created_at']),
+    updatedAt: _time(json['updated_at']),
+    expiresAt: _time(json['expires_at']),
+  );
+
+  final int id;
+  final int domainId;
+
+  /// The recipient, lower-cased.
+  final String address;
+
+  /// Why: `hard_bounce`.
+  final String reason;
+
+  /// What the bounce said was wrong: `bad_mailbox` or `bad_domain`.
+  final String failureCategory;
+
+  /// The remote server's reply.
+  final String lastError;
+
+  /// The sent message whose bounce suppressed the address, when known.
+  final int? messageId;
+  final DateTime? createdAt;
+
+  /// When it last bounced.
+  final DateTime? updatedAt;
+  final DateTime? expiresAt;
 }
