@@ -544,6 +544,43 @@ class RestmailClient {
   Future<List<DkimKey>> dkimKeys() async =>
       _list(await _authed('GET', ['admin', 'dkim']), DkimKey.fromJson);
 
+  /// Signs [domainId]'s mail with [privateKey], a PEM private key published
+  /// under [selector], replacing any key it had. Needs `domains:write`. The
+  /// server refuses a key it cannot sign with (422) and never sends the key
+  /// back: the answer holds only the selector and when the key was set.
+  Future<DkimKey> setDkimKey(
+    int domainId, {
+    required String selector,
+    required String privateKey,
+  }) async => DkimKey.fromJson(
+    _data(
+      await _authed(
+        'PUT',
+        ['admin', 'dkim', '$domainId'],
+        body: {'selector': selector, 'private_key': privateKey},
+      ),
+    ),
+  );
+
+  /// How often [domainId]'s key is due to be replaced. Needs `domains:read`.
+  Future<DkimRotation> dkimRotation(int domainId) async =>
+      DkimRotation.fromJson(
+        _data(await _authed('GET', ['admin', 'dkim', '$domainId', 'rotation'])),
+      );
+
+  /// Sets [domainId]'s rotation to every [intervalDays] days, 0 to never
+  /// rotate, at most [DkimRotation.maxIntervalDays]. Needs `domains:write`.
+  Future<DkimRotation> setDkimRotation(int domainId, int intervalDays) async =>
+      DkimRotation.fromJson(
+        _data(
+          await _authed(
+            'PUT',
+            ['admin', 'dkim', '$domainId', 'rotation'],
+            body: {'rotation_interval_days': intervalDays},
+          ),
+        ),
+      );
+
   /// Stops signing [domainId]'s mail and forgets its key. Needs
   /// `domains:write`, as the server asks.
   Future<void> deleteDkimKey(int domainId) async {
