@@ -127,6 +127,41 @@ class MailboxState extends ChangeNotifier {
     }
   }
 
+  /// Makes a folder on the account on screen; the name it is stored under.
+  Future<String> createFolder(String name) async {
+    final made = await backend.createFolder(_accountId, name);
+    await refreshFolders();
+    return made;
+  }
+
+  /// Renames [from]; when it is the folder on screen, the screen follows it.
+  Future<String> renameFolder(String from, String name) async {
+    final renamed = await backend.renameFolder(_accountId, from, name);
+    await _folderChanged(from, renamed);
+    return renamed;
+  }
+
+  /// Deletes [name] and its mail; when it was on screen, the inbox is.
+  Future<void> deleteFolder(String name) async {
+    await backend.deleteFolder(_accountId, name);
+    await _folderChanged(name, StandardFolder.inbox);
+  }
+
+  int get _accountId =>
+      account?.id ??
+      (throw const ApiException(
+        0,
+        'no_mailbox',
+        'This session has no mailbox',
+      ));
+
+  Future<void> _folderChanged(String from, String to) async {
+    if (folder != from) return refreshFolders();
+    folder = to;
+    messages = const [];
+    await Future.wait([refreshFolders(), _loadFirstPage()]);
+  }
+
   Future<void> loadMore() async {
     final account = this.account, cursor = _cursor;
     if (account == null ||

@@ -14,6 +14,7 @@ import 'add_account_screen.dart';
 import 'admin/admin_screen.dart';
 import 'admin/overview_screen.dart';
 import 'contacts_screen.dart';
+import 'folders_screen.dart';
 import 'quarantine_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
@@ -255,7 +256,19 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                     signedOut: signedOut,
                   ),
                   const SizedBox(height: 22),
-                  SectionLabel(tr(context, 'mailboxes.folders')),
+                  if (m.backend.canManageFolders && m.account != null)
+                    _FoldersLabel(
+                      onEdit: () => unawaited(
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => FoldersScreen(mailbox: m),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SectionLabel(tr(context, 'mailboxes.folders')),
                   const SizedBox(height: 9),
                   _Folders(
                     folders: m.folders,
@@ -956,6 +969,45 @@ class _Stat extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: rmText(11.5, color: c.ink3, weight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+/// The folders' heading, with the way to make, rename and delete them. The
+/// action is the heading's own size, so the rows below stay where they are.
+class _FoldersLabel extends StatelessWidget {
+  const _FoldersLabel({required this.onEdit});
+
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    return Row(
+      children: [
+        Expanded(child: SectionLabel(tr(context, 'mailboxes.folders'))),
+        Semantics(
+          button: true,
+          label: tr(context, 'folders.editHint'),
+          excludeSemantics: true,
+          child: Tooltip(
+            message: tr(context, 'folders.editHint'),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onEdit,
+              child: Text(
+                tr(context, 'folders.edit').toUpperCase(),
+                style: rmText(
+                  12,
+                  color: c.accent,
+                  weight: FontWeight.w700,
+                  tracking: 0.05,
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );

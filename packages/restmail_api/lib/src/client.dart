@@ -1536,6 +1536,54 @@ class RestmailClient {
     Folder.fromJson,
   );
 
+  /// Makes an empty folder and returns its name as stored: `inbox` is INBOX.
+  /// A folder the account has, INBOX among them, is refused 409
+  /// already_exists; a name the server's rule refuses is 422 on `name`. A
+  /// `/` in a name is the hierarchy IMAP clients show.
+  Future<String> createFolder(int accountId, String name) async => _folderName(
+    await _authed(
+      'POST',
+      ['accounts', '$accountId', 'folders'],
+      body: {'name': name},
+    ),
+    201,
+  );
+
+  /// Renames [folder], its messages with it, and returns the new name. A
+  /// standard folder is not renamed, nor is anything renamed to one: 400. A
+  /// name another folder has is 409 already_exists: folders are not merged.
+  Future<String> renameFolder(
+    int accountId,
+    String folder,
+    String name,
+  ) async => _folderName(
+    await _authed(
+      'PATCH',
+      ['accounts', '$accountId', 'folders', folder],
+      body: {'name': name},
+    ),
+    200,
+  );
+
+  /// Deletes [folder] and every message in it. A standard folder is refused
+  /// 400.
+  Future<void> deleteFolder(int accountId, String folder) async {
+    final response = await _authed('DELETE', [
+      'accounts',
+      '$accountId',
+      'folders',
+      folder,
+    ]);
+    if (response.statusCode != 204) throw _unreadable(response);
+  }
+
+  String _folderName(http.Response response, int status) {
+    if (response.statusCode != status) throw _unreadable(response);
+    final name = _data(response)['name'];
+    if (name is! String || name.isEmpty) throw _unreadable(response);
+    return name;
+  }
+
   /// One page of the messages the account's filters held back, newest first.
   /// Released ones are not listed. REST Mail only.
   Future<OffsetPage<QuarantinedMessage>> quarantine(
