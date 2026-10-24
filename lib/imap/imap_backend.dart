@@ -992,25 +992,122 @@ class ImapBackend implements MailBackend {
   Future<void> deleteQuarantined(int accountId, int id) =>
       throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
 
-  // Not yet over IMAP: its CREATE, RENAME and DELETE (rest-mail-mobile#148).
+  // Folders are made, renamed and deleted with IMAP's CREATE, RENAME and
+  // DELETE (RFC 9051 §6.3.4–6.3.6), refused as REST Mail refuses them: a
+  // standard folder stays as it is, and a name that is taken is 409. Gmail's
+  // folders are labels, whose deletion keeps the mail, so they are not
+  // offered here yet.
   @override
-  bool get canManageFolders => false;
+  bool get canManageFolders => !_gmail;
 
   @override
-  Future<String> createFolder(int accountId, String name) => throw _noFolders;
+  Future<String> createFolder(int accountId, String name) => _run((c) async {
+    final folders = await _list(c, fresh: true);
+    final path = _pathFor(folders, name);
+    if (_taken(folders, name, path)) throw _folderExists;
+    try {
+      await c.run((client) => client.createMailbox(path));
+    } on ApiException {
+      // enough_mail lists the new mailbox to return it, and a server may not
+      // answer that LIST as it expects even though the CREATE worked.
+      if (!(await _list(c, fresh: true)).any((f) => f.box.path == path)) {
+        rethrow;
+      }
+    }
+    _folders = null;
+    return path;
+  });
 
   @override
   Future<String> renameFolder(int accountId, String folder, String name) =>
-      throw _noFolders;
+      _run((c) async {
+        final folders = await _list(c, fresh: true);
+        final from = _ownFolder(folders, folder, 'rename');
+        if (_isStandardName(name)) {
+          throw const ApiException(
+            400,
+            'bad_request',
+            'Cannot rename a folder to a standard folder',
+          );
+        }
+        final path = _pathFor(folders, name);
+        if (_taken(folders, name, path)) throw _folderExists;
+        await _leave(c, folders, from);
+        await c.run((client) => client.renameMailbox(from.box, path));
+        _folders = null;
+        return path;
+      });
 
   @override
-  Future<void> deleteFolder(int accountId, String folder) => throw _noFolders;
+  Future<void> deleteFolder(int accountId, String folder) => _run((c) async {
+    final folders = await _list(c, fresh: true);
+    final target = _ownFolder(folders, folder, 'delete');
+    await _leave(c, folders, target);
+    await c.run((client) => client.deleteMailbox(target.box));
+    _folders = null;
+  });
 
-  static const _noFolders = ApiException(
-    400,
-    'not_supported',
-    'Folders cannot be changed on this account yet.',
+  static const _folderExists = ApiException(
+    409,
+    'already_exists',
+    'Folder already exists',
   );
+
+  /// The user's own folder called [name], to [verb]: a standard one, or the
+  /// inbox, is refused (400), and one that is not there is 404.
+  MappedFolder _ownFolder(
+    List<MappedFolder> folders,
+    String name,
+    String verb,
+  ) {
+    final folder = folders.where((f) => f.name == name).firstOrNull;
+    if (folder == null) {
+      throw const ApiException(404, 'not_found', 'Folder not found');
+    }
+    if (folder.role || folder.box.isInbox) {
+      throw ApiException(400, 'bad_request', 'Cannot $verb standard folder');
+    }
+    return folder;
+  }
+
+  /// Whether [name] is a standard folder's: INBOX in any case, the others as
+  /// written.
+  static bool _isStandardName(String name) =>
+      name.toUpperCase() == StandardFolder.inbox ||
+      StandardFolder.ordered.contains(name);
+
+  /// Whether a folder of that name or path is there already, INBOX in any
+  /// case among them.
+  static bool _taken(List<MappedFolder> folders, String name, String path) =>
+      name.toUpperCase() == StandardFolder.inbox ||
+      folders.any((f) => f.name == name || f.box.path == path);
+
+  /// The path a folder the user named goes under: the app shows "/" as the
+  /// hierarchy, which is written with the server's own delimiter.
+  static String _pathFor(List<MappedFolder> folders, String name) {
+    final delimiter =
+        folders
+            .map((f) => f.box.pathSeparator)
+            .where((d) => d.isNotEmpty)
+            .firstOrNull ??
+        '/';
+    return delimiter == '/' ? name : name.replaceAll('/', delimiter);
+  }
+
+  /// Steps out of [folder] when it is the one selected, so a server that
+  /// refuses to rename or delete a selected mailbox does not. Selecting the
+  /// inbox leaves it on any server: UNSELECT is an extension (RFC 3691), and
+  /// CLOSE would expunge the folder's deleted messages.
+  Future<void> _leave(
+    ImapConnection c,
+    List<MappedFolder> folders,
+    MappedFolder folder,
+  ) async {
+    if (_selected?.path != folder.box.path) return;
+    _selected = null;
+    final inbox = folders.where((f) => f.box.isInbox).firstOrNull;
+    if (inbox != null) await _select(c, inbox, fresh: true);
+  }
 
   // Not yet over IMAP: the provider's own calendar answers invitations.
   @override

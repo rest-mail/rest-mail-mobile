@@ -143,4 +143,65 @@ void main() {
     skip: host == null ? 'GREENMAIL_HOST is not set' : false,
     timeout: const Timeout(Duration(minutes: 2)),
   );
+
+  test(
+    'folders are made, renamed and deleted against GreenMail, '
+    'and the standard ones are not',
+    () async {
+      final mail = backend();
+      addTearDown(mail.close);
+      await mail.verify();
+      expect(mail.canManageFolders, isTrue);
+      Matcher refused(String code) =>
+          throwsA(isA<ApiException>().having((e) => e.code, 'code', code));
+      Future<List<String>> names() async => [
+        for (final f in await mail.folders(ImapBackend.accountId)) f.name,
+      ];
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+
+      final made = await mail.createFolder(
+        ImapBackend.accountId,
+        'Projects$stamp',
+      );
+      expect(await names(), contains(made));
+      await expectLater(
+        mail.createFolder(ImapBackend.accountId, 'Projects$stamp'),
+        refused('already_exists'),
+      );
+      await expectLater(
+        mail.createFolder(ImapBackend.accountId, 'inbox'),
+        refused('already_exists'),
+      );
+
+      // The folder on screen is left before it is renamed.
+      await mail.messages(ImapBackend.accountId, made);
+      final renamed = await mail.renameFolder(
+        ImapBackend.accountId,
+        made,
+        'Done$stamp',
+      );
+      expect(await names(), allOf(contains(renamed), isNot(contains(made))));
+      await expectLater(
+        mail.renameFolder(ImapBackend.accountId, renamed, StandardFolder.sent),
+        refused('bad_request'),
+      );
+      await expectLater(
+        mail.renameFolder(ImapBackend.accountId, StandardFolder.inbox, 'Old'),
+        refused('bad_request'),
+      );
+
+      await mail.deleteFolder(ImapBackend.accountId, renamed);
+      expect(await names(), isNot(contains(renamed)));
+      await expectLater(
+        mail.deleteFolder(ImapBackend.accountId, renamed),
+        refused('not_found'),
+      );
+      await expectLater(
+        mail.deleteFolder(ImapBackend.accountId, StandardFolder.inbox),
+        refused('bad_request'),
+      );
+    },
+    skip: host == null ? 'GREENMAIL_HOST is not set' : false,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }
