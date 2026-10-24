@@ -23,7 +23,9 @@ String queueStatusLabel(BuildContext context, QueueStatus status) =>
       QueueStatus.unknown => tr(context, 'admin.queue.unknown'),
     };
 
-String attemptsLabel(int n) => n == 1 ? '1 attempt' : '$n attempts';
+String attemptsLabel(BuildContext context, int n) => n == 1
+    ? tr(context, 'ui.1Attempt')
+    : trArgs(context, 'ui.nAttempts', {'n': (n).toString()});
 
 enum _BulkAction { retry, bounce, delete }
 
@@ -188,12 +190,18 @@ class _QueueScreenState extends State<QueueScreen> {
           'verb': (verb).toString(),
           'target': (target).toString(),
           'value': (switch (action) {
-            _BulkAction.retry =>
-              'Only pending or deferred entries will be retried.',
-            _BulkAction.bounce =>
-              'Only entries still in flight will be marked bounced.',
-            _BulkAction.delete =>
-              'They leave the queue without delivery or notification.',
+            _BulkAction.retry => tr(
+              context,
+              'ui.onlyPendingOrDeferredEntriesWillBe',
+            ),
+            _BulkAction.bounce => tr(
+              context,
+              'ui.onlyEntriesStillInFlightWillBe',
+            ),
+            _BulkAction.delete => tr(
+              context,
+              'ui.theyLeaveTheQueueWithoutDeliveryOr',
+            ),
           }).toString(),
         },
       ),
@@ -253,15 +261,21 @@ class _QueueScreenState extends State<QueueScreen> {
         header: [
           if (stats != null) ...[
             Text(
-              '${countLabel(stats.of(QueueStatus.pending))} pending · '
-              '${countLabel(stats.of(QueueStatus.deferred))} deferred · '
-              '${countLabel(stats.of(QueueStatus.bounced))} bounced',
+              trArgs(context, 'queue.waitingSummary', {
+                'pending': countLabel(stats.of(QueueStatus.pending)),
+                'deferred': countLabel(stats.of(QueueStatus.deferred)),
+                'bounced': countLabel(stats.of(QueueStatus.bounced)),
+              }),
               style: rmText(13, color: c.ink3),
             ),
             const SizedBox(height: 12),
             Text(
-              '${stats.total} total · ${stats.of(QueueStatus.delivering)} delivering · '
-              '${stats.of(QueueStatus.delivered)} delivered · ${stats.of(QueueStatus.expired)} expired',
+              trArgs(context, 'queue.deliverySummary', {
+                'total': '${stats.total}',
+                'delivering': '${stats.of(QueueStatus.delivering)}',
+                'delivered': '${stats.of(QueueStatus.delivered)}',
+                'expired': '${stats.of(QueueStatus.expired)}',
+              }),
               style: rmText(13, color: c.ink3),
             ),
           ],
@@ -367,7 +381,9 @@ class _QueueScreenState extends State<QueueScreen> {
               Text(
                 _allMatching
                     ? tr(context, 'admin.queue.allMatchingEntriesSelected')
-                    : '${_selected.length} selected',
+                    : trArgs(context, 'ui.lengthSelected', {
+                        'length': (_selected.length).toString(),
+                      }),
               ),
               Wrap(
                 children: [
@@ -378,11 +394,11 @@ class _QueueScreenState extends State<QueueScreen> {
                           ? null
                           : () => unawaited(_bulk(action)),
                       child: Text(
-                        '${switch (action) {
-                          _BulkAction.retry => 'Retry',
-                          _BulkAction.bounce => 'Bounce',
-                          _BulkAction.delete => 'Delete',
-                        }} messages',
+                        tr(context, switch (action) {
+                          _BulkAction.retry => 'queue.retryMessages',
+                          _BulkAction.bounce => 'queue.bounceMessages',
+                          _BulkAction.delete => 'queue.deleteMessages',
+                        }),
                       ),
                     ),
                 ],
@@ -403,7 +419,7 @@ class _QueueScreenState extends State<QueueScreen> {
               child: RmRow(
                 label: entry.recipient,
                 subtitle: [
-                  '${queueStatusLabel(context, entry.status)} · ${attemptsLabel(entry.attempts)} · '
+                  '${queueStatusLabel(context, entry.status)} · ${attemptsLabel(context, entry.attempts)} · '
                       '${timeLabel(entry.createdAt)}',
                   if (entry.lastError.isNotEmpty) entry.lastError,
                 ].join('\n'),
@@ -498,7 +514,10 @@ class _QueueEntryScreenState extends State<QueueEntryScreen> {
               RmRow(
                 label: tr(context, 'admin.logs.attempts'),
                 value: entry.maxRetries > 0
-                    ? '${entry.attempts} of ${entry.maxRetries}'
+                    ? trArgs(context, 'ui.attemptsOfMaxRetries', {
+                        'attempts': (entry.attempts).toString(),
+                        'maxRetries': (entry.maxRetries).toString(),
+                      })
                     : '${entry.attempts}',
               ),
               RmRow(

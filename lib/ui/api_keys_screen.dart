@@ -233,7 +233,7 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                                             ),
                                       key.expiresAt == null
                                           ? tr(context, 'apikeys.noExpiry')
-                                          : '${key.isExpiredAt(DateTime.now()) ? 'Expired' : 'Expires'} ${_date(key.expiresAt!)}',
+                                          : '${key.isExpiredAt(DateTime.now()) ? tr(context, 'admin.logs.expired') : tr(context, 'admin.logs.expires')} ${_date(key.expiresAt!)}',
                                       for (final permission in key.permissions)
                                         '${permission.capability} · ${permission.scope}',
                                     ].join('\n'),

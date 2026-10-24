@@ -179,8 +179,10 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
         subtitle: [
           _directionLabel(context, pipeline.direction),
           pipeline.filters.length == 1
-              ? '1 filter'
-              : '${pipeline.filters.length} filters',
+              ? tr(context, 'ui.1Filter')
+              : trArgs(context, 'ui.lengthFilters', {
+                  'length': (pipeline.filters.length).toString(),
+                }),
           if (!pipeline.active) tr(context, 'twoFactor.off'),
         ].join(' · '),
         onTap: () => unawaited(_open(pipeline)),
@@ -246,8 +248,11 @@ class _PipelineScreenState extends State<PipelineScreen> {
           context,
           'admin.pipelines.mailValueDomainNoLongerGoesThrough',
           {
-            'value': (_pipeline.direction == 'inbound' ? 'to' : 'from')
-                .toString(),
+            'value':
+                (_pipeline.direction == 'inbound'
+                        ? tr(context, 'ui.to')
+                        : tr(context, 'ui.from'))
+                    .toString(),
             'domain': (widget.domain).toString(),
           },
         ),

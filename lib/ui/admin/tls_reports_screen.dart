@@ -21,12 +21,21 @@ String _policyLabel(BuildContext context, String type) => switch (type) {
   _ => type,
 };
 
-String _sessions(int n) => n == 1 ? '1 session' : '${countLabel(n)} sessions';
+String _sessions(BuildContext context, int n) => n == 1
+    ? tr(context, 'ui.1Session')
+    : trArgs(context, 'ui.valueSessions', {
+        'value': (countLabel(n)).toString(),
+      });
 
-String _period(TlsReport report) {
+String _period(BuildContext context, TlsReport report) {
   final day = DateFormat.MMMd();
   final start = day.format(report.startDate), end = day.format(report.endDate);
-  return start == end ? start : '$start to $end';
+  return start == end
+      ? start
+      : trArgs(context, 'ui.startToEnd', {
+          'start': (start).toString(),
+          'end': (end).toString(),
+        });
 }
 
 /// What other servers report about delivering to this one over TLS
@@ -115,13 +124,15 @@ class _TlsReportsScreenState extends State<TlsReportsScreen> {
       row: (report) => RmRow(
         label: report.reportingOrg,
         subtitle: [
-          '${report.policyDomain} · ${_period(report)}',
+          '${report.policyDomain} · ${_period(context, report)}',
           report.failed == 0
               ? trArgs(context, 'admin.tlsreports.valueNoneFailed', {
-                  'value': (_sessions(report.successful)).toString(),
+                  'value': (_sessions(context, report.successful)).toString(),
                 })
-              : '${_sessions(report.successful)} worked, '
-                    '${countLabel(report.failed)} failed',
+              : trArgs(context, 'tlsReports.sessionSummary', {
+                  'worked': _sessions(context, report.successful),
+                  'failed': countLabel(report.failed),
+                }),
         ].join('\n'),
         onTap: () => pushScreen(
           context,
@@ -166,7 +177,7 @@ class TlsReportScreen extends StatelessWidget {
               ),
               RmRow(
                 label: tr(context, 'admin.tlsreports.covers'),
-                value: _period(report),
+                value: _period(context, report),
               ),
               RmRow(
                 label: tr(context, 'admin.tlsreports.worked'),

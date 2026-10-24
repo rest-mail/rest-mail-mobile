@@ -180,7 +180,10 @@ class DeliveryScreen extends StatelessWidget {
               ),
               RmRow(
                 label: tr(context, 'admin.logs.attempts'),
-                value: '${entry.attempts} of ${entry.maxRetries}',
+                value: trArgs(context, 'ui.attemptsOfMaxRetries', {
+                  'attempts': (entry.attempts).toString(),
+                  'maxRetries': (entry.maxRetries).toString(),
+                }),
               ),
               RmRow(
                 label: tr(context, 'folder.sent'),

@@ -364,7 +364,7 @@ class _CatalogView extends StatelessWidget {
                           if (role.description.isNotEmpty) role.description,
                           for (final name in role.capabilities)
                             name == Capabilities.all
-                                ? '* · everything'
+                                ? tr(context, 'ui.everything')
                                 : switch (described[name]) {
                                     final d? when d.isNotEmpty => '$name · $d',
                                     _ => name,
@@ -405,7 +405,7 @@ enum _Lasts {
   ever('admin.permissions.untilRemoved', null),
   day('admin.bans.aDay', Duration(days: 1)),
   week('admin.bans.aWeek', Duration(days: 7)),
-  month('30 days', Duration(days: 30)),
+  month('duration.thirtyDays', Duration(days: 30)),
   date('admin.permissions.untilADate', null);
 
   const _Lasts(this.label, this.duration);
@@ -457,8 +457,9 @@ class _GrantFormState extends State<_GrantForm> {
   /// What is wrong with the form before it is sent, or null.
   String? get _problem {
     final id = _holderId;
-    if (id == null || id <= 0)
+    if (id == null || id <= 0) {
       return tr(context, 'admin.permissions.chooseTheAccountToGrantTo');
+    }
     if (_role == null) return tr(context, 'admin.permissions.chooseARole');
     final name = _scopeName.text.trim();
     if (_scope == _ScopeKind.domain &&
@@ -472,8 +473,9 @@ class _GrantFormState extends State<_GrantForm> {
         'admin.permissions.enterAMailboxAddressLikeDanaExample',
       );
     }
-    if (_lasts == _Lasts.date && _until == null)
+    if (_lasts == _Lasts.date && _until == null) {
       return tr(context, 'admin.permissions.pickTheEndDate');
+    }
     return null;
   }
 

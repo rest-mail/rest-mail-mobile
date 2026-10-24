@@ -35,20 +35,28 @@ String _modeHelp(BuildContext context, MtaStsMode mode) => switch (mode) {
 
 /// How long other servers keep a policy, in words.
 String _ageLabel(BuildContext context, int seconds) {
-  if (seconds == 0) return '0 seconds';
+  if (seconds == 0) return tr(context, 'ui.0Seconds');
   final days = seconds ~/ Duration.secondsPerDay;
-  if (days == 1 && seconds == Duration.secondsPerDay)
+  if (days == 1 && seconds == Duration.secondsPerDay) {
     return tr(context, 'admin.bans.aDay');
-  if (days == 7 && seconds == 7 * Duration.secondsPerDay)
+  }
+  if (days == 7 && seconds == 7 * Duration.secondsPerDay) {
     return tr(context, 'admin.bans.aWeek');
+  }
   if (seconds % Duration.secondsPerDay == 0) {
-    return days % 7 == 0 ? '${days ~/ 7} weeks' : '$days days';
+    return days % 7 == 0
+        ? trArgs(context, 'ui.valueWeeks', {'value': (days ~/ 7).toString()})
+        : trArgs(context, 'ui.daysDays', {'days': (days).toString()});
   }
   if (seconds % Duration.secondsPerHour == 0) {
     final hours = seconds ~/ Duration.secondsPerHour;
-    return hours == 1 ? tr(context, 'admin.mtasts.anHour') : '$hours hours';
+    return hours == 1
+        ? tr(context, 'admin.mtasts.anHour')
+        : trArgs(context, 'ui.hoursHours', {'hours': (hours).toString()});
   }
-  return '$seconds seconds';
+  return trArgs(context, 'ui.secondsSeconds', {
+    'seconds': (seconds).toString(),
+  });
 }
 
 /// A domain's MTA-STS policy (RFC 8461): whether other servers must reach
@@ -171,13 +179,14 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
       _busy = false;
       if (ok) _policy = null;
     });
-    if (ok)
+    if (ok) {
       showToast(
         context,
         trArgs(context, 'admin.mtasts.deletedThePolicyForName', {
           'name': (_name).toString(),
         }),
       );
+    }
   }
 
   @override

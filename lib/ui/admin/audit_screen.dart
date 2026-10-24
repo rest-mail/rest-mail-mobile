@@ -331,8 +331,10 @@ class _ChainResult extends StatelessWidget {
     final c = context.rm;
     final broken = check.brokenAtSeq;
     final entries = check.checked == 1
-        ? '1 entry'
-        : '${countLabel(check.checked)} entries';
+        ? tr(context, 'ui.1Entry')
+        : trArgs(context, 'ui.valueEntries', {
+            'value': (countLabel(check.checked)).toString(),
+          });
     final text = [
       if (check.ok && check.checked == 0)
         tr(context, 'admin.audit.theChainHoldsThereIsNothingIn')

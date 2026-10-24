@@ -242,7 +242,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Text(
               '${countLabel(results.items.length)}${results.hasMore ? '+' : ''} '
-              '${results.items.length == 1 ? 'result' : 'results'} · '
+              '${results.items.length == 1 ? tr(context, 'ui.result') : tr(context, 'ui.results')} · '
               '$_searchMs ms',
               style: rmText(12, color: c.ink3, weight: FontWeight.w600),
             ),

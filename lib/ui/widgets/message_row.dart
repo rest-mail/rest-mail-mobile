@@ -59,7 +59,8 @@ class MessageRow extends StatelessWidget {
         trArgs(context, 'messagerow.fromSenderLabel', {
           'senderLabel': (message.senderLabel).toString(),
         }),
-        if (showTheCount) '$count messages',
+        if (showTheCount)
+          trArgs(context, 'ui.countMessages', {'count': (count).toString()}),
         subject,
         timeLabel(message.date),
         if (message.hasAttachments) tr(context, 'messagerow.hasAttachments'),

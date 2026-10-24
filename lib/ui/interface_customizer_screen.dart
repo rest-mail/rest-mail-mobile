@@ -447,7 +447,7 @@ class _ReaderPreview extends StatelessWidget {
                     Icon(Icons.verified_rounded, size: 9, color: c.accent),
                     const SizedBox(width: 3),
                     Text(
-                      'signed',
+                      tr(context, 'ui.signed'),
                       style: rmText(
                         8,
                         color: c.accent,

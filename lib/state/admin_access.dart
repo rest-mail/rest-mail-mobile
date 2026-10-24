@@ -10,37 +10,37 @@ import 'package:restmail_api/restmail_api.dart';
 /// its 403 for what it is.
 enum AdminSection {
   queue(
-    'admin.section.queue.titleKey',
-    'admin.section.queue.subtitleKey',
+    'admin.section.queue.title',
+    'admin.section.queue.subtitle',
     read: Capability.queueRead,
     write: Capability.queueManage,
     delete: Capability.queueManage,
   ),
   domains(
     'health.domains',
-    'admin.section.domains.subtitleKey',
+    'admin.section.domains.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsDelete,
   ),
   mailboxes(
     'health.mailboxes',
-    'admin.section.mailboxes.subtitleKey',
+    'admin.section.mailboxes.subtitle',
     read: Capability.mailboxesRead,
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
   ),
   aliases(
-    'admin.section.aliases.titleKey',
-    'admin.section.aliases.subtitleKey',
+    'admin.section.aliases.title',
+    'admin.section.aliases.subtitle',
     read: Capability.mailboxesRead,
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
   ),
 
   bans(
-    'admin.section.bans.titleKey',
-    'admin.section.bans.subtitleKey',
+    'admin.section.bans.title',
+    'admin.section.bans.subtitle',
     read: Capability.bansRead,
     write: Capability.bansWrite,
     delete: Capability.bansDelete,
@@ -50,36 +50,36 @@ enum AdminSection {
   /// `users:write`, not `users:delete`, and checks each change against what
   /// the granter holds itself.
   permissions(
-    'admin.section.permissions.titleKey',
-    'admin.section.permissions.subtitleKey',
+    'admin.section.permissions.title',
+    'admin.section.permissions.subtitle',
     read: Capability.usersRead,
     write: Capability.usersWrite,
     delete: Capability.usersWrite,
   ),
 
   overview.readOnly(
-    'admin.section.overview.titleKey',
-    'admin.section.overview.subtitleKey',
+    'admin.section.overview.title',
+    'admin.section.overview.subtitle',
     // GET /admin/stats needs domains:read.
     read: Capability.domainsRead,
   ),
   deliveryLog.readOnly(
-    'admin.section.deliveryLog.titleKey',
-    'admin.section.deliveryLog.subtitleKey',
+    'admin.section.deliveryLog.title',
+    'admin.section.deliveryLog.subtitle',
     read: Capability.messagesRead,
     group: AdminGroup.logs,
   ),
 
   /// What went through, from the audit log, so under `audit:read` too.
   activity.readOnly(
-    'admin.section.activity.titleKey',
-    'admin.section.activity.subtitleKey',
+    'admin.section.activity.title',
+    'admin.section.activity.subtitle',
     read: Capability.auditRead,
     group: AdminGroup.logs,
   ),
   trace.readOnly(
-    'admin.section.trace.titleKey',
-    'admin.section.trace.subtitleKey',
+    'admin.section.trace.title',
+    'admin.section.trace.subtitle',
     read: Capability.observabilityRead,
     group: AdminGroup.logs,
   ),
@@ -87,34 +87,34 @@ enum AdminSection {
   /// The log is the pipelines', under `pipelines:read`; its analytics are
   /// observability, as message traces are.
   pipelineLog.readOnly(
-    'admin.section.pipelineLog.titleKey',
-    'admin.section.pipelineLog.subtitleKey',
+    'admin.section.pipelineLog.title',
+    'admin.section.pipelineLog.subtitle',
     read: Capability.pipelinesRead,
     group: AdminGroup.logs,
   ),
   pipelineAnalytics.readOnly(
-    'admin.section.pipelineAnalytics.titleKey',
-    'admin.section.pipelineAnalytics.subtitleKey',
+    'admin.section.pipelineAnalytics.title',
+    'admin.section.pipelineAnalytics.subtitle',
     read: Capability.observabilityRead,
     group: AdminGroup.logs,
   ),
   tlsReports.readOnly(
-    'admin.section.tlsReports.titleKey',
-    'admin.section.tlsReports.subtitleKey',
+    'admin.section.tlsReports.title',
+    'admin.section.tlsReports.subtitle',
     read: Capability.domainsRead,
     group: AdminGroup.logs,
   ),
   audit.readOnly(
-    'admin.section.audit.titleKey',
-    'admin.section.audit.subtitleKey',
+    'admin.section.audit.title',
+    'admin.section.audit.subtitle',
     read: Capability.auditRead,
     group: AdminGroup.logs,
   ),
 
   /// The server removes a key with `domains:write`, not `domains:delete`.
   dkim(
-    'admin.section.dkim.titleKey',
-    'admin.section.dkim.subtitleKey',
+    'admin.section.dkim.title',
+    'admin.section.dkim.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
@@ -123,24 +123,24 @@ enum AdminSection {
 
   /// As with DKIM keys, a certificate goes with `domains:write`.
   certificates(
-    'admin.section.certificates.titleKey',
-    'admin.section.certificates.subtitleKey',
+    'admin.section.certificates.title',
+    'admin.section.certificates.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.setup,
   ),
   pipelines(
-    'admin.section.pipelines.titleKey',
-    'admin.section.pipelines.subtitleKey',
+    'admin.section.pipelines.title',
+    'admin.section.pipelines.subtitle',
     read: Capability.pipelinesRead,
     write: Capability.pipelinesWrite,
     delete: Capability.pipelinesDelete,
     group: AdminGroup.setup,
   ),
   customFilters(
-    'admin.section.customFilters.titleKey',
-    'admin.section.customFilters.subtitleKey',
+    'admin.section.customFilters.title',
+    'admin.section.customFilters.subtitle',
     read: Capability.pipelinesRead,
     write: Capability.pipelinesWrite,
     delete: Capability.pipelinesDelete,
@@ -152,30 +152,30 @@ enum AdminSection {
   /// and removes a sender or a policy with `domains:write`, not
   /// `domains:delete`.
   domainDkim(
-    'admin.section.domainDkim.titleKey',
-    'admin.section.domainDkim.subtitleKey',
+    'admin.section.domainDkim.title',
+    'admin.section.domainDkim.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   dnsCheck.readOnly(
-    'admin.section.dnsCheck.titleKey',
-    'admin.section.dnsCheck.subtitleKey',
+    'admin.section.dnsCheck.title',
+    'admin.section.dnsCheck.subtitle',
     read: Capability.domainsRead,
     group: AdminGroup.domain,
   ),
   senderLists(
-    'admin.section.senderLists.titleKey',
-    'admin.section.senderLists.subtitleKey',
+    'admin.section.senderLists.title',
+    'admin.section.senderLists.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   mtaSts(
-    'admin.section.mtaSts.titleKey',
-    'admin.section.mtaSts.subtitleKey',
+    'admin.section.mtaSts.title',
+    'admin.section.mtaSts.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
@@ -183,7 +183,7 @@ enum AdminSection {
   ),
   relay(
     'admin.relay.outgoingMail',
-    'Sent straight to other servers, or through a relay',
+    'admin.section.relay.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
@@ -191,7 +191,7 @@ enum AdminSection {
   ),
   suppressions(
     'admin.suppressions.suppressedRecipients',
-    'Addresses no longer sent to, after mail to them bounced',
+    'admin.section.suppressions.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,

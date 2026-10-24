@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
-import 'package:restmail/ui/admin/admin_widgets.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -953,11 +952,12 @@ void main() {
         await tap(tester, 'Certificates');
         await tap(tester, FakeAccounts.host);
         expect(find.text('Try again'), findsOneWidget);
-        if (status == 403)
+        if (status == 403) {
           expect(
             find.text("You don't have permission for this"),
             findsOneWidget,
           );
+        }
         expect((state.current! as RestAccount).client.tokens, isNotNull);
         transport.failureStatus = null;
         await tap(tester, 'Try again');
@@ -1625,11 +1625,12 @@ void main() {
         expect(transport.detailRequests, 1);
         expect(find.text(delete), findsNothing);
         expect(find.text('Try again'), findsOneWidget);
-        if (status == 403)
+        if (status == 403) {
           expect(
             find.text("You don't have permission for this"),
             findsOneWidget,
           );
+        }
         expect((state.current! as RestAccount).client.tokens, isNotNull);
         transport.failureStatus = null;
         await tap(tester, 'Try again');

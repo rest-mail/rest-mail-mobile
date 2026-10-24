@@ -21,8 +21,12 @@ String _protocolLabel(BuildContext context, String protocol) =>
 String _until(BuildContext context, Ban ban) => switch (ban.expiresAt) {
   final expires? =>
     expires.isAfter(DateTime.now())
-        ? 'until ${longDate(expires)}'
-        : 'expired ${longDate(expires)}',
+        ? trArgs(context, 'ui.untilValue', {
+            'value': (longDate(expires)).toString(),
+          })
+        : trArgs(context, 'ui.expiredValue', {
+            'value': (longDate(expires)).toString(),
+          }),
   null => tr(context, 'admin.bans.forGood'),
 };
 

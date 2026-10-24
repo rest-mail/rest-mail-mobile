@@ -13,8 +13,11 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _storage(AdminMailbox box) => box.quotaBytes > 0
-    ? '${sizeLabel(box.quotaUsedBytes)} of ${sizeLabel(box.quotaBytes)}'
+String _storage(BuildContext context, AdminMailbox box) => box.quotaBytes > 0
+    ? trArgs(context, 'ui.valueOfValue2', {
+        'value': (sizeLabel(box.quotaUsedBytes)).toString(),
+        'value2': (sizeLabel(box.quotaBytes)).toString(),
+      })
     : sizeLabel(box.quotaUsedBytes);
 
 /// The mailboxes on the server, or on one [domain].
@@ -146,7 +149,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
           subtitle: [
             if (box.displayName.isNotEmpty) box.displayName,
             if (!box.active) tr(context, 'twoFactor.off'),
-            _storage(box),
+            _storage(context, box),
           ].join(' · '),
           onTap: () => unawaited(_open(box)),
         ),
@@ -260,8 +263,9 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
         ),
       ),
     );
-    if (changed && mounted)
+    if (changed && mounted) {
       showToast(context, tr(context, 'admin.mailboxes.passwordChanged'));
+    }
   }
 
   Future<void> _editQuota() async {
@@ -304,8 +308,9 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
     );
     if (!mounted) return;
     setState(() => _busy = false);
-    if (ok)
+    if (ok) {
       showToast(context, tr(context, 'admin.mailboxes.signedOutEverywhere'));
+    }
   }
 
   Future<void> _delete() async {
@@ -381,7 +386,7 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                   ),
                   RmRow(
                     label: tr(context, 'mailboxes.storage'),
-                    value: _storage(box),
+                    value: _storage(context, box),
                   ),
                   if (box.domain case final domain?)
                     RmRow(

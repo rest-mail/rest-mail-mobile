@@ -631,8 +631,9 @@ class AppState extends ChangeNotifier {
       await store.write(_accountKey(saved.key), saved.encode());
       notifyListeners();
     }
-    if (accounts.isNotEmpty)
+    if (accounts.isNotEmpty) {
       _notices.add(UiText('account.signedOutOf', {'address': account.address}));
+    }
   }
 
   Future<void> updateSettings(AppSettings next) async {

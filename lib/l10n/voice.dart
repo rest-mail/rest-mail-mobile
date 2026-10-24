@@ -33,7 +33,7 @@ const supportedLocales = <Locale>[
 /// The languages the app offers, and what each calls itself. `system` means
 /// the phone's choice.
 const languageNames = <String, String>{
-  'system': 'System',
+  'system': 'settings.system',
   'en': 'English',
   'de': 'Deutsch',
   'es': 'Español',
@@ -43,7 +43,12 @@ const languageNames = <String, String>{
   'fa': 'فارسی',
 };
 
-String languageLabel(String code) => languageNames[code] ?? 'System';
+String languageLabel(String code, {BuildContext? context}) =>
+    code == 'system' || !languageNames.containsKey(code)
+    ? (context == null
+          ? languageLine('en', 'settings.system')
+          : tr(context, 'settings.system'))
+    : languageNames[code]!;
 
 /// The UI string [key] in the language the app is set to and the current
 /// theme's voice.
@@ -74,6 +79,9 @@ const _folderKeys = <String, String>{
   StandardFolder.archive: 'folder.archive',
   StandardFolder.spam: 'folder.spam',
   StandardFolder.trash: 'folder.trash',
+  'All Mail': 'folder.allMail',
+  'Important': 'folder.important',
+  'Starred': 'folder.starred',
 };
 
 String folderLabelOf(BuildContext context, String name) {

@@ -1,3 +1,5 @@
+import '../l10n/catalog.dart';
+
 import 'package:restmail_api/restmail_api.dart';
 
 import 'format.dart';
@@ -58,6 +60,7 @@ ComposeSeed replySeed(
   Message original, {
   required Set<String> ownAddresses,
   bool all = false,
+  String languageCode = 'en',
 }) {
   final fromMe = ownAddresses.contains(original.sender.toLowerCase());
   final to = fromMe
@@ -80,28 +83,46 @@ ComposeSeed replySeed(
     to: to,
     cc: cc,
     subject: withPrefix('Re:', original.subject),
-    body: '\n\n${attribution(original)}\n${quote(plainBodyOf(original))}',
+    body:
+        '\n\n${attribution(original, languageCode: languageCode)}\n${quote(plainBodyOf(original))}',
     inReplyTo: original.messageId,
     references: _references(original),
   );
 }
 
-ComposeSeed forwardSeed(Message original) => ComposeSeed(
-  kind: ComposeKind.forward,
-  subject: withPrefix('Fwd:', original.subject),
-  body: [
-    '',
-    '',
-    '---------- Forwarded message ----------',
-    'From: ${senderLine(original)}',
-    'Date: ${longDate(original.date)}',
-    'Subject: ${original.subject}',
-    if (original.to.isNotEmpty)
-      'To: ${original.to.map((r) => r.address).join(', ')}',
-    '',
-    plainBodyOf(original),
-  ].join('\n'),
-);
+ComposeSeed forwardSeed(Message original, {String languageCode = 'en'}) =>
+    ComposeSeed(
+      kind: ComposeKind.forward,
+      subject: withPrefix('Fwd:', original.subject),
+      body: [
+        '',
+        '',
+        languageLine(languageCode, 'compose.forwardedHeading'),
+        languageLine(
+          languageCode,
+          'compose.quoteFrom',
+          args: {'sender': senderLine(original)},
+        ),
+        languageLine(
+          languageCode,
+          'compose.quoteDate',
+          args: {'date': longDate(original.date)},
+        ),
+        languageLine(
+          languageCode,
+          'compose.quoteSubject',
+          args: {'subject': original.subject},
+        ),
+        if (original.to.isNotEmpty)
+          languageLine(
+            languageCode,
+            'compose.quoteTo',
+            args: {'recipients': original.to.map((r) => r.address).join(', ')},
+          ),
+        '',
+        plainBodyOf(original),
+      ].join('\n'),
+    );
 
 ComposeSeed draftSeed(Message draft) => ComposeSeed(
   kind: ComposeKind.draft,
@@ -129,8 +150,12 @@ String senderLine(Message message) => message.senderName == null
     ? message.sender
     : '${message.senderName} <${message.sender}>';
 
-String attribution(Message message) =>
-    'On ${longDate(message.date)}, ${senderLine(message)} wrote:';
+String attribution(Message message, {String languageCode = 'en'}) =>
+    languageLine(
+      languageCode,
+      'compose.attribution',
+      args: {'date': longDate(message.date), 'sender': senderLine(message)},
+    );
 
 String quote(String text) =>
     text.split('\n').map((line) => line.isEmpty ? '>' : '> $line').join('\n');

@@ -32,9 +32,14 @@ void _push(BuildContext context, Widget screen) => unawaited(
   Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen)),
 );
 
-String _storage(QuotaInfo quota) => quota.quotaBytes > 0
-    ? '${sizeLabel(quota.usedBytes)} of ${sizeLabel(quota.quotaBytes)} used'
-    : '${sizeLabel(quota.usedBytes)} used';
+String _storage(BuildContext context, QuotaInfo quota) => quota.quotaBytes > 0
+    ? trArgs(context, 'ui.valueOfValue2Used', {
+        'value': (sizeLabel(quota.usedBytes)).toString(),
+        'value2': (sizeLabel(quota.quotaBytes)).toString(),
+      })
+    : trArgs(context, 'ui.valueUsed', {
+        'value': (sizeLabel(quota.usedBytes)).toString(),
+      });
 
 class MailboxSettingsScreen extends StatefulWidget {
   const MailboxSettingsScreen({super.key, required this.mailbox});
@@ -259,7 +264,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           if (quota != null)
                             RmRow(
                               label: tr(context, 'mailboxes.storage'),
-                              value: _storage(quota),
+                              value: _storage(context, quota),
                             ),
                           RmRow(
                             label: tr(context, 'settings.updates'),
@@ -449,7 +454,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           null => host,
                         },
                         if (quota != null)
-                          '${countLabel(quota.messageCount)} messages · ${_storage(quota)}',
+                          trArgs(context, 'ui.valueMessagesValue2', {
+                            'value': (countLabel(quota.messageCount))
+                                .toString(),
+                            'value2': (_storage(context, quota)).toString(),
+                          }),
                       ].join('\n'),
                       textAlign: TextAlign.center,
                       style: rmText(11.5, color: c.ink3, height: 1.5),
@@ -500,7 +509,10 @@ class AppSettingsScreen extends StatelessWidget {
                     children: [
                       RmRow(
                         label: tr(context, 'settings.language'),
-                        value: languageLabel(settings.languageCode),
+                        value: languageLabel(
+                          settings.languageCode,
+                          context: context,
+                        ),
                         onTap: () => _push(context, const LanguageScreen()),
                       ),
                       RmRow(
@@ -649,7 +661,9 @@ class LanguageScreen extends StatelessWidget {
                     children: [
                       for (final entry in languageNames.entries)
                         RmRow(
-                          label: entry.value,
+                          label: entry.key == 'system'
+                              ? tr(context, 'settings.system')
+                              : entry.value,
                           trailing: entry.key == selected
                               ? Icon(
                                   Icons.check_rounded,
@@ -1126,7 +1140,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: tr(context, 'settings.linkMailbox'),
+                    label: tr(context, 'settings.linkMailboxAction'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_link()) : null,
                   ),
@@ -1378,7 +1392,7 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: tr(context, 'settings.createMailbox'),
+                    label: tr(context, 'settings.createMailboxAction'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_create()) : null,
                   ),

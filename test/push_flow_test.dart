@@ -7,7 +7,6 @@ import 'package:restmail/app.dart';
 import 'package:restmail/imap/mail_settings.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
-import 'package:restmail/ui/push_offer.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 

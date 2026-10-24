@@ -79,7 +79,9 @@ class _EditorFrame extends StatelessWidget {
                 FilledButton(
                   onPressed: busy ? null : save,
                   child: Text(
-                    busy ? tr(context, 'admin.filtereditors.working') : action,
+                    busy
+                        ? tr(context, 'admin.filtereditors.working')
+                        : tr(context, action),
                   ),
                 ),
               ],
@@ -344,7 +346,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
               ListTile(
                 title: Text(_filters[i].name),
                 subtitle: Text(
-                  '${_filters[i].type} · ${_filters[i].enabled ? 'On' : 'Off'}',
+                  '${_filters[i].type} · ${_filters[i].enabled ? tr(context, 'ui.on') : tr(context, 'ui.off')}',
                 ),
                 onTap: _busy ? null : () => unawaited(_edit(i)),
               ),
@@ -638,7 +640,7 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
   );
 }
 
-const _sampleEmail = <String, dynamic>{
+Map<String, dynamic> _sampleEmail(BuildContext context) => {
   'envelope': {
     'mail_from': 'sender@example.com',
     'rcpt_to': ['recipient@example.com'],
@@ -652,11 +654,14 @@ const _sampleEmail = <String, dynamic>{
     'to': [
       {'address': 'recipient@example.com'},
     ],
-    'subject': 'Preview',
+    'subject': tr(context, 'ui.preview'),
     'date': '',
     'message-id': '<preview@example.com>',
   },
-  'body': {'content_type': 'text/plain', 'content': 'A sample message.'},
+  'body': {
+    'content_type': 'text/plain',
+    'content': tr(context, 'ui.aSampleMessage'),
+  },
 };
 
 /// JSON email input keeps every server-supported envelope/MIME field usable.
@@ -679,7 +684,9 @@ class FilterPreviewScreen extends StatefulWidget {
 }
 
 class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
-  late final _email = TextEditingController(text: prettyJson(_sampleEmail));
+  late final _email = TextEditingController(
+    text: prettyJson(_sampleEmail(context)),
+  );
   late final _script = TextEditingController(text: widget.script ?? '');
   var _busy = false;
   String? _error;
@@ -715,10 +722,12 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
           _script.text,
           email: email,
         );
+        if (!mounted) return;
         result = validation.json;
         summary = !validation.valid
             ? trArgs(context, 'admin.filtereditors.syntaxFailedValue', {
-                'value': (validation.error ?? 'Invalid script').toString(),
+                'value': (validation.error ?? tr(context, 'ui.invalidScript'))
+                    .toString(),
               })
             : validation.dryRun?.error != null
             ? trArgs(
@@ -731,6 +740,7 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
             : tr(context, 'admin.filtereditors.syntaxValidDryRunCompleted');
       } else if (widget.filter case final filter?) {
         final preview = await client.testCustomFilter(filter.id, email: email);
+        if (!mounted) return;
         result = preview.json;
         summary = tr(context, 'admin.filtereditors.scriptCompleted');
       } else if (widget.pipeline case final pipeline?) {
@@ -740,6 +750,7 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
           );
         }
         final preview = await client.testPipeline(pipeline.id, email: email);
+        if (!mounted) return;
         result = preview.json;
         summary = trArgs(context, 'admin.filtereditors.decisionFinalAction', {
           'finalAction': (preview.finalAction).toString(),
@@ -755,6 +766,7 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
           config: step.config ?? {},
           email: email,
         );
+        if (!mounted) return;
         result = preview.json;
         summary = trArgs(context, 'admin.filtereditors.decisionAction', {
           'action': (preview.action).toString(),

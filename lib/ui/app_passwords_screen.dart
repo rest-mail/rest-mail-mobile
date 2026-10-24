@@ -404,7 +404,11 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
             'apppasswords.tooManyAttemptsTryAgainValue',
             {
               'value':
-                  (retryAfter == null ? 'shortly' : 'in ${_wait(retryAfter)}')
+                  (retryAfter == null
+                          ? tr(context, 'ui.shortly')
+                          : trArgs(context, 'ui.inValue', {
+                              'value': (_wait(retryAfter)).toString(),
+                            }))
                       .toString(),
             },
           ),
@@ -417,10 +421,14 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
     }
   }
 
-  static String _wait(Duration wait) => switch (wait.inSeconds) {
+  String _wait(Duration wait) => switch (wait.inSeconds) {
     <= 1 => tr(context, 'apppasswords.aSecond'),
-    <= 90 => '${wait.inSeconds} seconds',
-    _ => '${(wait.inSeconds / 60).ceil()} minutes',
+    <= 90 => trArgs(context, 'ui.insecondsSeconds', {
+      'inSeconds': (wait.inSeconds).toString(),
+    }),
+    _ => trArgs(context, 'ui.valueMinutes', {
+      'value': ((wait.inSeconds / 60).ceil()).toString(),
+    }),
   };
 
   void _signInAgain() => unawaited(

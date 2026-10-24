@@ -76,6 +76,7 @@ jobs:
           python3 -m unittest discover -s tool/ci -p 'test_build_whats_new.py'
           dart tool/ci/check_whats_new.dart
       - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: dart tool/ci/generate_ios_localizations.dart --check
       - run: flutter analyze
       - run: flutter test
       # The screen tour against the fake. It passes or fails only on whether

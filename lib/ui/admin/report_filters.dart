@@ -114,8 +114,11 @@ class ReportFiltersBar extends StatelessWidget {
                         context,
                         'admin.reportfilters.mustBeAValueWholeNumber',
                         {
-                          'value': (f.positive ? 'positive' : 'non-negative')
-                              .toString(),
+                          'value':
+                              (f.positive
+                                      ? tr(context, 'ui.positive')
+                                      : tr(context, 'ui.nonNegative'))
+                                  .toString(),
                         },
                       )
                     : trArgs(
@@ -170,7 +173,9 @@ class ReportFiltersBar extends StatelessWidget {
         runSpacing: 8,
         children: [
           RmOutlineButton(
-            label: values.isEmpty ? title : '$title (${values.length})',
+            label: values.isEmpty
+                ? tr(context, title)
+                : '${tr(context, title)} (${values.length})',
             onPressed: () => unawaited(_open(context)),
           ),
           if (values.isNotEmpty)

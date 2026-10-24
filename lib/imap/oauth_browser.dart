@@ -3,7 +3,6 @@ import '../l10n/localized_error.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
-import 'package:restmail_api/restmail_api.dart';
 
 /// Shows a sign-in page in the system browser: ASWebAuthenticationSession on
 /// iOS, a Custom Tab (an Auth Tab where Chrome has them) on Android. Not a

@@ -141,7 +141,7 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         builder: (_) => _StepForm(account: widget.account, grant: grant),
       ),
     );
-    if (step == null) return;
+    if (step == null || !mounted) return;
     final until = step.grant.activation?.expiresAt;
     _stepped(
       step,
@@ -167,13 +167,14 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         ),
       ),
     );
-    if (step != null)
+    if (step != null && mounted) {
       _stepped(
         step,
         trArgs(context, 'mypermissions.roleIsEligibleNow', {
           'role': (grant.role).toString(),
         }),
       );
+    }
   }
 
   Future<void> _deactivate(Grant grant) async {
@@ -188,6 +189,7 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
     if (!sure || !mounted) return;
     try {
       final step = await widget.account.client.deactivateGrant(grant.id);
+      if (!mounted) return;
       _stepped(
         step,
         trArgs(context, 'mypermissions.switchedOffRole', {
@@ -433,10 +435,12 @@ class _StepFormState extends State<_StepForm> {
   String? get _problem {
     if (!widget.makeEligible) {
       final reason = _reason.text.trim();
-      if (reason.isEmpty)
+      if (reason.isEmpty) {
         return tr(context, 'mypermissions.sayWhyYouAreSwitchingItOn');
-      if (reason.runes.length > 500)
+      }
+      if (reason.runes.length > 500) {
         return tr(context, 'mypermissions.keepTheReasonTo500Letters');
+      }
     }
     final code = _code.text.trim();
     if (code.isEmpty) {
@@ -571,7 +575,15 @@ class _StepFormState extends State<_StepForm> {
                       children: [
                         for (final m in _lengths)
                           ChoiceChip(
-                            label: Text(m < 60 ? '$m min' : '${m ~/ 60} h'),
+                            label: Text(
+                              m < 60
+                                  ? trArgs(context, 'ui.mMin', {
+                                      'm': (m).toString(),
+                                    })
+                                  : trArgs(context, 'ui.valueH', {
+                                      'value': (m ~/ 60).toString(),
+                                    }),
+                            ),
                             selected: _minutes == m,
                             onSelected: (_) => setState(() => _minutes = m),
                           ),

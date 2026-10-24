@@ -258,7 +258,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                             'password': (FakeAccounts.password).toString(),
                             'value':
                                 (sampleScenario == 'twoFactor'
-                                        ? ', code ${FakeAccounts.totpCode}'
+                                        ? trArgs(context, 'ui.codeTotpCode', {
+                                            'totpCode': (FakeAccounts.totpCode)
+                                                .toString(),
+                                          })
                                         : '')
                                     .toString(),
                           },

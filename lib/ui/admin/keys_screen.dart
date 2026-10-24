@@ -288,7 +288,9 @@ class _DkimScreenState extends State<DkimScreen> {
         fields: [
           AdminField(
             tr(context, 'admin.keys.daysBetweenRotations'),
-            hint: '0 to ${DkimRotation.maxIntervalDays}',
+            hint: trArgs(context, 'ui.0ToMaxIntervalDays', {
+              'maxIntervalDays': (DkimRotation.maxIntervalDays).toString(),
+            }),
             initial: '${current.intervalDays}',
           ),
         ],
@@ -419,7 +421,16 @@ class _DkimScreenState extends State<DkimScreen> {
   String _age(DkimKey key) {
     final created = key.createdAt;
     if (created == null) return '';
-    return ' · set ${DateFormat.yMMMd().format(created)}${key.ageSeconds == null ? '' : ' · ${key.ageSeconds} seconds old'}';
+    return trArgs(context, 'ui.setValueValue2', {
+      'value': (DateFormat.yMMMd().format(created)).toString(),
+      'value2':
+          (key.ageSeconds == null
+                  ? ''
+                  : trArgs(context, 'ui.agesecondsSecondsOld', {
+                      'ageSeconds': (key.ageSeconds).toString(),
+                    }))
+              .toString(),
+    });
   }
 
   @override
@@ -559,6 +570,11 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
           ),
         ],
         submit: (values) async {
+          final invalidRenewal = tr(
+            context,
+            'admin.keys.renewsByItselfIsYesOrNo',
+          );
+          final invalidRenewalField = tr(context, 'admin.keys.isYesOrNo');
           final cert = await client.uploadCertificate(
             domainId: await _domainId(values[0]),
             certPem: values[1],
@@ -570,10 +586,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               _ => throw ApiException(
                 400,
                 'bad_request',
-                tr(context, 'admin.keys.renewsByItselfIsYesOrNo'),
-                fields: {
-                  'renews_by_itself': tr(context, 'admin.keys.isYesOrNo'),
-                },
+                invalidRenewal,
+                fields: {'renews_by_itself': invalidRenewalField},
               ),
             },
           );
@@ -613,6 +627,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
         },
       );
     }
+    final missingDomain = tr(context, 'admin.keys.domainNotFound');
+    final missingDomainField = tr(context, 'admin.keys.isnTOneThisServerHolds');
     final names = await domainNames(widget.account);
     for (final MapEntry(:key, value: name) in names.entries) {
       if (name.toLowerCase() == value.toLowerCase()) return key;
@@ -620,8 +636,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     throw ApiException(
       404,
       'not_found',
-      tr(context, 'admin.keys.domainNotFound'),
-      fields: {'domain': tr(context, 'admin.keys.isnTOneThisServerHolds')},
+      missingDomain,
+      fields: {'domain': missingDomainField},
     );
   }
 
@@ -703,17 +719,26 @@ String _name(BuildContext context, TlsCertificate cert) =>
         'domainId': (cert.domainId).toString(),
       });
 
-String _expiry(BuildContext context, TlsCertificate cert) {
+String _expiry(
+  BuildContext context,
+  BuildContext context,
+  TlsCertificate cert,
+) {
   final date = DateFormat.yMMMd().format(cert.notAfter);
   final days = cert.notAfter.difference(DateTime.now()).inDays;
-  if (days < 0)
+  if (days < 0) {
     return trArgs(context, 'admin.keys.ranOutDate', {
       'date': (date).toString(),
     });
+  }
   if (days == 0) return tr(context, 'admin.keys.runsOutToday');
   return trArgs(context, 'admin.keys.runsOutDateInValue', {
     'date': (date).toString(),
-    'value': (days == 1 ? 'a day' : '$days days').toString(),
+    'value':
+        (days == 1
+                ? tr(context, 'ui.aDay')
+                : trArgs(context, 'ui.daysDays', {'days': (days).toString()}))
+            .toString(),
   });
 }
 

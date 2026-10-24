@@ -203,14 +203,16 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
       at.day,
     ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
     final clock = DateFormat.Hm().format(at);
-    if (days == 0)
+    if (days == 0) {
       return trArgs(context, 'scheduled.todayClock', {
         'clock': (clock).toString(),
       });
-    if (days == 1)
+    }
+    if (days == 1) {
       return trArgs(context, 'scheduled.tomorrowClock', {
         'clock': (clock).toString(),
       });
+    }
     if (days > 1 && days < 7) return '${DateFormat.E().format(at)} $clock';
     return DateFormat('d MMM, HH:mm').format(at);
   }

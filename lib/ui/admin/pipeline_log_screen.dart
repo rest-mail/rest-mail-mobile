@@ -415,7 +415,15 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
                         context,
                         'admin.pipelinelog.cumulativeSinceThisServerProcessStarted',
                       )
-                    : '${longDate(analytics.since)} to ${longDate(analytics.until)}${analytics.windowLabel.isEmpty ? '' : ' · ${analytics.windowLabel}'}',
+                    : trArgs(context, 'ui.valueToValue2Value3', {
+                        'value': (longDate(analytics.since)).toString(),
+                        'value2': (longDate(analytics.until)).toString(),
+                        'value3':
+                            (analytics.windowLabel.isEmpty
+                                    ? ''
+                                    : ' · ${analytics.windowLabel}')
+                                .toString(),
+                      }),
                 style: rmText(13, color: c.ink3),
               ),
               if (funnel == null || funnel.isEmpty)
