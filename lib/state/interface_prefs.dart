@@ -176,6 +176,15 @@ const composerUnsubscribePanel = PanelSpec(
       'newsletters or lists. It opens by itself when the domain needs one.',
 );
 
+const composerRequireTlsPanel = PanelSpec(
+  id: 'composer_require_tls',
+  area: PanelArea.composer,
+  name: 'Require TLS',
+  description:
+      'A switch that sends the message only over verified TLS on every hop, '
+      'or bounces it rather than let it travel in the clear.',
+);
+
 /// Everything the user can add to or remove from their client.
 const panelRegistry = <PanelSpec>[
   dateSeparatorsPanel,
@@ -188,6 +197,7 @@ const panelRegistry = <PanelSpec>[
   composerFromPanel,
   composerLaterPanel,
   composerUnsubscribePanel,
+  composerRequireTlsPanel,
 ];
 
 /// The layout choices, kept on the device with the rest of the settings.

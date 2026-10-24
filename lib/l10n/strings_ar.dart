@@ -441,6 +441,8 @@ const Map<String, Map<String, String>> stringsAr = {
     'compose.bcc': 'نسخة مخفية',
     'compose.recipient': 'المستلم',
     'compose.subject': 'الموضوع',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'اشتراط TLS في كل مرحلة',
     'compose.unsubscribe': 'إلغاء الاشتراك',
     'compose.unsubscribeAddress': 'عنوان إلغاء الاشتراك',
     'compose.unsubscribeLink': 'رابط إلغاء الاشتراك بنقرة واحدة (https://)',

@@ -451,6 +451,8 @@ const Map<String, Map<String, String>> stringsEn = {
     'compose.bcc': 'Bcc',
     'compose.recipient': 'Recipient',
     'compose.subject': 'Subject',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'Require TLS on every hop',
     'compose.unsubscribe': 'Opt-out',
     'compose.unsubscribeAddress': 'Unsubscribe address',
     'compose.unsubscribeLink': 'One-click unsubscribe link (https://)',
