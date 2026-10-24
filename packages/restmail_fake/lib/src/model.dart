@@ -282,6 +282,11 @@ class FakeMessage {
   String? inReplyTo;
   final List<FakeAttachment> attachments;
 
+  /// The calendar events its iCalendar parts carry, in the shape the server
+  /// keeps them: method, uid, summary, dtstart, dtend, organizer, … (see
+  /// [FakeRestmail.invite]).
+  List<Map<String, Object?>> calendarEvents = [];
+
   String get messageId => '<$id@fake.restmail.test>';
 
   int get sizeBytes =>
@@ -320,6 +325,7 @@ class FakeMessage {
       'date_header': null,
       'created_at': stamp,
       'updated_at': stamp,
+      if (calendarEvents.isNotEmpty) 'calendar_events': calendarEvents,
     };
   }
 }
