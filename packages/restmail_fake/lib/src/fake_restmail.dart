@@ -2380,8 +2380,6 @@ class FakeRestmail {
     'filename': a.filename,
     'content_type': a.contentType,
     'size_bytes': a.bytes.length,
-    'storage_type': 'filesystem',
-    'storage_ref': '',
     'checksum': '',
     'created_at': _clock().toUtc().toIso8601String(),
   };
