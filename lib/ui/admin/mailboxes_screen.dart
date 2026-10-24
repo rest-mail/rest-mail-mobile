@@ -65,8 +65,9 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
         intro:
             'On a domain this server hosts. Accounts are made in one place, '
             'so this account becomes its owner, and it shows among your '
-            'mailboxes. Without a password, only its owners reach it; with '
-            'one (12 characters or more), it can sign in too.',
+            'mailboxes. Leave the credential blank for owner-only access. '
+            'Choose a password (12 characters or more), or import an existing '
+            'bcrypt, SHA256-CRYPT or SHA512-CRYPT hash to keep its password.',
         fields: [
           AdminField(
             'Address',
@@ -74,14 +75,32 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             email: true,
           ),
           const AdminField('Name', optional: true),
-          const AdminField('Password', obscure: true, optional: true),
+          const AdminField(
+            'Credential type',
+            initial: 'password',
+            choices: [
+              ('password', 'Password'),
+              ('hash', 'Imported password hash'),
+            ],
+            clearFieldsOnChange: [3],
+          ),
+          const AdminField(
+            'Password or imported hash',
+            obscure: true,
+            optional: true,
+          ),
         ],
         action: 'Add mailbox',
         host: _host,
         submit: (values) => widget.account.client.createAccount(
           address: values[0].toLowerCase(),
           displayName: values[1].isEmpty ? null : values[1],
-          password: values[2].isEmpty ? null : values[2],
+          password: values[2] == 'password' && values[3].isNotEmpty
+              ? values[3]
+              : null,
+          passwordHash: values[2] == 'hash' && values[3].isNotEmpty
+              ? values[3]
+              : null,
         ),
       ),
     );

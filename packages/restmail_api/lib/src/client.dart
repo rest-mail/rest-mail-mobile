@@ -1504,17 +1504,19 @@ class RestmailClient {
 
   /// Creates an account on a domain this server hosts, owned by this one:
   /// the session gets the owner grant on it, so it is listed in [accounts]
-  /// at once, readable and sendable. Without [password] the new account has
-  /// no credentials, and is reached only through its owners.
+  /// at once, readable and sendable. Supply [passwordHash] to preserve an
+  /// existing bcrypt, SHA256-CRYPT or SHA512-CRYPT password instead of choosing
+  /// [password]. Without either, only its owners reach the new account.
   ///
   /// Needs `mailboxes:write` covering the address's domain; without it the
   /// server answers 403. It answers 409 when the address is taken, and 422
-  /// for a bad address, a domain it doesn't host, or a password under 12
-  /// characters.
+  /// for a bad address, a domain it doesn't host, a password under 12
+  /// characters, an invalid hash, or both credential fields together.
   Future<Account> createAccount({
     required String address,
     String? displayName,
     String? password,
+    String? passwordHash,
   }) async => Account.fromJson(
     _data(
       await _authed(
@@ -1524,6 +1526,7 @@ class RestmailClient {
           'address': address,
           'display_name': ?displayName,
           'password': ?password,
+          'password_hash': ?passwordHash,
         },
       ),
     ),
