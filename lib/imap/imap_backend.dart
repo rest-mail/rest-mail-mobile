@@ -988,6 +988,26 @@ class ImapBackend implements MailBackend {
   Future<void> deleteQuarantined(int accountId, int id) =>
       throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
 
+  // Not yet over IMAP: its CREATE, RENAME and DELETE (rest-mail-mobile#148).
+  @override
+  bool get canManageFolders => false;
+
+  @override
+  Future<String> createFolder(int accountId, String name) => throw _noFolders;
+
+  @override
+  Future<String> renameFolder(int accountId, String folder, String name) =>
+      throw _noFolders;
+
+  @override
+  Future<void> deleteFolder(int accountId, String folder) => throw _noFolders;
+
+  static const _noFolders = ApiException(
+    400,
+    'not_supported',
+    'Folders cannot be changed on this account yet.',
+  );
+
   // IMAP keeps no contacts: an address book is the provider's own service.
   @override
   bool get hasContacts => false;
