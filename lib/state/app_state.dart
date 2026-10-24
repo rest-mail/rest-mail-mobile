@@ -298,15 +298,41 @@ class AppState extends ChangeNotifier {
     required String password,
     String? totpCode,
     String? recoveryCode,
-  }) async {
+  }) => _signInWith(
+    server,
+    (candidate) => candidate.login(
+      email: email,
+      password: password,
+      totpCode: totpCode,
+      recoveryCode: recoveryCode,
+    ),
+  );
+
+  /// Resets a forgotten password on [server] with the account's
+  /// authenticator code and a recovery code, then signs in as [signIn] does.
+  Future<void> recoverAccount({
+    required Uri server,
+    required String email,
+    required String totpCode,
+    required String recoveryCode,
+    required String newPassword,
+  }) => _signInWith(
+    server,
+    (candidate) => candidate.recoverAccount(
+      email: email,
+      totpCode: totpCode,
+      recoveryCode: recoveryCode,
+      newPassword: newPassword,
+    ),
+  );
+
+  Future<void> _signInWith(
+    Uri server,
+    Future<LoginResult> Function(RestmailClient candidate) signIn,
+  ) async {
     final candidate = probe(server);
     try {
-      final result = await candidate.login(
-        email: email,
-        password: password,
-        totpCode: totpCode,
-        recoveryCode: recoveryCode,
-      );
+      final result = await signIn(candidate);
       if (!result.isSetUp) {
         // A session that can only finish the setup is no use kept.
         await candidate.logout();
