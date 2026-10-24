@@ -1334,6 +1334,7 @@ void main() {
         'active': false,
         'default_quota_bytes': 524288000,
         'sending_policy': 'bulk',
+        'dmarc_policy': 'quarantine',
       };
       const mailbox = {
         'id': 9,
@@ -1415,6 +1416,19 @@ void main() {
         expect(body(sent[1]), {'sending_policy': ''});
         expect(body(sent[2]), {'active': true});
         expect(updated.sendingPolicy, 'bulk');
+      });
+
+      test('the DMARC policy is sent when given, and read back', () async {
+        await client.createDomain('new.test', dmarcPolicy: 'none');
+        final updated = await client.updateDomain(4, dmarcPolicy: 'reject');
+
+        expect(body(sent[0]), {
+          'name': 'new.test',
+          'server_type': 'restmail',
+          'dmarc_policy': 'none',
+        });
+        expect(body(sent[1]), {'dmarc_policy': 'reject'});
+        expect(updated.dmarcPolicy, 'quarantine');
       });
 
       test('a domain without a sending policy reads as empty', () {

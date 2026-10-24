@@ -30,6 +30,14 @@ const sendingPolicies = [
   ('bulk', 'Bulk'),
 ];
 
+/// The `dmarc_policy` values a domain's DMARC record may ask for, mildest
+/// first.
+const dmarcPolicies = [
+  ('none', 'None: reports only'),
+  ('quarantine', 'Quarantine'),
+  ('reject', 'Reject'),
+];
+
 String _choiceLabel(List<(String, String)> choices, String value) =>
     choices.firstWhere((c) => c.$1 == value, orElse: () => (value, value)).$2;
 
@@ -272,6 +280,58 @@ class _DomainScreenState extends State<DomainScreen> {
     if (mounted) setState(() {});
   }
 
+  /// Picks the policy, then sends it: reject, for a domain whose mail is not
+  /// only transactional, once the RFC 9989 §7.4 warning is accepted.
+  Future<void> _editDMARC() async {
+    String? chosen;
+    final picked = await AdminFormScreen.open(
+      context,
+      AdminFormScreen(
+        title: 'DMARC policy',
+        intro:
+            'What ${_domain.name}\'s DMARC record asks other servers to do with '
+            'mail that claims to be from it and fails the check. Start at None '
+            'and read a month of reports, then a month at Quarantine, before '
+            'Reject.',
+        fields: [
+          AdminField(
+            'DMARC policy',
+            initial: _domain.dmarcPolicy,
+            choices: dmarcPolicies,
+          ),
+        ],
+        action: 'Save',
+        host: _host,
+        submit: (values) async => chosen = values[0],
+      ),
+    );
+    final policy = chosen;
+    if (!mounted || !picked || policy == null) return;
+    if (policy == _domain.dmarcPolicy) return;
+    setState(() => _busy = true);
+    await runAdminChange(
+      context,
+      host: _host,
+      confirm: policy == 'reject' && _domain.sendingPolicy != 'transactional'
+          ? (
+              title: 'Reject failing mail?',
+              message:
+                  'People who write ordinary mail from ${_domain.name} may post '
+                  'to mailing lists. A list that adds a footer or tags the '
+                  'subject makes their message fail DMARC, and with Reject '
+                  'the subscribers\' servers refuse it. RFC 9989 asks such a '
+                  'domain not to choose Reject.',
+              action: 'Reject',
+            )
+          : null,
+      change: () async => _domain = await widget.account.client.updateDomain(
+        _domain.id,
+        dmarcPolicy: policy,
+      ),
+    );
+    if (mounted) setState(() => _busy = false);
+  }
+
   Future<void> _delete() async {
     setState(() => _busy = true);
     final name = _domain.name;
@@ -345,6 +405,13 @@ class _DomainScreenState extends State<DomainScreen> {
                   value: _choiceLabel(sendingPolicies, domain.sendingPolicy),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editPolicy())
+                      : null,
+                ),
+                RmRow(
+                  label: 'DMARC policy',
+                  value: _choiceLabel(dmarcPolicies, domain.dmarcPolicy),
+                  onTap: access.canWrite(AdminSection.domains) && !_busy
+                      ? () => unawaited(_editDMARC())
                       : null,
                 ),
                 if (domain.dkimSelector.isNotEmpty)
