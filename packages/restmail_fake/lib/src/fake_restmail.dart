@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'model.dart';
+import 'imported_password.dart';
 import 'sample_mail.dart';
 
 /// Ready-made states for a fake to start in.
@@ -891,8 +892,7 @@ class FakeRestmail {
     final box = _mailboxAt(body['email'] as String);
     // An account with no password is answered as a wrong password.
     if (box == null ||
-        box.password == null ||
-        body['password'] != box.password) {
+        !box.matchesPassword(body['password'] as String? ?? '')) {
       _fail(401, 'unauthorized', 'Invalid email or password');
     }
     if (!box.active) _fail(401, 'unauthorized', 'Account is disabled');
@@ -1131,7 +1131,7 @@ class FakeRestmail {
   /// The real server's rules (rest-mail-server#347): `mailboxes:write`
   /// covering the domain, as the account's grants are now; 409 for an
   /// address taken; 422 for a bad address, a domain the server doesn't host,
-  /// or a short password. The creator becomes the owner.
+  /// a short password or an invalid imported hash. The creator becomes the owner.
   http.StreamedResponse _createAccount(
     _Session session,
     Map<String, dynamic> body,
@@ -1139,6 +1139,7 @@ class FakeRestmail {
     final address = (body['address'] as String? ?? '').trim().toLowerCase();
     final password = body['password'] as String? ?? '';
     final at = address.indexOf('@');
+    final passwordHash = body['password_hash'] as String? ?? '';
     final invalid = <String, String>{
       if (address.isEmpty)
         'address': 'required'
@@ -1147,6 +1148,17 @@ class FakeRestmail {
       if (password.isNotEmpty && password.length < 12)
         'password': 'must be at least 12 characters',
     };
+    if (passwordHash.isNotEmpty) {
+      if (password.isNotEmpty) {
+        invalid['password_hash'] = 'send password or password_hash, not both';
+      } else {
+        try {
+          normalizeImportedPasswordHash(passwordHash);
+        } on FormatException {
+          invalid['password_hash'] = importedPasswordProblem;
+        }
+      }
+    }
     if (invalid.isNotEmpty) {
       _fail(
         422,
@@ -1183,6 +1195,7 @@ class FakeRestmail {
       (body['display_name'] as String? ?? '').trim(),
       password: password.isEmpty ? null : password,
     );
+    if (passwordHash.isNotEmpty) box.importPasswordHash(passwordHash);
     _grantOwner(session, box);
     return _json({'data': _account(box.id, session)}, status: 201);
   }
@@ -1204,10 +1217,7 @@ class FakeRestmail {
     // As on the real server, a refused link is 403, never 401: the secrets
     // are the other account's, and this session is still good.
     final box = _mailboxAt(address);
-    if (box == null ||
-        box.password == null ||
-        box.password != password ||
-        !box.active) {
+    if (box == null || !box.matchesPassword(password) || !box.active) {
       _fail(403, 'invalid_credentials', 'Invalid email or password');
     }
     if (box.mustChangePassword) {
@@ -1864,7 +1874,7 @@ class FakeRestmail {
         'Enter your current password to create an app password',
       );
     }
-    if (password != own.password || !own.active || !box.active) {
+    if (!own.matchesPassword(password) || !own.active || !box.active) {
       _fail(403, 'invalid_password', 'The password is incorrect');
     }
     if (own.totpCode != null && !session.twoFactor) {
@@ -2057,7 +2067,7 @@ class FakeRestmail {
         'Enter your current password to create a credential',
       );
     }
-    if (current != own.password || !own.active) {
+    if (!own.matchesPassword(current) || !own.active) {
       _fail(403, 'invalid_password', 'The password is incorrect');
     }
     if (!granted.every(
@@ -3893,7 +3903,7 @@ class FakeRestmail {
             },
           );
         }
-        if (current != box.password) {
+        if (!box.matchesPassword(current)) {
           _fail(403, 'invalid_password', 'Current password is incorrect');
         }
         if (next.length < 12) {

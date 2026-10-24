@@ -1,24 +1,47 @@
 import 'dart:convert';
 
+import 'imported_password.dart';
+
 /// An account the fake hosts, which is a mailbox.
 class FakeMailbox {
   FakeMailbox({
     required this.id,
     required this.address,
     required this.displayName,
-    required this.password,
+    required String? password,
     this.totpCode,
     this.recoveryCode,
     this.quotaBytes = 5 * 1024 * 1024 * 1024,
-  });
+  }) : _password = password;
 
   final int id;
   final String address;
 
-  /// An admin may change these. With no [password], nothing signs in to the
-  /// account: it is reached only through its owners.
+  /// An admin may change these. Without a password or imported hash, only
+  /// its owners reach the account.
   String displayName;
-  String? password;
+  String? _password;
+  String? _importedPasswordHash;
+
+  String? get password => _password;
+
+  set password(String? value) {
+    _password = value;
+    _importedPasswordHash = null;
+  }
+
+  void importPasswordHash(String value) {
+    _importedPasswordHash = normalizeImportedPasswordHash(value);
+    _password = null;
+  }
+
+  bool matchesPassword(String value) {
+    final hash = _importedPasswordHash;
+    return hash == null
+        ? _password != null && value == _password
+        : verifyImportedPassword(hash, value);
+  }
+
   bool active = true;
 
   /// What its sessions may do on the admin API, from the grants it holds.

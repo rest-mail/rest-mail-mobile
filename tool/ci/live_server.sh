@@ -5,7 +5,7 @@
 #   tool/ci/live_server.sh up     start it, and write the tests' settings
 #   tool/ci/live_server.sh down   remove it
 #
-# The server is the image main publishes (ghcr.io/rest-mail/api:main, public,
+# The server is the shipped release (ghcr.io/rest-mail/api:0.25.1, public,
 # amd64 and arm64), or IMAGE= another. It starts as a fresh install does: one
 # admin, admin@live.test, with a bootstrap password and nothing else. The
 # tests do the rest themselves through the client, as the app would: a
@@ -26,7 +26,7 @@
 # Needs Docker, curl and openssl.
 set -euo pipefail
 
-IMAGE=${IMAGE:-ghcr.io/rest-mail/api:main}
+IMAGE=${IMAGE:-ghcr.io/rest-mail/api:0.25.1}
 PORT=${PORT:-58180}
 NAME=${NAME:-rm-live}
 LIVE_ENV=${LIVE_ENV:-.dart_tool/live_server.env}
