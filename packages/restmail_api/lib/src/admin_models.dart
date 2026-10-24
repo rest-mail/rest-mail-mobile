@@ -197,6 +197,7 @@ class AdminDomain {
     required this.defaultQuotaBytes,
     this.dkimSelector = '',
     this.sendingPolicy = '',
+    this.dmarcPolicy = 'none',
     this.createdAt,
     this.updatedAt,
   });
@@ -209,6 +210,7 @@ class AdminDomain {
     defaultQuotaBytes: _int(json['default_quota_bytes'] ?? 0),
     dkimSelector: json['dkim_selector'] as String? ?? '',
     sendingPolicy: json['sending_policy'] as String? ?? '',
+    dmarcPolicy: json['dmarc_policy'] as String? ?? 'none',
     createdAt: _time(json['created_at']),
     updatedAt: _time(json['updated_at']),
   );
@@ -218,6 +220,9 @@ class AdminDomain {
 
   /// The sending policies a domain can have; empty means no rule.
   static const sendingPolicies = ['', 'transactional', 'bulk'];
+
+  /// The DMARC policies a domain can ask for, from the mildest.
+  static const dmarcPolicies = ['none', 'quarantine', 'reject'];
 
   final int id;
   final String name;
@@ -231,6 +236,12 @@ class AdminDomain {
 
   /// `transactional`, `bulk`, or empty when the send API applies no rule.
   final String sendingPolicy;
+
+  /// The p= its DMARC record asks for (RFC 9989): what a receiver should do
+  /// with mail from it that fails DMARC. `none` for a new domain; RFC 9989
+  /// §7.4 asks for a month of reports at `none`, then at `quarantine`, before
+  /// `reject`, and no `reject` where users post to mailing lists.
+  final String dmarcPolicy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 }

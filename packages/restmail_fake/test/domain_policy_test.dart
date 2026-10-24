@@ -287,4 +287,45 @@ void main() {
     final blank = await send('GET', 'tls-reports?domain_id=&limit=');
     expect(blank.statusCode, 200);
   });
+
+  group('DMARC policy', () {
+    test('a new domain asks for none; an update changes it, and leaves it '
+        'when it is not named', () async {
+      final created = await client.createDomain('dmarc.test');
+      expect(created.dmarcPolicy, 'none');
+      final strict = await client.createDomain(
+        'strict.test',
+        dmarcPolicy: 'reject',
+      );
+      expect(strict.dmarcPolicy, 'reject');
+
+      final raised = await client.updateDomain(
+        created.id,
+        dmarcPolicy: 'quarantine',
+      );
+      expect(raised.dmarcPolicy, 'quarantine');
+      final kept = await client.updateDomain(created.id, active: false);
+      expect(kept.dmarcPolicy, 'quarantine');
+    });
+
+    test('anything but none, quarantine or reject is refused', () async {
+      const refused = {
+        'dmarc_policy': "must be 'none', 'quarantine' or 'reject'",
+      };
+      for (final policy in ['', 'REJECT', 'strict', 5]) {
+        await expectFields('PATCH', 'domains/${domain.id}', {
+          'dmarc_policy': policy,
+        }, refused);
+        await expectFields('POST', 'domains', {
+          'name': 'refused.test',
+          'dmarc_policy': policy,
+        }, refused);
+      }
+      expect(
+        (await client.domain(domain.id)).dmarcPolicy,
+        'none',
+        reason: 'a refused update changes nothing',
+      );
+    });
+  });
 }

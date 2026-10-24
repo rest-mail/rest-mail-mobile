@@ -57,6 +57,9 @@ class FakeDomain {
   /// `transactional`, `bulk`, or empty for no rule.
   String sendingPolicy = '';
 
+  /// The p= its DMARC record asks for: `none`, `quarantine` or `reject`.
+  String dmarcPolicy = 'none';
+
   /// Where its DKIM key is published; empty once the key is gone.
   String dkimSelector = 'mail';
 

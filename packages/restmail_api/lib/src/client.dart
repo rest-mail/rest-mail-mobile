@@ -467,6 +467,7 @@ class RestmailClient {
     String serverType = 'restmail',
     int? defaultQuotaBytes,
     String? sendingPolicy,
+    String? dmarcPolicy,
   }) async => AdminDomain.fromJson(
     _data(
       await _authed(
@@ -477,19 +478,21 @@ class RestmailClient {
           'server_type': serverType,
           'default_quota_bytes': ?defaultQuotaBytes,
           'sending_policy': ?sendingPolicy,
+          'dmarc_policy': ?dmarcPolicy,
         },
       ),
     ),
   );
 
   /// Changes what is given: whether the domain's mail is on, the quota new
-  /// mailboxes get, and its sending policy (empty clears it).
-  /// Needs `domains:write`.
+  /// mailboxes get, its sending policy (empty clears it) and the DMARC policy
+  /// its record asks for. Needs `domains:write`.
   Future<AdminDomain> updateDomain(
     int id, {
     bool? active,
     int? defaultQuotaBytes,
     String? sendingPolicy,
+    String? dmarcPolicy,
   }) async => AdminDomain.fromJson(
     _data(
       await _authed(
@@ -499,6 +502,7 @@ class RestmailClient {
           'active': ?active,
           'default_quota_bytes': ?defaultQuotaBytes,
           'sending_policy': ?sendingPolicy,
+          'dmarc_policy': ?dmarcPolicy,
         },
       ),
     ),

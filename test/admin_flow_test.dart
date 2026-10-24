@@ -324,4 +324,41 @@ void main() {
 
     await close(tester, fake, state);
   });
+
+  testWidgets("a domain's DMARC policy is raised, and Reject, for a domain "
+      'whose people write ordinary mail, asks first', (tester) async {
+    final (fake, state) = await open(tester);
+    await signInAdmin(state, FakeAccounts.adminEmail);
+    await tester.pumpWidget(RestmailApp(state: state));
+    await administer(tester);
+    String policy() =>
+        fake.domains.firstWhere((d) => d.name == FakeAccounts.host).dmarcPolicy;
+
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    expect(find.text('None: reports only'), findsOneWidget);
+
+    await tap(tester, 'DMARC policy');
+    await tap(tester, 'Quarantine');
+    await tap(tester, 'Save');
+    expect(policy(), 'quarantine');
+    expect(find.text('Quarantine'), findsOneWidget);
+
+    // Reject warns that mailing lists break; cancelled, nothing changes.
+    await tap(tester, 'DMARC policy');
+    await tap(tester, 'Reject');
+    await tap(tester, 'Save');
+    expect(find.text('Reject failing mail?'), findsOneWidget);
+    await tap(tester, 'Cancel');
+    expect(policy(), 'quarantine');
+
+    await tap(tester, 'DMARC policy');
+    await tap(tester, 'Reject');
+    await tap(tester, 'Save');
+    await tap(tester, 'Reject');
+    expect(policy(), 'reject');
+    expect(find.text('Reject'), findsOneWidget);
+
+    await close(tester, fake, state);
+  });
 }

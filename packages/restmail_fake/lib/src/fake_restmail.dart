@@ -3879,6 +3879,10 @@ class FakeRestmail {
           _checkSendingPolicy(policy);
           domain.sendingPolicy = policy;
         }
+        // Left out or null, it stays as it is.
+        if (body['dmarc_policy'] case final Object policy) {
+          domain.dmarcPolicy = _checkDMARCPolicy(policy);
+        }
         if (body['active'] case final bool active) domain.active = active;
         if (body['default_quota_bytes'] case final num quota) {
           domain.defaultQuotaBytes = quota.toInt();
@@ -5104,6 +5108,7 @@ class FakeRestmail {
     'default_quota_bytes': d.defaultQuotaBytes,
     'dkim_selector': d.dkimSelector,
     'sending_policy': d.sendingPolicy,
+    'dmarc_policy': d.dmarcPolicy,
     'created_at': _time(_clock()),
     'updated_at': _time(_clock()),
   };
@@ -6005,6 +6010,11 @@ class FakeRestmail {
     }
     final policy = body['sending_policy'] as String? ?? '';
     _checkSendingPolicy(policy);
+    // Left out or null, a new domain's DMARC policy is none.
+    final dmarcPolicy = switch (body['dmarc_policy']) {
+      null => 'none',
+      final Object asked => _checkDMARCPolicy(asked),
+    };
     if (_domains.containsKey(name)) {
       _fail(409, 'already_exists', 'Domain already exists');
     }
@@ -6013,11 +6023,27 @@ class FakeRestmail {
       ..active = false
       ..dkimSelector = ''
       ..serverType = serverType as String
-      ..sendingPolicy = policy;
+      ..sendingPolicy = policy
+      ..dmarcPolicy = dmarcPolicy;
     if (body['default_quota_bytes'] case final num quota) {
       domain.defaultQuotaBytes = quota.toInt();
     }
     return _json({'data': _domainJson(domain)}, status: 201);
+  }
+
+  /// [policy] when it is a DMARC policy, as the server's binding refuses
+  /// anything else: empty and other cases among them.
+  String _checkDMARCPolicy(Object policy) {
+    if (policy is! String ||
+        !const {'none', 'quarantine', 'reject'}.contains(policy)) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'dmarc_policy': "must be 'none', 'quarantine' or 'reject'"},
+      );
+    }
+    return policy;
   }
 
   void _checkSendingPolicy(String policy) {
