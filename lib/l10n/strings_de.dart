@@ -31,6 +31,16 @@ const Map<String, Map<String, String>> stringsDe = {
     'signIn.changeServer': 'Server wechseln',
     'signIn.configure': 'Manuell konfigurieren',
     'signIn.otherMail': 'Andere Mail (IMAP)',
+    'signIn.forgot': 'Passwort vergessen?',
+    'recover.title': 'Passwort zurücksetzen',
+    'recover.intro': 'Mit einem Code aus Ihrer Authenticator-App und einem der Wiederherstellungscodes, die Sie bei der Einrichtung gespeichert haben. Ohne Zwei-Faktor-Anmeldung setzt Ihr Administrator das Passwort zurück.',
+    'recover.newPassword': 'Neues Passwort',
+    'recover.passwordNote': 'Mindestens 12 Zeichen. Ihre anderen Sitzungen und App-Passwörter funktionieren danach nicht mehr.',
+    'recover.submit': 'Passwort zurücksetzen',
+    'recover.failed':
+        'Adresse, Authenticator-Code oder Wiederherstellungscode stimmt nicht.',
+    'recover.tooMany': 'Zu viele Versuche für diese Adresse. Versuchen Sie es in {minutes} Min. erneut.',
+    'recover.shortPassword': 'Verwenden Sie mindestens 12 Zeichen.',
     'signIn.needsMicrosoft':
         'Benötigt die Anmeldung mit Microsoft, die REST Mail noch nicht hat.',
     'signIn.viaMicrosoft': 'Über IMAP und SMTP hinzugefügt, mit Microsoft angemeldet. Weiter, um es einzurichten.',

@@ -36,6 +36,17 @@ const Map<String, Map<String, String>> stringsEn = {
     'signIn.changeServer': 'Change server',
     'signIn.configure': 'Configure manually',
     'signIn.otherMail': 'Other mail (IMAP)',
+    'signIn.forgot': 'Forgot password?',
+    'recover.title': 'Reset password',
+    'recover.intro': 'Use a code from your authenticator app and one of the recovery codes you saved when you set it up. Without two-factor sign-in, ask your administrator to reset your password.',
+    'recover.newPassword': 'New password',
+    'recover.passwordNote': 'At least 12 characters. Your other sessions and app passwords stop working.',
+    'recover.submit': 'Reset password',
+    'recover.failed':
+        'That address, authenticator code or recovery code isn\'t right.',
+    'recover.tooMany':
+        'Too many tries for this address. Try again in {minutes} min.',
+    'recover.shortPassword': 'Use at least 12 characters.',
     'signIn.needsMicrosoft':
         "Needs Sign in with Microsoft, which REST Mail doesn't have yet.",
     'signIn.viaMicrosoft': 'Added over IMAP and SMTP, signed in with Microsoft. Continue to set it up.',

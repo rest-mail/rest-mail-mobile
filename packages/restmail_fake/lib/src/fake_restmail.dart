@@ -158,6 +158,10 @@ class FakeRestmail {
   /// Until when sign-in's budget is spent; see [throttleSignIns].
   DateTime? _throttledUntil;
 
+  /// By address, the recoveries refused and when the last was: past five,
+  /// one more is answered each 15 minutes.
+  final _recoverRefusals = <String, ({int count, DateTime last})>{};
+
   /// A client that talks to this fake; hand it to a `RestmailClient`.
   http.Client get client => MockClient.streaming(_handle);
 
@@ -508,6 +512,17 @@ class FakeRestmail {
         );
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
+      case ('POST', ['api', 'v1', 'auth', 'recover']):
+        final body = _object(bytes);
+        final email = '${body['email'] ?? ''}';
+        return _audited(
+          request,
+          'auth.recover',
+          actorKind: 'account',
+          actorName: email,
+          actorId: _mailboxAt(email)?.id,
+          () => _recover(body),
+        );
       case ('POST', ['api', 'v1', 'auth', 'logout']):
         // As on the server, the session's push devices end with it.
         if (_refreshTokens.remove(_object(bytes)['refresh_token'])
@@ -809,6 +824,90 @@ class FakeRestmail {
     return _issue(
       _Session(box.id, twoFactor: box.totpCode != null),
       native: body['client'] == 'native',
+    );
+  }
+
+  /// Self-service password reset, as the server answers it: a code from the
+  /// account's authenticator and its recovery code, both. Every refusal is
+  /// the same, whether the address is an account or not. Success spends the
+  /// recovery code, sets the password, ends the account's sessions and app
+  /// passwords, and signs in; the authenticator stays.
+  http.StreamedResponse _recover(Map<String, dynamic> body) {
+    _spendSignInBudget();
+    const fields = {
+      'email',
+      'totp_code',
+      'recovery_code',
+      'new_password',
+      'client',
+    };
+    final problems = _undeclared(body, fields);
+    for (final name in fields) {
+      _typed<String>(body, name, 'a string', problems);
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    String text(String name) => body[name] as String? ?? '';
+    final email = text('email').trim(), password = text('new_password');
+    if (email.isEmpty) problems['email'] = "required: the account's address";
+    if (text('totp_code').isEmpty) {
+      problems['totp_code'] =
+          "required: a code from the account's authenticator";
+    }
+    if (text('recovery_code').isEmpty) {
+      problems['recovery_code'] =
+          "required: one of the account's recovery codes";
+    }
+    if (utf8.encode(password).length < 12) {
+      problems['new_password'] = 'must be at least 12 characters';
+    }
+    final client = text('client');
+    if (client.isNotEmpty && client != 'native') {
+      problems['client'] = 'must be "native" or omitted';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+
+    final address = email.toLowerCase();
+    if (_recoverRefusals[address] case (count: >= 5, :final last)) {
+      final left = last.add(const Duration(minutes: 15)).difference(_clock());
+      if (left > Duration.zero) {
+        throw _Reply(
+          _json(
+            {
+              'error': {
+                'code': 'rate_limited',
+                'message':
+                    'Too many failed recoveries for this address; try again later',
+              },
+            },
+            status: 429,
+            headers: {'retry-after': '${(left.inMilliseconds / 1000).ceil()}'},
+          ),
+        );
+      }
+    }
+    final box = _mailboxAt(address);
+    if (box == null ||
+        !box.active ||
+        box.totpCode == null ||
+        text('totp_code') != box.totpCode ||
+        box.recoveryCode == null ||
+        text('recovery_code') != box.recoveryCode) {
+      final before = _recoverRefusals[address]?.count ?? 0;
+      _recoverRefusals[address] = (count: before + 1, last: _clock());
+      _fail(
+        401,
+        'recovery_failed',
+        'Invalid address, authenticator code or recovery code',
+      );
+    }
+    box.recoveryCode = null;
+    box.password = password;
+    box.mustChangePassword = false;
+    revokeSessionsOf(box.address);
+    _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
+    return _issue(
+      _Session(box.id, twoFactor: true),
+      native: client == 'native',
     );
   }
 
