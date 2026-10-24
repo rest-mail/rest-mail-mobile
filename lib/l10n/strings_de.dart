@@ -221,6 +221,12 @@ const Map<String, Map<String, String>> stringsDe = {
     'invites.versions': '{count} Versionen',
     'invites.retry': 'Erneut versuchen',
     'invites.gone': 'Diese Nachricht ist nicht mehr da.',
+    'message.viewSource': 'Quelltext anzeigen',
+    'source.title': 'Quelltext der Nachricht',
+    'source.share': 'Teilen',
+    'source.retry': 'Erneut versuchen',
+    'source.unavailable':
+        'Der Server hat für diese Nachricht keinen Quelltext gespeichert.',
     'message.blockTitle': '{sender} blockieren?',
     'message.blockBody': 'Mail von dieser Adresse wird ab jetzt abgewiesen. Sie können sie unter Kontakte wieder freigeben.',
     'message.blockAction': 'Blockieren',

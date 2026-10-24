@@ -1025,6 +1025,15 @@ class ImapBackend implements MailBackend {
     400,
     'not_supported',
     'Invitations cannot be answered on this account yet.',
+  // Not yet over IMAP, whose BODY.PEEK[] is the source.
+  @override
+  bool get hasMessageSource => false;
+
+  @override
+  Future<Uint8List> messageSource(int id) => throw const ApiException(
+    400,
+    'not_supported',
+    'The source of this message cannot be shown yet.',
   );
 
   // IMAP keeps no contacts: an address book is the provider's own service.

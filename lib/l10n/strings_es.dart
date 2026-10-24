@@ -222,6 +222,12 @@ const Map<String, Map<String, String>> stringsEs = {
     'invites.versions': '{count} versiones',
     'invites.retry': 'Reintentar',
     'invites.gone': 'Ese mensaje ya no está aquí.',
+    'message.viewSource': 'Ver código fuente',
+    'source.title': 'Código fuente del mensaje',
+    'source.share': 'Compartir',
+    'source.retry': 'Reintentar',
+    'source.unavailable':
+        'El servidor no guardó el código fuente de este mensaje.',
     'message.blockTitle': '¿Bloquear a {sender}?',
     'message.blockBody': 'El correo de esta dirección se rechazará a partir de ahora. Puedes desbloquearla en Contactos.',
     'message.blockAction': 'Bloquear',
