@@ -173,6 +173,12 @@ abstract interface class MailBackend {
 
   Future<Uint8List> downloadAttachment(int id);
 
+  /// Whether a message's source, as it arrived, can be read (REST Mail).
+  bool get hasMessageSource;
+
+  /// The message's RFC 5322 source, headers and all.
+  Future<Uint8List> messageSource(int id);
+
   /// Changes to one mailbox for as long as the stream has a listener.
   /// [onLiveChanged] hears when the connection comes up and when it drops.
   Stream<MailEvent> events(
@@ -393,6 +399,12 @@ class RestBackend implements MailBackend {
 
   @override
   Future<Uint8List> downloadAttachment(int id) => client.downloadAttachment(id);
+
+  @override
+  bool get hasMessageSource => true;
+
+  @override
+  Future<Uint8List> messageSource(int id) => client.rawMessage(id);
 
   @override
   Stream<MailEvent> events(

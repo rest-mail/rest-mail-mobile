@@ -206,6 +206,12 @@ const Map<String, Map<String, String>> stringsEs = {
     'folders.renamed': 'Carpeta renombrada',
     'folders.deleted': 'Carpeta eliminada',
     'message.block': 'Bloquear remitente',
+    'message.viewSource': 'Ver código fuente',
+    'source.title': 'Código fuente del mensaje',
+    'source.share': 'Compartir',
+    'source.retry': 'Reintentar',
+    'source.unavailable':
+        'El servidor no guardó el código fuente de este mensaje.',
     'message.blockTitle': '¿Bloquear a {sender}?',
     'message.blockBody': 'El correo de esta dirección se rechazará a partir de ahora. Puedes desbloquearla en Contactos.',
     'message.blockAction': 'Bloquear',
