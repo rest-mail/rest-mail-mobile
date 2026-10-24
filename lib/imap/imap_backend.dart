@@ -994,11 +994,11 @@ class ImapBackend implements MailBackend {
 
   // Folders are made, renamed and deleted with IMAP's CREATE, RENAME and
   // DELETE (RFC 9051 §6.3.4–6.3.6), refused as REST Mail refuses them: a
-  // standard folder stays as it is, and a name that is taken is 409. Gmail's
-  // folders are labels, whose deletion keeps the mail, so they are not
-  // offered here yet.
+  // standard folder stays as it is, and a name that is taken is 409. On Gmail
+  // they are labels: CREATE makes one, and DELETE takes the label off, leaving
+  // the mail in All Mail (hasLabels says so to the screens).
   @override
-  bool get canManageFolders => !_gmail;
+  bool get canManageFolders => true;
 
   @override
   Future<String> createFolder(int accountId, String name) => _run((c) async {

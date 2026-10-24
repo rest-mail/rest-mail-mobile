@@ -211,6 +211,68 @@ void main() {
     expect(printed.where((l) => l.contains('Lunch')), isEmpty);
   });
 
+  test("labels are made, renamed and deleted as folders; Gmail's own "
+      'folders stay as they are', () async {
+    final server = await _gmail([
+      Rule(r'^RENAME "?Receipts"? "?Invoices"?$', '{tag} OK Success'),
+      Rule(r'^DELETE "Muy Importante"$', '{tag} OK Success'),
+    ]);
+    addTearDown(server.close);
+    final backend = _backend(server);
+    addTearDown(backend.close);
+    await backend.folders(ImapBackend.accountId);
+
+    // Deleting one takes the label off and keeps the mail, which the
+    // screens say because hasLabels does.
+    expect(backend.canManageFolders, isTrue);
+    expect(backend.hasLabels, isTrue);
+    expect(
+      await backend.renameFolder(ImapBackend.accountId, 'Receipts', 'Invoices'),
+      'Invoices',
+    );
+    await backend.deleteFolder(ImapBackend.accountId, 'Muy Importante');
+
+    Future<int> refused(Future<Object?> change) async {
+      try {
+        await change;
+      } on ApiException catch (e) {
+        return e.statusCode;
+      }
+      return 0;
+    }
+
+    for (final own in [allMail, gmailStarred, gmailImportant]) {
+      expect(
+        await refused(backend.deleteFolder(ImapBackend.accountId, own)),
+        400,
+        reason: own,
+      );
+      expect(
+        await refused(backend.renameFolder(ImapBackend.accountId, own, 'Mine')),
+        400,
+        reason: own,
+      );
+      expect(
+        await refused(backend.createFolder(ImapBackend.accountId, own)),
+        409,
+        reason: own,
+      );
+    }
+    expect(server.unexpected, isEmpty);
+    expect(
+      server.commands.where(
+        (c) =>
+            c.startsWith('CREATE') ||
+            c.startsWith('RENAME') ||
+            c.startsWith('DELETE'),
+      ),
+      [
+        matches(r'^RENAME "?Receipts"? "?Invoices"?$'),
+        'DELETE "Muy Importante"',
+      ],
+    );
+  });
+
   test('conversations are grouped by X-GM-THRID, and one opens whole from '
       'All Mail', () async {
     final server = await _gmail([

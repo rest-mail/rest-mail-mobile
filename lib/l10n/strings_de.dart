@@ -197,6 +197,9 @@ const Map<String, Map<String, String>> stringsDe = {
     'folders.deleteTitle': '{name} löschen?',
     'folders.deleteBody':
         'Der Ordner und alle Nachrichten darin werden endgültig gelöscht.',
+    'folders.deleteLabelBody':
+        'Das Label wird von seinen Nachrichten entfernt. Sie bleiben in „All '
+        'Mail“, mit ihren übrigen Labels.',
     'folders.deleteAction': 'Löschen',
     'folders.exists': 'Es gibt bereits einen Ordner mit diesem Namen.',
     'folders.reserved': 'Das ist der Name eines Standardordners.',
