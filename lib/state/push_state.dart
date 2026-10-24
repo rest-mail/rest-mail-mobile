@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../push/push_service.dart';
+import '../l10n/catalog.dart';
 import 'app_state.dart';
 import 'settings.dart';
 
@@ -403,6 +405,16 @@ class PushNotifications extends ChangeNotifier {
       identical(_app.current, account) &&
       _app.mailbox?.account?.id == mailbox.id;
 
+  String _line(String key, [Map<String, String> args = const {}]) =>
+      languageLine(
+        _app.settings.languageCode == 'system'
+            ? ui.PlatformDispatcher.instance.locale.languageCode
+            : _app.settings.languageCode,
+        key,
+        voice: _app.settings.packId,
+        args: args,
+      );
+
   Future<void> _post(
     RestAccount account,
     Account mailbox,
@@ -412,7 +424,9 @@ class PushNotifications extends ChangeNotifier {
     final data = {'account': account.key, 'mailbox': '${mailbox.id}'};
     final thread = '${account.key}#${mailbox.id}';
     for (final m in fresh.take(_shownPerPush)) {
-      final subject = m.subject.trim().isEmpty ? '(no subject)' : m.subject;
+      final subject = m.subject.trim().isEmpty
+          ? _line('message.noSubject')
+          : m.subject;
       await service.show(
         LocalNotification(
           id: '${account.key}#${m.id}',
@@ -430,7 +444,9 @@ class PushNotifications extends ChangeNotifier {
         LocalNotification(
           id: '$thread#more',
           title: mailbox.address,
-          body: more == 1 ? '1 more new message' : '$more more new messages',
+          body: more == 1
+              ? _line('push.oneMoreMessage')
+              : _line('push.moreMessages', {'count': '$more'}),
           thread: thread,
           data: data,
         ),

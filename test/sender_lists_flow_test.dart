@@ -175,7 +175,7 @@ void main() {
       final (fake, state, transport) = await open(tester);
       transport.refuseAllow = true;
       await tap(tester, 'Let in');
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(find.text('@deals.test'), findsNothing);
       expect(find.text('Let a sender in'), findsNothing);
       expect(find.byTooltip('Remove @deals.test'), findsNothing);
@@ -261,7 +261,7 @@ void main() {
       await tester.tap(find.byTooltip('Remove @deals.test'));
       await tester.pumpAndSettle();
       await tap(tester, 'Remove');
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(fake.senderRules.length, before);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       await close(tester, fake, state);

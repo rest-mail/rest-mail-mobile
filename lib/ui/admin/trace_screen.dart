@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -11,49 +13,53 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String traceOutcomeLabel(String outcome) => switch (outcome) {
-  'delivered' => 'Delivered',
-  'queued' => 'Sent on its way',
-  'rejected' => 'Turned away',
-  'quarantined' => 'Held in quarantine',
-  'discarded' => 'Dropped',
-  'deferred' => 'Put off',
-  _ => outcome,
-};
+String traceOutcomeLabel(BuildContext context, String outcome) =>
+    switch (outcome) {
+      'delivered' => tr(context, 'admin.logs.delivered'),
+      'queued' => tr(context, 'admin.trace.sentOnItsWay'),
+      'rejected' => tr(context, 'admin.pipelinelog.turnedAway'),
+      'quarantined' => tr(context, 'admin.trace.heldInQuarantine'),
+      'discarded' => tr(context, 'admin.pipelinelog.dropped'),
+      'deferred' => tr(context, 'admin.pipelinelog.putOff'),
+      _ => outcome,
+    };
 
 /// Why mail was turned away, held or put off, from the server's reason
 /// code.
-String reasonLabel(String code) => switch (code) {
-  'spam_threshold' => 'Scored as spam',
-  'dmarc_reject' => 'Failed DMARC',
-  'dmarc_quarantine' => 'Failed DMARC, held',
-  'spf_fail' => 'Failed SPF',
-  'greylist_defer' => 'Greylisted',
-  'size_exceeded' => 'Too large',
-  'rate_limited' => 'Sent too fast',
-  'virus_detected' => 'Carried a virus',
-  'recipient_unknown' => 'No such recipient',
-  'header_invalid' => 'Broken headers',
-  'custom_reject' => 'Turned away by a filter',
-  'other' => 'Other',
+String reasonLabel(BuildContext context, String code) => switch (code) {
+  'spam_threshold' => tr(context, 'quarantine.reason.spam'),
+  'dmarc_reject' => tr(context, 'quarantine.reason.dmarc'),
+  'dmarc_quarantine' => tr(context, 'admin.trace.failedDMARCHeld'),
+  'spf_fail' => tr(context, 'quarantine.reason.spf'),
+  'greylist_defer' => tr(context, 'quarantine.reason.greylist'),
+  'size_exceeded' => tr(context, 'quarantine.reason.size'),
+  'rate_limited' => tr(context, 'quarantine.reason.rate'),
+  'virus_detected' => tr(context, 'quarantine.reason.virus'),
+  'recipient_unknown' => tr(context, 'admin.trace.noSuchRecipient'),
+  'header_invalid' => tr(context, 'quarantine.reason.headers'),
+  'custom_reject' => tr(context, 'admin.trace.turnedAwayByAFilter'),
+  'other' => tr(context, 'admin.trace.other'),
   _ => code,
 };
 
-String traceActionLabel(String action) => switch (action) {
-  'continue' => 'Passed',
-  'reject' => 'Turned away',
-  'quarantine' => 'Quarantined',
-  'discard' => 'Dropped',
-  'defer' => 'Put off',
-  _ => action,
-};
+String traceActionLabel(BuildContext context, String action) =>
+    switch (action) {
+      'continue' => tr(context, 'admin.pipelinelog.passed'),
+      'reject' => tr(context, 'admin.pipelinelog.turnedAway'),
+      'quarantine' => tr(context, 'admin.pipelinelog.quarantined'),
+      'discard' => tr(context, 'admin.pipelinelog.dropped'),
+      'defer' => tr(context, 'admin.pipelinelog.putOff'),
+      _ => action,
+    };
 
 /// What a filter found, in a line; none when it said nothing.
-String? _stageNote(TraceStage stage) {
+String? _stageNote(BuildContext context, TraceStage stage) {
   if (stage.skipped) {
     return stage.skipReason.isEmpty
-        ? 'Skipped'
-        : 'Skipped: ${stage.skipReason}';
+        ? tr(context, 'admin.trace.skipped')
+        : trArgs(context, 'admin.trace.skippedSkipReason', {
+            'skipReason': (stage.skipReason).toString(),
+          });
   }
   if (stage.error.isNotEmpty) return stage.error;
   final note = [
@@ -100,23 +106,22 @@ class _TraceLookupScreenState extends State<TraceLookupScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.trace,
-      title: 'Message trace',
+      title: tr(context, 'admin.section.trace.title'),
       body: (access) => ListView(
         padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
         children: [
           Text(
             [
-              'Each filter a message went through, and what it found.',
+              tr(context, 'admin.trace.eachFilterAMessageWentThroughAnd'),
               if (access.canRead(AdminSection.deliveryLog))
-                'Open one from the delivery log, or enter the number the '
-                    'server keeps it under.'
+                tr(context, 'admin.trace.openOneFromTheDeliveryLogOr')
               else
-                'Enter the number the server keeps it under.',
+                tr(context, 'admin.trace.enterTheNumberTheServerKeepsIt'),
             ].join(' '),
             style: rmText(15, color: c.ink2, height: 1.45),
           ),
           const SizedBox(height: 18),
-          const SectionLabel('Message number'),
+          SectionLabel(tr(context, 'admin.trace.messageNumber')),
           const SizedBox(height: 8),
           TextField(
             controller: _number,
@@ -130,7 +135,7 @@ class _TraceLookupScreenState extends State<TraceLookupScreen> {
           ),
           const SizedBox(height: 26),
           RmPrimaryButton(
-            label: 'Show trace',
+            label: tr(context, 'admin.trace.showTrace'),
             onPressed: _id == null ? null : _open,
           ),
         ],
@@ -183,14 +188,18 @@ class _MessageTraceScreenState extends State<MessageTraceScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.trace,
-      title: 'Message ${widget.messageId}',
+      title: trArgs(context, 'admin.trace.messageMessageId', {
+        'messageId': (widget.messageId).toString(),
+      }),
       body: (_) {
         if (error != null) {
           return AdminMessage(
             error.statusCode == 404
-                ? 'There is no trace for message ${widget.messageId}. Mail '
-                      'that was turned away never became a message, and '
-                      'traces are kept for a while only.'
+                ? trArgs(
+                    context,
+                    'admin.trace.thereIsNoTraceForMessageMessageId',
+                    {'messageId': (widget.messageId).toString()},
+                  )
                 : describeAdminError(
                     context,
                     error,
@@ -229,33 +238,55 @@ class TraceDetails extends StatelessWidget {
       children: [
         RmGroup(
           children: [
-            RmRow(label: 'Outcome', value: traceOutcomeLabel(trace.outcome)),
-            if (trace.reasonCode.isNotEmpty)
-              RmRow(label: 'Why', value: reasonLabel(trace.reasonCode)),
             RmRow(
-              label: 'Direction',
-              value: trace.direction == 'inbound' ? 'Coming in' : 'Going out',
+              label: tr(context, 'admin.audit.outcome'),
+              value: traceOutcomeLabel(context, trace.outcome),
+            ),
+            if (trace.reasonCode.isNotEmpty)
+              RmRow(
+                label: tr(context, 'quarantine.why'),
+                value: reasonLabel(context, trace.reasonCode),
+              ),
+            RmRow(
+              label: tr(context, 'admin.filtereditors.direction'),
+              value: trace.direction == 'inbound'
+                  ? tr(context, 'admin.pipelinelog.comingIn')
+                  : tr(context, 'admin.pipelinelog.goingOut'),
             ),
             if (trace.mailFrom.isNotEmpty)
-              RmRow(label: 'From', value: trace.mailFrom),
+              RmRow(label: tr(context, 'compose.from'), value: trace.mailFrom),
             if (trace.rcptTo.isNotEmpty)
-              RmRow(label: 'To', value: trace.rcptTo),
+              RmRow(label: tr(context, 'compose.to'), value: trace.rcptTo),
             if (trace.clientIp.isNotEmpty)
-              RmRow(label: 'Sent by', value: trace.clientIp),
+              RmRow(
+                label: tr(context, 'admin.trace.sentBy'),
+                value: trace.clientIp,
+              ),
             if (trace.transport.isNotEmpty)
               RmRow(
-                label: 'Over',
-                value: trace.transport == 'tls' ? 'TLS' : 'No encryption',
+                label: tr(context, 'admin.trace.over'),
+                value: trace.transport == 'tls'
+                    ? 'TLS'
+                    : tr(context, 'admin.pipelinelog.noEncryption'),
               ),
             if (score != null)
-              RmRow(label: 'Spam score', value: score.toStringAsFixed(1)),
-            RmRow(label: 'Took', value: '${trace.durationMs} ms'),
-            RmRow(label: 'When', value: longDate(trace.createdAt)),
+              RmRow(
+                label: tr(context, 'quarantine.score'),
+                value: score.toStringAsFixed(1),
+              ),
+            RmRow(
+              label: tr(context, 'admin.trace.took'),
+              value: '${trace.durationMs} ms',
+            ),
+            RmRow(
+              label: tr(context, 'admin.audit.when'),
+              value: longDate(trace.createdAt),
+            ),
           ],
         ),
         if (trace.stages.isNotEmpty) ...[
           const SizedBox(height: 22),
-          const SectionLabel('Filters, in order'),
+          SectionLabel(tr(context, 'admin.pipelines.filtersInOrder')),
           const SizedBox(height: 9),
           RmGroup(
             children: [
@@ -263,7 +294,7 @@ class TraceDetails extends StatelessWidget {
                 RmRow(
                   label: stage.filter,
                   subtitle: [
-                    ?_stageNote(stage),
+                    ?_stageNote(context, stage),
                     if (stage.filterType.isNotEmpty) stage.filterType,
                     '${stage.durationMs} ms',
                   ].join(' · '),
@@ -286,8 +317,18 @@ class TraceDetails extends StatelessWidget {
                                   ),
                                   Text(
                                     stage.skipped
-                                        ? 'Skipped: ${stage.skipReason}'
-                                        : traceActionLabel(stage.action),
+                                        ? trArgs(
+                                            context,
+                                            'admin.trace.skippedSkipReason',
+                                            {
+                                              'skipReason': (stage.skipReason)
+                                                  .toString(),
+                                            },
+                                          )
+                                        : traceActionLabel(
+                                            context,
+                                            stage.action,
+                                          ),
                                   ),
                                   if (stage.error.isNotEmpty) Text(stage.error),
                                   const SizedBox(height: 16),
@@ -300,7 +341,9 @@ class TraceDetails extends StatelessWidget {
                       ),
                     ),
                   ),
-                  value: stage.skipped ? null : traceActionLabel(stage.action),
+                  value: stage.skipped
+                      ? null
+                      : traceActionLabel(context, stage.action),
                 ),
             ],
           ),
@@ -308,20 +351,34 @@ class TraceDetails extends StatelessWidget {
         const SizedBox(height: 22),
         RmGroup(
           children: [
-            RmRow(label: 'Trace number', value: '${trace.id}'),
-            RmRow(label: 'Pipeline number', value: '${trace.pipelineId}'),
-            if (trace.messageId case final id?)
-              RmRow(label: 'Stored message', value: '$id'),
             RmRow(
-              label: 'Final action',
-              value: traceActionLabel(trace.finalAction),
+              label: tr(context, 'admin.trace.traceNumber'),
+              value: '${trace.id}',
             ),
             RmRow(
-              label: 'Sampling retained',
-              value: trace.sampled ? 'Yes' : 'No',
+              label: tr(context, 'admin.pipelinelog.pipelineNumber'),
+              value: '${trace.pipelineId}',
+            ),
+            if (trace.messageId case final id?)
+              RmRow(
+                label: tr(context, 'admin.trace.storedMessage'),
+                value: '$id',
+              ),
+            RmRow(
+              label: tr(context, 'admin.pipelinelog.finalAction'),
+              value: traceActionLabel(context, trace.finalAction),
+            ),
+            RmRow(
+              label: tr(context, 'admin.trace.samplingRetained'),
+              value: trace.sampled
+                  ? tr(context, 'admin.keys.yes')
+                  : tr(context, 'admin.keys.no'),
             ),
             if (trace.expiresAt case final at?)
-              RmRow(label: 'Retained until', value: longDate(at)),
+              RmRow(
+                label: tr(context, 'admin.trace.retainedUntil'),
+                value: longDate(at),
+              ),
           ],
         ),
         if (trace.rfcMessageId.isNotEmpty) ...[

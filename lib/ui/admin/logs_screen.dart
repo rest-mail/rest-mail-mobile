@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -61,13 +63,18 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.deliveryLog,
-    title: 'Delivery log',
+    title: tr(context, 'admin.section.deliveryLog.title'),
     body: (access) => AdminListView(
       list: _list,
       host: widget.account.server.host,
       empty: _status == null
-          ? 'Nothing has gone out yet.'
-          : 'Nothing ${queueStatusLabel(_status!).toLowerCase()}.',
+          ? tr(context, 'admin.logs.nothingHasGoneOutYet')
+          : trArgs(context, 'admin.logs.nothingValue', {
+              'value': (queueStatusLabel(
+                context,
+                _status!,
+              ).toLowerCase()).toString(),
+            }),
       header: [
         ReportFiltersBar(
           host: widget.account.server.host,
@@ -75,16 +82,20 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
           fields: [
             ReportField(
               'status',
-              'Status',
+              tr(context, 'admin.logs.status'),
               choices: [
-                ('', 'All'),
+                ('', tr(context, 'contacts.all')),
                 for (final s in QueueStatus.values)
-                  if (s != QueueStatus.unknown) (s.name, queueStatusLabel(s)),
+                  if (s != QueueStatus.unknown)
+                    (s.name, queueStatusLabel(context, s)),
               ],
             ),
-            const ReportField('domain', 'Destination domain'),
-            const ReportField('sender', 'Sender contains'),
-            const ReportField('recipient', 'Recipient contains'),
+            ReportField('domain', tr(context, 'admin.logs.destinationDomain')),
+            ReportField('sender', tr(context, 'admin.logs.senderContains')),
+            ReportField(
+              'recipient',
+              tr(context, 'admin.logs.recipientContains'),
+            ),
             reportSince,
             reportUntil,
             reportPageSize,
@@ -99,14 +110,17 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: RmSegmented<QueueStatus?>(
-              options: const [
-                (null, 'All'),
-                (QueueStatus.delivered, 'Delivered'),
-                (QueueStatus.deferred, 'Deferred'),
-                (QueueStatus.bounced, 'Bounced'),
-                (QueueStatus.pending, 'Pending'),
-                (QueueStatus.delivering, 'Delivering'),
-                (QueueStatus.expired, 'Expired'),
+              options: [
+                (null, tr(context, 'contacts.all')),
+                (QueueStatus.delivered, tr(context, 'admin.logs.delivered')),
+                (QueueStatus.deferred, tr(context, 'admin.logs.deferred')),
+                (QueueStatus.bounced, tr(context, 'admin.logs.bounced')),
+                (QueueStatus.pending, tr(context, 'admin.logs.pending')),
+                (
+                  QueueStatus.delivering,
+                  tr(context, 'admin.aliases.delivering'),
+                ),
+                (QueueStatus.expired, tr(context, 'admin.logs.expired')),
               ],
               value: _status,
               onChanged: (status) {
@@ -122,8 +136,10 @@ class _DeliveryLogScreenState extends State<DeliveryLogScreen> {
       row: (entry) => RmRow(
         label: entry.recipient,
         subtitle: [
-          '${queueStatusLabel(entry.status)} · ${timeLabel(entry.createdAt)}',
-          'From ${entry.sender}',
+          '${queueStatusLabel(context, entry.status)} · ${timeLabel(entry.createdAt)}',
+          trArgs(context, 'admin.logs.fromSender', {
+            'sender': (entry.sender).toString(),
+          }),
           if (entry.lastError.isNotEmpty) entry.lastError,
         ].join('\n'),
         onTap: () => pushScreen(
@@ -150,26 +166,36 @@ class DeliveryScreen extends StatelessWidget {
     return AdminPage(
       account: account,
       section: AdminSection.deliveryLog,
-      title: 'Delivery',
+      title: tr(context, 'admin.logs.delivery'),
       body: (access) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
         children: [
           RmGroup(
             children: [
-              RmRow(label: 'To', value: entry.recipient),
-              RmRow(label: 'From', value: entry.sender),
-              RmRow(label: 'Status', value: queueStatusLabel(entry.status)),
+              RmRow(label: tr(context, 'compose.to'), value: entry.recipient),
+              RmRow(label: tr(context, 'compose.from'), value: entry.sender),
               RmRow(
-                label: 'Attempts',
+                label: tr(context, 'admin.logs.status'),
+                value: queueStatusLabel(context, entry.status),
+              ),
+              RmRow(
+                label: tr(context, 'admin.logs.attempts'),
                 value: '${entry.attempts} of ${entry.maxRetries}',
               ),
-              RmRow(label: 'Sent', value: longDate(entry.createdAt)),
-              if (last != null) RmRow(label: 'Last try', value: longDate(last)),
+              RmRow(
+                label: tr(context, 'folder.sent'),
+                value: longDate(entry.createdAt),
+              ),
+              if (last != null)
+                RmRow(
+                  label: tr(context, 'admin.logs.lastTry'),
+                  value: longDate(last),
+                ),
             ],
           ),
           if (entry.lastError.isNotEmpty) ...[
             const SizedBox(height: 22),
-            const SectionLabel('Last answer'),
+            SectionLabel(tr(context, 'admin.logs.lastAnswer')),
             const SizedBox(height: 9),
             SelectableText(
               entry.lastError,
@@ -181,8 +207,11 @@ class DeliveryScreen extends StatelessWidget {
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Trace',
-                  subtitle: 'Each filter it went through on its way out',
+                  label: tr(context, 'admin.logs.trace'),
+                  subtitle: tr(
+                    context,
+                    'admin.logs.eachFilterItWentThroughOnIts',
+                  ),
                   onTap: () => pushScreen(
                     context,
                     MessageTraceScreen(account: account, messageId: messageId),
@@ -194,20 +223,41 @@ class DeliveryScreen extends StatelessWidget {
           const SizedBox(height: 22),
           RmGroup(
             children: [
-              RmRow(label: 'Entry', value: '${entry.id}'),
+              RmRow(
+                label: tr(context, 'admin.logs.entry'),
+                value: '${entry.id}',
+              ),
               if (entry.messageId case final id?)
-                RmRow(label: 'Message', value: '$id'),
-              RmRow(label: 'Destination domain', value: entry.domain),
+                RmRow(label: tr(context, 'admin.logs.message'), value: '$id'),
+              RmRow(
+                label: tr(context, 'admin.logs.destinationDomain'),
+                value: entry.domain,
+              ),
               if (entry.bodyType.isNotEmpty)
-                RmRow(label: 'Body type', value: entry.bodyType),
+                RmRow(
+                  label: tr(context, 'admin.logs.bodyType'),
+                  value: entry.bodyType,
+                ),
               if (entry.lastErrorCode != 0)
-                RmRow(label: 'Reply code', value: '${entry.lastErrorCode}'),
+                RmRow(
+                  label: tr(context, 'admin.logs.replyCode'),
+                  value: '${entry.lastErrorCode}',
+                ),
               if (entry.failureCategory.isNotEmpty)
-                RmRow(label: 'Failure category', value: entry.failureCategory),
+                RmRow(
+                  label: tr(context, 'admin.logs.failureCategory'),
+                  value: entry.failureCategory,
+                ),
               if (entry.nextAttempt case final at?)
-                RmRow(label: 'Next try', value: longDate(at)),
+                RmRow(
+                  label: tr(context, 'admin.logs.nextTry'),
+                  value: longDate(at),
+                ),
               if (entry.expiresAt case final at?)
-                RmRow(label: 'Expires', value: longDate(at)),
+                RmRow(
+                  label: tr(context, 'admin.logs.expires'),
+                  value: longDate(at),
+                ),
             ],
           ),
         ],

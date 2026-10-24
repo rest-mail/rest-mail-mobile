@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -57,15 +59,21 @@ class _AliasesScreenState extends State<AliasesScreen> {
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Add an alias',
-        intro:
-            'Mail to the alias, on a domain this server has, goes to the '
-            'address it points to.',
+        title: tr(context, 'admin.aliases.addAnAlias'),
+        intro: tr(context, 'admin.aliases.mailToTheAliasOnADomain'),
         fields: [
-          AdminField('Alias', hint: 'sales@$domain', email: true),
-          AdminField('Delivers to', hint: 'someone@$domain', email: true),
+          AdminField(
+            tr(context, 'admin.aliases.alias'),
+            hint: 'sales@$domain',
+            email: true,
+          ),
+          AdminField(
+            tr(context, 'admin.aliases.deliversTo'),
+            hint: 'someone@$domain',
+            email: true,
+          ),
         ],
-        action: 'Add alias',
+        action: tr(context, 'admin.aliases.addAlias'),
         host: _host,
         submit: (values) async =>
             created = await widget.account.client.createAlias(
@@ -105,19 +113,24 @@ class _AliasesScreenState extends State<AliasesScreen> {
       collection: true,
       account: widget.account,
       section: AdminSection.aliases,
-      title: 'Aliases',
+      title: tr(context, 'admin.section.aliases.title'),
       body: (access) => AdminListView(
         list: _list,
         host: _host,
-        empty: 'No aliases yet.',
+        empty: tr(context, 'admin.aliases.noAliasesYet'),
         header: [
           if (domain != null) ...[
-            Text('On ${domain.name}', style: rmText(13, color: c.ink3)),
+            Text(
+              trArgs(context, 'admin.aliases.onName', {
+                'name': (domain.name).toString(),
+              }),
+              style: rmText(13, color: c.ink3),
+            ),
             const SizedBox(height: 12),
           ],
           if (access.canWrite(AdminSection.aliases))
             AdminAddButton(
-              label: 'Add an alias',
+              label: tr(context, 'admin.aliases.addAnAlias'),
               onTap: () => unawaited(_add()),
             ),
         ],
@@ -125,7 +138,7 @@ class _AliasesScreenState extends State<AliasesScreen> {
           label: alias.source,
           subtitle: [
             '→ ${alias.destination}',
-            if (!alias.active) 'Off',
+            if (!alias.active) tr(context, 'twoFactor.off'),
           ].join(' · '),
           onTap: () => unawaited(_open(alias)),
         ),
@@ -203,11 +216,15 @@ class _AliasScreenState extends State<AliasScreen> {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Delivers to',
+        title: tr(context, 'admin.aliases.deliversTo'),
         fields: [
-          AdminField('Delivers to', initial: _alias.destination, email: true),
+          AdminField(
+            tr(context, 'admin.aliases.deliversTo'),
+            initial: _alias.destination,
+            email: true,
+          ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => _alias = await _client.updateAlias(
           _alias.id,
@@ -226,14 +243,21 @@ class _AliasScreenState extends State<AliasScreen> {
       host: _host,
       change: () => _client.deleteAlias(_alias.id),
       confirm: (
-        title: 'Delete $source?',
-        message: 'Mail to it is no longer delivered.',
-        action: 'Delete',
+        title: trArgs(context, 'admin.aliases.deleteSource', {
+          'source': (source).toString(),
+        }),
+        message: tr(context, 'admin.aliases.mailToItIsNoLongerDelivered'),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, 'Deleted $source');
+      Navigator.pop(
+        context,
+        trArgs(context, 'admin.aliases.deletedSource', {
+          'source': (source).toString(),
+        }),
+      );
     } else {
       setState(() => _busy = false);
     }
@@ -263,23 +287,33 @@ class _AliasScreenState extends State<AliasScreen> {
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Delivers to',
+                    label: tr(context, 'admin.aliases.deliversTo'),
                     value: alias.destination,
                     onTap: write && !_busy
                         ? () => unawaited(_redirect())
                         : null,
                   ),
                   if (alias.domain case final domain?)
-                    RmRow(label: 'Domain', value: domain.name),
+                    RmRow(
+                      label: tr(context, 'admin.aliases.domain'),
+                      value: domain.name,
+                    ),
                   if (alias.createdAt case final at?)
-                    RmRow(label: 'Added', value: longDate(at)),
+                    RmRow(
+                      label: tr(context, 'admin.aliases.added'),
+                      value: longDate(at),
+                    ),
                   RmRow(
-                    label: 'Delivering',
-                    value: write ? null : (alias.active ? 'On' : 'Off'),
+                    label: tr(context, 'admin.aliases.delivering'),
+                    value: write
+                        ? null
+                        : (alias.active
+                              ? tr(context, 'twoFactor.on')
+                              : tr(context, 'twoFactor.off')),
                     trailing: write
                         ? RmSwitch(
                             value: alias.active,
-                            label: 'Delivering',
+                            label: tr(context, 'admin.aliases.delivering'),
                             onChanged: (value) {
                               if (!_busy) unawaited(_setActive(value));
                             },
@@ -293,7 +327,7 @@ class _AliasScreenState extends State<AliasScreen> {
                 RmGroup(
                   children: [
                     RmRow(
-                      label: 'Delete alias',
+                      label: tr(context, 'admin.aliases.deleteAlias'),
                       danger: true,
                       onTap: _busy ? null : () => unawaited(_delete()),
                     ),

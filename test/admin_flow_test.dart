@@ -253,7 +253,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The screen open on it says so, and the section is gone behind it.
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(find.text(FakeAccounts.host), findsNothing);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -273,7 +273,7 @@ void main() {
     await administer(tester);
 
     await tap(tester, 'Mailboxes');
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(find.text(FakeAccounts.email), findsNothing);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -282,7 +282,7 @@ void main() {
     await tap(tester, 'ana@harbor.test');
     await scrollToAction(tester, 'Retry now');
     await tap(tester, 'Retry now');
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(
       fake.queue.firstWhere((e) => e.recipient == 'ana@harbor.test').status,
       'pending',

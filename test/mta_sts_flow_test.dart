@@ -221,7 +221,7 @@ void main() {
       transport.holdRead!.complete();
       transport.holdRead = null;
       await tester.pumpAndSettle();
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(find.text('Set up a policy'), findsNothing);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       transport.refuseRead = false;

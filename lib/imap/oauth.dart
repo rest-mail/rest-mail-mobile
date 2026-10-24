@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
@@ -251,10 +254,12 @@ Future<OAuthGrant> signInWithOAuth(
   });
   final refreshToken = json['refresh_token'];
   if (refreshToken is! String || refreshToken.isEmpty) {
-    throw ApiException(
+    throw LocalizedApiException(
       502,
       'oauth_error',
-      "${provider.name} didn't give REST Mail a way to stay signed in.",
+      UiText('client.nameDidnTGiveRESTMailA', {
+        'name': (provider.name).toString(),
+      }),
     );
   }
   final claims = idTokenClaims(json['id_token']);
@@ -281,39 +286,41 @@ String codeFromRedirect(
   if (back.scheme != expected.scheme ||
       back.host != expected.host ||
       back.path != expected.path) {
-    throw ApiException(
+    throw LocalizedApiException(
       0,
       'oauth_redirect',
-      "${provider.name}'s sign-in came back somewhere it shouldn't have.",
+      UiText('client.nameSSignInCameBackSomewhere', {
+        'name': (provider.name).toString(),
+      }),
     );
   }
   final params = back.queryParameters;
   final state = params['state'];
   if (state == null || !_sameText(state, expectedState)) {
-    throw ApiException(
+    throw LocalizedApiException(
       0,
       'oauth_state',
-      "That sign-in didn't come from this request, so REST Mail didn't use "
-          'it. Try again.',
+      UiText('client.thatSignInDidnTComeFrom'),
     );
   }
   final error = params['error'];
   if (error != null) {
-    throw ApiException(
+    throw LocalizedApiException(
       error == 'access_denied' ? 403 : 400,
       error == 'access_denied' ? 'access_denied' : 'oauth_error',
       error == 'access_denied'
-          ? "REST Mail can't add the account without your permission to read "
-                'and send its mail.'
+          ? UiText('client.restMailCanTAddTheAccount')
           : '${provider.name} said: ${params['error_description'] ?? error}',
     );
   }
   final code = params['code'];
   if (code == null || code.isEmpty) {
-    throw ApiException(
+    throw LocalizedApiException(
       502,
       'oauth_error',
-      "${provider.name}'s sign-in came back with nothing to sign in with.",
+      UiText('client.nameSSignInCameBackWith', {
+        'name': (provider.name).toString(),
+      }),
     );
   }
   return code;
@@ -321,11 +328,12 @@ String codeFromRedirect(
 
 /// What a sign-in with [kind] answers once its refresh token no longer
 /// works: `invalid_grant`, with status 401.
-ApiException accessEnded(OAuthKind kind) => ApiException(
+ApiException accessEnded(OAuthKind kind) => LocalizedApiException(
   401,
   'invalid_grant',
-  '${kind.label} no longer lets REST Mail into this account. Sign in again '
-      'to carry on.',
+  UiText('client.labelNoLongerLetsRESTMailInto', {
+    'label': (kind.label).toString(),
+  }),
 );
 
 /// A refresh token that no longer works: revoked by its owner, a changed
@@ -351,16 +359,20 @@ Future<Map<String, dynamic>> _tokenRequest(
         )
         .timeout(const Duration(seconds: 30));
   } on TimeoutException {
-    throw ApiException(
+    throw LocalizedApiException(
       0,
       'timeout',
-      '${provider.tokenEndpoint.host} took too long to answer.',
+      UiText('client.hostTookTooLongToAnswer', {
+        'host': (provider.tokenEndpoint.host).toString(),
+      }),
     );
   } on Object {
-    throw ApiException(
+    throw LocalizedApiException(
       0,
       'network_error',
-      "Can't reach ${provider.tokenEndpoint.host}.",
+      UiText('client.canTReachHost', {
+        'host': (provider.tokenEndpoint.host).toString(),
+      }),
     );
   }
   Map<String, dynamic>? json;
@@ -374,12 +386,14 @@ Future<Map<String, dynamic>> _tokenRequest(
   final error = json?['error'];
   if (error is String && _signInEnded(error)) throw accessEnded(provider.kind);
   final description = json?['error_description'];
-  throw ApiException(
+  throw LocalizedApiException(
     response.statusCode == 200 ? 502 : response.statusCode,
     'oauth_error',
     description is String && description.trim().isNotEmpty
         ? '${provider.name} said: ${description.trim().split('\n').first}'
-        : "${provider.name} wouldn't sign REST Mail in.",
+        : UiText('client.nameWouldnTSignRESTMailIn', {
+            'name': (provider.name).toString(),
+          }),
   );
 }
 
@@ -393,10 +407,12 @@ AccessGrant _accessFrom(
   if (token is! String ||
       token.isEmpty ||
       (type is String && type.toLowerCase() != 'bearer')) {
-    throw ApiException(
+    throw LocalizedApiException(
       502,
       'oauth_error',
-      "${provider.name} answered with a token REST Mail can't use.",
+      UiText('client.nameAnsweredWithATokenRESTMail', {
+        'name': (provider.name).toString(),
+      }),
     );
   }
   final raw = json['expires_in'];
@@ -505,10 +521,12 @@ class OAuthSession {
   Future<String> _refresh() async {
     final provider = this.provider;
     if (provider == null) {
-      throw ApiException(
+      throw LocalizedApiException(
         401,
         'oauth_unavailable',
-        "This build of REST Mail can't sign in with ${kind.label}.",
+        UiText('client.thisBuildOfRESTMailCanT', {
+          'label': (kind.label).toString(),
+        }),
       );
     }
     final client = httpClient();

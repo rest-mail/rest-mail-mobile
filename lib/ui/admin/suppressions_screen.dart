@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,15 +12,16 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _categoryLabel(String category) => switch (category) {
-  'bad_mailbox' => 'No such mailbox',
-  'bad_domain' => 'No such domain',
-  '' => '',
-  _ => category.replaceAll('_', ' '),
-};
+String _categoryLabel(BuildContext context, String category) =>
+    switch (category) {
+      'bad_mailbox' => tr(context, 'admin.suppressions.noSuchMailbox'),
+      'bad_domain' => tr(context, 'admin.suppressions.noSuchDomain'),
+      '' => '',
+      _ => category.replaceAll('_', ' '),
+    };
 
-String _reasonLabel(String reason) => switch (reason) {
-  'hard_bounce' => 'Bounced for good',
+String _reasonLabel(BuildContext context, String reason) => switch (reason) {
+  'hard_bounce' => tr(context, 'admin.suppressions.bouncedForGood'),
   '' => '',
   _ => reason.replaceAll('_', ' '),
 };
@@ -75,15 +78,24 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
         suppression.id,
       ),
       confirm: (
-        title: 'Send to ${suppression.address} again?',
-        message:
-            'Mail from $_name to them is tried again. If it bounces for '
-            'good again, they are suppressed again.',
-        action: 'Clear',
+        title: trArgs(context, 'admin.suppressions.sendToAddressAgain', {
+          'address': (suppression.address).toString(),
+        }),
+        message: trArgs(
+          context,
+          'admin.suppressions.mailFromNameToThemIsTried',
+          {'name': (_name).toString()},
+        ),
+        action: tr(context, 'admin.suppressions.clear'),
       ),
     );
     if (!ok || !mounted) return;
-    showToast(context, 'Cleared ${suppression.address}');
+    showToast(
+      context,
+      trArgs(context, 'admin.suppressions.clearedAddress', {
+        'address': (suppression.address).toString(),
+      }),
+    );
     unawaited(_list.reload());
   }
 
@@ -94,17 +106,22 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
       scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.suppressions,
-      title: 'Suppressed recipients',
+      title: tr(context, 'admin.suppressions.suppressedRecipients'),
       body: (access) => AdminListView(
         list: _list,
         host: _host,
-        empty: 'Mail from $_name goes to every recipient.',
+        empty: trArgs(
+          context,
+          'admin.suppressions.mailFromNameGoesToEveryRecipient',
+          {'name': (_name).toString()},
+        ),
         header: [
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Text(
-              'Mail from $_name is not sent to these addresses, because mail '
-              'to them bounced for good. Each one lapses on its own.',
+              trArgs(context, 'admin.suppressions.mailFromNameIsNotSentTo', {
+                'name': (_name).toString(),
+              }),
               style: rmText(13, color: c.ink3, height: 1.4),
             ),
           ),
@@ -112,20 +129,30 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
         row: (suppression) => RmRow(
           label: suppression.address,
           subtitle: switch ([
-            if (_reasonLabel(suppression.reason) case final reason
+            if (_reasonLabel(context, suppression.reason) case final reason
                 when reason.isNotEmpty)
               reason,
-            if (_categoryLabel(suppression.failureCategory) case final category
-                when category.isNotEmpty)
+            if (_categoryLabel(context, suppression.failureCategory)
+                case final category when category.isNotEmpty)
               category,
             if (suppression.lastError.isNotEmpty) suppression.lastError,
-            if (suppression.messageId case final id?) 'Message $id',
+            if (suppression.messageId case final id?)
+              trArgs(context, 'admin.pipelinelog.messageId', {
+                'id': (id).toString(),
+              }),
             if (suppression.createdAt case final at?)
-              'First bounced ${timeLabel(at)}',
+              trArgs(context, 'admin.suppressions.firstBouncedValue', {
+                'value': (timeLabel(at)).toString(),
+              }),
             if (suppression.updatedAt case final at?
                 when at != suppression.createdAt)
-              'Last bounced ${timeLabel(at)}',
-            if (suppression.expiresAt case final at?) 'Lapses ${timeLabel(at)}',
+              trArgs(context, 'admin.suppressions.lastBouncedValue', {
+                'value': (timeLabel(at)).toString(),
+              }),
+            if (suppression.expiresAt case final at?)
+              trArgs(context, 'admin.suppressions.lapsesValue', {
+                'value': (timeLabel(at)).toString(),
+              }),
           ]) {
             [] => null,
             final lines => lines.join('\n'),
@@ -133,7 +160,9 @@ class _SuppressionsScreenState extends State<SuppressionsScreen> {
           trailing: access.canDelete(AdminSection.suppressions)
               ? RmIconButton(
                   icon: Icons.close_rounded,
-                  tooltip: 'Clear ${suppression.address}',
+                  tooltip: trArgs(context, 'admin.suppressions.clearAddress', {
+                    'address': (suppression.address).toString(),
+                  }),
                   color: c.ink3,
                   onPressed: () => unawaited(_clear(suppression)),
                 )

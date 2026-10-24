@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,33 +12,41 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _modeLabel(MtaStsMode mode) => switch (mode) {
-  MtaStsMode.enforce => 'Enforce',
-  MtaStsMode.testing => 'Testing',
-  MtaStsMode.none => 'None',
+String _modeLabel(BuildContext context, MtaStsMode mode) => switch (mode) {
+  MtaStsMode.enforce => tr(context, 'admin.mtasts.enforce'),
+  MtaStsMode.testing => tr(context, 'admin.mtasts.testing'),
+  MtaStsMode.none => tr(context, 'interface.none'),
 };
 
-String _modeHelp(MtaStsMode mode) => switch (mode) {
-  MtaStsMode.enforce =>
-    'Other servers deliver only over TLS, to one of these mail servers, '
-        "with a valid certificate. If they can't, they don't deliver.",
-  MtaStsMode.testing =>
-    'Other servers deliver as before, and report what would have failed.',
-  MtaStsMode.none => 'Tells other servers the policy is withdrawn.',
+String _modeHelp(BuildContext context, MtaStsMode mode) => switch (mode) {
+  MtaStsMode.enforce => tr(
+    context,
+    'admin.mtasts.otherServersDeliverOnlyOverTLSTo',
+  ),
+  MtaStsMode.testing => tr(
+    context,
+    'admin.mtasts.otherServersDeliverAsBeforeAndReport',
+  ),
+  MtaStsMode.none => tr(
+    context,
+    'admin.mtasts.tellsOtherServersThePolicyIsWithdrawn',
+  ),
 };
 
 /// How long other servers keep a policy, in words.
-String _ageLabel(int seconds) {
+String _ageLabel(BuildContext context, int seconds) {
   if (seconds == 0) return '0 seconds';
   final days = seconds ~/ Duration.secondsPerDay;
-  if (days == 1 && seconds == Duration.secondsPerDay) return 'A day';
-  if (days == 7 && seconds == 7 * Duration.secondsPerDay) return 'A week';
+  if (days == 1 && seconds == Duration.secondsPerDay)
+    return tr(context, 'admin.bans.aDay');
+  if (days == 7 && seconds == 7 * Duration.secondsPerDay)
+    return tr(context, 'admin.bans.aWeek');
   if (seconds % Duration.secondsPerDay == 0) {
     return days % 7 == 0 ? '${days ~/ 7} weeks' : '$days days';
   }
   if (seconds % Duration.secondsPerHour == 0) {
     final hours = seconds ~/ Duration.secondsPerHour;
-    return hours == 1 ? 'An hour' : '$hours hours';
+    return hours == 1 ? tr(context, 'admin.mtasts.anHour') : '$hours hours';
   }
   return '$seconds seconds';
 }
@@ -112,7 +122,12 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
     );
     if (saved == null || !mounted) return;
     setState(() => _policy = saved);
-    showToast(context, 'Saved the policy for $_name');
+    showToast(
+      context,
+      trArgs(context, 'admin.mtasts.savedThePolicyForName', {
+        'name': (_name).toString(),
+      }),
+    );
   }
 
   Future<void> _setActive(bool active) async {
@@ -135,11 +150,20 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
       host: _host,
       change: () => widget.account.client.deleteMtaStsPolicy(widget.domain.id),
       confirm: (
-        title: 'Delete the MTA-STS policy for $_name?',
-        message:
-            'The server stops publishing it. Other servers keep the copy they '
-            'have for up to ${_ageLabel(policy.maxAgeSeconds).toLowerCase()}.',
-        action: 'Delete',
+        title: trArgs(context, 'admin.mtasts.deleteTheMTASTSPolicyForName', {
+          'name': (_name).toString(),
+        }),
+        message: trArgs(
+          context,
+          'admin.mtasts.theServerStopsPublishingItOtherServers',
+          {
+            'value': (_ageLabel(
+              context,
+              policy.maxAgeSeconds,
+            ).toLowerCase()).toString(),
+          },
+        ),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
@@ -147,7 +171,13 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
       _busy = false;
       if (ok) _policy = null;
     });
-    if (ok) showToast(context, 'Deleted the policy for $_name');
+    if (ok)
+      showToast(
+        context,
+        trArgs(context, 'admin.mtasts.deletedThePolicyForName', {
+          'name': (_name).toString(),
+        }),
+      );
   }
 
   @override
@@ -176,9 +206,9 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
         }
         final canWrite = access.canWrite(AdminSection.mtaSts);
         final where = Text(
-          'Other servers fetch it from https://mta-sts.$_name/.well-known/'
-          'mta-sts.txt, once a TXT record at _mta-sts.$_name says there is '
-          'one. The DNS check shows whether that record is there.',
+          trArgs(context, 'admin.mtasts.otherServersFetchItFromHttpsMta', {
+            'name': (_name).toString(),
+          }),
           style: rmText(13, color: c.ink3, height: 1.4),
         );
         if (policy == null) {
@@ -186,21 +216,22 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
             padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
             children: [
               Text(
-                '$_name has no MTA-STS policy, so other servers may send to '
-                'it without TLS, or to a server pretending to be it.',
+                trArgs(context, 'admin.mtasts.nameHasNoMTASTSPolicySo', {
+                  'name': (_name).toString(),
+                }),
                 style: rmText(15, color: c.ink2, height: 1.45),
               ),
               const SizedBox(height: 14),
               where,
               const SizedBox(height: 18),
               RmOutlineButton(
-                label: 'Refresh policy',
+                label: tr(context, 'admin.mtasts.refreshPolicy'),
                 onPressed: _busy ? null : () => unawaited(_load()),
               ),
               if (canWrite) ...[
                 const SizedBox(height: 26),
                 RmPrimaryButton(
-                  label: 'Set up a policy',
+                  label: tr(context, 'admin.mtasts.setUpAPolicy'),
                   onPressed: () => unawaited(_edit()),
                 ),
               ],
@@ -213,33 +244,37 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Mode',
-                  subtitle: _modeHelp(policy.mode),
+                  label: tr(context, 'admin.granttext.mode'),
+                  subtitle: _modeHelp(context, policy.mode),
                   trailing: Padding(
                     padding: const EdgeInsets.only(left: 12, right: 4),
                     child: Text(
-                      _modeLabel(policy.mode),
+                      _modeLabel(context, policy.mode),
                       style: rmText(13.5, color: c.ink3),
                     ),
                   ),
                 ),
                 RmRow(
-                  label: 'Mail servers',
+                  label: tr(context, 'admin.mtasts.mailServers'),
                   subtitle: policy.mxHosts.isEmpty
-                      ? 'None listed'
+                      ? tr(context, 'admin.mtasts.noneListed')
                       : policy.mxHosts.join('\n'),
                 ),
                 RmRow(
-                  label: 'Kept for',
-                  value: _ageLabel(policy.maxAgeSeconds),
+                  label: tr(context, 'admin.mtasts.keptFor'),
+                  value: _ageLabel(context, policy.maxAgeSeconds),
                 ),
                 RmRow(
-                  label: 'Published',
-                  value: canWrite ? null : (policy.active ? 'On' : 'Off'),
+                  label: tr(context, 'admin.mtasts.published'),
+                  value: canWrite
+                      ? null
+                      : (policy.active
+                            ? tr(context, 'twoFactor.on')
+                            : tr(context, 'twoFactor.off')),
                   trailing: canWrite
                       ? RmSwitch(
                           value: policy.active,
-                          label: 'Published',
+                          label: tr(context, 'admin.mtasts.published'),
                           onChanged: (value) {
                             if (!_busy) unawaited(_setActive(value));
                           },
@@ -247,26 +282,41 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
                       : null,
                 ),
                 if (policy.id != 0)
-                  RmRow(label: 'Policy ID', value: '${policy.id}'),
-                RmRow(label: 'Domain', value: policy.domain?.name ?? _name),
-                RmRow(label: 'Domain ID', value: '${policy.domainId}'),
+                  RmRow(
+                    label: tr(context, 'admin.mtasts.policyID'),
+                    value: '${policy.id}',
+                  ),
+                RmRow(
+                  label: tr(context, 'admin.aliases.domain'),
+                  value: policy.domain?.name ?? _name,
+                ),
+                RmRow(
+                  label: tr(context, 'admin.filtereditors.domainID'),
+                  value: '${policy.domainId}',
+                ),
                 if (policy.createdAt case final at?)
-                  RmRow(label: 'Added', value: timeLabel(at)),
+                  RmRow(
+                    label: tr(context, 'admin.aliases.added'),
+                    value: timeLabel(at),
+                  ),
                 if (policy.updatedAt case final at?)
-                  RmRow(label: 'Changed', value: timeLabel(at)),
+                  RmRow(
+                    label: tr(context, 'admin.domains.changed'),
+                    value: timeLabel(at),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
             where,
             const SizedBox(height: 18),
             RmOutlineButton(
-              label: 'Refresh policy',
+              label: tr(context, 'admin.mtasts.refreshPolicy'),
               onPressed: _busy ? null : () => unawaited(_load()),
             ),
             if (canWrite) ...[
               const SizedBox(height: 22),
               RmOutlineButton(
-                label: 'Change the policy',
+                label: tr(context, 'admin.mtasts.changeThePolicy'),
                 onPressed: _busy ? null : () => unawaited(_edit()),
               ),
             ],
@@ -275,7 +325,7 @@ class _MtaStsScreenState extends State<MtaStsScreen> {
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Delete policy',
+                    label: tr(context, 'admin.mtasts.deletePolicy'),
                     danger: true,
                     onTap: _busy ? null : () => unawaited(_delete(policy)),
                   ),
@@ -336,7 +386,10 @@ class _MtaStsFormState extends State<_MtaStsForm> {
     final seconds = int.tryParse(_seconds.text.trim());
     if (seconds == null || seconds < 0) {
       setState(
-        () => _lifetimeError = 'Enter a whole number of seconds, 0 or more.',
+        () => _lifetimeError = tr(
+          context,
+          'admin.mtasts.enterAWholeNumberOfSeconds0',
+        ),
       );
       return;
     }
@@ -375,23 +428,29 @@ class _MtaStsFormState extends State<_MtaStsForm> {
       scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.mtaSts,
-      title: widget.policy == null ? 'Set up MTA-STS' : 'MTA-STS',
+      title: widget.policy == null
+          ? tr(context, 'admin.mtasts.setUpMTASTS')
+          : 'MTA-STS',
       body: (_) => ListView(
         padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
         children: [
           Text(
-            'What other servers are told about sending to '
-            '${widget.domain.name} over TLS.',
+            trArgs(
+              context,
+              'admin.mtasts.whatOtherServersAreToldAboutSending',
+              {'name': (widget.domain.name).toString()},
+            ),
             style: rmText(15, color: c.ink2, height: 1.45),
           ),
           const SizedBox(height: 18),
-          const SectionLabel('Mode'),
+          SectionLabel(tr(context, 'admin.granttext.mode')),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: RmSegmented<MtaStsMode>(
               options: [
-                for (final mode in MtaStsMode.values) (mode, _modeLabel(mode)),
+                for (final mode in MtaStsMode.values)
+                  (mode, _modeLabel(context, mode)),
               ],
               value: _mode,
               onChanged: (mode) {
@@ -405,9 +464,12 @@ class _MtaStsFormState extends State<_MtaStsForm> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(_modeHelp(_mode), style: rmText(13, color: c.ink3, height: 1.4)),
+          Text(
+            _modeHelp(context, _mode),
+            style: rmText(13, color: c.ink3, height: 1.4),
+          ),
           const SizedBox(height: 18),
-          const SectionLabel('Mail servers'),
+          SectionLabel(tr(context, 'admin.mtasts.mailServers')),
           const SizedBox(height: 8),
           TextField(
             key: const ValueKey('mta-sts-hosts'),
@@ -424,19 +486,18 @@ class _MtaStsFormState extends State<_MtaStsForm> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Separate names with commas or spaces. Leaving this empty keeps '
-            'the saved mail servers; a new policy starts with none.',
+            tr(context, 'admin.mtasts.separateNamesWithCommasOrSpacesLeaving'),
             style: rmText(13, color: c.ink3, height: 1.4),
           ),
           const SizedBox(height: 18),
-          const SectionLabel('Other servers keep it for'),
+          SectionLabel(tr(context, 'admin.mtasts.otherServersKeepItFor')),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: [
               for (final seconds in [86400, 604800, 2419200])
                 ChoiceChip(
-                  label: Text(_ageLabel(seconds)),
+                  label: Text(_ageLabel(context, seconds)),
                   selected: _seconds.text == '$seconds',
                   onSelected: _busy
                       ? null
@@ -460,17 +521,20 @@ class _MtaStsFormState extends State<_MtaStsForm> {
             }),
             style: rmText(16, color: c.ink),
             decoration: InputDecoration(
-              labelText: 'Lifetime in seconds',
-              helperText: '0 means fetch the policy again for each delivery.',
+              labelText: tr(context, 'admin.mtasts.lifetimeInSeconds'),
+              helperText: tr(
+                context,
+                'admin.mtasts.0MeansFetchThePolicyAgainFor',
+              ),
               errorText: _lifetimeError,
             ),
           ),
           const SizedBox(height: 18),
           RmRow(
-            label: 'Published',
+            label: tr(context, 'admin.mtasts.published'),
             trailing: RmSwitch(
               value: _published,
-              label: 'Published',
+              label: tr(context, 'admin.mtasts.published'),
               onChanged: (value) {
                 if (!_busy) {
                   setState(() {
@@ -484,7 +548,7 @@ class _MtaStsFormState extends State<_MtaStsForm> {
           if (error != null) ...[const SizedBox(height: 16), ErrorText(error)],
           const SizedBox(height: 26),
           RmPrimaryButton(
-            label: 'Save',
+            label: tr(context, 'common.save'),
             busy: _busy,
             onPressed: _busy ? null : () => unawaited(_save()),
           ),

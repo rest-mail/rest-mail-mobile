@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../../l10n/voice.dart';
+import '../../l10n/localized_error.dart';
 import '../../state/mailbox_state.dart';
 import '../../theme/tokens.dart';
 
@@ -570,6 +571,8 @@ class ErrorText extends StatelessWidget {
 /// connection failure names [host] when there is one; anything the server
 /// explained itself keeps the server's own words.
 String describeError(BuildContext context, Object error, {String? host}) {
+  if (error is LocalizedApiException && error.text != null)
+    return trText(context, error.text!);
   if (error is! ApiException) return tr(context, 'error.generic');
   final key = switch (error.code) {
     'network_error' => 'error.unreachable',

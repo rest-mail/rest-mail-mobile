@@ -83,8 +83,8 @@ String typefaceFamily(Typeface typeface) => switch (typeface) {
 class ThemePack {
   const ThemePack({
     required this.id,
-    required this.name,
-    required this.tagline,
+    required this.nameKey,
+    required this.taglineKey,
     required this.colors,
     required this.variants,
     this.followsSystem = false,
@@ -92,8 +92,8 @@ class ThemePack {
   });
 
   final String id;
-  final String name;
-  final String tagline;
+  final String nameKey;
+  final String taglineKey;
   final RmColors colors;
   final RmVariants variants;
 
@@ -104,8 +104,8 @@ class ThemePack {
   /// The look the app shipped with: the design's blue on light or dark.
   static const classic = ThemePack(
     id: 'classic',
-    name: 'Classic',
-    tagline: 'The design as shipped. Follows system light and dark.',
+    nameKey: 'theme.classic',
+    taglineKey: 'theme.theDesignAsShippedFollowsSystem',
     colors: RmColors.light,
     variants: RmVariants(),
     followsSystem: true,
@@ -114,8 +114,8 @@ class ThemePack {
   /// Navy ink with yellow as the single loud note.
   static const brand = ThemePack(
     id: 'brand',
-    name: 'Brand',
-    tagline: 'Navy ink, one loud yellow note. The official-client look.',
+    nameKey: 'theme.brand',
+    taglineKey: 'theme.navyInkOneLoudYellowNote',
     colors: RmColors(
       bg: Color(0xFFFFFFFF),
       surface: Color(0xFFF4F6FA),
@@ -142,8 +142,8 @@ class ThemePack {
   /// Editorial paper: serif subjects, full-bleed rules, actions as words.
   static const ledger = ThemePack(
     id: 'ledger',
-    name: 'Ledger',
-    tagline: 'Editorial paper. Serif subjects, rules, actions as words.',
+    nameKey: 'theme.ledger',
+    taglineKey: 'theme.editorialPaperSerifSubjectsRulesActions',
     colors: RmColors(
       bg: Color(0xFFFAF7F0),
       surface: Color(0xFFF1ECE0),
@@ -174,8 +174,8 @@ class ThemePack {
   /// Terminal dark: dense rows, amber rail, key hints on the actions.
   static const nightops = ThemePack(
     id: 'nightops',
-    name: 'Night Ops',
-    tagline: 'Terminal dark. Dense rows, amber rail, key hints.',
+    nameKey: 'theme.nightOps',
+    taglineKey: 'theme.terminalDarkDenseRowsAmberRail',
     brightness: Brightness.dark,
     colors: RmColors(
       bg: Color(0xFF0B0D12),

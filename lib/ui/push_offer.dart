@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
@@ -80,26 +82,21 @@ class _OfferDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.rm;
     return AlertDialog(
-      title: const Text('Get notified of new mail?'),
+      title: Text(tr(context, 'pushoffer.getNotifiedOfNewMail')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'REST Mail can tell you when mail arrives, even when the app is '
-            'closed.',
-          ),
+          Text(tr(context, 'pushoffer.restMailCanTellYouWhenMail')),
           const SizedBox(height: 10),
           Text(
-            'Your server sends Apple only a signal to check for mail. The app '
-            'then fetches the mail from your server itself, so none of it '
-            'passes through Apple.',
+            tr(context, 'pushoffer.yourServerSendsAppleOnlyASignal'),
             style: rmText(13.5, color: c.ink2, height: 1.4),
           ),
           if (hasImap) ...[
             const SizedBox(height: 10),
             Text(
-              notificationsImapNote,
+              tr(context, notificationsImapNote),
               style: rmText(13.5, color: c.ink2, height: 1.4),
             ),
           ],
@@ -109,14 +106,14 @@ class _OfferDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: Text(
-            'Not now',
+            tr(context, 'pushoffer.notNow'),
             style: rmText(14.5, color: c.ink2, weight: FontWeight.w600),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
           child: Text(
-            'Turn on',
+            tr(context, 'pushoffer.turnOn'),
             style: rmText(14.5, color: c.accent, weight: FontWeight.w700),
           ),
         ),
@@ -126,6 +123,4 @@ class _OfferDialog extends StatelessWidget {
 }
 
 /// Why Gmail and other IMAP accounts get no notifications.
-const notificationsImapNote =
-    "Gmail and other IMAP accounts get no notifications: REST Mail isn't "
-    'told when their mail arrives. They update while the app is open.';
+const notificationsImapNote = 'pushoffer.gmailAndOtherIMAPAccountsGetNo';

@@ -9,18 +9,18 @@ enum PanelArea { list, reader, composer }
 /// renders what it already has; anything with a side effect is a setting,
 /// not an option.
 sealed class PanelOption {
-  const PanelOption({required this.id, required this.label});
+  const PanelOption({required this.id, required this.labelKey});
 
   /// Stable key inside the panel. Never rename it.
   final String id;
-  final String label;
+  final String labelKey;
 }
 
 /// Pick one of a few renderings.
 final class ChoiceOption extends PanelOption {
   const ChoiceOption({
     required super.id,
-    required super.label,
+    required super.labelKey,
     required this.values,
     required this.defaultValue,
   });
@@ -34,7 +34,7 @@ final class ChoiceOption extends PanelOption {
 final class ToggleOption extends PanelOption {
   const ToggleOption({
     required super.id,
-    required super.label,
+    required super.labelKey,
     this.defaultValue = false,
   });
 
@@ -49,75 +49,88 @@ class PanelSpec {
   const PanelSpec({
     required this.id,
     required this.area,
-    required this.name,
-    required this.description,
+    required this.nameKey,
+    required this.descriptionKey,
     this.defaultOn = false,
     this.options = const [],
   });
 
   final String id;
   final PanelArea area;
-  final String name;
-  final String description;
+  final String nameKey;
+  final String descriptionKey;
   final bool defaultOn;
   final List<PanelOption> options;
 }
 
 const dayStyleOption = ChoiceOption(
   id: 'style',
-  label: 'Heading style',
-  values: [('relative', 'Today / Yesterday'), ('absolute', 'Full date')],
+  labelKey: 'interface.headingStyle',
+  values: [
+    ('relative', 'interface.todayYesterday'),
+    ('absolute', 'interface.fullDate'),
+  ],
   defaultValue: 'relative',
 );
 
 const dayCountOption = ToggleOption(
   id: 'count',
-  label: 'How many messages that day',
+  labelKey: 'interface.howManyMessagesThatDay',
 );
 
 const dateSeparatorsPanel = PanelSpec(
   id: 'date_separators',
   area: PanelArea.list,
-  name: 'Date separator rows',
-  description: 'A heading for each day, with that day mail under it.',
+  nameKey: 'interface.dateSeparatorRows',
+  descriptionKey: 'interface.aHeadingForEachDayWith',
   options: [dayStyleOption, dayCountOption],
 );
 
 const trustDetailOption = ChoiceOption(
   id: 'detail',
-  label: 'Detail',
-  values: [('chip', 'Badge only'), ('receipt', 'Badge and checks')],
+  labelKey: 'interface.detail',
+  values: [
+    ('chip', 'interface.badgeOnly'),
+    ('receipt', 'interface.badgeAndChecks'),
+  ],
   defaultValue: 'chip',
 );
 
 const trustShowForOption = ChoiceOption(
   id: 'show_for',
-  label: 'Show for',
-  values: [('all', 'Every message'), ('warnings', 'Warnings only')],
+  labelKey: 'interface.showFor',
+  values: [
+    ('all', 'interface.everyMessage'),
+    ('warnings', 'interface.warningsOnly'),
+  ],
   defaultValue: 'all',
 );
 
 const senderTrustPanel = PanelSpec(
   id: 'sender_trust',
   area: PanelArea.reader,
-  name: 'Sender verification',
-  description: 'Signed, forwarded or unverified, from the headers.',
+  nameKey: 'interface.senderVerification',
+  descriptionKey: 'interface.signedForwardedOrUnverifiedFromThe',
   defaultOn: true,
   options: [trustDetailOption, trustShowForOption],
 );
 
 const previewLinesOption = ChoiceOption(
   id: 'lines',
-  label: 'Lines',
-  values: [('one', 'One line'), ('two', 'Two lines'), ('none', 'None')],
+  labelKey: 'interface.lines',
+  values: [
+    ('one', 'interface.oneLine'),
+    ('two', 'interface.twoLines'),
+    ('none', 'interface.none'),
+  ],
   defaultValue: 'two',
 );
 
 const listPreviewPanel = PanelSpec(
   id: 'list_preview',
   area: PanelArea.list,
-  name: 'Message preview',
-  description: 'How much of the body shows under each sender.',
+  nameKey: 'interface.messagePreview',
+  descriptionKey: 'interface.howMuchOfTheBodyShows',
   defaultOn: true,
   options: [previewLinesOption],
 );
@@ -125,55 +138,53 @@ const listPreviewPanel = PanelSpec(
 const listAttachmentsPanel = PanelSpec(
   id: 'list_attachments',
   area: PanelArea.list,
-  name: 'Attachment marker',
-  description: 'A paperclip on messages that carry files.',
+  nameKey: 'interface.attachmentMarker',
+  descriptionKey: 'interface.aPaperclipOnMessagesThatCarry',
   defaultOn: true,
 );
 
 const listCountPanel = PanelSpec(
   id: 'list_count',
   area: PanelArea.list,
-  name: 'Conversation count',
-  description: 'How many messages are in a thread, beside the sender.',
+  nameKey: 'interface.conversationCount',
+  descriptionKey: 'interface.howManyMessagesAreInA',
   defaultOn: true,
 );
 
 const listFlagPanel = PanelSpec(
   id: 'list_flag',
   area: PanelArea.list,
-  name: 'Flag marker',
-  description: 'Show which messages you have flagged.',
+  nameKey: 'interface.flagMarker',
+  descriptionKey: 'interface.showWhichMessagesYouHaveFlagged',
   defaultOn: true,
 );
 
 const composerCcPanel = PanelSpec(
   id: 'composer_cc',
   area: PanelArea.composer,
-  name: 'Cc and Bcc fields',
-  description: 'Keep the copy fields open instead of hiding them behind Cc.',
+  nameKey: 'interface.ccAndBccFields',
+  descriptionKey: 'interface.keepTheCopyFieldsOpenInstead',
 );
 
 const composerFromPanel = PanelSpec(
   id: 'composer_from',
   area: PanelArea.composer,
-  name: 'Sending account',
-  description: 'Show which account the message goes from, even with one.',
+  nameKey: 'interface.sendingAccount',
+  descriptionKey: 'interface.showWhichAccountTheMessageGoes',
 );
 
 const composerLaterPanel = PanelSpec(
   id: 'composer_later',
   area: PanelArea.composer,
-  name: 'Send later',
-  description: 'A Later button that holds the message until the time you pick.',
+  nameKey: 'interface.sendLater',
+  descriptionKey: 'interface.aLaterButtonThatHoldsThe',
 );
 
 const composerUnsubscribePanel = PanelSpec(
   id: 'composer_unsubscribe',
   area: PanelArea.composer,
-  name: 'Unsubscribe link',
-  description:
-      'Where recipients unsubscribe, for mail from a domain that sends '
-      'newsletters or lists. It opens by itself when the domain needs one.',
+  nameKey: 'interface.unsubscribeLink',
+  descriptionKey: 'interface.whereRecipientsUnsubscribeForMailFrom',
 );
 
 /// Everything the user can add to or remove from their client.
@@ -292,29 +303,29 @@ class InterfacePrefs {
 class InterfacePreset {
   const InterfacePreset({
     required this.id,
-    required this.name,
-    required this.description,
+    required this.nameKey,
+    required this.descriptionKey,
     required this.prefs,
   });
 
   final String id;
-  final String name;
-  final String description;
+  final String nameKey;
+  final String descriptionKey;
   final InterfacePrefs prefs;
 }
 
 /// The starting points the settings screen offers above the panels.
 const classicPreset = InterfacePreset(
   id: 'classic',
-  name: 'Classic',
-  description: 'The list as a list, with sender verification in the reader.',
+  nameKey: 'interface.classic',
+  descriptionKey: 'interface.theListAsAListWith',
   prefs: InterfacePrefs(),
 );
 
 const triagePreset = InterfacePreset(
   id: 'triage',
-  name: 'Triage',
-  description: 'Day headings with counts, and only warn about senders.',
+  nameKey: 'interface.triage',
+  descriptionKey: 'interface.dayHeadingsWithCountsAndOnly',
   prefs: InterfacePrefs(
     enabled: {'date_separators': true},
     values: {
@@ -326,8 +337,8 @@ const triagePreset = InterfacePreset(
 
 const readingPreset = InterfacePreset(
   id: 'reading',
-  name: 'Reading',
-  description: 'Full sender checks, and the copy fields ready to write.',
+  nameKey: 'interface.reading',
+  descriptionKey: 'interface.fullSenderChecksAndTheCopy',
   prefs: InterfacePrefs(
     enabled: {'composer_cc': true},
     values: {

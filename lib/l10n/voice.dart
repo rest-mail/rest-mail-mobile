@@ -4,13 +4,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/app_scope.dart';
 import '../state/mailbox_state.dart';
 import '../theme/packs.dart';
-import 'strings_ar.dart';
-import 'strings_de.dart';
-import 'strings_en.dart';
-import 'strings_es.dart';
-import 'strings_fa.dart';
-import 'strings_hi.dart';
-import 'strings_ne.dart';
+import 'catalog.dart';
 
 /// Two layers of words, resolved per string.
 ///
@@ -23,15 +17,6 @@ import 'strings_ne.dart';
 ///
 /// To add a language: copy `strings_en.dart`, translate the values, add the
 /// import, the entry in [_voices] and the `Locale` in [supportedLocales].
-const _voices = <String, Map<String, Map<String, String>>>{
-  'en': stringsEn,
-  'de': stringsDe,
-  'es': stringsEs,
-  'hi': stringsHi,
-  'ne': stringsNe,
-  'ar': stringsAr,
-  'fa': stringsFa,
-};
 
 /// What the app can speak. A device set to anything else gets the first of
 /// these rather than a half-translated mix.
@@ -122,12 +107,8 @@ String trustDetailOf(BuildContext context, TrustVerdict verdict) {
 /// The string for [key] in [pack]'s voice and [locale], falling back
 /// voice+locale → base+locale → voice+en → base+en.
 String voiceLine(ThemePack pack, Locale locale, String key) {
-  final lang = locale.languageCode;
-  final inLang = _voices[lang];
-  final inEn = _voices['en']!;
-  return inLang?[pack.id]?[key] ??
-      inLang?['classic']?[key] ??
-      inEn[pack.id]?[key] ??
-      inEn['classic']?[key] ??
-      key;
+  return languageLine(locale.languageCode, key, voice: pack.id);
 }
+
+String trText(BuildContext context, UiText text) =>
+    trArgs(context, text.key, text.args);

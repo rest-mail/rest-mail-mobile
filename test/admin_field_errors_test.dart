@@ -55,7 +55,7 @@ void main() {
     final text = await describe(tester);
     expect(
       text(const ApiException(403, 'forbidden', 'Forbidden')),
-      noPermission,
+      "You don't have permission for this",
     );
   });
 }

@@ -73,7 +73,12 @@ void main() {
 
     expect(find.text('Get notified of new mail?'), findsOneWidget);
     expect(find.textContaining('none of it passes through Apple'), findsOne);
-    expect(find.text(notificationsImapNote), findsNothing);
+    expect(
+      find.text(
+        "Gmail and other IMAP accounts get no notifications: REST Mail isn't told when their mail arrives. They update while the app is open.",
+      ),
+      findsNothing,
+    );
     expect(push.prompts, 0);
     await tester.tap(find.text('Turn on'));
     await tester.pumpAndSettle();
@@ -171,14 +176,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Get notified of new mail?'), findsOneWidget);
-    expect(find.text(notificationsImapNote), findsOneWidget);
+    expect(
+      find.text(
+        "Gmail and other IMAP accounts get no notifications: REST Mail isn't told when their mail arrives. They update while the app is open.",
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();
     expect(fake.devicesOf(FakeAccounts.email), isEmpty);
 
     await _openSettings(tester);
     expect(find.text('NOTIFICATIONS'), findsOneWidget);
-    expect(find.text(notificationsImapNote), findsOneWidget);
+    expect(
+      find.text(
+        "Gmail and other IMAP accounts get no notifications: REST Mail isn't told when their mail arrives. They update while the app is open.",
+      ),
+      findsOneWidget,
+    );
 
     await finish(tester);
   });

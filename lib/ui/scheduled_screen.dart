@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -55,7 +57,7 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
       setState(
         () => _items = [...?_items]..removeWhere((each) => each.id == item.id),
       );
-      showToast(context, 'Cancelled');
+      showToast(context, tr(context, 'invite.cancelled'));
     } on ApiException catch (e) {
       if (!mounted) return;
       showToast(
@@ -74,7 +76,10 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            RmTopBar(title: 'Scheduled', onBack: () => Navigator.pop(context)),
+            RmTopBar(
+              title: tr(context, 'settings.scheduled'),
+              onBack: () => Navigator.pop(context),
+            ),
             Expanded(child: _body(context)),
           ],
         ),
@@ -107,7 +112,7 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
               ),
               const SizedBox(height: 14),
               RmOutlineButton(
-                label: 'Try again',
+                label: tr(context, 'health.retry'),
                 height: 44,
                 onPressed: () => unawaited(_load()),
               ),
@@ -127,13 +132,13 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
             Icon(Icons.schedule_send_rounded, size: 34, color: c.ink3),
             const SizedBox(height: 12),
             Text(
-              'Nothing is waiting to be sent.',
+              tr(context, 'scheduled.nothingIsWaitingToBeSent'),
               textAlign: TextAlign.center,
               style: rmText(14.5, color: c.ink2, weight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
-              'A message you send later appears here until its time.',
+              tr(context, 'scheduled.aMessageYouSendLaterAppearsHere'),
               textAlign: TextAlign.center,
               style: rmText(12.5, color: c.ink3, height: 1.4),
             ),
@@ -148,16 +153,18 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
         children: [
-          const SectionLabel('Waiting'),
+          SectionLabel(tr(context, 'scheduled.waiting')),
           const SizedBox(height: 9),
           RmGroup(
             children: [
               for (final item in items)
                 RmRow(
                   label: item.subject.trim().isEmpty
-                      ? '(no subject)'
+                      ? tr(context, 'message.noSubject')
                       : item.subject,
-                  subtitle: 'To ${item.to.join(', ')}',
+                  subtitle: trArgs(context, 'scheduled.toValue', {
+                    'value': (item.to.join(', ')).toString(),
+                  }),
                   value: _when(item.scheduledAt),
                   trailing: TextButton(
                     style: TextButton.styleFrom(
@@ -172,7 +179,7 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
                         ? null
                         : () => unawaited(_cancel(item)),
                     child: Text(
-                      'Cancel',
+                      tr(context, 'common.cancel'),
                       style: rmText(
                         13,
                         color: c.danger,
@@ -196,8 +203,14 @@ class _ScheduledScreenState extends State<ScheduledScreen> {
       at.day,
     ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
     final clock = DateFormat.Hm().format(at);
-    if (days == 0) return 'Today $clock';
-    if (days == 1) return 'Tomorrow $clock';
+    if (days == 0)
+      return trArgs(context, 'scheduled.todayClock', {
+        'clock': (clock).toString(),
+      });
+    if (days == 1)
+      return trArgs(context, 'scheduled.tomorrowClock', {
+        'clock': (clock).toString(),
+      });
     if (days > 1 && days < 7) return '${DateFormat.E().format(at)} $clock';
     return DateFormat('d MMM, HH:mm').format(at);
   }

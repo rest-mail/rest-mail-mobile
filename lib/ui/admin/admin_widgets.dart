@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -13,12 +15,12 @@ import '../widgets/common.dart';
 
 /// What a 403 from the admin API says, and all it says. The server decides
 /// what a session may do; the app never assumes it was allowed.
-const noPermission = "You don't have permission for this";
+const noPermission = 'admin.adminwidgets.youDonTHavePermissionForThis';
 
 /// What to tell an admin about a failed request.
 String describeAdminError(BuildContext context, Object error, {String? host}) {
   if (error is ApiException) {
-    if (error.statusCode == 403) return noPermission;
+    if (error.statusCode == 403) return tr(context, noPermission);
     if (error.fields.entries.firstOrNull case final field?) {
       // A message that starts with a capital is a sentence of its own
       // ("Invalid certificate PEM"); a phrase follows the field's name
@@ -125,7 +127,9 @@ class AdminPage extends StatelessWidget {
               actions: allowed ? actions : const [],
             ),
             Expanded(
-              child: allowed ? body(access) : const AdminMessage(noPermission),
+              child: allowed
+                  ? body(access)
+                  : AdminMessage(tr(context, noPermission)),
             ),
           ],
         ),
@@ -161,7 +165,7 @@ class AdminMessage extends StatelessWidget {
               TextButton(
                 onPressed: onRetry,
                 child: Text(
-                  'Try again',
+                  tr(context, 'health.retry'),
                   style: rmText(14, color: c.accent, weight: FontWeight.w700),
                 ),
               ),
@@ -360,7 +364,7 @@ class AdminListView<T> extends StatelessWidget {
                       : TextButton(
                           onPressed: () => unawaited(list.loadMore()),
                           child: Text(
-                            'Load more',
+                            tr(context, 'admin.adminwidgets.loadMore'),
                             style: rmText(
                               14,
                               color: c.accent,
@@ -530,7 +534,10 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
       final text = data?.text;
       setState(() {
         if (text == null || text.isEmpty) {
-          _error = 'The clipboard has no text to paste.';
+          _error = tr(
+            context,
+            'admin.adminwidgets.theClipboardHasNoTextToPaste',
+          );
         } else {
           _controllers[index].text = text;
           _error = null;
@@ -539,7 +546,10 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
     } on PlatformException {
       if (mounted) {
         setState(
-          () => _error = 'Could not read the clipboard. Try pasting again.',
+          () => _error = tr(
+            context,
+            'admin.adminwidgets.couldNotReadTheClipboardTryPasting',
+          ),
         );
       }
     }
@@ -626,7 +636,9 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                                   onPressed: _busy
                                       ? null
                                       : () => unawaited(_paste(i)),
-                                  child: const Text('Paste'),
+                                  child: Text(
+                                    tr(context, 'admin.adminwidgets.paste'),
+                                  ),
                                 )
                               : null,
                         ),

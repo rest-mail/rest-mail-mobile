@@ -1,3 +1,5 @@
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -43,7 +45,9 @@ class MessageRow extends StatelessWidget {
     final v = context.rmv;
     final family = typefaceFamily(v.listType);
     final unread = !message.isRead;
-    final subject = message.subject.isEmpty ? '(no subject)' : message.subject;
+    final subject = message.subject.isEmpty
+        ? tr(context, 'message.noSubject')
+        : message.subject;
     final rail = v.unread == UnreadSignal.rail && unread;
     final attachment = showAttachment && message.hasAttachments;
     final showTheCount = showCount && count > 1;
@@ -51,12 +55,14 @@ class MessageRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: [
-        if (unread) 'Unread',
-        'From ${message.senderLabel}',
+        if (unread) tr(context, 'mailboxes.unread'),
+        trArgs(context, 'messagerow.fromSenderLabel', {
+          'senderLabel': (message.senderLabel).toString(),
+        }),
         if (showTheCount) '$count messages',
         subject,
         timeLabel(message.date),
-        if (message.hasAttachments) 'Has attachments',
+        if (message.hasAttachments) tr(context, 'messagerow.hasAttachments'),
       ].join('. '),
       excludeSemantics: true,
       child: InkWell(
@@ -253,7 +259,7 @@ class _AttachmentChip extends StatelessWidget {
           Icon(Icons.attach_file_rounded, size: 11, color: c.ink3),
           const SizedBox(width: 3),
           Text(
-            'Attachment',
+            tr(context, 'messagerow.attachment'),
             style: rmText(
               11.5,
               color: c.ink3,

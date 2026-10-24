@@ -170,8 +170,10 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                 title: tr(context, 'mailboxes.title'),
                 onBack: () => Navigator.pop(context),
               ),
-              const Expanded(
-                child: Center(child: Text('No accounts are signed in.')),
+              Expanded(
+                child: Center(
+                  child: Text(tr(context, 'mailboxes.noAccountsAreSignedIn')),
+                ),
               ),
             ],
           ),
@@ -309,7 +311,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                       children: [
                         _LinkRow(
                           icon: Icons.admin_panel_settings_outlined,
-                          label: 'Administration',
+                          label: tr(context, 'admin.title'),
                           screen: AdministrationScreen(account: adminAccount),
                         ),
                       ],
@@ -1062,7 +1064,9 @@ class _Folders extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(
-          loading ? 'Loading folders…' : 'No folders yet.',
+          loading
+              ? tr(context, 'mailboxes.loadingFolders')
+              : tr(context, 'mailboxes.noFoldersYet'),
           style: rmText(12.5, color: c.ink3),
         ),
       );

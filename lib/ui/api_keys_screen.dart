@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -29,16 +31,20 @@ String _keyError(BuildContext context, ApiException error, String host) {
         .join('\n');
   }
   return switch (error.code) {
-    _ when error.statusCode == 404 =>
-      'API keys are not available for this mailbox on this server.',
-    'two_factor_required' =>
-      'Enable two-factor authentication, then sign in with a code to create '
-          'or revoke API keys.',
-    'reauth_required' || 'invalid_password' =>
-      'Enter the current password of the account you signed in with.',
-    'forbidden' =>
-      'These permissions exceed what you or this mailbox currently hold.',
-    'session_required' => 'Sign in with your password and a second factor.',
+    _ when error.statusCode == 404 => tr(
+      context,
+      'apikeys.apiKeysAreNotAvailableForThis',
+    ),
+    'two_factor_required' => tr(
+      context,
+      'apikeys.enableTwoFactorAuthenticationThenSignIn',
+    ),
+    'reauth_required' || 'invalid_password' => tr(
+      context,
+      'apikeys.enterTheCurrentPasswordOfTheAccount',
+    ),
+    'forbidden' => tr(context, 'apikeys.thesePermissionsExceedWhatYouOrThis'),
+    'session_required' => tr(context, 'apikeys.signInWithYourPasswordAndA'),
     _ => describeError(context, error, host: host),
   };
 }
@@ -110,9 +116,11 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
   Future<void> _revoke(APIKey key) async {
     final sure = await confirmAction(
       context,
-      title: 'Revoke “${key.name}”?',
-      message: 'Requests using this key will be refused immediately.',
-      action: 'Revoke',
+      title: trArgs(context, 'apikeys.revokeName', {
+        'name': (key.name).toString(),
+      }),
+      message: tr(context, 'apikeys.requestsUsingThisKeyWillBeRefused'),
+      action: tr(context, 'apikeys.revoke'),
     );
     if (!sure || !mounted) return;
     setState(() => _revoking.add(key.id));
@@ -120,7 +128,10 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
       await _account.client.revokeAPIKey(widget.mailbox.id, key.id);
       if (!mounted) return;
       setState(() => _items = [...?_items]..remove(key));
-      showToast(context, 'Revoked “${key.name}”');
+      showToast(
+        context,
+        trArgs(context, 'apikeys.revokedName', {'name': (key.name).toString()}),
+      );
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.statusCode == 404) {
@@ -142,7 +153,10 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            RmTopBar(title: 'API keys', onBack: () => Navigator.pop(context)),
+            RmTopBar(
+              title: tr(context, 'apikeys.apiKeys'),
+              onBack: () => Navigator.pop(context),
+            ),
             Expanded(
               child: _loading && items == null
                   ? const Center(child: CircularProgressIndicator())
@@ -153,14 +167,15 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                         children: [
                           Text(
-                            'Give an automation named permissions on specific '
-                            'domains or mailboxes. A key can never do more '
-                            'than its owner currently may.',
+                            tr(
+                              context,
+                              'apikeys.giveAnAutomationNamedPermissionsOnSpecific',
+                            ),
                             style: rmText(14, color: c.ink2, height: 1.45),
                           ),
                           const SizedBox(height: 18),
                           RmPrimaryButton(
-                            label: 'Create an API key',
+                            label: tr(context, 'apikeys.createAnAPIKey'),
                             onPressed: () => unawaited(_create()),
                           ),
                           if (error != null) ...[
@@ -173,12 +188,14 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                               TextButton(
                                 onPressed: () =>
                                     unawaited(_signInAgain(context, _account)),
-                                child: const Text('Sign in with a code'),
+                                child: Text(
+                                  tr(context, 'apikeys.signInWithACode'),
+                                ),
                               )
                             else
                               TextButton(
                                 onPressed: () => unawaited(_load()),
-                                child: const Text('Try again'),
+                                child: Text(tr(context, 'health.retry')),
                               ),
                           ],
                           const SizedBox(height: 22),
@@ -186,7 +203,7 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                           const SizedBox(height: 9),
                           if (items != null && items.isEmpty)
                             Text(
-                              'No API keys yet.',
+                              tr(context, 'apikeys.noAPIKeysYet'),
                               style: rmText(14, color: c.ink3),
                             ),
                           if (items != null && items.isNotEmpty)
@@ -196,13 +213,26 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                                   RmRow(
                                     label: key.name,
                                     subtitle: [
-                                      'ID ${key.publicId}',
-                                      'Created ${_date(key.createdAt)}',
+                                      trArgs(context, 'apikeys.idPublicId', {
+                                        'publicId': (key.publicId).toString(),
+                                      }),
+                                      trArgs(context, 'apikeys.createdValue', {
+                                        'value': (_date(key.createdAt))
+                                            .toString(),
+                                      }),
                                       key.lastUsedAt == null
-                                          ? 'Never used'
-                                          : 'Last used ${_date(key.lastUsedAt!)}',
+                                          ? tr(context, 'date.neverUsed')
+                                          : trArgs(
+                                              context,
+                                              'apikeys.lastUsedValue',
+                                              {
+                                                'value': (_date(
+                                                  key.lastUsedAt!,
+                                                )).toString(),
+                                              },
+                                            ),
                                       key.expiresAt == null
-                                          ? 'No expiry'
+                                          ? tr(context, 'apikeys.noExpiry')
                                           : '${key.isExpiredAt(DateTime.now()) ? 'Expired' : 'Expires'} ${_date(key.expiresAt!)}',
                                       for (final permission in key.permissions)
                                         '${permission.capability} · ${permission.scope}',
@@ -211,7 +241,9 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                                       onPressed: _revoking.contains(key.id)
                                           ? null
                                           : () => unawaited(_revoke(key)),
-                                      child: const Text('Revoke'),
+                                      child: Text(
+                                        tr(context, 'apikeys.revoke'),
+                                      ),
                                     ),
                                   ),
                               ],
@@ -255,9 +287,9 @@ const _capabilities = [
 ];
 
 enum _Scope {
-  mailbox('A mailbox', 'mailbox:'),
-  domain('A domain', 'domain:'),
-  all('Everywhere', '');
+  mailbox('admin.permissions.aMailbox', 'mailbox:'),
+  domain('admin.permissions.aDomain', 'domain:'),
+  all('admin.granttext.everywhere', '');
 
   const _Scope(this.label, this.prefix);
   final String label;
@@ -407,7 +439,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'New API key',
+              title: tr(context, 'apikeys.newAPIKey'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -417,20 +449,19 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   TextField(
                     controller: _name,
                     maxLength: 100,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      hintText: 'Mailbox provisioning',
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'folders.name'),
+                      hintText: tr(context, 'apikeys.mailboxProvisioning'),
                     ),
                     onChanged: (_) => setState(() => _error = null),
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Permissions',
+                    tr(context, 'admin.section.permissions.title'),
                     style: rmText(16, color: c.ink, weight: FontWeight.w700),
                   ),
                   Text(
-                    'Each capability applies only at the scope you choose. Your current '
-                    'grants must cover every permission.',
+                    tr(context, 'apikeys.eachCapabilityAppliesOnlyAtTheScope'),
                     style: rmText(13, color: c.ink3),
                   ),
                   for (var i = 0; i < _permissions.length; i++) _permission(i),
@@ -443,20 +474,31 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                             ),
                           ),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add permission'),
+                    label: Text(tr(context, 'apikeys.addPermission')),
                   ),
                   const SizedBox(height: 18),
                   DropdownButtonFormField<int>(
                     isExpanded: true,
                     initialValue: _days,
-                    decoration: const InputDecoration(labelText: 'Expires'),
-                    items: const [
-                      DropdownMenuItem(value: 30, child: Text('In 30 days')),
-                      DropdownMenuItem(value: 90, child: Text('In 90 days')),
-                      DropdownMenuItem(value: 365, child: Text('In a year')),
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'admin.logs.expires'),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 30,
+                        child: Text(tr(context, 'apikeys.in30Days')),
+                      ),
+                      DropdownMenuItem(
+                        value: 90,
+                        child: Text(tr(context, 'apikeys.in90Days')),
+                      ),
+                      DropdownMenuItem(
+                        value: 365,
+                        child: Text(tr(context, 'apikeys.inAYear')),
+                      ),
                       DropdownMenuItem(
                         value: 0,
-                        child: Text('Choose date and time'),
+                        child: Text(tr(context, 'apikeys.chooseDateAndTime')),
                       ),
                     ],
                     onChanged: _busy
@@ -470,7 +512,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                       onPressed: _busy ? null : () => unawaited(_expiry(0)),
                       child: Text(
                         _customExpiry == null
-                            ? 'Choose a future expiry'
+                            ? tr(context, 'apikeys.chooseAFutureExpiry')
                             : _date(_customExpiry!),
                       ),
                     ),
@@ -482,14 +524,14 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                     enableSuggestions: false,
                     autofillHints: const [AutofillHints.password],
                     decoration: InputDecoration(
-                      labelText: 'Current password',
+                      labelText: tr(context, 'apikeys.currentPassword'),
                       helperText: widget.account.address,
                     ),
                     onChanged: (_) => setState(() => _error = null),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Creating a key requires a sign-in with a second factor.',
+                    tr(context, 'apikeys.creatingAKeyRequiresASignIn'),
                     style: rmText(13, color: c.ink3),
                   ),
                   if (error != null) ...[
@@ -502,12 +544,12 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                       TextButton(
                         onPressed: () =>
                             unawaited(_signInAgain(context, widget.account)),
-                        child: const Text('Sign in with a code'),
+                        child: Text(tr(context, 'apikeys.signInWithACode')),
                       ),
                   ],
                   const SizedBox(height: 24),
                   RmPrimaryButton(
-                    label: 'Create API key',
+                    label: tr(context, 'apikeys.createAPIKey'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_create()) : null,
                   ),
@@ -530,7 +572,11 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: item.capability,
-            decoration: InputDecoration(labelText: 'Capability ${index + 1}'),
+            decoration: InputDecoration(
+              labelText: trArgs(context, 'apikeys.capabilityValue', {
+                'value': (index + 1).toString(),
+              }),
+            ),
             items: [
               for (final capability in _capabilities)
                 DropdownMenuItem(value: capability, child: Text(capability)),
@@ -545,10 +591,15 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
           DropdownButtonFormField<_Scope>(
             isExpanded: true,
             initialValue: item.scope,
-            decoration: const InputDecoration(labelText: 'Applies to'),
+            decoration: InputDecoration(
+              labelText: tr(context, 'apikeys.appliesTo'),
+            ),
             items: [
               for (final scope in _Scope.values)
-                DropdownMenuItem(value: scope, child: Text(scope.label)),
+                DropdownMenuItem(
+                  value: scope,
+                  child: Text(tr(context, scope.label)),
+                ),
             ],
             onChanged: _busy
                 ? null
@@ -570,8 +621,8 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
               enableSuggestions: false,
               decoration: InputDecoration(
                 labelText: item.scope == _Scope.mailbox
-                    ? 'Mailbox address'
-                    : 'Domain name',
+                    ? tr(context, 'apikeys.mailboxAddress')
+                    : tr(context, 'admin.tlsreports.domainName'),
               ),
               onChanged: (_) => setState(() => _error = null),
             ),
@@ -582,7 +633,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   : () => setState(() {
                       _permissions.removeAt(index).target.dispose();
                     }),
-              child: const Text('Remove permission'),
+              child: Text(tr(context, 'apikeys.removePermission')),
             ),
         ],
       ),
@@ -633,7 +684,9 @@ class _CreatedKeyScreenState extends State<_CreatedKeyScreen> {
     if (mounted) {
       showToast(
         context,
-        expires ? 'API key copied for two minutes' : 'API key copied',
+        expires
+            ? tr(context, 'apikeys.apiKeyCopiedForTwoMinutes')
+            : tr(context, 'apikeys.apiKeyCopied'),
       );
     }
   }
@@ -647,7 +700,7 @@ class _CreatedKeyScreenState extends State<_CreatedKeyScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'API key created',
+              title: tr(context, 'apikeys.apiKeyCreated'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -659,27 +712,25 @@ class _CreatedKeyScreenState extends State<_CreatedKeyScreen> {
                     style: rmText(20, color: c.ink, weight: FontWeight.w700),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Copy this key now. It will not be shown again.'),
+                  Text(tr(context, 'apikeys.copyThisKeyNowItWillNot')),
                   const SizedBox(height: 16),
                   if (_hidden || secret == null)
-                    const AdminMessage('API key hidden')
+                    AdminMessage(tr(context, 'apikeys.apiKeyHidden'))
                   else ...[
                     SelectableText(secret, style: rmText(16, color: c.ink)),
                     const SizedBox(height: 18),
                     RmPrimaryButton(
-                      label: 'Copy API key',
+                      label: tr(context, 'apikeys.copyAPIKey'),
                       onPressed: () => unawaited(_copy()),
                     ),
                   ],
                   const SizedBox(height: 22),
-                  const Text(
-                    'Use this key as a Bearer credential in the Authorization header.',
-                  ),
+                  Text(tr(context, 'apikeys.useThisKeyAsABearerCredential')),
                   for (final permission in widget.keyInfo.permissions)
                     Text('${permission.capability} · ${permission.scope}'),
                   const SizedBox(height: 18),
                   RmPrimaryButton(
-                    label: 'Done',
+                    label: tr(context, 'common.done'),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],

@@ -292,8 +292,15 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       if (sampleMode) ...[
         const SizedBox(height: 14),
         _SampleHint(
-          'Sample server: ${FakeAccounts.adminEmail}, password '
-          '${FakeAccounts.bootstrapPassword}, codes ${FakeAccounts.totpCode}.',
+          trArgs(
+            context,
+            'serversetup.sampleServerAdminEmailPasswordBootstrapPasswordCodesTotpCode',
+            {
+              'adminEmail': (FakeAccounts.adminEmail).toString(),
+              'bootstrapPassword': (FakeAccounts.bootstrapPassword).toString(),
+              'totpCode': (FakeAccounts.totpCode).toString(),
+            },
+          ),
         ),
       ],
       const SizedBox(height: 18),

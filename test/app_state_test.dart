@@ -226,7 +226,7 @@ void main() {
     test('signing out of the one on screen keeps it signed out', () async {
       final state = await signedInToBoth();
       final notices = <String>[];
-      state.notices.listen(notices.add);
+      state.notices.listen((notice) => notices.add(notice.inEnglish));
       expect(_addresses(state), [FakeAccounts.email, FakeAccounts.otherEmail]);
       expect(state.current!.address, FakeAccounts.otherEmail);
 
@@ -265,7 +265,7 @@ void main() {
       final state = await signedInToBoth();
       final mailbox = state.mailbox;
       final notices = <String>[];
-      state.notices.listen(notices.add);
+      state.notices.listen((notice) => notices.add(notice.inEnglish));
 
       fake.revokeSessionsOf(FakeAccounts.email);
       // Something that account's client had in flight when it left the

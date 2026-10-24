@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,17 +12,18 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _protocolLabel(String protocol) => switch (protocol) {
-  'all' => 'SMTP, IMAP and POP3',
-  _ => protocol.toUpperCase(),
-};
+String _protocolLabel(BuildContext context, String protocol) =>
+    switch (protocol) {
+      'all' => tr(context, 'admin.bans.smtpIMAPAndPOP3'),
+      _ => protocol.toUpperCase(),
+    };
 
-String _until(Ban ban) => switch (ban.expiresAt) {
+String _until(BuildContext context, Ban ban) => switch (ban.expiresAt) {
   final expires? =>
     expires.isAfter(DateTime.now())
         ? 'until ${longDate(expires)}'
         : 'expired ${longDate(expires)}',
-  null => 'for good',
+  null => tr(context, 'admin.bans.forGood'),
 };
 
 /// Addresses kept out of the server's mail protocols, by an admin or by the
@@ -67,7 +70,10 @@ class _BansScreenState extends State<BansScreen> {
       MaterialPageRoute(builder: (_) => _BanForm(account: widget.account)),
     );
     if (!mounted || ban == null) return;
-    showToast(context, 'Banned ${ban.ip}');
+    showToast(
+      context,
+      trArgs(context, 'admin.bans.bannedIp', {'ip': (ban.ip).toString()}),
+    );
     unawaited(_list.reload());
   }
 
@@ -79,7 +85,7 @@ class _BansScreenState extends State<BansScreen> {
       ),
     );
     if (!mounted || removed != true) return;
-    showToast(context, 'Lifted the ban');
+    showToast(context, tr(context, 'admin.bans.liftedTheBan'));
     unawaited(_list.reload());
   }
 
@@ -99,13 +105,20 @@ class _BansScreenState extends State<BansScreen> {
       host: _host,
       change: () => widget.account.client.deleteBan(ban.id),
       confirm: (
-        title: 'Lift the ban on ${ban.ip}?',
-        message: 'It can reach the mail protocols again straight away.',
-        action: 'Lift ban',
+        title: trArgs(context, 'admin.bans.liftTheBanOnIp', {
+          'ip': (ban.ip).toString(),
+        }),
+        message: tr(context, 'admin.bans.itCanReachTheMailProtocolsAgain'),
+        action: tr(context, 'admin.bans.liftBan'),
       ),
     );
     if (!ok || !mounted) return;
-    showToast(context, 'Lifted the ban on ${ban.ip}');
+    showToast(
+      context,
+      trArgs(context, 'admin.bans.liftedTheBanOnIp', {
+        'ip': (ban.ip).toString(),
+      }),
+    );
     unawaited(_list.reload());
   }
 
@@ -113,14 +126,14 @@ class _BansScreenState extends State<BansScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.bans,
-    title: 'Bans',
+    title: tr(context, 'admin.section.bans.title'),
     body: (access) => AdminListView(
       list: _list,
       host: _host,
-      empty: 'No bans match these filters.',
+      empty: tr(context, 'admin.bans.noBansMatchTheseFilters'),
       header: [
         AdminAddButton(
-          label: 'Filter bans',
+          label: tr(context, 'admin.bans.filterBans'),
           onTap: () => unawaited(_filterBans()),
         ),
         if (_filter.ip != null ||
@@ -132,39 +145,46 @@ class _BansScreenState extends State<BansScreen> {
               [
                 ?_filter.ip,
                 if (_filter.protocol case final protocol?)
-                  _protocolLabel(protocol),
+                  _protocolLabel(context, protocol),
                 _filter.includeExpired
-                    ? 'Current and expired bans'
-                    : 'Active bans',
+                    ? tr(context, 'admin.bans.currentAndExpiredBans')
+                    : tr(context, 'admin.bans.activeBans'),
               ].join(' · '),
             ),
           ),
         if (access.canDelete(AdminSection.bans))
           AdminAddButton(
-            label: 'Lift a ban by IP',
+            label: tr(context, 'admin.bans.liftABanByIP'),
             onTap: () => unawaited(_liftByIP()),
           ),
         if (access.canWrite(AdminSection.bans))
           AdminAddButton(
-            label: 'Ban an address',
+            label: tr(context, 'admin.bans.banAnAddress'),
             onTap: () => unawaited(_add()),
           ),
       ],
       row: (ban) => RmRow(
         label: ban.ip,
         subtitle: [
-          '${_protocolLabel(ban.protocol)}, ${_until(ban)}',
-          'Ban ${ban.id} · Added ${longDate(ban.createdAt)}',
+          '${_protocolLabel(context, ban.protocol)}, ${_until(context, ban)}',
+          trArgs(context, 'admin.bans.banIdAddedValue', {
+            'id': (ban.id).toString(),
+            'value': (longDate(ban.createdAt)).toString(),
+          }),
           if (ban.reason.isNotEmpty) ban.reason,
           if (ban.createdBy == 'auto')
-            'By the server'
+            tr(context, 'admin.bans.byTheServer')
           else
-            'By ${ban.createdBy}',
+            trArgs(context, 'admin.bans.byCreatedBy', {
+              'createdBy': (ban.createdBy).toString(),
+            }),
         ].join('\n'),
         trailing: access.canDelete(AdminSection.bans)
             ? RmIconButton(
                 icon: Icons.close_rounded,
-                tooltip: 'Lift the ban on ${ban.ip}',
+                tooltip: trArgs(context, 'admin.bans.liftTheBanOnIp2', {
+                  'ip': (ban.ip).toString(),
+                }),
                 color: context.rm.ink3,
                 onPressed: () => unawaited(_lift(ban)),
               )
@@ -176,10 +196,10 @@ class _BansScreenState extends State<BansScreen> {
 
 /// How long a new ban lasts.
 enum _Lasts {
-  day('A day', Duration(days: 1)),
-  week('A week', Duration(days: 7)),
-  ever('For good', null),
-  custom('Custom', null);
+  day('admin.bans.aDay', Duration(days: 1)),
+  week('admin.bans.aWeek', Duration(days: 7)),
+  ever('admin.bans.forGood2', null),
+  custom('admin.bans.custom', null);
 
   const _Lasts(this.label, this.duration);
 
@@ -219,9 +239,11 @@ class _BanFormState extends State<_BanForm> {
     if (widget.unban) {
       final sure = await confirmAction(
         context,
-        title: 'Lift the ban on ${_ip.text.trim()}?',
-        message: 'It can reach the mail protocols again straight away.',
-        action: 'Lift ban',
+        title: trArgs(context, 'admin.bans.liftTheBanOnValue', {
+          'value': (_ip.text.trim()).toString(),
+        }),
+        message: tr(context, 'admin.bans.itCanReachTheMailProtocolsAgain'),
+        action: tr(context, 'admin.bans.liftBan'),
       );
       if (!mounted || !sure) return;
     }
@@ -266,7 +288,9 @@ class _BanFormState extends State<_BanForm> {
         child: Column(
           children: [
             RmTopBar(
-              title: widget.unban ? 'Lift a ban by IP' : 'Ban an address',
+              title: widget.unban
+                  ? tr(context, 'admin.bans.liftABanByIP')
+                  : tr(context, 'admin.bans.banAnAddress'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -275,12 +299,18 @@ class _BanFormState extends State<_BanForm> {
                 children: [
                   Text(
                     widget.unban
-                        ? 'Enter the exact IPv4 or IPv6 address of the ban.'
-                        : 'Choose which mail protocols this address cannot use.',
+                        ? tr(
+                            context,
+                            'admin.bans.enterTheExactIPv4OrIPv6Address',
+                          )
+                        : tr(
+                            context,
+                            'admin.bans.chooseWhichMailProtocolsThisAddressCannot',
+                          ),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('IP address'),
+                  SectionLabel(tr(context, 'admin.bans.ipAddress')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _ip,
@@ -293,7 +323,7 @@ class _BanFormState extends State<_BanForm> {
                   ),
                   if (!widget.unban) ...[
                     const SizedBox(height: 18),
-                    const SectionLabel('Protocols'),
+                    SectionLabel(tr(context, 'admin.bans.protocols')),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -303,7 +333,7 @@ class _BanFormState extends State<_BanForm> {
                           ChoiceChip(
                             label: Text(
                               protocol == 'all'
-                                  ? 'All protocols'
+                                  ? tr(context, 'admin.bans.allProtocols')
                                   : protocol.toUpperCase(),
                             ),
                             selected: _protocol == protocol,
@@ -314,16 +344,18 @@ class _BanFormState extends State<_BanForm> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    const SectionLabel('Why'),
+                    SectionLabel(tr(context, 'quarantine.why')),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _reason,
                       onChanged: (_) => setState(() => _error = null),
                       style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(hintText: 'Optional'),
+                      decoration: InputDecoration(
+                        hintText: tr(context, 'contacts.nameHint'),
+                      ),
                     ),
                     const SizedBox(height: 18),
-                    const SectionLabel('For'),
+                    SectionLabel(tr(context, 'admin.bans.for')),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -331,7 +363,7 @@ class _BanFormState extends State<_BanForm> {
                       children: [
                         for (final lasts in _Lasts.values)
                           ChoiceChip(
-                            label: Text(lasts.label),
+                            label: Text(tr(context, lasts.label)),
                             selected: _lasts == lasts,
                             onSelected: _busy
                                 ? null
@@ -344,9 +376,12 @@ class _BanFormState extends State<_BanForm> {
                         controller: _duration,
                         autocorrect: false,
                         enableSuggestions: false,
-                        decoration: const InputDecoration(
-                          labelText: 'Duration',
-                          hintText: 'For example 1h30m or 30s',
+                        decoration: InputDecoration(
+                          labelText: tr(context, 'admin.bans.duration'),
+                          hintText: tr(
+                            context,
+                            'admin.bans.forExample1h30mOr30s',
+                          ),
                         ),
                         onChanged: (_) => setState(() => _error = null),
                       ),
@@ -357,7 +392,9 @@ class _BanFormState extends State<_BanForm> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: widget.unban ? 'Lift ban' : 'Ban',
+                    label: widget.unban
+                        ? tr(context, 'admin.bans.liftBan')
+                        : tr(context, 'admin.bans.ban'),
                     busy: _busy,
                     onPressed:
                         !_busy &&
@@ -407,7 +444,10 @@ class _BanFiltersScreenState extends State<_BanFiltersScreen> {
     body: SafeArea(
       child: Column(
         children: [
-          RmTopBar(title: 'Filter bans', onBack: () => Navigator.pop(context)),
+          RmTopBar(
+            title: tr(context, 'admin.bans.filterBans'),
+            onBack: () => Navigator.pop(context),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(22),
@@ -417,13 +457,13 @@ class _BanFiltersScreenState extends State<_BanFiltersScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'Exact IP address',
-                    hintText: 'Any address',
+                  decoration: InputDecoration(
+                    labelText: tr(context, 'admin.bans.exactIPAddress'),
+                    hintText: tr(context, 'admin.bans.anyAddress'),
                   ),
                 ),
                 const SizedBox(height: 18),
-                const SectionLabel('Protocol'),
+                SectionLabel(tr(context, 'server.protocol')),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -439,9 +479,9 @@ class _BanFiltersScreenState extends State<_BanFiltersScreen> {
                       ChoiceChip(
                         label: Text(
                           protocol == null
-                              ? 'Any protocol'
+                              ? tr(context, 'admin.bans.anyProtocol')
                               : protocol == 'all'
-                              ? 'All protocols only'
+                              ? tr(context, 'admin.bans.allProtocolsOnly')
                               : protocol.toUpperCase(),
                         ),
                         selected: _protocol == protocol,
@@ -450,20 +490,23 @@ class _BanFiltersScreenState extends State<_BanFiltersScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'A specific protocol also includes bans that apply to all protocols.',
+                Text(
+                  tr(
+                    context,
+                    'admin.bans.aSpecificProtocolAlsoIncludesBansThat',
+                  ),
                 ),
                 SwitchListTile(
-                  title: const Text('Include expired bans'),
-                  subtitle: const Text(
-                    'Show current and expired bans together',
+                  title: Text(tr(context, 'admin.bans.includeExpiredBans')),
+                  subtitle: Text(
+                    tr(context, 'admin.bans.showCurrentAndExpiredBansTogether'),
                   ),
                   value: _includeExpired,
                   onChanged: (value) => setState(() => _includeExpired = value),
                 ),
                 const SizedBox(height: 18),
                 RmPrimaryButton(
-                  label: 'Apply filters',
+                  label: tr(context, 'admin.bans.applyFilters'),
                   onPressed: () => Navigator.pop(
                     context,
                     _BanFilter(
@@ -475,7 +518,7 @@ class _BanFiltersScreenState extends State<_BanFiltersScreen> {
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, const _BanFilter()),
-                  child: const Text('Clear filters'),
+                  child: Text(tr(context, 'admin.bans.clearFilters')),
                 ),
               ],
             ),

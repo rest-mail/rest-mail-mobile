@@ -8,7 +8,7 @@ import 'package:restmail/ui/splash_screen.dart';
 
 void main() {
   for (final pack in ThemePack.all) {
-    testWidgets('the splash speaks ${pack.name}', (tester) async {
+    testWidgets('the splash speaks ${pack.nameKey}', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildTheme(pack, Brightness.light),

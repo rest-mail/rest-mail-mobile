@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:enough_mail/enough_mail.dart' hide MailEvent, MailEventType;
 import 'package:restmail_api/restmail_api.dart';
 
@@ -87,7 +90,11 @@ class ImapBackend implements MailBackend {
 
   Future<ImapConnection> _connect() async {
     if (_closed) {
-      throw const ApiException(0, 'closed', 'This account is signed out.');
+      throw LocalizedApiException(
+        0,
+        'closed',
+        UiText('client.thisAccountIsSignedOut'),
+      );
     }
     var c = _connection;
     // A connection left alone for a while may have died without saying so
@@ -191,7 +198,11 @@ class ImapBackend implements MailBackend {
       fresh: true,
     )).where((f) => f.name == name).firstOrNull;
     if (found == null) {
-      throw ApiException(404, 'not_found', 'There is no folder called $name.');
+      throw LocalizedApiException(
+        404,
+        'not_found',
+        UiText('client.thereIsNoFolderCalledName', {'name': (name).toString()}),
+      );
     }
     return found;
   }
@@ -267,10 +278,10 @@ class ImapBackend implements MailBackend {
     return (folder, resolved & 0xffffffff);
   }
 
-  static ApiException _gone() => const ApiException(
+  static ApiException _gone() => LocalizedApiException(
     404,
     'not_found',
-    'That message is no longer there. Pull to refresh.',
+    UiText('client.thatMessageIsNoLongerTherePull'),
   );
 
   // ── Messages ──────────────────────────────────────────────────────────
@@ -646,10 +657,10 @@ class ImapBackend implements MailBackend {
     Set<String> remove = const {},
   }) => _run((c) async {
     if (!_gmail) {
-      throw const ApiException(
+      throw LocalizedApiException(
         400,
         'not_supported',
-        'This account has folders, not labels.',
+        UiText('client.thisAccountHasFoldersNotLabels'),
       );
     }
     final before = _known[_resolve(id)] ?? await _summary(c, id);
@@ -747,11 +758,10 @@ class ImapBackend implements MailBackend {
     }
     final trash = await _role(c, StandardFolder.trash);
     if (trash == null) {
-      throw const ApiException(
+      throw LocalizedApiException(
         409,
         'no_trash',
-        'This account has no Trash folder, so the message was left where '
-            'it is.',
+        UiText('client.thisAccountHasNoTrashFolderSo'),
       );
     }
     await _move(c, id, folder, uid, trash, messageId: _known[id]?.messageId);
@@ -965,10 +975,10 @@ class ImapBackend implements MailBackend {
 
   @override
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) async =>
-      throw const ApiException(
+      throw LocalizedApiException(
         400,
         'not_supported',
-        'Send later needs a rest-mail account.',
+        UiText('client.sendLaterNeedsARestMailAccount'),
       );
 
   @override
@@ -989,11 +999,19 @@ class ImapBackend implements MailBackend {
 
   @override
   Future<int> releaseQuarantined(int accountId, int id) =>
-      throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
+      throw LocalizedApiException(
+        400,
+        'not_supported',
+        UiText('client.imapHasNoQuarantine'),
+      );
 
   @override
   Future<void> deleteQuarantined(int accountId, int id) =>
-      throw const ApiException(400, 'not_supported', 'IMAP has no quarantine.');
+      throw LocalizedApiException(
+        400,
+        'not_supported',
+        UiText('client.imapHasNoQuarantine'),
+      );
 
   // Folders are made, renamed and deleted with IMAP's CREATE, RENAME and
   // DELETE (RFC 9051 §6.3.4–6.3.6), refused as REST Mail refuses them: a
@@ -1027,10 +1045,10 @@ class ImapBackend implements MailBackend {
         final folders = await _list(c, fresh: true);
         final from = _ownFolder(folders, folder, 'rename');
         if (_isStandardName(name)) {
-          throw const ApiException(
+          throw LocalizedApiException(
             400,
             'bad_request',
-            'Cannot rename a folder to a standard folder',
+            UiText('client.cannotRenameAFolderToAStandard'),
           );
         }
         final path = _pathFor(folders, name);
@@ -1050,10 +1068,10 @@ class ImapBackend implements MailBackend {
     _folders = null;
   });
 
-  static const _folderExists = ApiException(
+  static final _folderExists = LocalizedApiException(
     409,
     'already_exists',
-    'Folder already exists',
+    UiText('client.folderAlreadyExists'),
   );
 
   /// The user's own folder called [name], to [verb]: a standard one, or the
@@ -1065,10 +1083,18 @@ class ImapBackend implements MailBackend {
   ) {
     final folder = folders.where((f) => f.name == name).firstOrNull;
     if (folder == null) {
-      throw const ApiException(404, 'not_found', 'Folder not found');
+      throw LocalizedApiException(
+        404,
+        'not_found',
+        UiText('client.folderNotFound'),
+      );
     }
     if (folder.role || folder.box.isInbox) {
-      throw ApiException(400, 'bad_request', 'Cannot $verb standard folder');
+      throw LocalizedApiException(
+        400,
+        'bad_request',
+        UiText('client.cannotVerbStandardFolder', {'verb': (verb).toString()}),
+      );
     }
     return folder;
   }
@@ -1125,10 +1151,10 @@ class ImapBackend implements MailBackend {
     int messageId, {
     required CalendarResponse response,
     required String from,
-  }) => throw const ApiException(
+  }) => throw LocalizedApiException(
     400,
     'not_supported',
-    'Invitations cannot be answered on this account yet.',
+    UiText('client.invitationsCannotBeAnsweredOnThisAccount'),
   );
 
   // Not yet over IMAP, whose BODY.PEEK[] is the source.
@@ -1136,10 +1162,10 @@ class ImapBackend implements MailBackend {
   bool get hasMessageSource => false;
 
   @override
-  Future<Uint8List> messageSource(int id) => throw const ApiException(
+  Future<Uint8List> messageSource(int id) => throw LocalizedApiException(
     400,
     'not_supported',
-    'The source of this message cannot be shown yet.',
+    UiText('client.theSourceOfThisMessageCannotBe'),
   );
 
   // IMAP keeps no contacts: an address book is the provider's own service.
@@ -1160,7 +1186,11 @@ class ImapBackend implements MailBackend {
     required String email,
     String? name,
     TrustLevel? trustLevel,
-  }) => throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+  }) => throw LocalizedApiException(
+    400,
+    'not_supported',
+    UiText('client.imapHasNoContacts'),
+  );
 
   @override
   Future<Contact> updateContact(
@@ -1168,15 +1198,27 @@ class ImapBackend implements MailBackend {
     int contactId, {
     String? name,
     TrustLevel? trustLevel,
-  }) => throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+  }) => throw LocalizedApiException(
+    400,
+    'not_supported',
+    UiText('client.imapHasNoContacts'),
+  );
 
   @override
   Future<void> deleteContact(int accountId, int contactId) =>
-      throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+      throw LocalizedApiException(
+        400,
+        'not_supported',
+        UiText('client.imapHasNoContacts'),
+      );
 
   @override
   Future<Contact> blockSender(int accountId, String email) =>
-      throw const ApiException(400, 'not_supported', 'IMAP has no contacts.');
+      throw LocalizedApiException(
+        400,
+        'not_supported',
+        UiText('client.imapHasNoContacts'),
+      );
 
   @override
   Future<List<Contact>> suggestContacts(int accountId, String query) async =>
@@ -1282,10 +1324,10 @@ class ImapBackend implements MailBackend {
   Future<Message> _saveDraft(ImapConnection c, OutgoingMessage draft) async {
     final drafts = await _role(c, StandardFolder.drafts);
     if (drafts == null) {
-      throw const ApiException(
+      throw LocalizedApiException(
         409,
         'no_drafts',
-        'This account has no Drafts folder to keep it in.',
+        UiText('client.thisAccountHasNoDraftsFolderTo'),
       );
     }
     final mime = buildMime(draft, displayName: displayName);
@@ -1294,10 +1336,10 @@ class ImapBackend implements MailBackend {
       MessageFlags.seen,
     ]);
     if (id == null) {
-      throw const ApiException(
+      throw LocalizedApiException(
         502,
         'imap_error',
-        'The draft was saved but could not be found again.',
+        UiText('client.theDraftWasSavedButCouldNot'),
       );
     }
     _remember(_drafts, id, draft);
@@ -1422,23 +1464,27 @@ class ImapBackend implements MailBackend {
     String? displayName,
     String? totpCode,
     String? recoveryCode,
-  }) => throw const ApiException(
+  }) => throw LocalizedApiException(
     400,
     'not_supported',
-    'An IMAP account is one mailbox. Add another as an account of its own.',
+    UiText('client.anIMAPAccountIsOneMailboxAdd'),
   );
 
   @override
-  Future<void> unlinkAccount(int id) => throw const ApiException(
+  Future<void> unlinkAccount(int id) => throw LocalizedApiException(
     400,
     'not_supported',
-    'An IMAP account has no linked mailboxes.',
+    UiText('client.anIMAPAccountHasNoLinkedMailboxes'),
   );
 
   @override
   Future<QuotaInfo> quota(int accountId) => _run((c) async {
     if (!c.server.supports('QUOTA')) {
-      throw const ApiException(404, 'not_supported', 'No quota to show.');
+      throw LocalizedApiException(
+        404,
+        'not_supported',
+        UiText('client.noQuotaToShow'),
+      );
     }
     final result = await c.run(
       (client) => client.getQuotaRoot(mailboxName: 'INBOX'),
@@ -1450,7 +1496,11 @@ class ImapBackend implements MailBackend {
         .where((l) => l.name.toUpperCase() == 'STORAGE')
         .firstOrNull;
     if (storage == null) {
-      throw const ApiException(404, 'not_supported', 'No quota to show.');
+      throw LocalizedApiException(
+        404,
+        'not_supported',
+        UiText('client.noQuotaToShow'),
+      );
     }
     // STORAGE is counted in units of 1024 octets (RFC 9208).
     final used = (storage.currentUsage ?? 0) * 1024;

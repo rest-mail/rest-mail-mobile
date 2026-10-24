@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -61,22 +63,22 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Add a mailbox',
-        intro:
-            'On a domain this server hosts. Accounts are made in one place, '
-            'so this account becomes its owner, and it shows among your '
-            'mailboxes. Without a password, only its owners reach it; with '
-            'one (12 characters or more), it can sign in too.',
+        title: tr(context, 'admin.mailboxes.addAMailbox'),
+        intro: tr(context, 'admin.mailboxes.onADomainThisServerHostsAccounts'),
         fields: [
           AdminField(
-            'Address',
+            tr(context, 'contacts.address'),
             hint: 'someone@${domain ?? 'example.com'}',
             email: true,
           ),
-          const AdminField('Name', optional: true),
-          const AdminField('Password', obscure: true, optional: true),
+          AdminField(tr(context, 'folders.name'), optional: true),
+          AdminField(
+            tr(context, 'signIn.password'),
+            obscure: true,
+            optional: true,
+          ),
         ],
-        action: 'Add mailbox',
+        action: tr(context, 'admin.mailboxes.addMailbox'),
         host: _host,
         submit: (values) => widget.account.client.createAccount(
           address: values[0].toLowerCase(),
@@ -118,19 +120,24 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
       collection: true,
       account: widget.account,
       section: AdminSection.mailboxes,
-      title: 'Mailboxes',
+      title: tr(context, 'health.mailboxes'),
       body: (access) => AdminListView(
         list: _list,
         host: _host,
-        empty: 'No mailboxes yet.',
+        empty: tr(context, 'admin.mailboxes.noMailboxesYet'),
         header: [
           if (domain != null) ...[
-            Text('On ${domain.name}', style: rmText(13, color: c.ink3)),
+            Text(
+              trArgs(context, 'admin.aliases.onName', {
+                'name': (domain.name).toString(),
+              }),
+              style: rmText(13, color: c.ink3),
+            ),
             const SizedBox(height: 12),
           ],
           if (access.canWrite(AdminSection.mailboxes))
             AdminAddButton(
-              label: 'Add a mailbox',
+              label: tr(context, 'admin.mailboxes.addAMailbox'),
               onTap: () => unawaited(_add()),
             ),
         ],
@@ -138,7 +145,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
           label: box.address,
           subtitle: [
             if (box.displayName.isNotEmpty) box.displayName,
-            if (!box.active) 'Off',
+            if (!box.active) tr(context, 'twoFactor.off'),
             _storage(box),
           ].join(' · '),
           onTap: () => unawaited(_open(box)),
@@ -220,9 +227,14 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Name',
-        fields: [AdminField('Name', initial: _mailbox.displayName)],
-        action: 'Save',
+        title: tr(context, 'folders.name'),
+        fields: [
+          AdminField(
+            tr(context, 'folders.name'),
+            initial: _mailbox.displayName,
+          ),
+        ],
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => _mailbox = await _client.updateMailbox(
           _mailbox.id,
@@ -237,12 +249,10 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
     final changed = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'New password',
-        intro:
-            'Its sessions end, and it signs in again with this one. Twelve '
-            'characters or more.',
-        fields: const [AdminField('Password', obscure: true)],
-        action: 'Set password',
+        title: tr(context, 'setup.newPassword'),
+        intro: tr(context, 'admin.mailboxes.itsSessionsEndAndItSignsIn'),
+        fields: [AdminField(tr(context, 'signIn.password'), obscure: true)],
+        action: tr(context, 'admin.mailboxes.setPassword'),
         host: _host,
         submit: (values) async => _mailbox = await _client.updateMailbox(
           _mailbox.id,
@@ -250,22 +260,23 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
         ),
       ),
     );
-    if (changed && mounted) showToast(context, 'Password changed');
+    if (changed && mounted)
+      showToast(context, tr(context, 'admin.mailboxes.passwordChanged'));
   }
 
   Future<void> _editQuota() async {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Mailbox size',
+        title: tr(context, 'admin.domains.mailboxSize'),
         fields: [
           AdminField(
-            'Mailbox size in MB',
+            tr(context, 'admin.domains.mailboxSizeInMB'),
             initial: '${_mailbox.quotaBytes ~/ (1024 * 1024)}',
             number: true,
           ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => _mailbox = await _client.updateMailbox(
           _mailbox.id,
@@ -284,16 +295,17 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
       host: _host,
       change: () => _client.endMailboxSessions(_mailbox.id),
       confirm: (
-        title: 'Sign $address out everywhere?',
-        message:
-            'Every app signed in to it has to sign in again. Its password '
-            'and app passwords stay.',
-        action: 'End sessions',
+        title: trArgs(context, 'admin.mailboxes.signAddressOutEverywhere', {
+          'address': (address).toString(),
+        }),
+        message: tr(context, 'admin.mailboxes.everyAppSignedInToItHas'),
+        action: tr(context, 'admin.mailboxes.endSessions'),
       ),
     );
     if (!mounted) return;
     setState(() => _busy = false);
-    if (ok) showToast(context, 'Signed out everywhere');
+    if (ok)
+      showToast(context, tr(context, 'admin.mailboxes.signedOutEverywhere'));
   }
 
   Future<void> _delete() async {
@@ -304,14 +316,21 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
       host: _host,
       change: () => _client.deleteMailbox(_mailbox.id),
       confirm: (
-        title: 'Delete $address?',
-        message: 'Its mail goes with it, and it cannot be undone.',
-        action: 'Delete',
+        title: trArgs(context, 'admin.mailboxes.deleteAddress', {
+          'address': (address).toString(),
+        }),
+        message: tr(context, 'admin.mailboxes.itsMailGoesWithItAndIt'),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, 'Deleted $address');
+      Navigator.pop(
+        context,
+        trArgs(context, 'admin.mailboxes.deletedAddress', {
+          'address': (address).toString(),
+        }),
+      );
     } else {
       setState(() => _busy = false);
     }
@@ -339,69 +358,100 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Name',
+                    label: tr(context, 'folders.name'),
                     value: box.displayName.isEmpty ? '—' : box.displayName,
                     onTap: write && !_busy ? () => unawaited(_rename()) : null,
                   ),
                   RmRow(
-                    label: 'Can sign in',
-                    value: write ? null : (box.active ? 'Yes' : 'No'),
+                    label: tr(context, 'admin.mailboxes.canSignIn'),
+                    value: write
+                        ? null
+                        : (box.active
+                              ? tr(context, 'admin.keys.yes')
+                              : tr(context, 'admin.keys.no')),
                     trailing: write
                         ? RmSwitch(
                             value: box.active,
-                            label: 'Can sign in',
+                            label: tr(context, 'admin.mailboxes.canSignIn'),
                             onChanged: (value) {
                               if (!_busy) unawaited(_setActive(value));
                             },
                           )
                         : null,
                   ),
-                  RmRow(label: 'Storage', value: _storage(box)),
+                  RmRow(
+                    label: tr(context, 'mailboxes.storage'),
+                    value: _storage(box),
+                  ),
                   if (box.domain case final domain?)
-                    RmRow(label: 'Domain', value: domain.name),
+                    RmRow(
+                      label: tr(context, 'admin.aliases.domain'),
+                      value: domain.name,
+                    ),
                   if (box.quotaUsage case final usage?) ...[
                     RmRow(
-                      label: 'Messages',
+                      label: tr(context, 'mailboxes.messages'),
                       value: countLabel(usage.messageCount),
                     ),
                     RmRow(
-                      label: 'Subjects',
+                      label: tr(context, 'admin.mailboxes.subjects'),
                       value: sizeLabel(usage.subjectBytes),
                     ),
                     RmRow(
-                      label: 'Message bodies',
+                      label: tr(context, 'admin.mailboxes.messageBodies'),
                       value: sizeLabel(usage.bodyBytes),
                     ),
                     RmRow(
-                      label: 'Attachments',
+                      label: tr(context, 'attachments.title'),
                       value: sizeLabel(usage.attachmentBytes),
                     ),
                     if (usage.updatedAt case final at?)
-                      RmRow(label: 'Storage counted', value: longDate(at)),
+                      RmRow(
+                        label: tr(context, 'admin.mailboxes.storageCounted'),
+                        value: longDate(at),
+                      ),
                   ],
                   if (write)
                     RmRow(
-                      label: 'Mailbox size',
+                      label: tr(context, 'admin.domains.mailboxSize'),
                       value: box.quotaBytes > 0
                           ? sizeLabel(box.quotaBytes)
-                          : 'No limit',
+                          : tr(context, 'admin.mailboxes.noLimit'),
                       onTap: _busy ? null : () => unawaited(_editQuota()),
                     ),
                   if (box.lastLoginAt case final last?)
-                    RmRow(label: 'Last signed in', value: longDate(last)),
+                    RmRow(
+                      label: tr(context, 'admin.mailboxes.lastSignedIn'),
+                      value: longDate(last),
+                    ),
                   if (box.lastPasswordChange case final at?)
-                    RmRow(label: 'Password changed', value: longDate(at)),
+                    RmRow(
+                      label: tr(context, 'admin.mailboxes.passwordChanged'),
+                      value: longDate(at),
+                    ),
                   if (box.passwordChangeRequired)
-                    const RmRow(label: 'Password setup', value: 'Required'),
+                    RmRow(
+                      label: tr(context, 'admin.mailboxes.passwordSetup'),
+                      value: tr(context, 'admin.mailboxes.required'),
+                    ),
                   if (box.twoFactorRequired)
-                    const RmRow(
-                      label: 'Two-factor authentication',
-                      value: 'Required',
+                    RmRow(
+                      label: tr(
+                        context,
+                        'admin.mailboxes.twoFactorAuthentication',
+                      ),
+                      value: tr(context, 'admin.mailboxes.required'),
                     ),
                   if (box.createdAt case final at?)
-                    RmRow(label: 'Added', value: longDate(at)),
+                    RmRow(
+                      label: tr(context, 'admin.aliases.added'),
+                      value: longDate(at),
+                    ),
                   if (box.updatedAt case final at?)
-                    RmRow(label: 'Changed', value: longDate(at)),
+                    RmRow(
+                      label: tr(context, 'admin.domains.changed'),
+                      value: longDate(at),
+                    ),
                 ],
               ),
               if (write) ...[
@@ -409,12 +459,15 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                 RmGroup(
                   children: [
                     RmRow(
-                      label: 'Set a new password',
+                      label: tr(context, 'admin.mailboxes.setANewPassword'),
                       onTap: _busy ? null : () => unawaited(_newPassword()),
                     ),
                     RmRow(
-                      label: 'End sessions',
-                      subtitle: 'Sign it out of every app',
+                      label: tr(context, 'admin.mailboxes.endSessions'),
+                      subtitle: tr(
+                        context,
+                        'admin.mailboxes.signItOutOfEveryApp',
+                      ),
                       onTap: _busy ? null : () => unawaited(_endSessions()),
                     ),
                   ],
@@ -425,7 +478,7 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                 RmGroup(
                   children: [
                     RmRow(
-                      label: 'Delete mailbox',
+                      label: tr(context, 'admin.mailboxes.deleteMailbox'),
                       danger: true,
                       onTap: _busy ? null : () => unawaited(_delete()),
                     ),

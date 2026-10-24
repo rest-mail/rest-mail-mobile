@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,40 +12,45 @@ import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'filter_editors.dart';
 
-String _directionLabel(String direction) => switch (direction) {
-  'inbound' => 'Coming in',
-  'outbound' => 'Going out',
-  'both' => 'Both ways',
-  _ => direction,
-};
+String _directionLabel(BuildContext context, String direction) =>
+    switch (direction) {
+      'inbound' => tr(context, 'admin.pipelinelog.comingIn'),
+      'outbound' => tr(context, 'admin.pipelinelog.goingOut'),
+      'both' => tr(context, 'admin.pipelines.bothWays'),
+      _ => direction,
+    };
 
-String _typeLabel(String type) => switch (type) {
-  'action' => 'Can stop a message',
-  'transform' => 'Changes a message',
+String _typeLabel(BuildContext context, String type) => switch (type) {
+  'action' => tr(context, 'admin.pipelines.canStopAMessage'),
+  'transform' => tr(context, 'admin.pipelines.changesAMessage'),
   _ => type,
 };
 
-String _domainOf(Map<int, String> names, int id) => names[id] ?? 'Domain $id';
+String _domainOf(BuildContext context, Map<int, String> names, int id) =>
+    names[id] ??
+    trArgs(context, 'admin.filtereditors.domainId', {'id': (id).toString()});
 
 Future<int?> _chooseDomainFilter(BuildContext context, int? current) async {
   final controller = TextEditingController(text: current?.toString() ?? '');
   final result = await showDialog<int>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Filter by domain'),
+      title: Text(tr(context, 'admin.pipelines.filterByDomain')),
       content: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
-        decoration: const InputDecoration(labelText: 'Domain ID'),
+        decoration: InputDecoration(
+          labelText: tr(context, 'admin.filtereditors.domainID'),
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(tr(context, 'common.cancel')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, 0),
-          child: const Text('All domains'),
+          child: Text(tr(context, 'admin.pipelines.allDomains')),
         ),
         TextButton(
           onPressed: () {
@@ -52,7 +59,7 @@ Future<int?> _chooseDomainFilter(BuildContext context, int? current) async {
               Navigator.pop(context, id);
             }
           },
-          child: const Text('Apply'),
+          child: Text(tr(context, 'admin.pipelines.apply')),
         ),
       ],
     ),
@@ -129,7 +136,7 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
         builder: (_) => PipelineScreen(
           account: widget.account,
           pipeline: pipeline,
-          domain: _domainOf(_domains, pipeline.domainId),
+          domain: _domainOf(context, _domains, pipeline.domainId),
         ),
       ),
     );
@@ -142,35 +149,39 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.pipelines,
-    title: 'Pipelines',
+    title: tr(context, 'admin.section.pipelines.title'),
     body: (access) => AdminListView(
       list: _list,
       header: [
         if (access.canWrite(AdminSection.pipelines))
           AdminAddButton(
-            label: 'Add a pipeline',
+            label: tr(context, 'admin.filtereditors.addAPipeline'),
             onTap: () => unawaited(_add()),
           ),
         TextButton(
           onPressed: () => unawaited(_filterDomain()),
           child: Text(
             _domainId == null
-                ? 'Filter by domain'
-                : 'Domain $_domainId · Change filter',
+                ? tr(context, 'admin.pipelines.filterByDomain')
+                : trArgs(
+                    context,
+                    'admin.pipelines.domainDomainIdChangeFilter',
+                    {'domainId': (_domainId).toString()},
+                  ),
           ),
         ),
       ],
       host: widget.account.server.host,
-      empty: 'No domain has a pipeline.',
+      empty: tr(context, 'admin.pipelines.noDomainHasAPipeline'),
       onRefresh: _reload,
       row: (pipeline) => RmRow(
-        label: _domainOf(_domains, pipeline.domainId),
+        label: _domainOf(context, _domains, pipeline.domainId),
         subtitle: [
-          _directionLabel(pipeline.direction),
+          _directionLabel(context, pipeline.direction),
           pipeline.filters.length == 1
               ? '1 filter'
               : '${pipeline.filters.length} filters',
-          if (!pipeline.active) 'Off',
+          if (!pipeline.active) tr(context, 'twoFactor.off'),
         ].join(' · '),
         onTap: () => unawaited(_open(pipeline)),
       ),
@@ -230,16 +241,22 @@ class _PipelineScreenState extends State<PipelineScreen> {
       host: _host,
       change: () => widget.account.client.deletePipeline(_pipeline.id),
       confirm: (
-        title: 'Delete this pipeline?',
-        message:
-            'Mail ${_pipeline.direction == 'inbound' ? 'to' : 'from'} '
-            '${widget.domain} no longer goes through its filters.',
-        action: 'Delete',
+        title: tr(context, 'admin.pipelines.deleteThisPipeline'),
+        message: trArgs(
+          context,
+          'admin.pipelines.mailValueDomainNoLongerGoesThrough',
+          {
+            'value': (_pipeline.direction == 'inbound' ? 'to' : 'from')
+                .toString(),
+            'domain': (widget.domain).toString(),
+          },
+        ),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, 'Deleted the pipeline');
+      Navigator.pop(context, tr(context, 'admin.pipelines.deletedThePipeline'));
     } else {
       setState(() => _busy = false);
     }
@@ -259,15 +276,21 @@ class _PipelineScreenState extends State<PipelineScreen> {
           RmGroup(
             children: [
               RmRow(
-                label:
-                    'Mail ${_directionLabel(pipeline.direction).toLowerCase()}',
+                label: trArgs(context, 'admin.pipelines.mailValue', {
+                  'value': (_directionLabel(
+                    context,
+                    pipeline.direction,
+                  ).toLowerCase()).toString(),
+                }),
                 value: access.canWrite(AdminSection.pipelines)
                     ? null
-                    : (pipeline.active ? 'On' : 'Off'),
+                    : (pipeline.active
+                          ? tr(context, 'twoFactor.on')
+                          : tr(context, 'twoFactor.off')),
                 trailing: access.canWrite(AdminSection.pipelines)
                     ? RmSwitch(
                         value: pipeline.active,
-                        label: 'Pipeline on',
+                        label: tr(context, 'admin.filtereditors.pipelineOn'),
                         onChanged: (value) {
                           if (!_busy) unawaited(_setActive(value));
                         },
@@ -277,11 +300,11 @@ class _PipelineScreenState extends State<PipelineScreen> {
             ],
           ),
           const SizedBox(height: 22),
-          const SectionLabel('Filters, in order'),
+          SectionLabel(tr(context, 'admin.pipelines.filtersInOrder')),
           const SizedBox(height: 9),
           if (pipeline.filters.isEmpty)
             Text(
-              'None: mail passes straight through.',
+              tr(context, 'admin.pipelines.noneMailPassesStraightThrough'),
               style: rmText(14, color: c.ink2),
             )
           else
@@ -291,10 +314,13 @@ class _PipelineScreenState extends State<PipelineScreen> {
                   RmRow(
                     label: filter.name,
                     subtitle: [
-                      _typeLabel(filter.type),
-                      if (filter.unskippable) 'always runs',
+                      _typeLabel(context, filter.type),
+                      if (filter.unskippable)
+                        tr(context, 'admin.pipelines.alwaysRuns'),
                     ].join(', '),
-                    value: filter.enabled ? 'On' : 'Off',
+                    value: filter.enabled
+                        ? tr(context, 'twoFactor.on')
+                        : tr(context, 'twoFactor.off'),
                     onTap: access.canWrite(AdminSection.pipelines)
                         ? () => pushScreen(
                             context,
@@ -312,11 +338,11 @@ class _PipelineScreenState extends State<PipelineScreen> {
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Edit pipeline',
+                  label: tr(context, 'admin.filtereditors.editPipeline'),
                   onTap: _busy ? null : () => unawaited(_edit()),
                 ),
                 RmRow(
-                  label: 'Preview saved pipeline',
+                  label: tr(context, 'admin.pipelines.previewSavedPipeline'),
                   onTap: _busy
                       ? null
                       : () => pushScreen(
@@ -337,15 +363,21 @@ class _PipelineScreenState extends State<PipelineScreen> {
             style: rmText(13, color: c.ink2, height: 1.45),
           ),
           if (pipeline.createdAt case final created?)
-            RmRow(label: 'Created', value: created.toLocal().toString()),
+            RmRow(
+              label: tr(context, 'admin.pipelines.created'),
+              value: created.toLocal().toString(),
+            ),
           if (pipeline.updatedAt case final updated?)
-            RmRow(label: 'Updated', value: updated.toLocal().toString()),
+            RmRow(
+              label: tr(context, 'admin.pipelines.updated'),
+              value: updated.toLocal().toString(),
+            ),
           if (access.canDelete(AdminSection.pipelines)) ...[
             const SizedBox(height: 22),
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Delete pipeline',
+                  label: tr(context, 'admin.pipelines.deletePipeline'),
                   danger: true,
                   onTap: _busy ? null : () => unawaited(_delete()),
                 ),
@@ -439,7 +471,7 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
         builder: (_) => CustomFilterScreen(
           account: widget.account,
           filter: filter,
-          domain: _domainOf(_domains, filter.domainId),
+          domain: _domainOf(context, _domains, filter.domainId),
         ),
       ),
     );
@@ -452,33 +484,37 @@ class _CustomFiltersScreenState extends State<CustomFiltersScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.customFilters,
-    title: 'Custom filters',
+    title: tr(context, 'admin.section.customFilters.title'),
     body: (access) => AdminListView(
       list: _list,
       header: [
         if (access.canWrite(AdminSection.customFilters))
           AdminAddButton(
-            label: 'Add a custom filter',
+            label: tr(context, 'admin.filtereditors.addACustomFilter'),
             onTap: () => unawaited(_add()),
           ),
         TextButton(
           onPressed: () => unawaited(_filterDomain()),
           child: Text(
             _domainId == null
-                ? 'Filter by domain'
-                : 'Domain $_domainId · Change filter',
+                ? tr(context, 'admin.pipelines.filterByDomain')
+                : trArgs(
+                    context,
+                    'admin.pipelines.domainDomainIdChangeFilter',
+                    {'domainId': (_domainId).toString()},
+                  ),
           ),
         ),
       ],
       host: widget.account.server.host,
-      empty: 'No filters have been written for this server.',
+      empty: tr(context, 'admin.pipelines.noFiltersHaveBeenWrittenForThis'),
       onRefresh: _reload,
       row: (filter) => RmRow(
         label: filter.name,
         subtitle: [
-          _domainOf(_domains, filter.domainId),
-          _directionLabel(filter.direction),
-          if (!filter.enabled) 'Off',
+          _domainOf(context, _domains, filter.domainId),
+          _directionLabel(context, filter.direction),
+          if (!filter.enabled) tr(context, 'twoFactor.off'),
         ].join(' · '),
         onTap: () => unawaited(_open(filter)),
       ),
@@ -539,14 +575,21 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
       host: _host,
       change: () => widget.account.client.deleteCustomFilter(_filter.id),
       confirm: (
-        title: 'Delete $name?',
-        message: 'Pipelines that use it stop running it.',
-        action: 'Delete',
+        title: trArgs(context, 'folders.deleteTitle', {
+          'name': (name).toString(),
+        }),
+        message: tr(context, 'admin.pipelines.pipelinesThatUseItStopRunningIt'),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, 'Deleted $name');
+      Navigator.pop(
+        context,
+        trArgs(context, 'admin.domains.deletedName', {
+          'name': (name).toString(),
+        }),
+      );
     } else {
       setState(() => _busy = false);
     }
@@ -573,28 +616,39 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
           RmGroup(
             children: [
               RmRow(
-                label: 'Running',
+                label: tr(context, 'admin.filtereditors.running'),
                 value: access.canWrite(AdminSection.customFilters)
                     ? null
-                    : (filter.enabled ? 'On' : 'Off'),
+                    : (filter.enabled
+                          ? tr(context, 'twoFactor.on')
+                          : tr(context, 'twoFactor.off')),
                 trailing: access.canWrite(AdminSection.customFilters)
                     ? RmSwitch(
                         value: filter.enabled,
-                        label: 'Running',
+                        label: tr(context, 'admin.filtereditors.running'),
                         onChanged: (value) {
                           if (!_busy) unawaited(_setEnabled(value));
                         },
                       )
                     : null,
               ),
-              RmRow(label: 'Domain', value: widget.domain),
-              RmRow(label: 'Mail', value: _directionLabel(filter.direction)),
-              RmRow(label: 'Kind', value: _typeLabel(filter.filterType)),
+              RmRow(
+                label: tr(context, 'admin.aliases.domain'),
+                value: widget.domain,
+              ),
+              RmRow(
+                label: tr(context, 'admin.pipelines.mail'),
+                value: _directionLabel(context, filter.direction),
+              ),
+              RmRow(
+                label: tr(context, 'admin.filtereditors.kind'),
+                value: _typeLabel(context, filter.filterType),
+              ),
             ],
           ),
           if (filter.config != null) ...[
             const SizedBox(height: 22),
-            const SectionLabel('What it does'),
+            SectionLabel(tr(context, 'admin.pipelines.whatItDoes')),
             const SizedBox(height: 9),
             SelectableText(
               prettyJson(filter.config),
@@ -605,11 +659,11 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Edit custom filter',
+                    label: tr(context, 'admin.filtereditors.editCustomFilter'),
                     onTap: _busy ? null : () => unawaited(_edit()),
                   ),
                   RmRow(
-                    label: 'Test saved custom filter',
+                    label: tr(context, 'admin.pipelines.testSavedCustomFilter'),
                     onTap: _busy
                         ? null
                         : () => pushScreen(
@@ -622,7 +676,10 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
                   ),
                   if (filter.config case {'script': final String script})
                     RmRow(
-                      label: 'Validate JavaScript',
+                      label: tr(
+                        context,
+                        'admin.filtereditors.validateJavaScript',
+                      ),
                       onTap: _busy
                           ? null
                           : () => pushScreen(
@@ -637,15 +694,21 @@ class _CustomFilterScreenState extends State<CustomFilterScreen> {
               ),
           ],
           if (filter.createdAt case final created?)
-            RmRow(label: 'Created', value: created.toLocal().toString()),
+            RmRow(
+              label: tr(context, 'admin.pipelines.created'),
+              value: created.toLocal().toString(),
+            ),
           if (filter.updatedAt case final updated?)
-            RmRow(label: 'Updated', value: updated.toLocal().toString()),
+            RmRow(
+              label: tr(context, 'admin.pipelines.updated'),
+              value: updated.toLocal().toString(),
+            ),
           if (access.canDelete(AdminSection.customFilters)) ...[
             const SizedBox(height: 22),
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Delete filter',
+                  label: tr(context, 'admin.pipelines.deleteFilter'),
                   danger: true,
                   onTap: _busy ? null : () => unawaited(_delete()),
                 ),

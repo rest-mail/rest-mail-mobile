@@ -327,7 +327,9 @@ void main() {
     await settle();
     expect(state.accounts, hasLength(2));
     final notices = <String>[];
-    final listening = state.notices.listen(notices.add);
+    final listening = state.notices.listen(
+      (notice) => notices.add(notice.inEnglish),
+    );
     addTearDown(listening.cancel);
 
     // The owner takes REST Mail's access away at Google: the token it holds

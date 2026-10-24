@@ -1,3 +1,5 @@
+import '../../l10n/voice.dart';
+
 import 'package:flutter/widgets.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -9,42 +11,58 @@ import 'admin_widgets.dart';
 // permissions in Settings.
 
 /// Where a grant applies, as a person reads it.
-String scopeLabel(String scope) => switch (scope) {
-  '*' => 'Everywhere',
-  _ when scope.startsWith('domain:') => 'Domain ${scope.substring(7)}',
-  _ when scope.startsWith('mailbox:') => 'Mailbox ${scope.substring(8)}',
+String scopeLabel(BuildContext context, String scope) => switch (scope) {
+  '*' => tr(context, 'admin.granttext.everywhere'),
+  _ when scope.startsWith('domain:') => trArgs(
+    context,
+    'admin.granttext.domainValue',
+    {'value': (scope.substring(7)).toString()},
+  ),
+  _ when scope.startsWith('mailbox:') => trArgs(
+    context,
+    'admin.granttext.mailboxValue',
+    {'value': (scope.substring(8)).toString()},
+  ),
   _ => scope,
 };
 
 /// Whether a grant gives its role now, and for how long.
-String grantState(Grant grant) {
+String grantState(BuildContext context, Grant grant) {
   final now = DateTime.now();
-  if (grant.isExpiredAt(now)) return 'Ended';
+  if (grant.isExpiredAt(now)) return tr(context, 'admin.granttext.ended');
   final activation = grant.activation;
   return switch (grant.mode) {
-    GrantMode.active => 'Active: always applies',
+    GrantMode.active => tr(context, 'admin.granttext.activeAlwaysApplies'),
     GrantMode.eligible when activation != null && activation.isActiveAt(now) =>
-      'Switched on until ${longDate(activation.expiresAt)}',
-    GrantMode.eligible => 'Eligible: off until switched on',
-    GrantMode.unknown => 'Unknown mode',
+      trArgs(context, 'admin.granttext.switchedOnUntilValue', {
+        'value': (longDate(activation.expiresAt)).toString(),
+      }),
+    GrantMode.eligible => tr(
+      context,
+      'admin.granttext.eligibleOffUntilSwitchedOn',
+    ),
+    GrantMode.unknown => tr(context, 'admin.granttext.unknownMode'),
   };
 }
 
 /// When the grant itself ends.
-String grantEnds(Grant grant) => switch (grant.expiresAt) {
-  final ends? => 'Grant ends ${longDate(ends)}',
-  null => 'Lasts until removed',
-};
+String grantEnds(BuildContext context, Grant grant) =>
+    switch (grant.expiresAt) {
+      final ends? => trArgs(context, 'admin.granttext.grantEndsValue', {
+        'value': (longDate(ends)).toString(),
+      }),
+      null => tr(context, 'admin.granttext.lastsUntilRemoved'),
+    };
 
 const _fieldNames = {
-  'holder': 'Account',
-  'holder_id': 'Account',
-  'role': 'Role',
-  'scope': 'Scope',
-  'mode': 'Mode',
-  'expires_at': 'Expiry',
-  'reason': 'Reason',
-  'minutes': 'Minutes',
+  'holder': 'admin.audit.account',
+  'holder_id': 'admin.audit.account',
+  'role': 'admin.granttext.role',
+  'scope': 'admin.granttext.scope',
+  'mode': 'admin.granttext.mode',
+  'expires_at': 'admin.granttext.expiry',
+  'reason': 'admin.granttext.reason',
+  'minutes': 'admin.granttext.minutes',
 };
 
 /// What to tell someone about a refused grant change or escalation step. A
@@ -64,34 +82,62 @@ String describeGrantError(
     return describeError(context, error, host: host);
   }
   if (error.fields.entries.firstOrNull case final field?) {
-    final name = _fieldNames[field.key] ?? field.key.replaceAll('_', ' ');
+    final fieldKey = _fieldNames[field.key];
+    final name = fieldKey == null
+        ? field.key.replaceAll('_', ' ')
+        : tr(context, fieldKey);
     return '$name: ${field.value}.';
   }
   return switch (error.code) {
-    GrantErrorCode.twoFactorRequired when escalating =>
-      'This needs two-factor authentication. Set up an authenticator for '
-          'this account first, then try again.',
-    GrantErrorCode.twoFactorRequired =>
-      'Changing permissions needs a session signed in with a two-factor '
-          'code. Sign in again with your authenticator code, then try again.',
-    GrantErrorCode.totpRequired =>
-      'Enter the current code from your authenticator, or a recovery code.',
-    GrantErrorCode.invalidTotp =>
-      'That code is wrong or has expired. Enter the current one from your '
-          'authenticator, or an unused recovery code.',
-    GrantErrorCode.exceedsHeld =>
-      'You can only grant, or remove, a role you hold yourself, at a scope '
-          'at least as wide.',
-    GrantErrorCode.conflict => 'They already hold that role there.',
-    GrantErrorCode.lastSuperadmin =>
-      'Refused: nobody else holds superadmin, so nobody could grant anything '
-          'after this.',
-    GrantErrorCode.notEligible => 'Only an eligible role can be switched on.',
-    GrantErrorCode.alreadyActive => 'It is switched on already.',
-    GrantErrorCode.notActive => 'It is not switched on.',
-    GrantErrorCode.grantExpired => 'This grant has ended.',
-    GrantErrorCode.alreadyEligible => 'It is eligible already.',
-    'not_found' => 'That grant is gone, or is not yours.',
+    GrantErrorCode.twoFactorRequired when escalating => tr(
+      context,
+      'admin.granttext.thisNeedsTwoFactorAuthenticationSetUp',
+    ),
+    GrantErrorCode.twoFactorRequired => tr(
+      context,
+      'admin.granttext.changingPermissionsNeedsASessionSignedIn',
+    ),
+    GrantErrorCode.totpRequired => tr(
+      context,
+      'admin.granttext.enterTheCurrentCodeFromYourAuthenticator',
+    ),
+    GrantErrorCode.invalidTotp => tr(
+      context,
+      'admin.granttext.thatCodeIsWrongOrHasExpired',
+    ),
+    GrantErrorCode.exceedsHeld => tr(
+      context,
+      'admin.granttext.youCanOnlyGrantOrRemoveA',
+    ),
+    GrantErrorCode.conflict => tr(
+      context,
+      'admin.granttext.theyAlreadyHoldThatRoleThere',
+    ),
+    GrantErrorCode.lastSuperadmin => tr(
+      context,
+      'admin.granttext.refusedNobodyElseHoldsSuperadminSoNobody',
+    ),
+    GrantErrorCode.notEligible => tr(
+      context,
+      'admin.granttext.onlyAnEligibleRoleCanBeSwitched',
+    ),
+    GrantErrorCode.alreadyActive => tr(
+      context,
+      'admin.granttext.itIsSwitchedOnAlready',
+    ),
+    GrantErrorCode.notActive => tr(
+      context,
+      'admin.granttext.itIsNotSwitchedOn',
+    ),
+    GrantErrorCode.grantExpired => tr(
+      context,
+      'admin.granttext.thisGrantHasEnded',
+    ),
+    GrantErrorCode.alreadyEligible => tr(
+      context,
+      'admin.granttext.itIsEligibleAlready',
+    ),
+    'not_found' => tr(context, 'admin.granttext.thatGrantIsGoneOrIsNot'),
     _ => describeAdminError(context, error, host: host),
   };
 }

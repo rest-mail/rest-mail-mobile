@@ -164,7 +164,7 @@ void main() {
           .widget<RefreshIndicator>(find.byType(RefreshIndicator))
           .onRefresh();
       await tester.pumpAndSettle();
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(find.text('22'), findsNothing);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       transport.refuse = false;
@@ -180,7 +180,7 @@ void main() {
     'Overview requires global domains:read and sends no unauthorized request',
     (tester) async {
       final (fake, state, transport) = await open(tester, allowed: false);
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(transport.reads, 0);
       await close(tester, fake, state);
     },

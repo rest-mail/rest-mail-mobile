@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -91,12 +93,16 @@ class _DkimScreenState extends State<DkimScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.schedule_rounded),
-              title: const Text('Key rotation'),
+              title: Text(tr(context, 'admin.keys.keyRotation')),
               onTap: () => Navigator.pop(sheet, true),
             ),
             ListTile(
               leading: const Icon(Icons.key_rounded),
-              title: Text(key.hasKey ? 'Replace the key' : 'Set a key'),
+              title: Text(
+                key.hasKey
+                    ? tr(context, 'admin.keys.replaceTheKey')
+                    : tr(context, 'admin.keys.setAKey'),
+              ),
               onTap: () => Navigator.pop(sheet, false),
             ),
           ],
@@ -113,16 +119,20 @@ class _DkimScreenState extends State<DkimScreen> {
       host: _host,
       change: () => widget.account.client.deleteDkimKey(key.domainId),
       confirm: (
-        title: 'Stop signing mail from ${key.domain}?',
-        message:
-            'Its key is deleted from the server, and its mail goes out '
-            'unsigned until a new key is set. Servers '
-            'that check DMARC may turn it away.',
-        action: 'Remove key',
+        title: trArgs(context, 'admin.keys.stopSigningMailFromDomain', {
+          'domain': (key.domain).toString(),
+        }),
+        message: tr(context, 'admin.keys.itsKeyIsDeletedFromTheServer'),
+        action: tr(context, 'admin.keys.removeKey'),
       ),
     );
     if (!ok || !mounted) return;
-    showToast(context, 'Removed the key for ${key.domain}');
+    showToast(
+      context,
+      trArgs(context, 'admin.keys.removedTheKeyForDomain', {
+        'domain': (key.domain).toString(),
+      }),
+    );
     unawaited(_list.reload());
   }
 
@@ -171,7 +181,11 @@ class _DkimScreenState extends State<DkimScreen> {
                   title: Text(d.name),
                   subtitle: d.dkimSelector.isEmpty
                       ? null
-                      : Text('Signs as ${d.dkimSelector}'),
+                      : Text(
+                          trArgs(context, 'admin.keys.signsAsDkimSelector', {
+                            'dkimSelector': (d.dkimSelector).toString(),
+                          }),
+                        ),
                   onTap: () => Navigator.pop(sheet, d),
                 ),
             ],
@@ -187,21 +201,28 @@ class _DkimScreenState extends State<DkimScreen> {
     final sent = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: key?.hasKey ?? false ? 'Replace the key' : 'Set a key',
-        intro:
-            'Mail from $name is signed with this key. Publish its public '
-            'key at <selector>._domainkey.$name first. The key is sent once '
-            'and never shown again.',
+        title: key?.hasKey ?? false
+            ? tr(context, 'admin.keys.replaceTheKey')
+            : tr(context, 'admin.keys.setAKey'),
+        intro: trArgs(context, 'admin.keys.mailFromNameIsSignedWithThis', {
+          'name': (name).toString(),
+        }),
         fields: [
-          AdminField('Selector', hint: 'mail', initial: selector),
-          const AdminField(
-            'Private key',
+          AdminField(
+            tr(context, 'admin.keys.selector'),
+            hint: 'mail',
+            initial: selector,
+          ),
+          AdminField(
+            tr(context, 'admin.keys.privateKey'),
             hint: '-----BEGIN PRIVATE KEY-----',
             obscure: true,
             pasteOnly: true,
           ),
         ],
-        action: key?.hasKey ?? false ? 'Replace key' : 'Set key',
+        action: key?.hasKey ?? false
+            ? tr(context, 'admin.keys.replaceKey')
+            : tr(context, 'admin.keys.setKey'),
         host: _host,
         submit: (values) async {
           saved = await widget.account.client.setDkimKey(
@@ -217,8 +238,17 @@ class _DkimScreenState extends State<DkimScreen> {
     showToast(
       context,
       s == null
-          ? 'Set the key for $name'
-          : 'Signing ${s.domain} as ${s.selector}._domainkey.${s.domain}',
+          ? trArgs(context, 'admin.keys.setTheKeyForName', {
+              'name': (name).toString(),
+            })
+          : trArgs(
+              context,
+              'admin.keys.signingDomainAsSelectorDomainkeyDomain',
+              {
+                'domain': (s.domain).toString(),
+                'selector': (s.selector).toString(),
+              },
+            ),
     );
     unawaited(_list.reload());
   }
@@ -236,8 +266,10 @@ class _DkimScreenState extends State<DkimScreen> {
     }
     if (!mounted) return;
     final now = current.enabled
-        ? 'Rotated every ${current.intervalDays} days.'
-        : 'Never rotated.';
+        ? trArgs(context, 'admin.keys.rotatedEveryIntervalDaysDays', {
+            'intervalDays': (current.intervalDays).toString(),
+          })
+        : tr(context, 'admin.keys.neverRotated');
     final canWrite = access.canWrite(AdminSection.domainDkim);
     if (!canWrite || current.state != DkimRotationState.stable) {
       final change = await _rotationStatus(key, current, now, canWrite);
@@ -247,19 +279,20 @@ class _DkimScreenState extends State<DkimScreen> {
     final sent = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Key rotation',
-        intro:
-            '$now How many days ${key.domain} keeps its key before a new '
-            'one is due: 0 never rotates it, at most '
-            '${DkimRotation.maxIntervalDays}.',
+        title: tr(context, 'admin.keys.keyRotation'),
+        intro: trArgs(context, 'admin.keys.nowHowManyDaysDomainKeepsIts', {
+          'now': (now).toString(),
+          'domain': (key.domain).toString(),
+          'maxIntervalDays': (DkimRotation.maxIntervalDays).toString(),
+        }),
         fields: [
           AdminField(
-            'Days between rotations',
+            tr(context, 'admin.keys.daysBetweenRotations'),
             hint: '0 to ${DkimRotation.maxIntervalDays}',
             initial: '${current.intervalDays}',
           ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async {
           // Anything but a whole number goes as -1, which the server
@@ -276,8 +309,13 @@ class _DkimScreenState extends State<DkimScreen> {
     showToast(
       context,
       s == null || !s.enabled
-          ? '${key.domain}: never rotated'
-          : '${key.domain}: rotated every ${s.intervalDays} days',
+          ? trArgs(context, 'admin.keys.domainNeverRotated', {
+              'domain': (key.domain).toString(),
+            })
+          : trArgs(context, 'admin.keys.domainRotatedEveryIntervalDaysDays', {
+              'domain': (key.domain).toString(),
+              'intervalDays': (s.intervalDays).toString(),
+            }),
     );
   }
 
@@ -300,22 +338,33 @@ class _DkimScreenState extends State<DkimScreen> {
         : null;
     final status = switch (rotation.state) {
       DkimRotationState.stable => null,
-      DkimRotationState.awaitingPublication =>
-        'A new key, ${staged?.selector}, is ready. The rotation goes on once '
-            'its record is published:',
-      DkimRotationState.waitingTtl =>
-        'A new key, ${staged?.selector}, is published. Signing moves to it '
-            '${_at(staged?.activatesAt)}.',
-      DkimRotationState.retiring =>
-        'Signing moved to the new key. The previous key, '
-            '${previous?.selector}, stays published until '
-            '${_at(previous?.retireAfter)}; then its record can go.',
+      DkimRotationState.awaitingPublication => trArgs(
+        context,
+        'admin.keys.aNewKeyValueIsReadyThe',
+        {'value': (staged?.selector).toString()},
+      ),
+      DkimRotationState.waitingTtl => trArgs(
+        context,
+        'admin.keys.aNewKeyValueIsPublishedSigning',
+        {
+          'value': (staged?.selector).toString(),
+          'value2': (_at(staged?.activatesAt)).toString(),
+        },
+      ),
+      DkimRotationState.retiring => trArgs(
+        context,
+        'admin.keys.signingMovedToTheNewKeyThe',
+        {
+          'value': (previous?.selector).toString(),
+          'value2': (_at(previous?.retireAfter)).toString(),
+        },
+      ),
     };
     final c = context.rm;
     return showDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
-        title: const Text('Key rotation'),
+        title: Text(tr(context, 'admin.keys.keyRotation')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -345,18 +394,18 @@ class _DkimScreenState extends State<DkimScreen> {
                 unawaited(
                   Clipboard.setData(ClipboardData(text: record.recordValue)),
                 );
-                showToast(dialog, 'Record copied');
+                showToast(dialog, tr(context, 'admin.keys.recordCopied'));
               },
-              child: const Text('Copy record'),
+              child: Text(tr(context, 'admin.keys.copyRecord')),
             ),
           if (canWrite)
             TextButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Change interval'),
+              child: Text(tr(context, 'admin.keys.changeInterval')),
             ),
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Done'),
+            child: Text(tr(context, 'common.done')),
           ),
         ],
       ),
@@ -364,7 +413,7 @@ class _DkimScreenState extends State<DkimScreen> {
   }
 
   String _at(DateTime? time) => time == null
-      ? 'a time the server has not given'
+      ? tr(context, 'admin.keys.aTimeTheServerHasNotGiven')
       : DateFormat.yMMMd().add_jm().format(time.toLocal());
 
   String _age(DkimKey key) {
@@ -378,11 +427,13 @@ class _DkimScreenState extends State<DkimScreen> {
     account: widget.account,
     section: _section,
     scope: _scope,
-    title: widget.domain == null ? 'DKIM keys' : 'DKIM signing',
+    title: widget.domain == null
+        ? tr(context, 'admin.section.dkim.title')
+        : tr(context, 'admin.section.domainDkim.title'),
     body: (access) => AdminListView(
       list: _list,
       host: _host,
-      empty: 'No domain signs its mail.',
+      empty: tr(context, 'admin.keys.noDomainSignsItsMail'),
       header: [
         if (widget.domain == null
             ? widget.account.capabilities.allowsSomewhere(
@@ -398,27 +449,32 @@ class _DkimScreenState extends State<DkimScreen> {
                 icon: const Icon(Icons.add_rounded),
                 label: Text(
                   widget.domain == null
-                      ? 'Set a key for a domain'
-                      : 'Install or replace key',
+                      ? tr(context, 'admin.keys.setAKeyForADomain')
+                      : tr(context, 'admin.keys.installOrReplaceKey'),
                 ),
                 onPressed: () => unawaited(_setKey()),
               ),
             ),
           )
         else
-          _addedElsewhere(context, 'Setting a key needs domains:write.'),
+          _addedElsewhere(
+            context,
+            tr(context, 'admin.keys.settingAKeyNeedsDomainsWrite'),
+          ),
       ],
       row: (key) => RmRow(
         label: key.domain,
         subtitle: key.hasKey
             ? '${key.selector}._domainkey.${key.domain}${_age(key)}'
-            : 'No signing selector is configured',
+            : tr(context, 'admin.keys.noSigningSelectorIsConfigured'),
         onTap: () => unawaited(_rotationOrKey(key, _keyAccess(key))),
         trailing:
             key.hasKey && _keyAccess(key).canDelete(AdminSection.domainDkim)
             ? RmIconButton(
                 icon: Icons.close_rounded,
-                tooltip: 'Remove the key for ${key.domain}',
+                tooltip: trArgs(context, 'admin.keys.removeTheKeyForDomain', {
+                  'domain': (key.domain).toString(),
+                }),
                 color: context.rm.ink3,
                 onPressed: () => unawaited(_remove(key)),
               )
@@ -471,30 +527,35 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Add a certificate',
-        intro:
-            'Paste the certificate and its private key as PEM. The server '
-            'reads who issued it and when it runs out. Its private key '
-            'is never returned.',
+        title: tr(context, 'admin.keys.addACertificate'),
+        intro: tr(context, 'admin.keys.pasteTheCertificateAndItsPrivateKey'),
         host: _host,
-        action: 'Add certificate',
-        fields: const [
-          AdminField('Domain', hint: 'example.com', email: true),
+        action: tr(context, 'admin.keys.addCertificate'),
+        fields: [
           AdminField(
-            'Certificate',
+            tr(context, 'admin.aliases.domain'),
+            hint: 'example.com',
+            email: true,
+          ),
+          AdminField(
+            tr(context, 'admin.keys.certificate'),
             hint: '-----BEGIN CERTIFICATE-----',
             multiline: true,
           ),
           AdminField(
-            'Private key',
+            tr(context, 'admin.keys.privateKey'),
             hint: '-----BEGIN PRIVATE KEY-----',
             obscure: true,
             pasteOnly: true,
           ),
           AdminField(
-            'Renews by itself',
+            tr(context, 'admin.keys.renewsByItself'),
             initial: 'yes',
-            choices: [('', 'Server default'), ('yes', 'Yes'), ('no', 'No')],
+            choices: [
+              ('', tr(context, 'admin.keys.serverDefault')),
+              ('yes', tr(context, 'admin.keys.yes')),
+              ('no', tr(context, 'admin.keys.no')),
+            ],
           ),
         ],
         submit: (values) async {
@@ -506,11 +567,13 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               '' => null,
               'yes' || 'y' || 'true' => true,
               'no' || 'n' || 'false' => false,
-              _ => throw const ApiException(
+              _ => throw ApiException(
                 400,
                 'bad_request',
-                'Renews by itself is yes or no',
-                fields: {'renews_by_itself': 'is yes or no'},
+                tr(context, 'admin.keys.renewsByItselfIsYesOrNo'),
+                fields: {
+                  'renews_by_itself': tr(context, 'admin.keys.isYesOrNo'),
+                },
               ),
             },
           );
@@ -520,7 +583,12 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     );
     if (!added || !mounted) return;
     final cert = _added!;
-    showToast(context, 'Added the certificate for ${_name(cert)}');
+    showToast(
+      context,
+      trArgs(context, 'admin.keys.addedTheCertificateForValue', {
+        'value': (_name(context, cert)).toString(),
+      }),
+    );
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
@@ -536,39 +604,48 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   Future<int> _domainId(String value) async {
     if (int.tryParse(value) case final id?) {
       if (id > 0) return id;
-      throw const ApiException(
+      throw ApiException(
         422,
         'validation_failed',
-        'Invalid domain',
-        fields: {'domain': 'must be a positive domain number'},
+        tr(context, 'admin.keys.invalidDomain'),
+        fields: {
+          'domain': tr(context, 'admin.keys.mustBeAPositiveDomainNumber'),
+        },
       );
     }
     final names = await domainNames(widget.account);
     for (final MapEntry(:key, value: name) in names.entries) {
       if (name.toLowerCase() == value.toLowerCase()) return key;
     }
-    throw const ApiException(
+    throw ApiException(
       404,
       'not_found',
-      'Domain not found',
-      fields: {'domain': "isn't one this server holds"},
+      tr(context, 'admin.keys.domainNotFound'),
+      fields: {'domain': tr(context, 'admin.keys.isnTOneThisServerHolds')},
     );
   }
 
   Future<void> _delete(TlsCertificate cert) async {
-    final name = _name(cert);
+    final name = _name(context, cert);
     final ok = await runAdminChange(
       context,
       host: _host,
       change: () => widget.account.client.deleteCertificate(cert.id),
       confirm: (
-        title: 'Delete the certificate for $name?',
-        message: 'The server stops using it, and forgets its private key.',
-        action: 'Delete',
+        title: trArgs(context, 'admin.keys.deleteTheCertificateForName', {
+          'name': (name).toString(),
+        }),
+        message: tr(context, 'admin.keys.theServerStopsUsingItAndForgets'),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!ok || !mounted) return;
-    showToast(context, 'Deleted the certificate for $name');
+    showToast(
+      context,
+      trArgs(context, 'admin.keys.deletedTheCertificateForName', {
+        'name': (name).toString(),
+      }),
+    );
     unawaited(_list.reload());
   }
 
@@ -576,33 +653,40 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.certificates,
-    title: 'Certificates',
+    title: tr(context, 'admin.section.certificates.title'),
     body: (access) => AdminListView(
       list: _list,
       host: _host,
-      empty: 'The server holds no certificates.',
+      empty: tr(context, 'admin.keys.theServerHoldsNoCertificates'),
       header: [
         if (access.canWrite(AdminSection.certificates))
           AdminAddButton(
-            label: 'Add a certificate',
+            label: tr(context, 'admin.keys.addACertificate'),
             onTap: () => unawaited(_upload()),
           ),
       ],
       row: (cert) => RmRow(
-        label: _name(cert),
+        label: _name(context, cert),
         onTap: () => pushScreen(
           context,
           CertificateScreen(account: widget.account, id: cert.id),
         ),
         subtitle: [
-          _expiry(cert),
-          if (cert.issuer.isNotEmpty) 'From ${_issuer(cert.issuer)}',
-          if (cert.autoRenew) 'Renews by itself',
+          _expiry(context, cert),
+          if (cert.issuer.isNotEmpty)
+            trArgs(context, 'admin.keys.fromValue', {
+              'value': (_issuer(cert.issuer)).toString(),
+            }),
+          if (cert.autoRenew) tr(context, 'admin.keys.renewsByItself'),
         ].join('\n'),
         trailing: access.canDelete(AdminSection.certificates)
             ? RmIconButton(
                 icon: Icons.close_rounded,
-                tooltip: 'Delete the certificate for ${_name(cert)}',
+                tooltip: trArgs(
+                  context,
+                  'admin.keys.deleteTheCertificateForValue',
+                  {'value': (_name(context, cert)).toString()},
+                ),
                 color: context.rm.ink3,
                 onPressed: () => unawaited(_delete(cert)),
               )
@@ -612,15 +696,25 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   );
 }
 
-String _name(TlsCertificate cert) =>
-    cert.domain.isNotEmpty ? cert.domain : 'Domain ${cert.domainId}';
+String _name(BuildContext context, TlsCertificate cert) =>
+    cert.domain.isNotEmpty
+    ? cert.domain
+    : trArgs(context, 'admin.keys.domainDomainId', {
+        'domainId': (cert.domainId).toString(),
+      });
 
-String _expiry(TlsCertificate cert) {
+String _expiry(BuildContext context, TlsCertificate cert) {
   final date = DateFormat.yMMMd().format(cert.notAfter);
   final days = cert.notAfter.difference(DateTime.now()).inDays;
-  if (days < 0) return 'Ran out $date';
-  if (days == 0) return 'Runs out today';
-  return 'Runs out $date, in ${days == 1 ? 'a day' : '$days days'}';
+  if (days < 0)
+    return trArgs(context, 'admin.keys.ranOutDate', {
+      'date': (date).toString(),
+    });
+  if (days == 0) return tr(context, 'admin.keys.runsOutToday');
+  return trArgs(context, 'admin.keys.runsOutDateInValue', {
+    'date': (date).toString(),
+    'value': (days == 1 ? 'a day' : '$days days').toString(),
+  });
 }
 
 /// One certificate as the server holds it now, read fresh rather than from
@@ -643,14 +737,14 @@ class _CertificateScreenState extends State<CertificateScreen> {
       widget.account.client.certificate(widget.id);
 
   String _when(DateTime? time) => time == null
-      ? 'Not given'
+      ? tr(context, 'admin.keys.notGiven')
       : DateFormat.yMMMd().add_jm().format(time.toLocal());
 
   @override
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.certificates,
-    title: 'Certificate',
+    title: tr(context, 'admin.keys.certificate'),
     body: (_) => FutureBuilder<TlsCertificate>(
       future: _cert,
       builder: (context, snapshot) {
@@ -694,8 +788,8 @@ class _CertificateScreenState extends State<CertificateScreen> {
             padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
             children: [
               RmRow(
-                label: 'Domain',
-                value: _name(cert),
+                label: tr(context, 'admin.aliases.domain'),
+                value: _name(context, cert),
                 onTap: cert.domainDetails == null
                     ? null
                     : () => pushScreen(
@@ -706,25 +800,50 @@ class _CertificateScreenState extends State<CertificateScreen> {
                         ),
                       ),
               ),
-              RmRow(label: 'Expiry', value: _expiry(cert)),
-              RmRow(label: 'Valid from', value: _when(cert.notBefore)),
-              RmRow(label: 'Valid until', value: _when(cert.notAfter)),
               RmRow(
-                label: 'Issuer',
-                value: cert.issuer.isEmpty ? 'Not given' : _issuer(cert.issuer),
+                label: tr(context, 'admin.granttext.expiry'),
+                value: _expiry(context, cert),
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.validFrom'),
+                value: _when(cert.notBefore),
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.validUntil'),
+                value: _when(cert.notAfter),
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.issuer'),
+                value: cert.issuer.isEmpty
+                    ? tr(context, 'admin.keys.notGiven')
+                    : _issuer(cert.issuer),
                 subtitle: cert.issuer.isEmpty ? null : cert.issuer,
               ),
               RmRow(
-                label: 'Renews by itself',
-                value: cert.autoRenew ? 'Yes' : 'No',
+                label: tr(context, 'admin.keys.renewsByItself'),
+                value: cert.autoRenew
+                    ? tr(context, 'admin.keys.yes')
+                    : tr(context, 'admin.keys.no'),
               ),
-              RmRow(label: 'Added', value: _when(cert.createdAt)),
-              RmRow(label: 'Changed', value: _when(cert.updatedAt)),
-              RmRow(label: 'Certificate number', value: '${cert.id}'),
-              RmRow(label: 'Domain number', value: '${cert.domainId}'),
+              RmRow(
+                label: tr(context, 'admin.aliases.added'),
+                value: _when(cert.createdAt),
+              ),
+              RmRow(
+                label: tr(context, 'admin.domains.changed'),
+                value: _when(cert.updatedAt),
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.certificateNumber'),
+                value: '${cert.id}',
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.domainNumber'),
+                value: '${cert.domainId}',
+              ),
               if (cert.certPem.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                const SectionLabel('Certificate'),
+                SectionLabel(tr(context, 'admin.keys.certificate')),
                 const SizedBox(height: 8),
                 SelectableText(
                   cert.certPem.trim(),

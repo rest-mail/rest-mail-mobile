@@ -25,7 +25,9 @@ String _lastUsed(BuildContext context, DateTime when, DateTime now) =>
 /// What a refused request says, its fields named as a person would.
 String _describe(BuildContext context, ApiException e, String host) {
   if (e.fields.entries.firstOrNull case final field?) {
-    final name = field.key == 'expires_at' ? 'Expiry' : 'Name';
+    final name = field.key == 'expires_at'
+        ? tr(context, 'admin.granttext.expiry')
+        : tr(context, 'folders.name');
     return '$name ${field.value}.';
   }
   return describeError(context, e, host: host);
@@ -95,11 +97,11 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
   Future<void> _revoke(AppPassword item) async {
     final sure = await confirmAction(
       context,
-      title: 'Revoke “${item.name}”?',
-      message:
-          'Whatever signs in with it stops working at once, mail apps '
-          'that are connected included. This cannot be undone.',
-      action: 'Revoke',
+      title: trArgs(context, 'apikeys.revokeName', {
+        'name': (item.name).toString(),
+      }),
+      message: tr(context, 'apppasswords.whateverSignsInWithItStopsWorking'),
+      action: tr(context, 'apikeys.revoke'),
     );
     if (!sure || !mounted) return;
     setState(() => _revoking.add(item.id));
@@ -107,7 +109,12 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
       await _client.revokeAppPassword(widget.mailbox.id, item.id);
       if (!mounted) return;
       setState(() => _items = [...?_items]..remove(item));
-      showToast(context, 'Revoked “${item.name}”');
+      showToast(
+        context,
+        trArgs(context, 'apikeys.revokedName', {
+          'name': (item.name).toString(),
+        }),
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       // Already gone (revoked elsewhere): the list catches up.
@@ -130,7 +137,7 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'App passwords',
+              title: tr(context, 'apppasswords.appPasswords'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -163,24 +170,24 @@ class _AppPasswordsScreenState extends State<AppPasswordsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
       children: [
         Text(
-          'An app password lets a mail app, such as Thunderbird or the '
-          "iPhone's Mail, or an automation sign in to "
-          '${widget.mailbox.address} without a password of yours. Each one '
-          'can be revoked on its own. An account with two-factor sign-in '
-          'must use one over IMAP and SMTP: its own password is refused '
-          'there.',
+          trArgs(context, 'apppasswords.anAppPasswordLetsAMailApp', {
+            'address': (widget.mailbox.address).toString(),
+          }),
           style: rmText(14, color: c.ink2, height: 1.45),
         ),
         const SizedBox(height: 18),
         RmPrimaryButton(
-          label: 'Create an app password',
+          label: tr(context, 'apppasswords.createAnAppPassword'),
           onPressed: () => unawaited(_create()),
         ),
         const SizedBox(height: 22),
-        const SectionLabel('App passwords'),
+        SectionLabel(tr(context, 'apppasswords.appPasswords')),
         const SizedBox(height: 9),
         if (items.isEmpty)
-          Text('None yet.', style: rmText(14, color: c.ink3))
+          Text(
+            tr(context, 'apppasswords.noneYet'),
+            style: rmText(14, color: c.ink3),
+          )
         else
           RmGroup(
             children: [
@@ -237,9 +244,15 @@ class _AppPasswordRow extends StatelessWidget {
                 ),
                 Text(
                   switch (expires) {
-                    null => 'Never expires',
-                    _ when expired => 'Expired ${_day(expires)}',
-                    _ => 'Expires ${_day(expires)}',
+                    null => tr(context, 'apppasswords.neverExpires'),
+                    _ when expired => trArgs(
+                      context,
+                      'apppasswords.expiredValue',
+                      {'value': (_day(expires)).toString()},
+                    ),
+                    _ => trArgs(context, 'apppasswords.expiresValue', {
+                      'value': (_day(expires)).toString(),
+                    }),
                   },
                   style: rmText(
                     12.5,
@@ -260,11 +273,13 @@ class _AppPasswordRow extends StatelessWidget {
             )
           else
             Tooltip(
-              message: 'Revoke ${item.name}',
+              message: trArgs(context, 'apppasswords.revokeName', {
+                'name': (item.name).toString(),
+              }),
               child: TextButton(
                 onPressed: onRevoke,
                 child: Text(
-                  'Revoke',
+                  tr(context, 'apikeys.revoke'),
                   style: rmText(14, color: c.danger, weight: FontWeight.w700),
                 ),
               ),
@@ -276,10 +291,10 @@ class _AppPasswordRow extends StatelessWidget {
 }
 
 enum _Expiry {
-  never('Never', null),
-  month('In 30 days', Duration(days: 30)),
-  quarter('In 90 days', Duration(days: 90)),
-  year('In a year', Duration(days: 365));
+  never('apppasswords.never', null),
+  month('apikeys.in30Days', Duration(days: 30)),
+  quarter('apikeys.in90Days', Duration(days: 90)),
+  year('apikeys.inAYear', Duration(days: 365));
 
   const _Expiry(this.label, this.after);
 
@@ -374,16 +389,25 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
         _needsSignIn = e.code == 'two_factor_required';
         _error = switch (e) {
           // The request's own refusal, never the session's: ask again.
-          ApiException(code: 'reauth_required' || 'invalid_password') =>
-            "That isn't the password of ${widget.account.address}. "
-                'Enter it again.',
-          ApiException(code: 'two_factor_required') =>
-            '${widget.account.address} has two-factor authentication, and '
-                'this session signed in without a code. Sign in again with '
-                'your code to create an app password.',
-          ApiException(statusCode: 429, :final retryAfter) =>
-            'Too many attempts. Try again '
-                '${retryAfter == null ? 'shortly' : 'in ${_wait(retryAfter)}'}.',
+          ApiException(code: 'reauth_required' || 'invalid_password') => trArgs(
+            context,
+            'apppasswords.thatIsnTThePasswordOfAddress',
+            {'address': (widget.account.address).toString()},
+          ),
+          ApiException(code: 'two_factor_required') => trArgs(
+            context,
+            'apppasswords.addressHasTwoFactorAuthenticationAndThis',
+            {'address': (widget.account.address).toString()},
+          ),
+          ApiException(statusCode: 429, :final retryAfter) => trArgs(
+            context,
+            'apppasswords.tooManyAttemptsTryAgainValue',
+            {
+              'value':
+                  (retryAfter == null ? 'shortly' : 'in ${_wait(retryAfter)}')
+                      .toString(),
+            },
+          ),
           _ => _describe(context, e, host),
         };
       });
@@ -394,7 +418,7 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
   }
 
   static String _wait(Duration wait) => switch (wait.inSeconds) {
-    <= 1 => 'a second',
+    <= 1 => tr(context, 'apppasswords.aSecond'),
     <= 90 => '${wait.inSeconds} seconds',
     _ => '${(wait.inSeconds / 60).ceil()} minutes',
   };
@@ -420,14 +444,14 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'New app password',
+              title: tr(context, 'apppasswords.newAppPassword'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                 children: [
-                  const SectionLabel('Name'),
+                  SectionLabel(tr(context, 'folders.name')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _name,
@@ -436,18 +460,18 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                     textInputAction: TextInputAction.next,
                     onChanged: (_) => setState(() => _error = null),
                     style: rmText(16, color: c.ink),
-                    decoration: const InputDecoration(
-                      hintText: 'iPhone Mail',
+                    decoration: InputDecoration(
+                      hintText: tr(context, 'apppasswords.iphoneMail'),
                       counterText: '',
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'So you know which app uses it.',
+                    tr(context, 'apppasswords.soYouKnowWhichAppUsesIt'),
                     style: rmText(13, color: c.ink3),
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Expires'),
+                  SectionLabel(tr(context, 'admin.logs.expires')),
                   const SizedBox(height: 8),
                   RmGroup(
                     children: [
@@ -455,7 +479,7 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                         Semantics(
                           selected: expiry == _expiry,
                           child: RmRow(
-                            label: expiry.label,
+                            label: tr(context, expiry.label),
                             trailing: expiry == _expiry
                                 ? Icon(
                                     Icons.check_rounded,
@@ -469,7 +493,7 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                     ],
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Your password'),
+                  SectionLabel(tr(context, 'apppasswords.yourPassword')),
                   const SizedBox(height: 8),
                   // Its own autofill context, ended without saving: a
                   // password manager may fill in the current password, and
@@ -487,16 +511,21 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                       onChanged: (_) => setState(() => _error = null),
                       onSubmitted: (_) => unawaited(_create()),
                       style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(
-                        hintText: 'The password you sign in with',
+                      decoration: InputDecoration(
+                        hintText: tr(
+                          context,
+                          'apppasswords.thePasswordYouSignInWith',
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'REST Mail asks for the password of '
-                    '${widget.account.address} again before it makes an app '
-                    'password.',
+                    trArgs(
+                      context,
+                      'apppasswords.restMailAsksForThePasswordOf',
+                      {'address': (widget.account.address).toString()},
+                    ),
                     style: rmText(13, color: c.ink3, height: 1.4),
                   ),
                   if (error != null) ...[
@@ -506,13 +535,13 @@ class _CreateAppPasswordScreenState extends State<CreateAppPasswordScreen> {
                   if (_needsSignIn) ...[
                     const SizedBox(height: 10),
                     RmOutlineButton(
-                      label: 'Sign in again',
+                      label: tr(context, 'twoFactor.signInAgain'),
                       onPressed: _signInAgain,
                     ),
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: 'Create app password',
+                    label: tr(context, 'apppasswords.createAppPassword'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_create()) : null,
                   ),
@@ -574,7 +603,7 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
     final expires = await const SecretClipboard().copy(secret);
     if (!mounted) return;
     setState(() => _copyExpires = expires);
-    showToast(context, 'App password copied');
+    showToast(context, tr(context, 'apppasswords.appPasswordCopied'));
   }
 
   @override
@@ -589,9 +618,9 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'App password',
+              title: tr(context, 'imap.appPassword'),
               onBack: () => Navigator.pop(context),
-              trailingText: 'Done',
+              trailingText: tr(context, 'common.done'),
               onTrailing: () => Navigator.pop(context),
             ),
             Expanded(
@@ -599,8 +628,9 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 30),
                 children: [
                   Text(
-                    'The app password for “$name”. Put it in your mail app '
-                    "now: it won't be shown again.",
+                    trArgs(context, 'apppasswords.theAppPasswordForNamePutIt', {
+                      'name': (name).toString(),
+                    }),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 18),
@@ -615,11 +645,14 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                     // way out, and its copy goes as soon as it can.
                     child: _hidden || secret == null
                         ? Text(
-                            'Hidden while REST Mail is in the background',
+                            tr(
+                              context,
+                              'apppasswords.hiddenWhileRESTMailIsInThe',
+                            ),
                             style: rmText(14, color: c.ink3),
                           )
                         : Semantics(
-                            label: 'App password',
+                            label: tr(context, 'imap.appPassword'),
                             child: Text(
                               secret,
                               style: TextStyle(
@@ -633,19 +666,26 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                   ),
                   const SizedBox(height: 14),
                   RmPrimaryButton(
-                    label: 'Copy app password',
+                    label: tr(context, 'apppasswords.copyAppPassword'),
                     onPressed: secret == null ? null : () => unawaited(_copy()),
                   ),
                   if (copyExpires != null) ...[
                     const SizedBox(height: 10),
                     Text(
                       copyExpires
-                          ? 'Copied to this phone only. It leaves the '
-                                'clipboard in '
-                                '${SecretClipboard.lifetime.inMinutes} minutes.'
-                          : 'Other apps can read the clipboard. Paste it '
-                                'into your mail app now, then copy something '
-                                'else over it.',
+                          ? trArgs(
+                              context,
+                              'apppasswords.copiedToThisPhoneOnlyItLeaves',
+                              {
+                                'inMinutes':
+                                    (SecretClipboard.lifetime.inMinutes)
+                                        .toString(),
+                              },
+                            )
+                          : tr(
+                              context,
+                              'apppasswords.otherAppsCanReadTheClipboardPaste',
+                            ),
                       style: rmText(
                         13,
                         color: copyExpires ? c.ink3 : c.danger,
@@ -655,14 +695,13 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                     ),
                   ],
                   const SizedBox(height: 26),
-                  const SectionLabel('Setting up a mail app'),
+                  SectionLabel(tr(context, 'apppasswords.settingUpAMailApp')),
                   const SizedBox(height: 8),
                   Text(
-                    'Thunderbird and most mail apps find these from your '
-                    'address. On an iPhone, add an account of type Other in '
-                    'Settings, under Mail, and type them in. Use this app '
-                    'password, not your own: an account with two-factor '
-                    'sign-in must use an app password over IMAP and SMTP.',
+                    tr(
+                      context,
+                      'apppasswords.thunderbirdAndMostMailAppsFindThese',
+                    ),
                     style: rmText(13, color: c.ink3, height: 1.4),
                   ),
                   const SizedBox(height: 10),
@@ -670,20 +709,26 @@ class _NewAppPasswordScreenState extends State<NewAppPasswordScreen> {
                   // domain itself, TLS from the first byte.
                   RmGroup(
                     children: [
-                      RmRow(label: 'Email', value: widget.address),
-                      RmRow(label: 'Username', value: widget.address),
-                      const RmRow(
-                        label: 'Password',
-                        value: 'This app password',
+                      RmRow(
+                        label: tr(context, 'apppasswords.email'),
+                        value: widget.address,
                       ),
                       RmRow(
-                        label: 'Incoming (IMAP)',
-                        subtitle: 'Port 993, SSL/TLS',
+                        label: tr(context, 'imap.username'),
+                        value: widget.address,
+                      ),
+                      RmRow(
+                        label: tr(context, 'signIn.password'),
+                        value: tr(context, 'apppasswords.thisAppPassword'),
+                      ),
+                      RmRow(
+                        label: tr(context, 'apppasswords.incomingIMAP'),
+                        subtitle: tr(context, 'apppasswords.port993SSLTLS'),
                         value: domain,
                       ),
                       RmRow(
-                        label: 'Outgoing (SMTP)',
-                        subtitle: 'Port 465, SSL/TLS',
+                        label: tr(context, 'apppasswords.outgoingSMTP'),
+                        subtitle: tr(context, 'apppasswords.port465SSLTLS'),
                         value: domain,
                       ),
                     ],
