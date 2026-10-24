@@ -159,6 +159,20 @@ abstract interface class MailBackend {
   /// Refuses mail from [email] from now on.
   Future<Contact> blockSender(int accountId, String email);
 
+  /// Whether the server reads calendar invitations out of mail and sends
+  /// iTIP replies for them (REST Mail).
+  bool get hasCalendar;
+
+  /// The events [accountId] has invitations for, each once.
+  Future<List<CalendarEventSummary>> calendarEvents(int accountId);
+
+  /// Answers the invitation in message [messageId] from [from].
+  Future<CalendarResponse> respondToCalendar(
+    int messageId, {
+    required CalendarResponse response,
+    required String from,
+  });
+
   /// Up to ten of [accountId]'s contacts whose address or name contains
   /// [query], blocked ones left out, for the address fields of a message.
   Future<List<Contact>> suggestContacts(int accountId, String query);
@@ -322,6 +336,20 @@ class RestBackend implements MailBackend {
   @override
   Future<void> deleteQuarantined(int accountId, int id) =>
       client.deleteQuarantined(accountId, id);
+
+  @override
+  bool get hasCalendar => true;
+
+  @override
+  Future<List<CalendarEventSummary>> calendarEvents(int accountId) =>
+      client.calendarEvents(accountId);
+
+  @override
+  Future<CalendarResponse> respondToCalendar(
+    int messageId, {
+    required CalendarResponse response,
+    required String from,
+  }) => client.respondToCalendar(messageId, response: response, from: from);
 
   @override
   bool get hasContacts => true;

@@ -15,6 +15,7 @@ import 'admin/admin_screen.dart';
 import 'admin/overview_screen.dart';
 import 'contacts_screen.dart';
 import 'folders_screen.dart';
+import 'invitations.dart';
 import 'quarantine_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/avatar.dart';
@@ -335,23 +336,44 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
                   ],
                   // After Administration and the server's health, which an
                   // administrator reaches first; before them for anyone else.
-                  if (m.backend.hasContacts && m.account != null) ...[
+                  // Invitations follow Contacts, so Contacts stays where it was.
+                  if ((m.backend.hasContacts || m.backend.hasCalendar) &&
+                      m.account != null) ...[
                     const SizedBox(height: 12),
                     RmGroup(
                       children: [
-                        _ContactsRow(
-                          onTap: () => unawaited(
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => ContactsScreen(
-                                  mailbox: m,
-                                  accountId: m.account!.id,
+                        if (m.backend.hasContacts)
+                          _ScreenRow(
+                            icon: Icons.contacts_outlined,
+                            label: tr(context, 'mailboxes.contacts'),
+                            onTap: () => unawaited(
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ContactsScreen(
+                                    mailbox: m,
+                                    accountId: m.account!.id,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        if (m.backend.hasCalendar)
+                          _ScreenRow(
+                            icon: Icons.event_outlined,
+                            label: tr(context, 'invites.title'),
+                            onTap: () => unawaited(
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => InvitationsScreen(
+                                    mailbox: m,
+                                    accountId: m.account!.id,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -1205,9 +1227,16 @@ class _QuarantineRow extends StatelessWidget {
   }
 }
 
-class _ContactsRow extends StatelessWidget {
-  const _ContactsRow({required this.onTap});
+/// A row that opens a screen of the account's: Contacts, Invitations.
+class _ScreenRow extends StatelessWidget {
+  const _ScreenRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -1219,11 +1248,11 @@ class _ContactsRow extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Icon(Icons.contacts_outlined, size: 18, color: c.ink2),
+            Icon(icon, size: 18, color: c.ink2),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                tr(context, 'mailboxes.contacts'),
+                label,
                 style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
               ),
             ),
