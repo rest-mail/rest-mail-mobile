@@ -53,7 +53,12 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, String text) async {
-    for (var i = 0; i < 12 && find.text(text).evaluate().isEmpty; i++) {
+    // A lazy list builds a row before it is on screen: drag until it is hit.
+    for (
+      var i = 0;
+      i < 12 && find.text(text).hitTestable().evaluate().isEmpty;
+      i++
+    ) {
       await tester.drag(find.byType(ListView).last, const Offset(0, -250));
       await tester.pumpAndSettle();
     }
