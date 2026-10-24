@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
@@ -566,6 +567,85 @@ void main() {
       await close(tester, fake, state);
     },
   );
+
+  testWidgets('the key rotation shows where it stands', (tester) async {
+    final (fake, state) = await open(tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    Future<void> rotation() async {
+      await tap(tester, FakeAccounts.host);
+      await tap(tester, 'Key rotation');
+    }
+
+    fake.rotateDkim(FakeAccounts.host, staged: 'restmail-2');
+    await tap(tester, 'Domains');
+    await tap(tester, FakeAccounts.host);
+    await tap(tester, 'DKIM signing');
+    await rotation();
+    expect(
+      find.textContaining('A new key, restmail-2, is ready'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('restmail-2._domainkey.${FakeAccounts.host} TXT'),
+      findsOneWidget,
+    );
+    await tap(tester, 'Copy record');
+    expect(copied, startsWith('v=DKIM1; k=rsa; p='));
+    expect(find.text('Record copied'), findsOneWidget);
+    await tap(tester, 'Change interval');
+    expect(find.text('DAYS BETWEEN ROTATIONS'), findsOneWidget);
+    await back(tester);
+
+    final seen = DateTime.utc(2026, 10, 24, 9);
+    fake.rotateDkim(FakeAccounts.host, staged: 'restmail-2', publishedAt: seen);
+    await rotation();
+    expect(
+      find.textContaining(
+        'restmail-2, is published. Signing moves to it '
+        '${DateFormat.yMMMd().add_jm().format(seen.add(const Duration(hours: 1)).toLocal())}',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Copy record'), findsNothing);
+    await tap(tester, 'Done');
+
+    final retire = DateTime.utc(2026, 10, 31, 10);
+    fake.rotateDkim(
+      FakeAccounts.host,
+      previous: 'default',
+      retireAfter: retire,
+    );
+    await rotation();
+    expect(
+      find.textContaining(
+        'The previous key, default, stays published until '
+        '${DateFormat.yMMMd().add_jm().format(retire.toLocal())}',
+      ),
+      findsOneWidget,
+    );
+    await tap(tester, 'Done');
+
+    // With no rotation under way the interval form opens straight away.
+    fake.rotateDkim(FakeAccounts.host);
+    await rotation();
+    expect(find.text('DAYS BETWEEN ROTATIONS'), findsOneWidget);
+    await close(tester, fake, state);
+  });
 
   testWidgets('a previously unsigned domain can install a key', (tester) async {
     final (fake, state) = await open(tester);

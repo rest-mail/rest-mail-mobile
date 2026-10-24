@@ -219,6 +219,46 @@ void main() {
     },
   );
 
+  test('the rotation read says where a rotation stands', () async {
+    final fake = FakeRestmail();
+    addTearDown(fake.close);
+    final client = await _login(fake);
+    addTearDown(client.close);
+    final domain = await client.createDomain('rotating.test');
+
+    var rotation = await client.dkimRotation(domain.id);
+    expect(rotation.state, DkimRotationState.stable);
+    expect(rotation.staged, isNull);
+    expect(rotation.previous, isNull);
+
+    fake.rotateDkim('rotating.test', staged: 'restmail-2');
+    rotation = await client.dkimRotation(domain.id);
+    expect(rotation.state, DkimRotationState.awaitingPublication);
+    expect(rotation.staged!.selector, 'restmail-2');
+    expect(rotation.staged!.recordName, 'restmail-2._domainkey.rotating.test');
+    expect(rotation.staged!.recordValue, startsWith('v=DKIM1;'));
+    expect(rotation.staged!.publishedAt, isNull);
+    expect(rotation.staged!.activatesAt, isNull);
+
+    final seen = DateTime.utc(2026, 10, 24, 9);
+    fake.rotateDkim('rotating.test', staged: 'restmail-2', publishedAt: seen);
+    rotation = await client.dkimRotation(domain.id);
+    expect(rotation.state, DkimRotationState.waitingTtl);
+    expect(rotation.staged!.publishedAt, seen.toLocal());
+    expect(
+      rotation.staged!.activatesAt,
+      seen.add(const Duration(hours: 1)).toLocal(),
+    );
+
+    final retire = DateTime.utc(2026, 10, 31, 10);
+    fake.rotateDkim('rotating.test', previous: 'default', retireAfter: retire);
+    rotation = await client.setDkimRotation(domain.id, 90);
+    expect(rotation.state, DkimRotationState.retiring);
+    expect(rotation.staged, isNull);
+    expect(rotation.previous!.selector, 'default');
+    expect(rotation.previous!.retireAfter, retire.toLocal());
+  });
+
   test(
     'rotation does not replace key, selector or installation time',
     () async {

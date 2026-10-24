@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -237,21 +238,10 @@ class _DkimScreenState extends State<DkimScreen> {
     final now = current.enabled
         ? 'Rotated every ${current.intervalDays} days.'
         : 'Never rotated.';
-    if (!access.canWrite(AdminSection.domainDkim)) {
-      await showDialog<void>(
-        context: context,
-        builder: (dialog) => AlertDialog(
-          title: const Text('Key rotation'),
-          content: Text('${key.domain}: $now'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialog),
-              child: const Text('Done'),
-            ),
-          ],
-        ),
-      );
-      return;
+    final canWrite = access.canWrite(AdminSection.domainDkim);
+    if (!canWrite || current.state != DkimRotationState.stable) {
+      final change = await _rotationStatus(key, current, now, canWrite);
+      if (change != true || !mounted) return;
     }
     DkimRotation? saved;
     final sent = await AdminFormScreen.open(
@@ -290,6 +280,92 @@ class _DkimScreenState extends State<DkimScreen> {
           : '${key.domain}: rotated every ${s.intervalDays} days',
     );
   }
+
+  /// Shows where [rotation] stands: the record a staged key waits for, when
+  /// signing moves to it, or when the previous key goes. True asks to change
+  /// the interval, which only [canWrite] offers.
+  Future<bool?> _rotationStatus(
+    DkimKey key,
+    DkimRotation rotation,
+    String now,
+    bool canWrite,
+  ) {
+    final staged = rotation.staged;
+    final previous = rotation.previous;
+    final record =
+        rotation.state == DkimRotationState.awaitingPublication &&
+            staged != null &&
+            staged.recordValue.isNotEmpty
+        ? staged
+        : null;
+    final status = switch (rotation.state) {
+      DkimRotationState.stable => null,
+      DkimRotationState.awaitingPublication =>
+        'A new key, ${staged?.selector}, is ready. The rotation goes on once '
+            'its record is published:',
+      DkimRotationState.waitingTtl =>
+        'A new key, ${staged?.selector}, is published. Signing moves to it '
+            '${_at(staged?.activatesAt)}.',
+      DkimRotationState.retiring =>
+        'Signing moved to the new key. The previous key, '
+            '${previous?.selector}, stays published until '
+            '${_at(previous?.retireAfter)}; then its record can go.',
+    };
+    final c = context.rm;
+    return showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('Key rotation'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${key.domain}: $now'),
+              if (status != null) ...[const SizedBox(height: 12), Text(status)],
+              if (record != null) ...[
+                const SizedBox(height: 12),
+                SelectableText(
+                  '${record.recordName} TXT',
+                  style: rmText(13, weight: FontWeight.w600, color: c.ink),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(
+                  record.recordValue,
+                  style: rmText(12, color: c.ink2, height: 1.35),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (record != null)
+            TextButton(
+              onPressed: () {
+                unawaited(
+                  Clipboard.setData(ClipboardData(text: record.recordValue)),
+                );
+                showToast(dialog, 'Record copied');
+              },
+              child: const Text('Copy record'),
+            ),
+          if (canWrite)
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, true),
+              child: const Text('Change interval'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _at(DateTime? time) => time == null
+      ? 'a time the server has not given'
+      : DateFormat.yMMMd().add_jm().format(time.toLocal());
 
   String _age(DkimKey key) {
     final created = key.createdAt;
