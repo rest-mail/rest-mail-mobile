@@ -35,4 +35,22 @@ void main() {
     Intl.defaultLocale = 'ne';
     expect(timeLabel(DateTime(2026, 10, 21), now: now), 'हिजो');
   });
+
+  test('Arabic and Farsi relative days and full dates', () {
+    final now = DateTime(2026, 10, 22, 9);
+    for (final (language, today, yesterday) in [
+      ('ar', 'اليوم', 'أمس'),
+      ('fa', 'امروز', 'دیروز'),
+    ]) {
+      Intl.defaultLocale = language;
+      expect(dayHeading(now, now: now), today);
+      expect(dayHeading(DateTime(2026, 10, 21), now: now), yesterday);
+      expect(timeLabel(DateTime(2026, 10, 21), now: now), yesterday);
+      expect(longDate(now), contains(RegExp(r'[\u0600-\u06ff]')));
+      expect(
+        dayHeading(now, absolute: true),
+        contains(RegExp(r'[\u0600-\u06ff]')),
+      );
+    }
+  });
 }

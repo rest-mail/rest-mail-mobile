@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:restmail/l10n/strings_ar.dart';
 import 'package:restmail/l10n/strings_de.dart';
 import 'package:restmail/l10n/strings_en.dart';
 import 'package:restmail/l10n/strings_es.dart';
+import 'package:restmail/l10n/strings_fa.dart';
 import 'package:restmail/l10n/strings_hi.dart';
 import 'package:restmail/l10n/strings_ne.dart';
 
@@ -16,6 +18,8 @@ void main() {
     'es': stringsEs,
     'hi': stringsHi,
     'ne': stringsNe,
+    'ar': stringsAr,
+    'fa': stringsFa,
   };
   final english = stringsEn['classic']!;
 

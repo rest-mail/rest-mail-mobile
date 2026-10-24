@@ -4,9 +4,11 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/app_scope.dart';
 import '../state/mailbox_state.dart';
 import '../theme/packs.dart';
+import 'strings_ar.dart';
 import 'strings_de.dart';
 import 'strings_en.dart';
 import 'strings_es.dart';
+import 'strings_fa.dart';
 import 'strings_hi.dart';
 import 'strings_ne.dart';
 
@@ -27,6 +29,8 @@ const _voices = <String, Map<String, Map<String, String>>>{
   'es': stringsEs,
   'hi': stringsHi,
   'ne': stringsNe,
+  'ar': stringsAr,
+  'fa': stringsFa,
 };
 
 /// What the app can speak. A device set to anything else gets the first of
@@ -37,6 +41,8 @@ const supportedLocales = <Locale>[
   Locale('es'),
   Locale('hi'),
   Locale('ne'),
+  Locale('ar'),
+  Locale('fa'),
 ];
 
 /// The languages the app offers, and what each calls itself. `system` means
@@ -48,6 +54,8 @@ const languageNames = <String, String>{
   'es': 'Español',
   'hi': 'हिन्दी',
   'ne': 'नेपाली',
+  'ar': 'العربية',
+  'fa': 'فارسی',
 };
 
 String languageLabel(String code) => languageNames[code] ?? 'System';
