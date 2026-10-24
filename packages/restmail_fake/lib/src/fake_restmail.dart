@@ -38,6 +38,25 @@ const _standardFolders = [
   'Trash',
 ];
 
+/// The stored name of [folder]: INBOX in any case is INBOX, as IMAP has it.
+String _canonicalFolder(String folder) =>
+    folder.toUpperCase() == 'INBOX' ? 'INBOX' : folder;
+
+/// What the server's folder name rule says is wrong with [name], in its
+/// words, or null when nothing is.
+String? _folderNameProblem(String name) {
+  if (name.trim().isEmpty) return 'required';
+  if (utf8.encode(name).length > 255) return 'must be at most 255 bytes';
+  if (name.trim() != name) return 'must not begin or end with a space';
+  if (name.contains('..')) return 'must not contain ".."';
+  for (final rune in name.runes) {
+    if (rune < 0x20 || rune == 0x7f || (rune >= 0x80 && rune <= 0x9f)) {
+      return 'must not contain a control character';
+    }
+  }
+  return null;
+}
+
 /// An in-memory rest-mail server on [host], reached through [client].
 ///
 /// Mail sent between the fake's own mailboxes is delivered, and every change
@@ -96,6 +115,9 @@ class FakeRestmail {
   final _senderRules = <int, FakeSenderRule>{};
   final _suppressions = <int, FakeSuppression>{};
   final _audit = <FakeAuditEntry>[];
+
+  /// By mailbox, the folders made empty: the marker the server stores.
+  final _emptyFolders = <int, Set<String>>{};
 
   /// The owner grants: by account, the accounts it created or linked.
   final _owned = <int, Set<int>>{};
@@ -496,13 +518,8 @@ class FakeRestmail {
     }
 
     // Each account's own grants, and switching them, need no capability.
-    if (path case [
-      'api',
-      'v1',
-      'admin',
-      'grants',
-      ...final rest,
-    ] when _isEscalation(method, rest)) {
+    if (path case ['api', 'v1', 'admin', 'grants', ...final rest]
+        when _isEscalation(method, rest)) {
       final box = _mailboxes[_accessTokens[_bearer(request)]?.session.primary];
       return method == 'GET'
           ? _escalation(request, method, rest, bytes)
@@ -571,6 +588,18 @@ class FakeRestmail {
       ('GET', ['api', 'v1', 'accounts', final id, 'folders']) => _folders(
         _own(session, id),
       ),
+      ('POST', ['api', 'v1', 'accounts', final id, 'folders']) => _createFolder(
+        session,
+        id,
+        _object(bytes),
+      ),
+      ('PATCH', ['api', 'v1', 'accounts', final id, 'folders', final folder]) =>
+        _renameFolder(session, id, folder, _object(bytes)),
+      (
+        'DELETE',
+        ['api', 'v1', 'accounts', final id, 'folders', final folder],
+      ) =>
+        _deleteFolder(session, id, folder),
       (
         'GET',
         [
@@ -1034,7 +1063,11 @@ class FakeRestmail {
 
   http.StreamedResponse _folders(FakeMailbox box) {
     final mine = _messages.values.where((m) => m.mailboxId == box.id).toList();
-    final names = {..._standardFolders, for (final m in mine) m.folder};
+    final names = {
+      ..._standardFolders,
+      ...?_emptyFolders[box.id],
+      for (final m in mine) m.folder,
+    };
     return _json({
       'data': [
         for (final name in names)
@@ -1045,6 +1078,111 @@ class FakeRestmail {
           },
       ],
     });
+  }
+
+  /// The account a folder change is for: the server answers 403 for one the
+  /// session does not reach.
+  FakeMailbox _folderAccount(_Session session, String id) {
+    final box = _mailboxes[int.tryParse(id)];
+    if (box == null || !_reach(session).contains(box.id)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    return box;
+  }
+
+  /// The folder name a request body gives, refused as binding and the
+  /// server's name rule refuse it.
+  String _folderNameIn(Map<String, dynamic> body) {
+    final problems = _undeclared(body, const {'name'});
+    if (!body.containsKey('name')) problems['name'] = 'required';
+    _typed<String>(body, 'name', 'a string', problems, nullable: false);
+    if (problems.isNotEmpty) _invalid(problems);
+    return body['name'] as String;
+  }
+
+  bool _folderExists(FakeMailbox box, String folder) =>
+      _standardFolders.contains(folder) ||
+      (_emptyFolders[box.id]?.contains(folder) ?? false) ||
+      _messages.values.any((m) => m.mailboxId == box.id && m.folder == folder);
+
+  http.StreamedResponse _createFolder(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final given = _folderNameIn(body);
+    final box = _folderAccount(session, id);
+    if (_folderNameProblem(given) case final problem?) {
+      _invalid({'name': problem});
+    }
+    final name = _canonicalFolder(given);
+    if (_folderExists(box, name)) {
+      _fail(409, 'already_exists', 'Folder already exists');
+    }
+    _emptyFolders.putIfAbsent(box.id, () => {}).add(name);
+    return _json({
+      'data': {'name': name},
+    }, status: 201);
+  }
+
+  http.StreamedResponse _renameFolder(
+    _Session session,
+    String id,
+    String folder,
+    Map<String, dynamic> body,
+  ) {
+    final given = _folderNameIn(body);
+    final box = _folderAccount(session, id);
+    final from = _canonicalFolder(folder);
+    if (_standardFolders.contains(from)) {
+      _fail(400, 'bad_request', 'Cannot rename standard folder');
+    }
+    if (_folderNameProblem(given) case final problem?) {
+      _invalid({'name': problem});
+    }
+    final name = _canonicalFolder(given);
+    if (_standardFolders.contains(name)) {
+      _fail(400, 'bad_request', 'Cannot rename a folder to a standard folder');
+    }
+    if (!_folderExists(box, from)) {
+      _fail(404, 'not_found', 'Folder not found or empty');
+    }
+    if (_folderExists(box, name)) {
+      _fail(409, 'already_exists', 'Folder already exists');
+    }
+    final empty = _emptyFolders[box.id];
+    if (empty != null && empty.remove(from)) empty.add(name);
+    for (final m in _messages.values) {
+      if (m.mailboxId == box.id && m.folder == from) m.folder = name;
+    }
+    return _json({
+      'data': {'name': name},
+    });
+  }
+
+  http.StreamedResponse _deleteFolder(
+    _Session session,
+    String id,
+    String folder,
+  ) {
+    final box = _folderAccount(session, id);
+    final name = _canonicalFolder(folder);
+    if (_standardFolders.contains(name)) {
+      _fail(400, 'bad_request', 'Cannot delete standard folder');
+    }
+    final hadMarker = _emptyFolders[box.id]?.remove(name) ?? false;
+    final gone = [
+      for (final m in _messages.values)
+        if (m.mailboxId == box.id && m.folder == name) m.id,
+    ];
+    if (!hadMarker && gone.isEmpty) {
+      _fail(404, 'not_found', 'Folder not found');
+    }
+    for (final messageId in gone) {
+      _messages.remove(messageId);
+      _attachments.removeWhere((_, a) => a.messageId == messageId);
+    }
+    return _noContent();
   }
 
   http.StreamedResponse _quota(FakeMailbox box) {
@@ -2327,9 +2465,8 @@ class FakeRestmail {
     }
     for (final extension in const ['fileinto', 'vacation', 'reject']) {
       final used = RegExp('(^|[\\s;{}])$extension\\s').hasMatch(script);
-      final required = RegExp(
-        'require\\s+(\\[[^\\]]*)?"$extension"',
-      ).hasMatch(script);
+      final required = RegExp('require\\s+(\\[[^\\]]*)?"$extension"')
+          .hasMatch(script);
       if (used && !required) {
         return 'sieve parse error: unknown command "$extension" (the script '
             'uses an extension it does not declare — add: require '
@@ -3028,9 +3165,8 @@ class FakeRestmail {
   Map<String, Object?> _verifyAudit([String? anchorText]) {
     Map<String, Object?>? anchor;
     if (anchorText != null) {
-      final match = RegExp(
-        r'^([1-9][0-9]{0,17}):([0-9a-fA-F]{64})$',
-      ).firstMatch(anchorText);
+      final match = RegExp(r'^([1-9][0-9]{0,17}):([0-9a-fA-F]{64})$')
+          .firstMatch(anchorText);
       if (match == null) {
         _fail(
           422,
@@ -3813,16 +3949,15 @@ class FakeRestmail {
           body,
           'selector',
           problems,
-          broken:
-              'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
+          broken: 'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
           valid: (s) =>
               s.length <= 63 &&
               s
                   .split('.')
                   .every(
-                    (label) => RegExp(
-                      r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
-                    ).hasMatch(label),
+                    (label) =>
+                        RegExp(r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$')
+                            .hasMatch(label),
                   ),
         );
         final key = _requiredString(
@@ -4160,8 +4295,7 @@ class FakeRestmail {
         'validation_failed',
         'Request body failed validation',
         fields: {
-          'status':
-              'must be one of pending, delivering, deferred, delivered, bounced, expired',
+          'status': 'must be one of pending, delivering, deferred, delivered, bounced, expired',
         },
       );
     }
@@ -5191,8 +5325,7 @@ class FakeRestmail {
       return _json({'data': _relayJson(domain)});
     }
     if (!_validRelayHost(host)) {
-      fields['host'] =
-          'Must be a bare host name or IP address, with no scheme, port or path';
+      fields['host'] = 'Must be a bare host name or IP address, with no scheme, port or path';
     }
     if (port == null) fields['port'] = portRule;
     if (tlsMode == null) fields['tls_mode'] = tlsRule;
@@ -5436,9 +5569,8 @@ class FakeRestmail {
 
   Duration? _reportDuration(String text) {
     if (text.startsWith('+')) text = text.substring(1);
-    final parts = RegExp(
-      r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)',
-    ).allMatches(text);
+    final parts = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)')
+        .allMatches(text);
     if (text.isEmpty || parts.map((p) => p[0]).join() != text) return null;
     const micros = {
       'ns': .001,
@@ -5621,6 +5753,7 @@ class FakeRestmail {
       owned.remove(box.id);
     }
     _messages.removeWhere((_, m) => m.mailboxId == box.id);
+    _emptyFolders.remove(box.id);
     _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
     _mailboxes.remove(box.id);
   }
