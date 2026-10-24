@@ -509,6 +509,7 @@ class _ComposerPreview extends StatelessWidget {
     final from = prefs.isOn(composerFromPanel);
     final cc = prefs.isOn(composerCcPanel);
     final later = prefs.isOn(composerLaterPanel);
+    final unsubscribe = prefs.isOn(composerUnsubscribePanel);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -548,6 +549,8 @@ class _ComposerPreview extends StatelessWidget {
           _ComposerField(label: 'Bcc', value: ''),
         ],
         _ComposerField(label: 'Subject', value: 'Rota for next week'),
+        if (unsubscribe)
+          _ComposerField(label: 'Opt-out', value: 'leave@oakline.test'),
         const SizedBox(height: 8),
         for (final width in [230.0, 200.0, 160.0])
           Padding(

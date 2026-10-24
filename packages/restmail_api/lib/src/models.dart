@@ -559,6 +559,24 @@ class Paged<T> {
   final int? total;
 }
 
+/// Where a recipient unsubscribes from a message, published as its
+/// List-Unsubscribe field (RFC 2369): a bare address, an https link, or both.
+/// The https link is a one-click target (RFC 8058), which the sender's domain
+/// signs with its DKIM key.
+class ListUnsubscribe {
+  const ListUnsubscribe({this.mailto, this.https});
+
+  /// A bare address, like unsubscribe@example.com: no display name, no
+  /// mailto: and no query.
+  final String? mailto;
+
+  /// An absolute https:// URL that unsubscribes the recipient when it
+  /// receives the one-click POST.
+  final String? https;
+
+  Map<String, Object> toJson() => {'mailto': ?mailto, 'https': ?https};
+}
+
 /// A message to send, or to keep as a draft.
 class OutgoingMessage {
   const OutgoingMessage({
@@ -571,6 +589,7 @@ class OutgoingMessage {
     this.bodyHtml,
     this.inReplyTo,
     this.references,
+    this.listUnsubscribe,
   });
 
   final String from;
@@ -586,6 +605,11 @@ class OutgoingMessage {
 
   /// Kept on drafts only: the send endpoint takes In-Reply-To alone.
   final String? references;
+
+  /// Sent only: the draft endpoints have no List-Unsubscribe field. A domain
+  /// that sends bulk mail needs it on every message, and one that sends
+  /// transactional mail refuses it.
+  final ListUnsubscribe? listUnsubscribe;
 
   bool get isEmpty =>
       to.isEmpty &&
@@ -603,6 +627,7 @@ class OutgoingMessage {
     'body_text': bodyText,
     'body_html': ?bodyHtml,
     'in_reply_to': ?inReplyTo,
+    'list_unsubscribe': ?listUnsubscribe?.toJson(),
   };
 
   Map<String, Object> toDraftJson() => {

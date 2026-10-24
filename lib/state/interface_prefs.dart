@@ -167,6 +167,15 @@ const composerLaterPanel = PanelSpec(
   description: 'A Later button that holds the message until the time you pick.',
 );
 
+const composerUnsubscribePanel = PanelSpec(
+  id: 'composer_unsubscribe',
+  area: PanelArea.composer,
+  name: 'Unsubscribe link',
+  description:
+      'Where recipients unsubscribe, for mail from a domain that sends '
+      'newsletters or lists. It opens by itself when the domain needs one.',
+);
+
 /// Everything the user can add to or remove from their client.
 const panelRegistry = <PanelSpec>[
   dateSeparatorsPanel,
@@ -178,6 +187,7 @@ const panelRegistry = <PanelSpec>[
   composerCcPanel,
   composerFromPanel,
   composerLaterPanel,
+  composerUnsubscribePanel,
 ];
 
 /// The layout choices, kept on the device with the rest of the settings.

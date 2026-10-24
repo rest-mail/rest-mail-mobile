@@ -67,6 +67,8 @@ class _ComposeSheetState extends State<ComposeSheet>
   final _bcc = TextEditingController();
   late final _subject = TextEditingController(text: widget.seed.subject);
   late final _body = TextEditingController(text: widget.seed.body);
+  final _unsubscribeMailto = TextEditingController();
+  final _unsubscribeHttps = TextEditingController();
   final _toFocus = FocusNode();
 
   /// The account's contacts matching what is typed in an address field, or
@@ -91,6 +93,7 @@ class _ComposeSheetState extends State<ComposeSheet>
   bool _saving = false;
   bool _counting = false;
   bool _showLater = false;
+  bool _showUnsubscribe = false;
   String? _error;
   ({List<String> to, List<String> cc, List<String> bcc})? _pendingSend;
   late final AnimationController _undo;
@@ -133,11 +136,21 @@ class _ComposeSheetState extends State<ComposeSheet>
         prefs.isOn(composerLaterPanel) &&
         _backend.canScheduleSend &&
         widget.seed.kind != ComposeKind.draft;
+    _showUnsubscribe =
+        prefs.isOn(composerUnsubscribePanel) && _backend.canSetListUnsubscribe;
   }
 
   @override
   void dispose() {
-    for (final controller in [_to, _cc, _bcc, _subject, _body]) {
+    for (final controller in [
+      _to,
+      _cc,
+      _bcc,
+      _subject,
+      _body,
+      _unsubscribeMailto,
+      _unsubscribeHttps,
+    ]) {
       controller.dispose();
     }
     _toFocus.dispose();
@@ -162,6 +175,8 @@ class _ComposeSheetState extends State<ComposeSheet>
     _bcc.text,
     _subject.text,
     _body.text,
+    _unsubscribeMailto.text,
+    _unsubscribeHttps.text,
   ].join('\u0000');
 
   String get _title => switch (widget.seed.kind) {
@@ -184,7 +199,29 @@ class _ComposeSheetState extends State<ComposeSheet>
     bodyText: _body.text,
     inReplyTo: widget.seed.inReplyTo,
     references: widget.seed.references,
+    listUnsubscribe: _listUnsubscribe,
   );
+
+  /// Where the recipients unsubscribe, when the composer says so.
+  ListUnsubscribe? get _listUnsubscribe {
+    if (!_showUnsubscribe) return null;
+    final mailto = _unsubscribeMailto.text.trim();
+    final https = _unsubscribeHttps.text.trim();
+    if (mailto.isEmpty && https.isEmpty) return null;
+    return ListUnsubscribe(
+      mailto: mailto.isEmpty ? null : mailto,
+      https: https.isEmpty ? null : https,
+    );
+  }
+
+  /// A domain that sends bulk mail refuses a message without an unsubscribe
+  /// target, so the fields open for one.
+  void _openUnsubscribeFor(ApiException e) {
+    if (e.code == 'list_unsubscribe_required' &&
+        _backend.canSetListUnsubscribe) {
+      _showUnsubscribe = true;
+    }
+  }
 
   void _send() {
     if (_busy) return;
@@ -233,12 +270,15 @@ class _ComposeSheetState extends State<ComposeSheet>
     final message = _message(to: pending.to, cc: pending.cc, bcc: pending.bcc);
     try {
       final draftId = _draftId;
-      if (draftId != null && pending.bcc.isEmpty) {
+      if (draftId != null &&
+          pending.bcc.isEmpty &&
+          message.listUnsubscribe == null) {
         await _backend.updateDraft(draftId, message);
         await _backend.sendDraft(draftId);
       } else {
-        // The draft endpoints have no Bcc, so a draft that gained one is
-        // sent as a new message and the draft put in Trash.
+        // The draft endpoints have no Bcc or List-Unsubscribe, so a draft
+        // that gained one is sent as a new message and the draft put in
+        // Trash.
         await _backend.send(message);
         if (draftId != null) {
           unawaited(
@@ -260,6 +300,7 @@ class _ComposeSheetState extends State<ComposeSheet>
       setState(() {
         _sending = false;
         _error = describeError(context, e, host: _backend.host);
+        _openUnsubscribeFor(e);
       });
     }
   }
@@ -324,6 +365,7 @@ class _ComposeSheetState extends State<ComposeSheet>
       setState(() {
         _saving = false;
         _error = describeError(context, e, host: _backend.host);
+        _openUnsubscribeFor(e);
       });
     }
   }
@@ -706,6 +748,38 @@ class _ComposeSheetState extends State<ComposeSheet>
                       ),
                     ),
                   ),
+                  if (_showUnsubscribe) ...[
+                    _FieldRow(
+                      label: tr(context, 'compose.unsubscribe'),
+                      child: TextField(
+                        controller: _unsubscribeMailto,
+                        enabled: !_counting,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        style: rmText(15, color: c.ink),
+                        decoration: bareInput(
+                          context,
+                          tr(context, 'compose.unsubscribeAddress'),
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
+                      label: '',
+                      child: TextField(
+                        controller: _unsubscribeHttps,
+                        enabled: !_counting,
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        style: rmText(15, color: c.ink),
+                        decoration: bareInput(
+                          context,
+                          tr(context, 'compose.unsubscribeLink'),
+                        ),
+                      ),
+                    ),
+                  ],
                   Expanded(
                     child: TextField(
                       controller: _body,
