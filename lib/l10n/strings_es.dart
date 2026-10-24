@@ -440,6 +440,8 @@ const Map<String, Map<String, String>> stringsEs = {
     'compose.bcc': 'Cco',
     'compose.recipient': 'Destinatario',
     'compose.subject': 'Asunto',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'Exigir TLS en cada salto',
     'compose.unsubscribe': 'Baja',
     'compose.unsubscribeAddress': 'Dirección de baja',
     'compose.unsubscribeLink': 'Enlace de baja con un clic (https://)',

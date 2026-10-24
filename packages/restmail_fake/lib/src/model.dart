@@ -282,6 +282,9 @@ class FakeMessage {
   bool isFlagged;
   bool isStarred = false;
   bool isDraft;
+
+  /// The send asked for TLS on every hop (REQUIRETLS, RFC 8689).
+  bool requireTls = false;
   String? inReplyTo;
   final List<FakeAttachment> attachments;
 

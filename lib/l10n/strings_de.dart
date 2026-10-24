@@ -439,6 +439,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'compose.bcc': 'Bcc',
     'compose.recipient': 'Empfänger',
     'compose.subject': 'Betreff',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'TLS auf jedem Weg verlangen',
     'compose.unsubscribe': 'Abmelden',
     'compose.unsubscribeAddress': 'Abmeldeadresse',
     'compose.unsubscribeLink': 'Ein-Klick-Abmeldelink (https://)',

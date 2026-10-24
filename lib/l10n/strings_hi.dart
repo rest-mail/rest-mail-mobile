@@ -433,6 +433,8 @@ const Map<String, Map<String, String>> stringsHi = {
     'compose.bcc': 'बीसीसी',
     'compose.recipient': 'प्राप्तकर्ता',
     'compose.subject': 'विषय',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'हर चरण पर TLS आवश्यक',
     'compose.unsubscribe': 'ऑप्ट-आउट',
     'compose.unsubscribeAddress': 'सदस्यता छोड़ने का पता',
     'compose.unsubscribeLink': 'एक-क्लिक सदस्यता छोड़ने का लिंक (https://)',

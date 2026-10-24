@@ -432,6 +432,8 @@ const Map<String, Map<String, String>> stringsNe = {
     'compose.bcc': 'बीसीसी',
     'compose.recipient': 'प्रापक',
     'compose.subject': 'विषय',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'हरेक चरणमा TLS अनिवार्य',
     'compose.unsubscribe': 'अप्ट-आउट',
     'compose.unsubscribeAddress': 'सदस्यता हटाउने ठेगाना',
     'compose.unsubscribeLink': 'एक-क्लिक सदस्यता हटाउने लिङ्क (https://)',

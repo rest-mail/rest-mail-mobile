@@ -590,6 +590,7 @@ class OutgoingMessage {
     this.inReplyTo,
     this.references,
     this.listUnsubscribe,
+    this.requireTls = false,
   });
 
   final String from;
@@ -611,6 +612,10 @@ class OutgoingMessage {
   /// transactional mail refuses it.
   final ListUnsubscribe? listUnsubscribe;
 
+  /// Sent only: the message goes only over verified TLS on every hop, or
+  /// bounces (REQUIRETLS, RFC 8689). The draft endpoints have no such field.
+  final bool requireTls;
+
   bool get isEmpty =>
       to.isEmpty &&
       cc.isEmpty &&
@@ -628,6 +633,7 @@ class OutgoingMessage {
     'body_html': ?bodyHtml,
     'in_reply_to': ?inReplyTo,
     'list_unsubscribe': ?listUnsubscribe?.toJson(),
+    if (requireTls) 'require_tls': true,
   };
 
   Map<String, Object> toDraftJson() => {

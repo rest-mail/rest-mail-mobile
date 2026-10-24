@@ -252,4 +252,67 @@ void main() {
     fake.close();
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('the Require TLS panel sends the message with REQUIRETLS', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final fake = FakeRestmail();
+    final store = MemoryKeyValueStore();
+    await store.write(
+      'settings',
+      const AppSettings(
+        interface: InterfacePrefs(enabled: {'composer_require_tls': true}),
+      ).encode(),
+    );
+    final state = AppState(store: store, httpClientFactory: () => fake.client);
+    await state.start();
+    await tester.pumpWidget(RestmailApp(state: state));
+
+    await tester.tap(find.text('Add an account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), FakeAccounts.email);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), FakeAccounts.password);
+    await tester.pump();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('New message'));
+    await tester.pumpAndSettle();
+    final sentBefore = fake.messagesIn(FakeAccounts.email, 'Sent').length;
+    await tester.enterText(
+      find
+          .descendant(
+            of: find.byType(ComposeSheet),
+            matching: find.byType(TextField),
+          )
+          .first,
+      'nadia@oakline.test',
+    );
+    await tester.pump();
+    expect(find.text('Require TLS on every hop'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ComposeSheet),
+        matching: find.byType(Switch),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Message sent'), findsOneWidget);
+    final sent = fake.messagesIn(FakeAccounts.email, 'Sent');
+    expect(sent, hasLength(sentBefore + 1));
+    expect(sent.where((m) => m.requireTls), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox());
+    state.mailbox?.dispose();
+    fake.close();
+    await tester.pump(const Duration(seconds: 5));
+  });
 }

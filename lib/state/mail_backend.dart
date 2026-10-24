@@ -113,6 +113,10 @@ abstract interface class MailBackend {
   /// (List-Unsubscribe, RFC 2369 and RFC 8058).
   bool get canSetListUnsubscribe;
 
+  /// Whether a sent message can require TLS on every hop (REQUIRETLS,
+  /// RFC 8689).
+  bool get canRequireTls;
+
   /// Leaves [message] with the server to send at [at].
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at);
 
@@ -329,6 +333,9 @@ class RestBackend implements MailBackend {
 
   @override
   bool get canSetListUnsubscribe => true;
+
+  @override
+  bool get canRequireTls => true;
 
   @override
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) =>

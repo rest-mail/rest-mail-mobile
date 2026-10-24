@@ -439,6 +439,8 @@ const Map<String, Map<String, String>> stringsFa = {
     'compose.bcc': 'رونوشت پنهان',
     'compose.recipient': 'گیرنده',
     'compose.subject': 'موضوع',
+    'compose.tls': 'TLS',
+    'compose.requireTls': 'الزام TLS در هر مرحله',
     'compose.unsubscribe': 'لغو اشتراک',
     'compose.unsubscribeAddress': 'نشانی لغو اشتراک',
     'compose.unsubscribeLink': 'پیوند لغو اشتراک با یک کلیک (https://)',

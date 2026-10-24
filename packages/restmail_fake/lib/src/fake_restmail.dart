@@ -2224,6 +2224,15 @@ class FakeRestmail {
       );
     }
     _checkUnsubscribe(sender, _listUnsubscribe(body['list_unsubscribe']));
+    final requireTls = body['require_tls'] ?? false;
+    if (requireTls is! bool) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {'require_tls': 'must be a boolean'},
+      );
+    }
     if (DateTime.tryParse(body['scheduled_at'] as String? ?? '')
         case final at?) {
       final now = _clock().toUtc().toIso8601String();
@@ -2257,7 +2266,7 @@ class FakeRestmail {
         isRead: true,
         inReplyTo: _nonEmpty(body['in_reply_to']),
       ),
-    );
+    )..requireTls = requireTls;
     _emit(sender.id, 'folder_update', {'folder': 'Sent'});
     // Mail between the fake's own mailboxes is delivered, Bcc included.
     final addresses = {

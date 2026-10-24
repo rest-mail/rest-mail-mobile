@@ -510,6 +510,7 @@ class _ComposerPreview extends StatelessWidget {
     final cc = prefs.isOn(composerCcPanel);
     final later = prefs.isOn(composerLaterPanel);
     final unsubscribe = prefs.isOn(composerUnsubscribePanel);
+    final requireTls = prefs.isOn(composerRequireTlsPanel);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -551,6 +552,8 @@ class _ComposerPreview extends StatelessWidget {
         _ComposerField(label: 'Subject', value: 'Rota for next week'),
         if (unsubscribe)
           _ComposerField(label: 'Opt-out', value: 'leave@oakline.test'),
+        if (requireTls)
+          _ComposerField(label: 'TLS', value: 'Required on every hop'),
         const SizedBox(height: 8),
         for (final width in [230.0, 200.0, 160.0])
           Padding(
