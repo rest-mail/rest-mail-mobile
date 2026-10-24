@@ -112,6 +112,16 @@ class FakeRestmail {
   final _dkimSecrets = <int, String>{};
   final _dkimInstalledAt = <int, DateTime>{};
   final _dkimIntervals = <int, int>{};
+  final _dkimRotations =
+      <
+        int,
+        ({
+          String? staged,
+          DateTime? publishedAt,
+          String? previous,
+          DateTime? retireAfter,
+        })
+      >{};
   final _certificates = <int, FakeCertificate>{};
   final _pipelines = <int, FakePipeline>{};
   final _customFilters = <int, FakeCustomFilter>{};
@@ -503,6 +513,29 @@ class FakeRestmail {
     box
       ..totpCode = FakeAccounts.totpCode
       ..recoveryCode = FakeAccounts.recoveryCode;
+  }
+
+  /// Puts [domain]'s key rotation where the server's worker would have it:
+  /// a new key staged under [staged], its record seen resolving at
+  /// [publishedAt] (null: not yet), and the key signing moved away from kept
+  /// under [previous] until [retireAfter]. With neither, none is under way.
+  void rotateDkim(
+    String domain, {
+    String? staged,
+    DateTime? publishedAt,
+    String? previous,
+    DateTime? retireAfter,
+  }) {
+    final found = _domains[domain];
+    if (found == null) {
+      throw ArgumentError.value(domain, 'domain', 'No such domain');
+    }
+    _dkimRotations[found.id] = (
+      staged: staged,
+      publishedAt: publishedAt,
+      previous: previous,
+      retireAfter: retireAfter,
+    );
   }
 
   /// Spends sign-in's budget for [wait]: until then signing in, and making
@@ -5942,10 +5975,41 @@ class FakeRestmail {
           ),
   };
 
-  Map<String, Object?> _rotationJson(FakeDomain domain) => {
-    'domain_id': domain.id,
-    'rotation_interval_days': _dkimIntervals[domain.id] ?? 0,
-  };
+  Map<String, Object?> _rotationJson(FakeDomain domain) {
+    final rotation = _dkimRotations[domain.id];
+    final staged = rotation?.staged;
+    final previous = rotation?.previous;
+    Map<String, Object?> key(String selector, DateTime? publishedAt) => {
+      'selector': selector,
+      'record_name': '$selector._domainkey.${domain.name}',
+      'record_value': 'v=DKIM1; k=rsa; p=FAKE${selector.hashCode}',
+      'published_at': publishedAt == null ? null : _time(publishedAt),
+    };
+    final publishedAt = rotation?.publishedAt;
+    return {
+      'domain_id': domain.id,
+      'rotation_interval_days': _dkimIntervals[domain.id] ?? 0,
+      'state': staged != null
+          ? (publishedAt == null ? 'awaiting_publication' : 'waiting_ttl')
+          : (previous != null ? 'retiring' : 'stable'),
+      'staged': staged == null
+          ? null
+          : {
+              ...key(staged, publishedAt),
+              if (publishedAt != null)
+                'activates_at': _time(
+                  publishedAt.add(const Duration(hours: 1)),
+                ),
+            },
+      'previous': previous == null
+          ? null
+          : {
+              ...key(previous, null),
+              if (rotation?.retireAfter case final retire?)
+                'retire_after': _time(retire),
+            },
+    };
+  }
 
   FakeQueueEntry _queueEntry(String id) =>
       _queue[int.tryParse(id)] ??

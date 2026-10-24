@@ -888,13 +888,27 @@ class DkimKey {
   final double? ageSeconds;
 }
 
-/// How often a domain's DKIM key is due to be replaced.
+/// How often a domain's DKIM key is due to be replaced, and where the
+/// server's rotation of it stands.
 class DkimRotation {
-  const DkimRotation({required this.domainId, required this.intervalDays});
+  const DkimRotation({
+    required this.domainId,
+    required this.intervalDays,
+    this.state = DkimRotationState.stable,
+    this.staged,
+    this.previous,
+  });
 
   factory DkimRotation.fromJson(Map<String, dynamic> json) => DkimRotation(
     domainId: _int(json['domain_id']),
     intervalDays: _int(json['rotation_interval_days']),
+    state: DkimRotationState.parse(json['state']),
+    staged: json['staged'] == null
+        ? null
+        : DkimRotationKey.fromJson(json['staged'] as Map<String, dynamic>),
+    previous: json['previous'] == null
+        ? null
+        : DkimRotationKey.fromJson(json['previous'] as Map<String, dynamic>),
   );
 
   /// The most days the server accepts between rotations.
@@ -905,7 +919,81 @@ class DkimRotation {
   /// Days between rotations; 0 means the key is never rotated.
   final int intervalDays;
 
+  final DkimRotationState state;
+
+  /// The key signing moves to next, or null when there is none.
+  final DkimRotationKey? staged;
+
+  /// The key signing moved away from, kept until it retires, or null.
+  final DkimRotationKey? previous;
+
   bool get enabled => intervalDays > 0;
+}
+
+/// Where a domain's DKIM key rotation stands.
+enum DkimRotationState {
+  /// No rotation under way.
+  stable('stable'),
+
+  /// A new key is waiting for its TXT record to be published.
+  awaitingPublication('awaiting_publication'),
+
+  /// The new key's record resolves; signing moves to it one TTL later.
+  waitingTtl('waiting_ttl'),
+
+  /// Signing has moved; the previous key's record stays until it retires.
+  retiring('retiring');
+
+  const DkimRotationState(this.value);
+
+  /// Its name in the API.
+  final String value;
+
+  static DkimRotationState parse(Object? value) => switch (value) {
+    'awaiting_publication' => awaitingPublication,
+    'waiting_ttl' => waitingTtl,
+    'retiring' => retiring,
+    _ => stable,
+  };
+}
+
+/// A key in a rotation, with the TXT record that publishes it.
+class DkimRotationKey {
+  const DkimRotationKey({
+    required this.selector,
+    required this.recordName,
+    required this.recordValue,
+    this.publishedAt,
+    this.activatesAt,
+    this.retireAfter,
+  });
+
+  factory DkimRotationKey.fromJson(Map<String, dynamic> json) =>
+      DkimRotationKey(
+        selector: json['selector'] as String,
+        recordName: json['record_name'] as String,
+        recordValue: json['record_value'] as String,
+        publishedAt: _time(json['published_at']),
+        activatesAt: _time(json['activates_at']),
+        retireAfter: _time(json['retire_after']),
+      );
+
+  final String selector;
+
+  /// The TXT record's name: `<selector>._domainkey.<domain>`.
+  final String recordName;
+
+  /// The TXT record's value; empty when the server cannot read the key.
+  final String recordValue;
+
+  /// When the server first saw the record resolve, or null until then.
+  final DateTime? publishedAt;
+
+  /// When signing moves to this key, once its record has been seen.
+  final DateTime? activatesAt;
+
+  /// When this key, the previous one, is let go.
+  final DateTime? retireAfter;
 }
 
 /// A TLS certificate the server holds for one of its domains. The server
