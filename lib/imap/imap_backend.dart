@@ -1029,6 +1029,8 @@ class ImapBackend implements MailBackend {
     400,
     'not_supported',
     'Invitations cannot be answered on this account yet.',
+  );
+
   // Not yet over IMAP, whose BODY.PEEK[] is the source.
   @override
   bool get hasMessageSource => false;
