@@ -192,6 +192,7 @@ const Map<String, Map<String, String>> stringsNe = {
     'folders.deleteTitle': '{name} मेटाउने?',
     'folders.deleteBody':
         'फोल्डर र त्यसभित्रका सबै सन्देशहरू सधैँका लागि मेटिन्छन्।',
+    'folders.deleteLabelBody': 'लेबल त्यसका सन्देशहरूबाट हटाइन्छ। सन्देशहरू All Mail मा रहन्छन्, अरू लेबलहरूसहित।',
     'folders.deleteAction': 'मेटाउनुहोस्',
     'folders.exists': 'यो नामको फोल्डर पहिल्यै छ।',
     'folders.reserved': 'यो एउटा मानक फोल्डरको नाम हो।',

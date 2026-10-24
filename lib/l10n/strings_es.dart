@@ -198,6 +198,9 @@ const Map<String, Map<String, String>> stringsEs = {
     'folders.deleteTitle': '¿Eliminar {name}?',
     'folders.deleteBody':
         'La carpeta y todos sus mensajes se eliminan para siempre.',
+    'folders.deleteLabelBody':
+        'La etiqueta se quita de sus mensajes. Siguen en All Mail, con las '
+        'demás etiquetas que tengan.',
     'folders.deleteAction': 'Eliminar',
     'folders.exists': 'Ya hay una carpeta con ese nombre.',
     'folders.reserved': 'Ese es el nombre de una carpeta estándar.',

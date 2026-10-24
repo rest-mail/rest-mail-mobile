@@ -204,7 +204,13 @@ class _FolderScreenState extends State<FolderScreen> {
     final sure = await confirmAction(
       context,
       title: trArgs(context, 'folders.deleteTitle', {'name': folder.name}),
-      message: tr(context, 'folders.deleteBody'),
+      // A Gmail folder is a label: deleting it keeps the mail.
+      message: tr(
+        context,
+        _mailbox.backend.hasLabels
+            ? 'folders.deleteLabelBody'
+            : 'folders.deleteBody',
+      ),
       action: tr(context, 'folders.deleteAction'),
     );
     if (!sure || !mounted) return;

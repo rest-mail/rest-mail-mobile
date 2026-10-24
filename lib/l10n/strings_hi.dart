@@ -193,6 +193,7 @@ const Map<String, Map<String, String>> stringsHi = {
     'folders.delete': 'फ़ोल्डर हटाएँ',
     'folders.deleteTitle': '{name} हटाएँ?',
     'folders.deleteBody': 'फ़ोल्डर और उसके सारे संदेश हमेशा के लिए हट जाएँगे।',
+    'folders.deleteLabelBody': 'लेबल उसके संदेशों से हट जाएगा। संदेश All Mail में बने रहेंगे, अपने बाकी लेबलों के साथ।',
     'folders.deleteAction': 'हटाएँ',
     'folders.exists': 'इस नाम का फ़ोल्डर पहले से है।',
     'folders.reserved': 'यह किसी मानक फ़ोल्डर का नाम है।',

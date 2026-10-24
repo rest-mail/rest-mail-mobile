@@ -206,6 +206,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'folders.deleteTitle': 'Delete {name}?',
     'folders.deleteBody':
         'The folder and every message in it are deleted for good.',
+    'folders.deleteLabelBody':
+        'The label is taken off its messages. They stay in All Mail, with any '
+        'other labels they have.',
     'folders.deleteAction': 'Delete',
     'folders.exists': 'There is already a folder with that name.',
     'folders.reserved': 'That is a standard folder\'s name.',
