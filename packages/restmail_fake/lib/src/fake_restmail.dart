@@ -2223,6 +2223,7 @@ class FakeRestmail {
         fields: {'to': 'at least one recipient is required'},
       );
     }
+    _checkUnsubscribe(sender, _listUnsubscribe(body['list_unsubscribe']));
     if (DateTime.tryParse(body['scheduled_at'] as String? ?? '')
         case final at?) {
       final now = _clock().toUtc().toIso8601String();
@@ -2284,6 +2285,110 @@ class FakeRestmail {
       );
     }
     return _json({'data': sent.toJson()}, status: 201);
+  }
+
+  /// A send's list_unsubscribe, checked as the server checks it before
+  /// anything is stored or signed: null when the request has none (#144).
+  ({String? mailto, String? https})? _listUnsubscribe(Object? value) {
+    if (value == null) return null;
+    if (value is! Map) _fail(400, 'bad_request', 'Invalid request body');
+    final mailto = _nonEmpty(value['mailto']);
+    final https = _nonEmpty(value['https']);
+    if (mailto == null && https == null) {
+      _fail(
+        400,
+        'bad_request',
+        'list_unsubscribe needs a mailto address, an https URL or both',
+      );
+    }
+    if (mailto != null) {
+      if (!_headerSafe(mailto)) {
+        _fail(
+          400,
+          'bad_request',
+          'list_unsubscribe.mailto must be a plain ASCII address',
+        );
+      }
+      final at = mailto.lastIndexOf('@');
+      final local = at > 0 ? mailto.substring(0, at) : '';
+      final host = at > 0 ? mailto.substring(at + 1) : '';
+      if (local.isEmpty ||
+          local.contains('@') ||
+          local.contains(RegExp(r'[?#%/&=\[\]\\]')) ||
+          !RegExp(r'^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$').hasMatch(host)) {
+        _fail(
+          400,
+          'bad_request',
+          'list_unsubscribe.mailto must be a bare address, like unsubscribe@example.com',
+        );
+      }
+    }
+    if (https != null) {
+      if (https.length > 2048) {
+        _fail(400, 'bad_request', 'list_unsubscribe.https is too long');
+      }
+      if (!_headerSafe(https)) {
+        _fail(
+          400,
+          'bad_request',
+          'list_unsubscribe.https must be a URL of printable ASCII, with no spaces, commas or angle brackets',
+        );
+      }
+      final url = Uri.tryParse(https);
+      if (url == null) {
+        _fail(400, 'bad_request', 'list_unsubscribe.https is not a valid URL');
+      }
+      if (url.scheme != 'https') {
+        _fail(
+          400,
+          'bad_request',
+          'list_unsubscribe.https must be an https:// URL',
+        );
+      }
+      if (url.host.isEmpty) {
+        _fail(400, 'bad_request', 'list_unsubscribe.https must name a host');
+      }
+      if (url.userInfo.isNotEmpty) {
+        _fail(
+          400,
+          'bad_request',
+          'list_unsubscribe.https must not carry credentials',
+        );
+      }
+    }
+    return (mailto: mailto, https: https);
+  }
+
+  /// The sender domain's sending policy, as the server holds every send to
+  /// it: a bulk domain's mail always carries List-Unsubscribe, and a
+  /// transactional domain's never does. A one-click https target needs the
+  /// domain's DKIM key, since the claim counts only when signed (RFC 8058 §4).
+  void _checkUnsubscribe(
+    FakeMailbox sender,
+    ({String? mailto, String? https})? unsubscribe,
+  ) {
+    final domain = _domainNamed(sender.address.split('@').last);
+    if (domain.sendingPolicy == 'bulk' && unsubscribe == null) {
+      _fail(
+        422,
+        'list_unsubscribe_required',
+        'The sender domain sends bulk mail, so every message needs list_unsubscribe',
+      );
+    }
+    if (domain.sendingPolicy == 'transactional' && unsubscribe != null) {
+      _fail(
+        422,
+        'list_unsubscribe_not_allowed',
+        'The sender domain sends transactional mail, which carries no List-Unsubscribe field: omit list_unsubscribe',
+      );
+    }
+    if (unsubscribe?.https != null && !domain.signs) {
+      _fail(
+        422,
+        'dkim_required',
+        'list_unsubscribe.https needs the sender domain to have a DKIM key: one-click unsubscribe must be DKIM signed',
+      );
+    }
   }
 
   http.StreamedResponse _listScheduled(_Session session) {
@@ -6720,3 +6825,9 @@ List<FakeRecipient> _recipients(Object? raw) => [
 
 String? _nonEmpty(Object? value) =>
     value is String && value.isNotEmpty ? value : null;
+
+/// Whether [s] is printable ASCII without the characters that delimit
+/// List-Unsubscribe targets (RFC 2369 §2) or could fold or end a header line.
+bool _headerSafe(String s) => s.codeUnits.every(
+  (c) => c > 0x20 && c < 0x7f && !'<>,"'.codeUnits.contains(c),
+);

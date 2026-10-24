@@ -961,6 +961,9 @@ class ImapBackend implements MailBackend {
   bool get canScheduleSend => false;
 
   @override
+  bool get canSetListUnsubscribe => false;
+
+  @override
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) async =>
       throw const ApiException(
         400,

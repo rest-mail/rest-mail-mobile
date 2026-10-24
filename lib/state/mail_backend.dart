@@ -109,6 +109,10 @@ abstract interface class MailBackend {
   /// Whether the server can hold a message and send it at a chosen time.
   bool get canScheduleSend;
 
+  /// Whether a sent message can say where its recipients unsubscribe
+  /// (List-Unsubscribe, RFC 2369 and RFC 8058).
+  bool get canSetListUnsubscribe;
+
   /// Leaves [message] with the server to send at [at].
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at);
 
@@ -322,6 +326,9 @@ class RestBackend implements MailBackend {
 
   @override
   bool get canScheduleSend => true;
+
+  @override
+  bool get canSetListUnsubscribe => true;
 
   @override
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) =>
