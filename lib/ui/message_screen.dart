@@ -13,6 +13,7 @@ import '../util/compose_seed.dart';
 import '../util/format.dart';
 import 'attachments.dart';
 import 'compose_sheet.dart';
+import 'invitations.dart';
 import 'labels_sheet.dart';
 import 'mail_actions.dart';
 import 'message_source_screen.dart';
@@ -246,6 +247,41 @@ class _MessageScreenState extends State<MessageScreen> {
           ],
         ),
       );
+    }
+  }
+
+  CalendarResponse? _answered;
+  bool _answering = false;
+
+  /// Answers the message's invitation from the account it is in.
+  Future<void> _answer(CalendarResponse response) async {
+    final account = _mailbox.account;
+    final organizer = _message.calendarEvents.first.organizer;
+    if (account == null || _answering) return;
+    setState(() => _answering = true);
+    try {
+      await _mailbox.backend.respondToCalendar(
+        _message.id,
+        response: response,
+        from: account.address,
+      );
+      if (!mounted) return;
+      setState(() => _answered = response);
+      showToast(
+        context,
+        trArgs(context, 'invite.sent', {
+          'organizer': organizer?.label ?? _message.senderLabel,
+        }),
+      );
+    } on ApiException catch (e) {
+      if (mounted) {
+        showToast(
+          context,
+          describeError(context, e, host: _mailbox.backend.host),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _answering = false);
     }
   }
 
@@ -591,6 +627,26 @@ class _MessageScreenState extends State<MessageScreen> {
                     ),
                   ),
                   if (_note != null) _NoteCard(note: _note!, onEdit: _editNote),
+                  // The server answers a message's first event, so that one
+                  // is shown: an invitation, or its cancellation.
+                  if (m.calendarEvents.firstOrNull?.method
+                      case 'REQUEST' || 'CANCEL'
+                      when _loaded &&
+                          error == null &&
+                          _mailbox.backend.hasCalendar)
+                    InvitationCard(
+                      event: m.calendarEvents.first,
+                      answered:
+                          _answered ??
+                          answerOf(
+                            m.calendarEvents.first,
+                            _mailbox.account?.address ?? '',
+                          ),
+                      busy: _answering,
+                      onAnswer: m.calendarEvents.first.canReply
+                          ? (response) => unawaited(_answer(response))
+                          : null,
+                    ),
                   if (!_loaded)
                     const Padding(
                       padding: EdgeInsets.only(top: 24),
