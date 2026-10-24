@@ -38,6 +38,18 @@ abstract interface class MailBackend {
 
   Future<List<Folder>> folders(int accountId);
 
+  /// Whether folders can be made, renamed and deleted here (REST Mail).
+  bool get canManageFolders;
+
+  /// Makes an empty folder; the name it is stored under.
+  Future<String> createFolder(int accountId, String name);
+
+  /// Renames [folder], its messages with it; the new name.
+  Future<String> renameFolder(int accountId, String folder, String name);
+
+  /// Deletes [folder] and every message in it.
+  Future<void> deleteFolder(int accountId, String folder);
+
   Future<QuotaInfo> quota(int accountId);
 
   /// One page of a folder, newest first. Pass the previous page's cursor to
@@ -204,6 +216,21 @@ class RestBackend implements MailBackend {
 
   @override
   Future<List<Folder>> folders(int accountId) => client.folders(accountId);
+
+  @override
+  bool get canManageFolders => true;
+
+  @override
+  Future<String> createFolder(int accountId, String name) =>
+      client.createFolder(accountId, name);
+
+  @override
+  Future<String> renameFolder(int accountId, String folder, String name) =>
+      client.renameFolder(accountId, folder, name);
+
+  @override
+  Future<void> deleteFolder(int accountId, String folder) =>
+      client.deleteFolder(accountId, folder);
 
   @override
   Future<QuotaInfo> quota(int accountId) => client.quota(accountId);
