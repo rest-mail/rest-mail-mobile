@@ -184,6 +184,52 @@ class FakeRestmail {
       if (row['from'] == address && row['status'] == 'pending') row,
   ];
 
+  /// An invitation arriving from [from], the organizer: a message in [to]'s
+  /// inbox whose calendar part is one event of [method] (REQUEST, or CANCEL
+  /// to call it off), as the server reads it.
+  FakeMessage invite({
+    required String to,
+    required String from,
+    required String summary,
+    String uid = 'event-1@fake.restmail.test',
+    String method = 'REQUEST',
+    int sequence = 0,
+    DateTime? start,
+    DateTime? end,
+    String? location,
+    String? status,
+  }) {
+    final starts = start ?? _clock().add(const Duration(days: 1));
+    final message = deliver(
+      to: to,
+      from: from,
+      subject: method == 'CANCEL'
+          ? 'Cancelled: $summary'
+          : 'Invitation: $summary',
+      body: summary,
+    );
+    message.calendarEvents = [
+      {
+        'method': method,
+        'uid': uid,
+        'summary': summary,
+        'location': ?location,
+        'dtstart': starts.toUtc().toIso8601String(),
+        'dtend': (end ?? starts.add(const Duration(hours: 1)))
+            .toUtc()
+            .toIso8601String(),
+        'all_day': false,
+        'organizer': {'address': from},
+        'attendees': [
+          {'address': to, 'partstat': 'NEEDS-ACTION', 'rsvp': true},
+        ],
+        'status': ?status,
+        'sequence': sequence,
+      },
+    ];
+    return message;
+  }
+
   /// Mail arriving from outside: stored in [to]'s inbox and pushed to its
   /// open event streams.
   FakeMessage deliver({
@@ -788,6 +834,10 @@ class FakeRestmail {
       }),
       ('GET', ['api', 'v1', 'attachments', final id]) => _download(session, id),
       ('GET', ['api', 'v1', 'messages', final id, 'raw']) => _raw(session, id),
+      ('GET', ['api', 'v1', 'accounts', final id, 'calendar-events']) =>
+        _calendarEvents(session, id),
+      ('POST', ['api', 'v1', 'messages', final id, 'calendar-reply']) =>
+        _calendarReply(session, id, _object(bytes)),
       _ => _fail(404, 'not_found', 'No route for $method ${request.url.path}'),
     };
   }
@@ -2349,6 +2399,145 @@ class FakeRestmail {
       200,
       headers: {'content-type': attachment.contentType},
     );
+  }
+
+  /// The events the account has invitations for, as the server lists its
+  /// calendar_event_versions: by uid, the latest version's method, status
+  /// and summary first, with how many versions came.
+  http.StreamedResponse _calendarEvents(_Session session, String id) {
+    final box = _folderAccount(session, id);
+    final versions =
+        [
+          for (final m in _messages.values)
+            if (m.mailboxId == box.id)
+              for (final event in m.calendarEvents) (message: m, event: event),
+        ]..sort((a, b) {
+          final byUid = '${a.event['uid']}'.compareTo('${b.event['uid']}');
+          if (byUid != 0) return byUid;
+          return ((b.event['sequence'] as int?) ?? 0).compareTo(
+            (a.event['sequence'] as int?) ?? 0,
+          );
+        });
+    final seen = <String, Map<String, Object?>>{};
+    for (final (:message, :event) in versions) {
+      final uid = '${event['uid']}';
+      final cancelled = event['method'] == 'CANCEL';
+      if (seen[uid] case final summary?) {
+        summary['versions'] = (summary['versions']! as int) + 1;
+        if (cancelled) summary['is_cancelled'] = true;
+        continue;
+      }
+      seen[uid] = {
+        'uid': uid,
+        'method': event['method'],
+        'status': event['status'] ?? '',
+        'summary': event['summary'] ?? '',
+        'sequence': event['sequence'] ?? 0,
+        'is_cancelled': cancelled || event['status'] == 'CANCELLED',
+        'message_id': message.id,
+        'versions': 1,
+      };
+    }
+    return _json({'data': seen.values.toList()});
+  }
+
+  /// Answers the invitation in a message, as the server does: the body is
+  /// bound first, then the message is found (404 message_not_found, 403 for
+  /// another account's), then the response, the invitation and from are
+  /// checked, and the reply is kept in the sender's Sent and delivered when
+  /// the organizer is one of the fake's mailboxes.
+  http.StreamedResponse _calendarReply(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final problems = _undeclared(body, const {'response', 'from'});
+    _typed<String>(body, 'response', 'a string', problems);
+    _typed<String>(body, 'from', 'a string', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final messageId = int.tryParse(id);
+    if (messageId == null) _invalid({'id': 'must be an integer'});
+    if (messageId < 1) _invalid({'id': 'must be at least 1'});
+    final message = _messages[messageId];
+    if (message == null) _fail(404, 'message_not_found', 'Message not found');
+    if (!_reach(session).contains(message.mailboxId)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    final response = '${body['response'] ?? ''}'.toUpperCase();
+    if (!const ['ACCEPTED', 'DECLINED', 'TENTATIVE'].contains(response)) {
+      _fail(
+        400,
+        'bad_request',
+        'response must be ACCEPTED, DECLINED, or TENTATIVE',
+      );
+    }
+    if (message.calendarEvents.isEmpty) {
+      _fail(400, 'bad_request', 'Message does not contain calendar events');
+    }
+    final from = '${body['from'] ?? ''}';
+    if (from.isEmpty) _fail(400, 'bad_request', 'from is required');
+    final sender = _mailboxAt(from);
+    if (sender == null || !_reach(session).contains(sender.id)) {
+      _fail(
+        403,
+        'forbidden',
+        'You are not authorized to send from this address',
+      );
+    }
+    final event = message.calendarEvents.first;
+    final organizer = switch (event['organizer']) {
+      {'address': final String address} when address.isNotEmpty => address,
+      _ => message.sender,
+    };
+    if (!_bareAddress(organizer)) {
+      _fail(400, 'bad_request', 'invalid organizer address in calendar event');
+    }
+    final summary = '${event['summary'] ?? ''}';
+    final title = summary.isEmpty ? message.subject : summary;
+    final word = response[0] + response.substring(1).toLowerCase();
+    final reply =
+        FakeMessage(
+            folder: 'Sent',
+            sender: sender.address,
+            senderName: sender.displayName,
+            to: [FakeRecipient(organizer)],
+            subject: '$word: $title',
+            bodyText: 'Calendar invite ${response.toLowerCase()}: $summary',
+            receivedAt: _clock(),
+            isRead: true,
+            inReplyTo: message.messageId,
+          )
+          ..calendarEvents = [
+            {
+              ...event,
+              'method': 'REPLY',
+              'attendees': [
+                {'address': sender.address, 'partstat': response},
+              ],
+            },
+          ];
+    _add(sender, reply);
+    _emit(sender.id, 'folder_update', {'folder': 'Sent'});
+    if (_mailboxAt(organizer) case final target?) {
+      _announce(
+        _add(
+          target,
+          FakeMessage(
+            folder: 'INBOX',
+            sender: reply.sender,
+            senderName: reply.senderName,
+            to: reply.to,
+            subject: reply.subject,
+            bodyText: reply.bodyText,
+            receivedAt: _clock(),
+            inReplyTo: reply.inReplyTo,
+          )..calendarEvents = reply.calendarEvents,
+        ),
+      );
+    }
+    return _json({
+      'data': {'response': response, 'status': 'sent'},
+    });
   }
 
   /// A message's source, refused as the server refuses it: an id that is

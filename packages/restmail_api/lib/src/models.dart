@@ -1,3 +1,4 @@
+import 'calendar.dart';
 import 'session.dart';
 
 /// The person a session belongs to.
@@ -382,6 +383,7 @@ class Message {
     this.dateHeader,
     this.labels = const [],
     this.headers = const {},
+    this.calendarEvents = const [],
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -408,6 +410,7 @@ class Message {
     receivedAt: _time(json['received_at']),
     dateHeader: _optionalTime(json['date_header']),
     headers: _headerMap(json['headers']),
+    calendarEvents: CalendarInvite.listFromJson(json['calendar_events']),
   );
 
   final int id;
@@ -444,6 +447,10 @@ class Message {
   /// badge: the server writes Authentication-Results from its filter
   /// verdicts at delivery.
   final Map<String, String> headers;
+
+  /// The calendar events its iCalendar parts carry: an invitation, its
+  /// update or its cancellation. Empty for most mail.
+  final List<CalendarInvite> calendarEvents;
 
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
@@ -491,6 +498,7 @@ class Message {
     dateHeader: dateHeader,
     labels: labels ?? this.labels,
     headers: headers,
+    calendarEvents: calendarEvents,
   );
 }
 

@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'admin_models.dart';
+import 'calendar.dart';
 import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
@@ -1616,6 +1617,34 @@ class RestmailClient {
     final name = _data(response)['name'];
     if (name is! String || name.isEmpty) throw _unreadable(response);
     return name;
+  }
+
+  /// The events [accountId] has received invitations for, each once with
+  /// how many versions came: the latest's method, status and summary.
+  Future<List<CalendarEventSummary>> calendarEvents(int accountId) async =>
+      _list(
+        await _authed('GET', ['accounts', '$accountId', 'calendar-events']),
+        CalendarEventSummary.fromJson,
+      );
+
+  /// Answers the invitation in message [messageId] from [from], an address
+  /// this session may send as: an iTIP REPLY (RFC 5546) to its organizer,
+  /// kept in Sent. A response the server does not take, a message without an
+  /// invitation or a missing from is 400; an address it may not send as 403.
+  Future<CalendarResponse> respondToCalendar(
+    int messageId, {
+    required CalendarResponse response,
+    required String from,
+  }) async {
+    final answer = await _authed(
+      'POST',
+      ['messages', '$messageId', 'calendar-reply'],
+      body: {'response': response.value, 'from': from},
+    );
+    final data = _data(answer);
+    final replied = CalendarResponse.fromValue(data['response']);
+    if (data['status'] != 'sent' || replied == null) throw _unreadable(answer);
+    return replied;
   }
 
   /// One page of the messages the account's filters held back, newest first.
