@@ -63,8 +63,9 @@ void main() {
 
   test('a folder is created empty, listed, renamed and deleted', () async {
     expect(await client.createFolder(account, 'Receipts'), 'Receipts');
-    final made = (await client.folders(account))
-        .singleWhere((f) => f.name == 'Receipts');
+    final made = (await client.folders(
+      account,
+    )).singleWhere((f) => f.name == 'Receipts');
     expect((made.total, made.unread), (0, 0));
 
     expect(

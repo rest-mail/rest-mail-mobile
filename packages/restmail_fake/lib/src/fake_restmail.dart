@@ -518,8 +518,13 @@ class FakeRestmail {
     }
 
     // Each account's own grants, and switching them, need no capability.
-    if (path case ['api', 'v1', 'admin', 'grants', ...final rest]
-        when _isEscalation(method, rest)) {
+    if (path case [
+      'api',
+      'v1',
+      'admin',
+      'grants',
+      ...final rest,
+    ] when _isEscalation(method, rest)) {
       final box = _mailboxes[_accessTokens[_bearer(request)]?.session.primary];
       return method == 'GET'
           ? _escalation(request, method, rest, bytes)
@@ -2465,8 +2470,9 @@ class FakeRestmail {
     }
     for (final extension in const ['fileinto', 'vacation', 'reject']) {
       final used = RegExp('(^|[\\s;{}])$extension\\s').hasMatch(script);
-      final required = RegExp('require\\s+(\\[[^\\]]*)?"$extension"')
-          .hasMatch(script);
+      final required = RegExp(
+        'require\\s+(\\[[^\\]]*)?"$extension"',
+      ).hasMatch(script);
       if (used && !required) {
         return 'sieve parse error: unknown command "$extension" (the script '
             'uses an extension it does not declare — add: require '
@@ -3165,8 +3171,9 @@ class FakeRestmail {
   Map<String, Object?> _verifyAudit([String? anchorText]) {
     Map<String, Object?>? anchor;
     if (anchorText != null) {
-      final match = RegExp(r'^([1-9][0-9]{0,17}):([0-9a-fA-F]{64})$')
-          .firstMatch(anchorText);
+      final match = RegExp(
+        r'^([1-9][0-9]{0,17}):([0-9a-fA-F]{64})$',
+      ).firstMatch(anchorText);
       if (match == null) {
         _fail(
           422,
@@ -3949,15 +3956,16 @@ class FakeRestmail {
           body,
           'selector',
           problems,
-          broken: 'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
+          broken:
+              'Must be a DNS label (letters, digits, hyphens), at most 63 characters',
           valid: (s) =>
               s.length <= 63 &&
               s
                   .split('.')
                   .every(
-                    (label) =>
-                        RegExp(r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$')
-                            .hasMatch(label),
+                    (label) => RegExp(
+                      r'^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$',
+                    ).hasMatch(label),
                   ),
         );
         final key = _requiredString(
@@ -4295,7 +4303,8 @@ class FakeRestmail {
         'validation_failed',
         'Request body failed validation',
         fields: {
-          'status': 'must be one of pending, delivering, deferred, delivered, bounced, expired',
+          'status':
+              'must be one of pending, delivering, deferred, delivered, bounced, expired',
         },
       );
     }
@@ -5325,7 +5334,8 @@ class FakeRestmail {
       return _json({'data': _relayJson(domain)});
     }
     if (!_validRelayHost(host)) {
-      fields['host'] = 'Must be a bare host name or IP address, with no scheme, port or path';
+      fields['host'] =
+          'Must be a bare host name or IP address, with no scheme, port or path';
     }
     if (port == null) fields['port'] = portRule;
     if (tlsMode == null) fields['tls_mode'] = tlsRule;
@@ -5569,8 +5579,9 @@ class FakeRestmail {
 
   Duration? _reportDuration(String text) {
     if (text.startsWith('+')) text = text.substring(1);
-    final parts = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)')
-        .allMatches(text);
+    final parts = RegExp(
+      r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)',
+    ).allMatches(text);
     if (text.isEmpty || parts.map((p) => p[0]).join() != text) return null;
     const micros = {
       'ns': .001,
