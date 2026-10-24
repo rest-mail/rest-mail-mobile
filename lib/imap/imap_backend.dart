@@ -1012,6 +1012,25 @@ class ImapBackend implements MailBackend {
     'Folders cannot be changed on this account yet.',
   );
 
+  // Not yet over IMAP: the provider's own calendar answers invitations.
+  @override
+  bool get hasCalendar => false;
+
+  @override
+  Future<List<CalendarEventSummary>> calendarEvents(int accountId) async =>
+      const [];
+
+  @override
+  Future<CalendarResponse> respondToCalendar(
+    int messageId, {
+    required CalendarResponse response,
+    required String from,
+  }) => throw const ApiException(
+    400,
+    'not_supported',
+    'Invitations cannot be answered on this account yet.',
+  );
+
   // Not yet over IMAP, whose BODY.PEEK[] is the source.
   @override
   bool get hasMessageSource => false;
