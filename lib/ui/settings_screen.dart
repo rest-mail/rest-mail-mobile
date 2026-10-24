@@ -47,11 +47,22 @@ class MailboxSettingsScreen extends StatefulWidget {
 
 class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
   QuotaInfo? _quota;
+  ServerDescription? _server;
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadQuota());
+    unawaited(_loadServer());
+  }
+
+  Future<void> _loadServer() async {
+    try {
+      final server = await widget.mailbox.backend.describeServer();
+      if (mounted) setState(() => _server = server);
+    } on ApiException {
+      // The footer leaves the version out.
+    }
   }
 
   Future<void> _loadQuota() async {
@@ -396,7 +407,10 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                     const SizedBox(height: 22),
                     Text(
                       [
-                        host,
+                        switch (_server) {
+                          final server? => '$host · ${productLabel(server)}',
+                          null => host,
+                        },
                         if (quota != null)
                           '${countLabel(quota.messageCount)} messages · ${_storage(quota)}',
                       ].join('\n'),
@@ -413,6 +427,12 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     );
   }
 }
+
+/// The product a server runs and its version, by the product's name: REST
+/// Mail for rest-mail.
+String productLabel(ServerDescription server) =>
+    '${server.product == 'rest-mail' ? 'REST Mail' : server.product} '
+    '${server.version}';
 
 /// What belongs to this phone rather than a mailbox: language, theme, the
 /// interface, notifications and the signature.

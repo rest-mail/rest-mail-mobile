@@ -13,6 +13,10 @@ abstract interface class MailBackend {
   /// The host the mail comes from, for messages like "Can't reach …".
   String get host;
 
+  /// What the server says it is and which version it runs, or null where
+  /// it does not say (IMAP).
+  Future<ServerDescription?> describeServer();
+
   /// The mailboxes this session can show. [Account.isPrimary] marks the one
   /// it signed in with; the others are the ones it created or linked.
   Future<List<Account>> accounts();
@@ -209,6 +213,9 @@ class RestBackend implements MailBackend {
 
   @override
   String get host => client.server.host;
+
+  @override
+  Future<ServerDescription?> describeServer() => client.describeServer();
 
   @override
   Future<List<Account>> accounts() => client.accounts();

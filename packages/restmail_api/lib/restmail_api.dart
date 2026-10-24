@@ -11,7 +11,8 @@ export 'src/admin_models.dart';
 export 'src/capabilities.dart';
 export 'src/auth_results.dart';
 export 'src/calendar.dart';
-export 'src/client.dart' show RestmailClient, ServerHealth, TokensChanged;
+export 'src/client.dart'
+    show RestmailClient, ServerDescription, ServerHealth, TokensChanged;
 export 'src/discovery.dart';
 export 'src/errors.dart';
 export 'src/events.dart';
