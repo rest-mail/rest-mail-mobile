@@ -15,6 +15,7 @@ import 'attachments.dart';
 import 'compose_sheet.dart';
 import 'labels_sheet.dart';
 import 'mail_actions.dart';
+import 'message_source_screen.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/message_body.dart';
@@ -22,7 +23,7 @@ import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, note, labels, spam, notSpam, block }
+enum _More { markUnread, flag, note, labels, spam, notSpam, block, source }
 
 /// One message, read in full, with reply, reply all and forward along the
 /// bottom. On Gmail, with its labels, and the rest of its conversation
@@ -278,6 +279,16 @@ class _MessageScreenState extends State<MessageScreen> {
           );
         case _More.block:
           await _blockSender();
+        case _More.source:
+          await Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => MessageSourceScreen(
+                backend: _mailbox.backend,
+                message: _message,
+              ),
+            ),
+          );
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -466,6 +477,12 @@ class _MessageScreenState extends State<MessageScreen> {
                         PopupMenuItem(
                           value: _More.block,
                           child: Text(tr(context, 'message.block')),
+                        ),
+                      // Last, so the items above keep their places.
+                      if (_mailbox.backend.hasMessageSource)
+                        PopupMenuItem(
+                          value: _More.source,
+                          child: Text(tr(context, 'message.viewSource')),
                         ),
                     ],
                   ),

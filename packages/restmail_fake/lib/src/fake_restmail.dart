@@ -780,6 +780,7 @@ class FakeRestmail {
         ],
       }),
       ('GET', ['api', 'v1', 'attachments', final id]) => _download(session, id),
+      ('GET', ['api', 'v1', 'messages', final id, 'raw']) => _raw(session, id),
       _ => _fail(404, 'not_found', 'No route for $method ${request.url.path}'),
     };
   }
@@ -2340,6 +2341,28 @@ class FakeRestmail {
       Stream.value(attachment.bytes),
       200,
       headers: {'content-type': attachment.contentType},
+    );
+  }
+
+  /// A message's source, refused as the server refuses it: an id that is
+  /// not a number 400, a message that does not exist 404 message_not_found,
+  /// one the session does not reach 403, and one with no source kept 404.
+  http.StreamedResponse _raw(_Session session, String id) {
+    final messageId = int.tryParse(id);
+    if (messageId == null || messageId < 0) {
+      _fail(400, 'bad_request', 'Invalid message ID');
+    }
+    final message = _messages[messageId];
+    if (message == null) _fail(404, 'message_not_found', 'Message not found');
+    if (!_reach(session).contains(message.mailboxId)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    final source = message.source;
+    if (source.isEmpty) _fail(404, 'not_found', 'Raw message not available');
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(source)),
+      200,
+      headers: {'content-type': 'message/rfc822'},
     );
   }
 
