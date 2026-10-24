@@ -2120,6 +2120,15 @@ class RestmailClient {
     timeout: _downloadTimeout,
   )).bodyBytes;
 
+  /// The message as it arrived: its RFC 5322 source, headers and all, the
+  /// bytes of a `message/rfc822`. 404 `not_found` when the server kept none.
+  Future<Uint8List> rawMessage(int id) async => (await _authed(
+    'GET',
+    ['messages', '$id', 'raw'],
+    accept: 'message/rfc822',
+    timeout: _downloadTimeout,
+  )).bodyBytes;
+
   // ── Live events ──────────────────────────────────────────────────────
 
   /// Changes to one account's mailbox, pushed by the server for as long as

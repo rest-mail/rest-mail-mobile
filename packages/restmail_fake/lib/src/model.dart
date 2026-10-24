@@ -282,6 +282,38 @@ class FakeMessage {
   String? inReplyTo;
   final List<FakeAttachment> attachments;
 
+  /// The source the server keeps, for GET /api/v1/messages/{id}/raw. Null
+  /// renders one from the fields; empty is a message with none kept.
+  String? raw;
+
+  /// [raw], or a plain-text source made from the fields, lines ending CRLF.
+  String get source {
+    if (raw case final kept?) return kept;
+    String names(List<FakeRecipient> people) => [
+      for (final r in people)
+        r.name == null || r.name!.isEmpty
+            ? r.address
+            : '${r.name} <${r.address}>',
+    ].join(', ');
+    return [
+      senderName == null || senderName!.isEmpty
+          ? 'From: $sender'
+          : 'From: $senderName <$sender>',
+      if (to.isNotEmpty) 'To: ${names(to)}',
+      if (cc.isNotEmpty) 'Cc: ${names(cc)}',
+      'Subject: $subject',
+      'Date: ${_rfc5322Date(receivedAt)}',
+      'Message-ID: $messageId',
+      if (inReplyTo case final parent? when parent.isNotEmpty)
+        'In-Reply-To: $parent',
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset=utf-8',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      ...const LineSplitter().convert(bodyText),
+    ].join('\r\n');
+  }
+
   String get messageId => '<$id@fake.restmail.test>';
 
   int get sizeBytes =>
@@ -568,4 +600,17 @@ class FakePush {
   final String device;
   final String token;
   final Map<String, Object?> payload;
+}
+
+/// [at] as a message's Date header writes it (RFC 5322 §3.3), in UTC.
+String _rfc5322Date(DateTime at) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final t = at.toUtc();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${days[t.weekday - 1]}, ${t.day} ${months[t.month - 1]} ${t.year} '
+      '${two(t.hour)}:${two(t.minute)}:${two(t.second)} +0000';
 }
