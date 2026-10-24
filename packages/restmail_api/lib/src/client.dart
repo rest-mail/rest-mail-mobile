@@ -137,6 +137,40 @@ class RestmailClient {
           'recovery_code': recoveryCode,
       },
     );
+    return _signedIn(response);
+  }
+
+  /// Resets a forgotten password with a [totpCode] from the account's
+  /// authenticator and one of its [recoveryCode]s, both, and signs in with a
+  /// new session. The authenticator stays; every other session and app
+  /// password of the account ends. An account without two-factor
+  /// authentication has no way back on its own: an administrator resets it.
+  ///
+  /// Every refusal is the same 401 `recovery_failed`, whether the address is
+  /// an account or not. After five for one address the server answers 429
+  /// `rate_limited` for 15 minutes, from anywhere; [ApiException.retryAfter]
+  /// says how long.
+  Future<LoginResult> recoverAccount({
+    required String email,
+    required String totpCode,
+    required String recoveryCode,
+    required String newPassword,
+  }) async => _signedIn(
+    await _send(
+      'POST',
+      _uri(['auth', 'recover']),
+      body: {
+        'email': email,
+        'totp_code': totpCode,
+        'recovery_code': recoveryCode,
+        'new_password': newPassword,
+        'client': 'native',
+      },
+    ),
+  );
+
+  /// A sign-in's answer: the session it starts, now this client's.
+  LoginResult _signedIn(http.Response response) {
     _throwIfError(response);
     final data = _data(response);
     final tokens = _tokensFrom(response, data);

@@ -11,6 +11,7 @@ import '../sample_mode.dart';
 import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'imap_account_screen.dart';
+import 'recover_account_screen.dart';
 import 'server_screen.dart';
 import 'server_setup_screen.dart';
 import 'widgets/common.dart';
@@ -406,6 +407,33 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         ),
                       ),
                     ),
+                    // Last, so nothing above it moves: a REST Mail server
+                    // lets an account with two-factor sign-in reset its own
+                    // password.
+                    if (_server case final server? when _provider == null)
+                      Center(
+                        child: TextButton(
+                          onPressed: () => unawaited(
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => RecoverAccountScreen(
+                                  server: server,
+                                  email: _email.text.trim(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            tr(context, 'signIn.forgot'),
+                            style: rmText(
+                              14,
+                              color: c.accent,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
