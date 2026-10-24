@@ -59,6 +59,10 @@ class ImapBackend implements MailBackend {
   @override
   String get host => settings.imapHost;
 
+  // IMAP does not say which server software it runs.
+  @override
+  Future<ServerDescription?> describeServer() async => null;
+
   // ── Connection ────────────────────────────────────────────────────────
 
   ImapConnection? _connection;
