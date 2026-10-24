@@ -25,7 +25,7 @@ a repository commit or an extra tag.
 What's New displays the latest version first under **Latest release**, then
 nine older entries under **Previous versions**, each with its version, title,
 summary and change list. Labels and the Settings description are translated in
-all five supported languages. Notes remain ordinary text, with no remote HTML.
+all supported languages. Notes remain ordinary text, with no remote HTML.
 
 The app stores one active cache file, `whats-new.json`, across app versions. It
 shows saved notes immediately while refreshing, supports pull-to-refresh, and

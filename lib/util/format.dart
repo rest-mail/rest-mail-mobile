@@ -9,6 +9,8 @@ const _relativeDayWords = <String, Map<String, String>>{
   'es': {'today': 'Hoy', 'yesterday': 'Ayer'},
   'hi': {'today': 'आज', 'yesterday': 'कल'},
   'ne': {'today': 'आज', 'yesterday': 'हिजो'},
+  'ar': {'today': 'اليوم', 'yesterday': 'أمس'},
+  'fa': {'today': 'امروز', 'yesterday': 'دیروز'},
 };
 
 String relativeDayLabel(String key) {
