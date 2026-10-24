@@ -33,6 +33,15 @@ class ServerHealth {
   bool get isHealthy => status == 'healthy';
 }
 
+/// What a server says it is, for anyone who can reach it: the product and
+/// the version it runs (`dev` for a build with none stamped in).
+class ServerDescription {
+  const ServerDescription({required this.product, required this.version});
+
+  final String product;
+  final String version;
+}
+
 /// A connection to one rest-mail server on behalf of one user.
 class RestmailClient {
   RestmailClient({
@@ -85,6 +94,18 @@ class RestmailClient {
     final status = data['status'];
     if (status is! String) throw _unreadable(response);
     return ServerHealth(status: status, database: data['db'] as String?);
+  }
+
+  /// What this server is and which version it runs. Needs no session.
+  Future<ServerDescription> describeServer() async {
+    final response = await _send('GET', _uri(['server']));
+    _throwIfError(response);
+    final data = _data(response);
+    final product = data['product'], version = data['version'];
+    if (product is! String || version is! String || version.isEmpty) {
+      throw _unreadable(response);
+    }
+    return ServerDescription(product: product, version: version);
   }
 
   // ── Session ──────────────────────────────────────────────────────────

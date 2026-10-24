@@ -95,6 +95,9 @@ class FakeRestmail {
   /// False to act like a server that cannot be reached.
   bool online = true;
 
+  /// The version GET /api/v1/server reports.
+  String serverVersion = '0.21.0';
+
   final _mailboxes = <int, FakeMailbox>{};
   final _messages = <int, FakeMessage>{};
   final _attachments = <int, FakeAttachment>{};
@@ -498,6 +501,10 @@ class FakeRestmail {
       case ('GET', ['api', 'health']):
         return _json({
           'data': {'status': 'healthy', 'db': 'connected'},
+        });
+      case ('GET', ['api', 'v1', 'server']):
+        return _json({
+          'data': {'product': 'rest-mail', 'version': serverVersion},
         });
       case ('POST', ['api', 'v1', 'auth', 'login']):
         final body = _object(bytes);
