@@ -608,7 +608,7 @@ void main() {
     expect(copied, startsWith('v=DKIM1; k=rsa; p='));
     expect(find.text('Record copied'), findsOneWidget);
     await tap(tester, 'Change interval');
-    expect(find.text('Days between rotations'), findsOneWidget);
+    expect(find.text('DAYS BETWEEN ROTATIONS'), findsOneWidget);
     await back(tester);
 
     final seen = DateTime.utc(2026, 10, 24, 9);
@@ -643,7 +643,7 @@ void main() {
     // With no rotation under way the interval form opens straight away.
     fake.rotateDkim(FakeAccounts.host);
     await rotation();
-    expect(find.text('Days between rotations'), findsOneWidget);
+    expect(find.text('DAYS BETWEEN ROTATIONS'), findsOneWidget);
     await close(tester, fake, state);
   });
 
