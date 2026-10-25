@@ -1,5 +1,8 @@
 import 'dart:typed_data';
 
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:restmail_api/restmail_api.dart';
 
 /// Where one signed-in account's mail comes from. [MailboxState] and the
@@ -311,10 +314,10 @@ class RestBackend implements MailBackend {
     int id, {
     Set<String> add = const {},
     Set<String> remove = const {},
-  }) => throw const ApiException(
+  }) => throw LocalizedApiException(
     400,
     'not_supported',
-    'rest-mail has folders, not labels.',
+    UiText('client.restMailHasFoldersNotLabels'),
   );
 
   @override

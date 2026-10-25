@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -81,29 +83,45 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: block ? 'Turn a sender away' : 'Let a sender in',
+        title: block
+            ? tr(context, 'admin.senderlists.turnASenderAway')
+            : tr(context, 'admin.senderlists.letASenderIn'),
         intro: block
-            ? 'Mail from them to $_name is turned away.'
-            : 'Mail from them to $_name skips the spam checks, when SPF or '
-                  'DKIM shows it really is theirs.',
-        fields: const [
+            ? trArgs(context, 'admin.senderlists.mailFromThemToNameIsTurned', {
+                'name': (_name).toString(),
+              })
+            : trArgs(context, 'admin.senderlists.mailFromThemToNameSkipsThe', {
+                'name': (_name).toString(),
+              }),
+        fields: [
           AdminField(
-            'Sender',
-            hint: 'someone@example.com, or @example.com',
+            tr(context, 'admin.queue.sender'),
+            hint: tr(context, 'senderLists.patternHint'),
             email: true,
           ),
-          AdminField('Why', hint: 'Optional', optional: true),
+          AdminField(
+            tr(context, 'quarantine.why'),
+            hint: tr(context, 'contacts.nameHint'),
+            optional: true,
+          ),
         ],
-        action: block ? 'Turn away' : 'Let in',
+        action: block
+            ? tr(context, 'admin.senderlists.turnAway')
+            : tr(context, 'admin.senderlists.letIn'),
         host: _host,
         submit: (values) async {
           final pattern = values[0].toLowerCase();
           if (!_pattern.hasMatch(pattern)) {
-            throw const ApiException(
+            throw ApiException(
               422,
               'validation_failed',
-              'Not a sender',
-              fields: {'sender': 'must be an address, or @ and a domain'},
+              tr(context, 'admin.senderlists.notASender'),
+              fields: {
+                'sender': tr(
+                  context,
+                  'admin.senderlists.mustBeAnAddressOrAndA',
+                ),
+              },
             );
           }
           await widget.account.client.addSenderRule(
@@ -128,15 +146,22 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
         rule.id,
       ),
       confirm: (
-        title: 'Take ${rule.pattern} off the list?',
+        title: trArgs(context, 'admin.senderlists.takePatternOffTheList', {
+          'pattern': (rule.pattern).toString(),
+        }),
         message: rule.list == SenderList.block
-            ? 'Mail from them is let in again, and checked like any other.'
-            : 'Mail from them is checked for spam like any other.',
-        action: 'Remove',
+            ? tr(context, 'admin.senderlists.mailFromThemIsLetInAgain')
+            : tr(context, 'admin.senderlists.mailFromThemIsCheckedForSpam'),
+        action: tr(context, 'common.remove'),
       ),
     );
     if (!ok || !mounted) return;
-    showToast(context, 'Removed ${rule.pattern}');
+    showToast(
+      context,
+      trArgs(context, 'admin.senderlists.removedPattern', {
+        'pattern': (rule.pattern).toString(),
+      }),
+    );
     unawaited(_reload(_shown));
   }
 
@@ -150,41 +175,56 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sender rule', style: rmText(20, color: sheet.rm.ink)),
+            Text(
+              tr(context, 'admin.senderlists.senderRule'),
+              style: rmText(20, color: sheet.rm.ink),
+            ),
             const SizedBox(height: 18),
-            const SectionLabel('Sender'),
+            SectionLabel(tr(context, 'admin.queue.sender')),
             SelectableText(rule.pattern),
             const SizedBox(height: 14),
             RmGroup(
               children: [
-                RmRow(label: 'Rule ID', value: '${rule.id}'),
-                RmRow(label: 'Domain', value: _name),
-                RmRow(label: 'Domain ID', value: '${rule.domainId}'),
                 RmRow(
-                  label: 'List',
-                  value: rule.list == SenderList.block
-                      ? 'Turned away'
-                      : 'Let in',
+                  label: tr(context, 'admin.senderlists.ruleID'),
+                  value: '${rule.id}',
+                ),
+                RmRow(label: tr(context, 'admin.aliases.domain'), value: _name),
+                RmRow(
+                  label: tr(context, 'admin.filtereditors.domainID'),
+                  value: '${rule.domainId}',
                 ),
                 RmRow(
-                  label: 'Created by',
+                  label: tr(context, 'interface.list'),
+                  value: rule.list == SenderList.block
+                      ? tr(context, 'admin.pipelinelog.turnedAway')
+                      : tr(context, 'admin.senderlists.letIn'),
+                ),
+                RmRow(
+                  label: tr(context, 'admin.senderlists.createdBy'),
                   value: rule.createdBy == null
-                      ? 'Not recorded'
-                      : 'Account ${rule.createdBy}',
+                      ? tr(context, 'admin.senderlists.notRecorded')
+                      : trArgs(context, 'admin.senderlists.accountCreatedBy', {
+                          'createdBy': (rule.createdBy).toString(),
+                        }),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            const SectionLabel('Reason'),
-            SelectableText(rule.reason.isEmpty ? 'None given' : rule.reason),
+            SectionLabel(tr(context, 'admin.granttext.reason')),
+            SelectableText(
+              rule.reason.isEmpty
+                  ? tr(context, 'admin.senderlists.noneGiven')
+                  : rule.reason,
+            ),
             if (rule.createdAt case final at?) ...[
               const SizedBox(height: 14),
-              const SectionLabel('Added'),
+              SectionLabel(tr(context, 'admin.aliases.added')),
               SelectableText(at.toLocal().toIso8601String()),
             ],
             const SizedBox(height: 18),
             RmOutlineButton(
-              label: 'Done',
+              label: tr(context, 'common.done'),
               onPressed: () => Navigator.pop(sheet),
             ),
           ],
@@ -201,7 +241,7 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
       scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.senderLists,
-      title: 'Sender lists',
+      title: tr(context, 'admin.section.senderLists.title'),
       body: (access) => ListenableBuilder(
         listenable: _list,
         builder: (context, _) => AdminListView(
@@ -209,15 +249,18 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
           onRefresh: () => _reload(_shown),
           host: _host,
           empty: block
-              ? 'No sender is turned away.'
-              : 'No sender skips the spam checks.',
+              ? tr(context, 'admin.senderlists.noSenderIsTurnedAway')
+              : tr(context, 'admin.senderlists.noSenderSkipsTheSpamChecks'),
           header: [
             Align(
               alignment: Alignment.centerLeft,
               child: RmSegmented<SenderList>(
-                options: const [
-                  (SenderList.block, 'Turned away'),
-                  (SenderList.allow, 'Let in'),
+                options: [
+                  (
+                    SenderList.block,
+                    tr(context, 'admin.pipelinelog.turnedAway'),
+                  ),
+                  (SenderList.allow, tr(context, 'admin.senderlists.letIn')),
                 ],
                 value: _shown,
                 onChanged: (list) {
@@ -230,10 +273,16 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
               padding: const EdgeInsets.only(bottom: 14),
               child: Text(
                 block
-                    ? 'Mail to $_name from these senders is turned away, even '
-                          'if they are also let in.'
-                    : 'Mail to $_name from these senders skips the spam '
-                          'checks, when SPF or DKIM shows it really is theirs.',
+                    ? trArgs(
+                        context,
+                        'admin.senderlists.mailToNameFromTheseSendersIs',
+                        {'name': (_name).toString()},
+                      )
+                    : trArgs(
+                        context,
+                        'admin.senderlists.mailToNameFromTheseSendersSkips',
+                        {'name': (_name).toString()},
+                      ),
                 style: rmText(13, color: c.ink3, height: 1.4),
               ),
             ),
@@ -241,7 +290,9 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
                 _list.error == null &&
                 access.canWrite(AdminSection.senderLists))
               AdminAddButton(
-                label: block ? 'Turn a sender away' : 'Let a sender in',
+                label: block
+                    ? tr(context, 'admin.senderlists.turnASenderAway')
+                    : tr(context, 'admin.senderlists.letASenderIn'),
                 onTap: () => unawaited(_add()),
               ),
           ],
@@ -250,7 +301,10 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
             onTap: _list.loading ? null : () => unawaited(_details(rule)),
             subtitle: switch ([
               if (rule.reason.isNotEmpty) rule.reason,
-              if (rule.createdAt case final at?) 'Added ${timeLabel(at)}',
+              if (rule.createdAt case final at?)
+                trArgs(context, 'admin.senderlists.addedValue', {
+                  'value': (timeLabel(at)).toString(),
+                }),
             ]) {
               [] => null,
               final lines => lines.join('\n'),
@@ -261,7 +315,11 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
                     access.canDelete(AdminSection.senderLists)
                 ? RmIconButton(
                     icon: Icons.close_rounded,
-                    tooltip: 'Remove ${rule.pattern}',
+                    tooltip: trArgs(
+                      context,
+                      'admin.senderlists.removePattern',
+                      {'pattern': (rule.pattern).toString()},
+                    ),
                     color: c.ink3,
                     onPressed: () => unawaited(_remove(rule)),
                   )

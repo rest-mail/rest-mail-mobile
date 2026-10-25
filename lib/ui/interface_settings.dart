@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/voice.dart';
 import '../state/interface_prefs.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
@@ -26,7 +27,7 @@ class PanelEditor extends StatelessWidget {
     ];
     if (panels.isEmpty) {
       return Text(
-        'Nothing to choose on this screen yet.',
+        tr(context, 'interface.nothingToChooseOnThisScreen'),
         style: rmText(13, color: context.rm.ink3),
       );
     }
@@ -34,11 +35,11 @@ class PanelEditor extends StatelessWidget {
       children: [
         for (final panel in panels) ...[
           RmRow(
-            label: panel.name,
-            subtitle: panel.description,
+            label: tr(context, panel.nameKey),
+            subtitle: tr(context, panel.descriptionKey),
             trailing: RmSwitch(
               value: prefs.isOn(panel),
-              label: panel.name,
+              label: tr(context, panel.nameKey),
               onChanged: (value) => onChanged(prefs.withPanel(panel.id, value)),
             ),
           ),
@@ -58,14 +59,20 @@ class PanelEditor extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(option.label, style: rmText(13.5, color: c.ink2)),
+              Text(
+                tr(context, option.labelKey),
+                style: rmText(13.5, color: c.ink2),
+              ),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: RmSegmented<String>(
-                    options: option.values,
+                    options: [
+                      for (final (value, labelKey) in option.values)
+                        (value, tr(context, labelKey)),
+                    ],
                     value: prefs.choice(panel, option),
                     onChanged: (value) =>
                         onChanged(prefs.withValue(panel.id, option.id, value)),
@@ -77,10 +84,10 @@ class PanelEditor extends StatelessWidget {
         );
       case ToggleOption():
         return RmRow(
-          label: option.label,
+          label: tr(context, option.labelKey),
           trailing: RmSwitch(
             value: prefs.toggle(panel, option),
-            label: option.label,
+            label: tr(context, option.labelKey),
             onChanged: (value) =>
                 onChanged(prefs.withValue(panel.id, option.id, value)),
           ),
@@ -111,7 +118,7 @@ Future<void> showInterfacePresets(
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
             child: Text(
-              'Presets',
+              tr(context, 'interface.presets'),
               style: rmText(
                 17,
                 color: c.ink,
@@ -124,8 +131,8 @@ Future<void> showInterfacePresets(
             children: [
               for (final preset in interfacePresets)
                 RmRow(
-                  label: preset.name,
-                  subtitle: preset.description,
+                  label: tr(context, preset.nameKey),
+                  subtitle: tr(context, preset.descriptionKey),
                   trailing: preset.prefs.matches(prefs)
                       ? Icon(Icons.check_rounded, size: 20, color: c.accent)
                       : const SizedBox(width: 20),
@@ -143,8 +150,8 @@ Future<void> showInterfacePresets(
   },
 );
 
-String areaLabel(PanelArea area) => switch (area) {
-  PanelArea.list => 'Message list',
-  PanelArea.reader => 'Reading view',
-  PanelArea.composer => 'Composer',
+String areaLabel(BuildContext context, PanelArea area) => switch (area) {
+  PanelArea.list => tr(context, 'interface.messageList'),
+  PanelArea.reader => tr(context, 'interface.readingView'),
+  PanelArea.composer => tr(context, 'interface.composerTitle'),
 };

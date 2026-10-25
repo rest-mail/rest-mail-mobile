@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
 import 'l10n/voice.dart';
+import 'l10n/catalog.dart';
 import 'state/app_scope.dart';
 import 'state/app_state.dart';
 import 'theme/packs.dart';
@@ -27,7 +28,7 @@ class RestmailApp extends StatefulWidget {
 }
 
 class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
-  late final StreamSubscription<String> _notices;
+  late final StreamSubscription<UiText> _notices;
 
   /// A new one with each navigator, so a snackbar from the account going
   /// away (an Undo, say) isn't carried over to the next one.
@@ -48,7 +49,7 @@ class _RestmailAppState extends State<RestmailApp> with WidgetsBindingObserver {
       WidgetsBinding.instance
         ..addPostFrameCallback(
           (_) => _messenger.currentState?.showSnackBar(
-            SnackBar(content: Text(notice)),
+            SnackBar(content: Text(trText(_messenger.currentContext!, notice))),
           ),
         )
         ..ensureVisualUpdate();

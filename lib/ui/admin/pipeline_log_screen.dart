@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -12,8 +14,10 @@ import 'admin_widgets.dart';
 import 'trace_screen.dart';
 import 'report_filters.dart';
 
-String _directionLabel(String direction) =>
-    direction == 'inbound' ? 'Coming in' : 'Going out';
+String _directionLabel(BuildContext context, String direction) =>
+    direction == 'inbound'
+    ? tr(context, 'admin.pipelinelog.comingIn')
+    : tr(context, 'admin.pipelinelog.goingOut');
 
 /// Every message the filters handled, newest first, mail turned away before
 /// it became a message too. Each entry holds its whole trace, so opening
@@ -62,58 +66,72 @@ class _PipelineLogScreenState extends State<PipelineLogScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.pipelineLog,
-    title: 'Pipeline log',
+    title: tr(context, 'admin.section.pipelineLog.title'),
     body: (_) => AdminListView(
       list: _list,
       host: widget.account.server.host,
       empty: switch (_outcome) {
-        final outcome? =>
-          'Nothing ${traceOutcomeLabel(outcome).toLowerCase()}.',
-        null => 'No mail has been through the filters yet.',
+        final outcome? => trArgs(context, 'admin.logs.nothingValue', {
+          'value': (traceOutcomeLabel(
+            context,
+            outcome,
+          ).toLowerCase()).toString(),
+        }),
+        null => tr(context, 'admin.pipelinelog.noMailHasBeenThroughTheFilters'),
       },
       header: [
         ReportFiltersBar(
           host: widget.account.server.host,
           values: _filters,
-          intro: 'Leave fields empty to include all messages. Message-ID and reason code match exactly.',
-          fields: const [
-            ReportField('pipeline_id', 'Pipeline number', number: true),
+          intro: tr(
+            context,
+            'admin.pipelinelog.leaveFieldsEmptyToIncludeAllMessages',
+          ),
+          fields: [
+            ReportField(
+              'pipeline_id',
+              tr(context, 'admin.pipelinelog.pipelineNumber'),
+              number: true,
+            ),
             ReportField(
               'direction',
-              'Direction',
+              tr(context, 'admin.filtereditors.direction'),
               choices: [
-                ('', 'Both'),
-                ('inbound', 'Coming in'),
-                ('outbound', 'Going out'),
+                ('', tr(context, 'admin.pipelinelog.both')),
+                ('inbound', tr(context, 'admin.pipelinelog.comingIn')),
+                ('outbound', tr(context, 'admin.pipelinelog.goingOut')),
               ],
             ),
             ReportField(
               'action',
-              'Final action',
+              tr(context, 'admin.pipelinelog.finalAction'),
               choices: [
-                ('', 'All'),
-                ('continue', 'Passed'),
-                ('reject', 'Turned away'),
-                ('quarantine', 'Quarantined'),
-                ('discard', 'Dropped'),
-                ('defer', 'Put off'),
+                ('', tr(context, 'contacts.all')),
+                ('continue', tr(context, 'admin.pipelinelog.passed')),
+                ('reject', tr(context, 'admin.pipelinelog.turnedAway')),
+                ('quarantine', tr(context, 'admin.pipelinelog.quarantined')),
+                ('discard', tr(context, 'admin.pipelinelog.dropped')),
+                ('defer', tr(context, 'admin.pipelinelog.putOff')),
               ],
             ),
             ReportField(
               'outcome',
-              'Outcome',
+              tr(context, 'admin.audit.outcome'),
               choices: [
-                ('', 'All'),
-                ('delivered', 'Delivered'),
-                ('queued', 'Queued'),
-                ('rejected', 'Turned away'),
-                ('quarantined', 'Quarantined'),
-                ('discarded', 'Dropped'),
-                ('deferred', 'Put off'),
+                ('', tr(context, 'contacts.all')),
+                ('delivered', tr(context, 'admin.logs.delivered')),
+                ('queued', tr(context, 'admin.pipelinelog.queued')),
+                ('rejected', tr(context, 'admin.pipelinelog.turnedAway')),
+                ('quarantined', tr(context, 'admin.pipelinelog.quarantined')),
+                ('discarded', tr(context, 'admin.pipelinelog.dropped')),
+                ('deferred', tr(context, 'admin.pipelinelog.putOff')),
               ],
             ),
             ReportField('rfc_message_id', 'Message-ID'),
-            ReportField('reason_code', 'Reason code'),
+            ReportField(
+              'reason_code',
+              tr(context, 'admin.pipelinelog.reasonCode'),
+            ),
             reportPageSize,
           ],
           onChanged: (values) {
@@ -126,14 +144,14 @@ class _PipelineLogScreenState extends State<PipelineLogScreen> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: RmSegmented<String?>(
-              options: const [
-                (null, 'All'),
-                ('delivered', 'Delivered'),
-                ('rejected', 'Turned away'),
-                ('quarantined', 'Quarantined'),
-                ('queued', 'Queued'),
-                ('discarded', 'Dropped'),
-                ('deferred', 'Put off'),
+              options: [
+                (null, tr(context, 'contacts.all')),
+                ('delivered', tr(context, 'admin.logs.delivered')),
+                ('rejected', tr(context, 'admin.pipelinelog.turnedAway')),
+                ('quarantined', tr(context, 'admin.pipelinelog.quarantined')),
+                ('queued', tr(context, 'admin.pipelinelog.queued')),
+                ('discarded', tr(context, 'admin.pipelinelog.dropped')),
+                ('deferred', tr(context, 'admin.pipelinelog.putOff')),
               ],
               value: _outcome,
               onChanged: (outcome) {
@@ -151,15 +169,23 @@ class _PipelineLogScreenState extends State<PipelineLogScreen> {
         // Who it was from coming in, and who it was for going out.
         final who = inbound ? trace.mailFrom : trace.rcptTo;
         return RmRow(
-          label: who.isNotEmpty ? who : 'No address',
+          label: who.isNotEmpty
+              ? who
+              : tr(context, 'admin.pipelinelog.noAddress'),
           subtitle: [
-            '${_directionLabel(trace.direction)} · '
-                '${traceOutcomeLabel(trace.outcome)} · '
+            '${_directionLabel(context, trace.direction)} · '
+                '${traceOutcomeLabel(context, trace.outcome)} · '
                 '${timeLabel(trace.createdAt)}',
-            if (inbound && trace.rcptTo.isNotEmpty) 'To ${trace.rcptTo}',
-            if (!inbound && trace.mailFrom.isNotEmpty) 'From ${trace.mailFrom}',
+            if (inbound && trace.rcptTo.isNotEmpty)
+              trArgs(context, 'admin.pipelinelog.toRcptTo', {
+                'rcptTo': (trace.rcptTo).toString(),
+              }),
+            if (!inbound && trace.mailFrom.isNotEmpty)
+              trArgs(context, 'admin.pipelinelog.fromMailFrom', {
+                'mailFrom': (trace.mailFrom).toString(),
+              }),
             if (trace.reasonCode.isNotEmpty && trace.reasonCode != 'other')
-              reasonLabel(trace.reasonCode),
+              reasonLabel(context, trace.reasonCode),
           ].join('\n'),
           onTap: () => pushScreen(
             context,
@@ -187,8 +213,10 @@ class PipelineTraceScreen extends StatelessWidget {
     account: account,
     section: AdminSection.pipelineLog,
     title: switch (trace.messageId) {
-      final id? => 'Message $id',
-      null => 'Trace',
+      final id? => trArgs(context, 'admin.pipelinelog.messageId', {
+        'id': (id).toString(),
+      }),
+      null => tr(context, 'admin.logs.trace'),
     },
     body: (_) => TraceDetails(trace: trace),
   );
@@ -196,8 +224,8 @@ class PipelineTraceScreen extends StatelessWidget {
 
 /// How far back the analytics count.
 enum _Window {
-  day('A day', Duration(days: 1)),
-  week('A week', Duration(days: 7));
+  day('admin.bans.aDay', Duration(days: 1)),
+  week('admin.bans.aWeek', Duration(days: 7));
 
   const _Window(this.label, this.duration);
 
@@ -300,7 +328,7 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.pipelineAnalytics,
-      title: 'Pipeline analytics',
+      title: tr(context, 'admin.section.pipelineAnalytics.title'),
       body: (_) => RefreshIndicator(
         color: c.accent,
         onRefresh: _load,
@@ -311,14 +339,17 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
             ReportFiltersBar(
               host: widget.account.server.host,
               values: _filters,
-              title: 'Custom period',
-              intro: 'Choose a Go duration such as 90m or 1h30m, or a start time with a timezone. A start time takes precedence.',
+              title: tr(context, 'admin.pipelinelog.customPeriod'),
+              intro: tr(
+                context,
+                'admin.pipelinelog.chooseAGoDurationSuchAs90m',
+              ),
               fields: [
                 ReportField(
                   'window',
-                  'Look back',
+                  tr(context, 'admin.pipelinelog.lookBack'),
                   hint: '90m',
-                  validate: positiveGoDuration,
+                  validate: (value) => positiveGoDuration(context, value),
                 ),
                 reportSince,
               ],
@@ -334,7 +365,9 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: RmSegmented<_Window?>(
-                options: [for (final w in _Window.values) (w, w.label)],
+                options: [
+                  for (final w in _Window.values) (w, tr(context, w.label)),
+                ],
                 value: _filters.isEmpty ? _window : null,
                 onChanged: (window) {
                   if (window != null) _show(window);
@@ -363,9 +396,14 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
             else ...[
               if (analytics.liveTotals != null)
                 SwitchListTile(
-                  title: const Text('Since process start'),
-                  subtitle: const Text(
-                    'Cumulative live counters, independent of the selected period',
+                  title: Text(
+                    tr(context, 'admin.pipelinelog.sinceProcessStart'),
+                  ),
+                  subtitle: Text(
+                    tr(
+                      context,
+                      'admin.pipelinelog.cumulativeLiveCountersIndependentOfTheSelected',
+                    ),
                   ),
                   value: _live,
                   onChanged: (value) => setState(() => _live = value),
@@ -373,44 +411,68 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
               const SizedBox(height: 12),
               Text(
                 _live
-                    ? 'Cumulative since this server process started'
-                    : '${longDate(analytics.since)} to ${longDate(analytics.until)}${analytics.windowLabel.isEmpty ? '' : ' · ${analytics.windowLabel}'}',
+                    ? tr(
+                        context,
+                        'admin.pipelinelog.cumulativeSinceThisServerProcessStarted',
+                      )
+                    : trArgs(context, 'ui.valueToValue2Value3', {
+                        'value': (longDate(analytics.since)).toString(),
+                        'value2': (longDate(analytics.until)).toString(),
+                        'value3':
+                            (analytics.windowLabel.isEmpty
+                                    ? ''
+                                    : ' · ${analytics.windowLabel}')
+                                .toString(),
+                      }),
                 style: rmText(13, color: c.ink3),
               ),
               if (funnel == null || funnel.isEmpty)
                 AdminMessage(
                   _live
-                      ? 'No live counters are available.'
-                      : 'No mail went through the filters since ${longDate(analytics.since)}.',
+                      ? tr(
+                          context,
+                          'admin.pipelinelog.noLiveCountersAreAvailable',
+                        )
+                      : trArgs(
+                          context,
+                          'admin.pipelinelog.noMailWentThroughTheFiltersSince',
+                          {'value': (longDate(analytics.since)).toString()},
+                        ),
                 )
               else ...[
-                ..._counted('How it ended', [
+                ..._counted(tr(context, 'admin.pipelinelog.howItEnded'), [
                   for (final o in funnel.outcomes)
                     (
-                      label: traceOutcomeLabel(o.outcome),
-                      subtitle: _directionLabel(o.direction),
+                      label: traceOutcomeLabel(context, o.outcome),
+                      subtitle: _directionLabel(context, o.direction),
                       count: o.count,
                     ),
                 ]),
-                ..._counted('Arrived from other servers', [
-                  for (final r in funnel.received)
-                    (
-                      label: r.transport == 'tls'
-                          ? 'Over TLS'
-                          : 'No encryption',
-                      subtitle: null,
-                      count: r.count,
-                    ),
-                ]),
-                ..._counted('Why mail was turned away', [
-                  for (final r in funnel.rejectReasons)
-                    (
-                      label: reasonLabel(r.reason),
-                      subtitle: null,
-                      count: r.count,
-                    ),
-                ]),
-                ..._counted('Sender checks', [
+                ..._counted(
+                  tr(context, 'admin.pipelinelog.arrivedFromOtherServers'),
+                  [
+                    for (final r in funnel.received)
+                      (
+                        label: r.transport == 'tls'
+                            ? tr(context, 'admin.pipelinelog.overTLS')
+                            : tr(context, 'admin.pipelinelog.noEncryption'),
+                        subtitle: null,
+                        count: r.count,
+                      ),
+                  ],
+                ),
+                ..._counted(
+                  tr(context, 'admin.pipelinelog.whyMailWasTurnedAway'),
+                  [
+                    for (final r in funnel.rejectReasons)
+                      (
+                        label: reasonLabel(context, r.reason),
+                        subtitle: null,
+                        count: r.count,
+                      ),
+                  ],
+                ),
+                ..._counted(tr(context, 'admin.pipelinelog.senderChecks'), [
                   for (final v in funnel.senderChecks)
                     (
                       label: '${v.mechanism.toUpperCase()}: ${v.result}',
@@ -418,14 +480,17 @@ class _PipelineAnalyticsScreenState extends State<PipelineAnalyticsScreen> {
                       count: v.count,
                     ),
                 ]),
-                ..._counted('What each filter did', [
-                  for (final d in funnel.decisions)
-                    (
-                      label: d.filter,
-                      subtitle: traceActionLabel(d.action),
-                      count: d.count,
-                    ),
-                ]),
+                ..._counted(
+                  tr(context, 'admin.pipelinelog.whatEachFilterDid'),
+                  [
+                    for (final d in funnel.decisions)
+                      (
+                        label: d.filter,
+                        subtitle: traceActionLabel(context, d.action),
+                        count: d.count,
+                      ),
+                  ],
+                ),
               ],
             ],
           ],

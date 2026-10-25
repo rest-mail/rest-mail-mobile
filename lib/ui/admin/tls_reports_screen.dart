@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -12,19 +14,28 @@ import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'report_filters.dart';
 
-String _policyLabel(String type) => switch (type) {
+String _policyLabel(BuildContext context, String type) => switch (type) {
   'sts' => 'MTA-STS',
   'tlsa' => 'DANE',
-  'no-policy' => 'None',
+  'no-policy' => tr(context, 'interface.none'),
   _ => type,
 };
 
-String _sessions(int n) => n == 1 ? '1 session' : '${countLabel(n)} sessions';
+String _sessions(BuildContext context, int n) => n == 1
+    ? tr(context, 'ui.1Session')
+    : trArgs(context, 'ui.valueSessions', {
+        'value': (countLabel(n)).toString(),
+      });
 
-String _period(TlsReport report) {
+String _period(BuildContext context, TlsReport report) {
   final day = DateFormat.MMMd();
   final start = day.format(report.startDate), end = day.format(report.endDate);
-  return start == end ? start : '$start to $end';
+  return start == end
+      ? start
+      : trArgs(context, 'ui.startToEnd', {
+          'start': (start).toString(),
+          'end': (end).toString(),
+        });
 }
 
 /// What other servers report about delivering to this one over TLS
@@ -69,29 +80,39 @@ class _TlsReportsScreenState extends State<TlsReportsScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.tlsReports,
-    title: 'TLS reports',
+    title: tr(context, 'admin.section.tlsReports.title'),
     body: (_) => AdminListView(
       list: _list,
       host: widget.account.server.host,
-      empty: 'No reports match.',
+      empty: tr(context, 'admin.tlsreports.noReportsMatch'),
       header: [
         ReportFiltersBar(
           host: widget.account.server.host,
           values: _filters,
-          intro: 'Leave fields empty to include every report. Domain number is the number shown on the domain’s detail screen.',
-          fields: const [
-            ReportField('domain_id', 'Domain number', number: true),
+          intro: tr(
+            context,
+            'admin.tlsreports.leaveFieldsEmptyToIncludeEveryReport',
+          ),
+          fields: [
+            ReportField(
+              'domain_id',
+              tr(context, 'admin.keys.domainNumber'),
+              number: true,
+            ),
             ReportField(
               'policy_type',
-              'Policy',
+              tr(context, 'admin.tlsreports.policy'),
               choices: [
-                ('', 'All'),
+                ('', tr(context, 'contacts.all')),
                 ('sts', 'MTA-STS'),
                 ('tlsa', 'DANE'),
-                ('no-policy', 'No policy'),
+                ('no-policy', tr(context, 'admin.tlsreports.noPolicy')),
               ],
             ),
-            ReportField('reporting_org', 'Reporting organisation contains'),
+            ReportField(
+              'reporting_org',
+              tr(context, 'admin.tlsreports.reportingOrganisationContains'),
+            ),
             reportPageSize,
           ],
           onChanged: (values) {
@@ -103,11 +124,15 @@ class _TlsReportsScreenState extends State<TlsReportsScreen> {
       row: (report) => RmRow(
         label: report.reportingOrg,
         subtitle: [
-          '${report.policyDomain} · ${_period(report)}',
+          '${report.policyDomain} · ${_period(context, report)}',
           report.failed == 0
-              ? '${_sessions(report.successful)}, none failed'
-              : '${_sessions(report.successful)} worked, '
-                    '${countLabel(report.failed)} failed',
+              ? trArgs(context, 'admin.tlsreports.valueNoneFailed', {
+                  'value': (_sessions(context, report.successful)).toString(),
+                })
+              : trArgs(context, 'tlsReports.sessionSummary', {
+                  'worked': _sessions(context, report.successful),
+                  'failed': countLabel(report.failed),
+                }),
         ].join('\n'),
         onTap: () => pushScreen(
           context,
@@ -142,17 +167,35 @@ class TlsReportScreen extends StatelessWidget {
         children: [
           RmGroup(
             children: [
-              RmRow(label: 'Domain', value: report.policyDomain),
-              RmRow(label: 'Policy', value: _policyLabel(report.policyType)),
-              RmRow(label: 'Covers', value: _period(report)),
-              RmRow(label: 'Worked', value: countLabel(report.successful)),
-              RmRow(label: 'Failed', value: countLabel(report.failed)),
-              RmRow(label: 'Received', value: longDate(report.receivedAt)),
+              RmRow(
+                label: tr(context, 'admin.aliases.domain'),
+                value: report.policyDomain,
+              ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.policy'),
+                value: _policyLabel(context, report.policyType),
+              ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.covers'),
+                value: _period(context, report),
+              ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.worked'),
+                value: countLabel(report.successful),
+              ),
+              RmRow(
+                label: tr(context, 'admin.audit.failed'),
+                value: countLabel(report.failed),
+              ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.received'),
+                value: longDate(report.receivedAt),
+              ),
             ],
           ),
           if (details != null) ...[
             const SizedBox(height: 22),
-            const SectionLabel('What failed'),
+            SectionLabel(tr(context, 'admin.tlsreports.whatFailed')),
             const SizedBox(height: 9),
             SelectableText(
               prettyJson(details),
@@ -161,7 +204,7 @@ class TlsReportScreen extends StatelessWidget {
           ],
           if (report.rawReport.isNotEmpty) ...[
             const SizedBox(height: 22),
-            const SectionLabel('Original report'),
+            SectionLabel(tr(context, 'admin.tlsreports.originalReport')),
             const SizedBox(height: 9),
             SelectableText(
               report.rawReport,
@@ -171,14 +214,32 @@ class TlsReportScreen extends StatelessWidget {
           const SizedBox(height: 22),
           RmGroup(
             children: [
-              RmRow(label: 'Report', value: '${report.id}'),
-              RmRow(label: 'Domain number', value: '${report.domainId}'),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.report'),
+                value: '${report.id}',
+              ),
+              RmRow(
+                label: tr(context, 'admin.keys.domainNumber'),
+                value: '${report.domainId}',
+              ),
               if (report.domain case final domain?)
-                RmRow(label: 'Domain name', value: domain.name),
+                RmRow(
+                  label: tr(context, 'admin.tlsreports.domainName'),
+                  value: domain.name,
+                ),
               if (report.createdAt case final at?)
-                RmRow(label: 'Added', value: longDate(at)),
-              RmRow(label: 'Starts', value: longDate(report.startDate)),
-              RmRow(label: 'Ends', value: longDate(report.endDate)),
+                RmRow(
+                  label: tr(context, 'admin.aliases.added'),
+                  value: longDate(at),
+                ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.starts'),
+                value: longDate(report.startDate),
+              ),
+              RmRow(
+                label: tr(context, 'admin.tlsreports.ends'),
+                value: longDate(report.endDate),
+              ),
             ],
           ),
         ],

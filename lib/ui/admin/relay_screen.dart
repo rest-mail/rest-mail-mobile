@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -116,7 +118,12 @@ class _RelayScreenState extends State<RelayScreen> {
         _busy = false;
         _show(saved);
       });
-      showToast(context, 'Saved outgoing mail for $_name');
+      showToast(
+        context,
+        trArgs(context, 'admin.relay.savedOutgoingMailForName', {
+          'name': (_name).toString(),
+        }),
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -151,25 +158,32 @@ class _RelayScreenState extends State<RelayScreen> {
       RmGroup(
         children: [
           RmRow(
-            label: 'Sent',
+            label: tr(context, 'folder.sent'),
             value: relay.transport == OutboundTransport.relay
-                ? 'Through a relay'
-                : 'Straight to other servers',
+                ? tr(context, 'admin.relay.throughARelay')
+                : tr(context, 'admin.relay.straightToOtherServers'),
           ),
           if (relay.transport == OutboundTransport.relay) ...[
-            RmRow(label: 'Relay', value: relay.host),
+            RmRow(label: tr(context, 'admin.relay.relay'), value: relay.host),
             if (relay.port case final port?)
-              RmRow(label: 'Port', value: '$port'),
+              RmRow(label: tr(context, 'admin.relay.port'), value: '$port'),
             if (relay.tlsMode case final tls?)
-              RmRow(label: 'Security', value: _tlsLabel(tls)),
+              RmRow(
+                label: tr(context, 'admin.relay.security'),
+                value: _tlsLabel(tls),
+              ),
             RmRow(
-              label: 'Signs in as',
-              value: relay.username.isEmpty ? 'Nobody' : relay.username,
+              label: tr(context, 'admin.relay.signsInAs'),
+              value: relay.username.isEmpty
+                  ? tr(context, 'admin.relay.nobody')
+                  : relay.username,
             ),
             if (relay.username.isNotEmpty)
               RmRow(
-                label: 'Password',
-                value: relay.passwordSet ? 'Saved' : 'None',
+                label: tr(context, 'signIn.password'),
+                value: relay.passwordSet
+                    ? tr(context, 'admin.relay.saved')
+                    : tr(context, 'interface.none'),
               ),
           ],
         ],
@@ -185,7 +199,7 @@ class _RelayScreenState extends State<RelayScreen> {
       scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.relay,
-      title: 'Outgoing mail',
+      title: tr(context, 'admin.relay.outgoingMail'),
       body: (access) {
         if (loadError != null) {
           return AdminMessage(
@@ -207,16 +221,18 @@ class _RelayScreenState extends State<RelayScreen> {
           padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
           children: [
             Text(
-              'How mail from $_name leaves the server.',
+              trArgs(context, 'admin.relay.howMailFromNameLeavesTheServer', {
+                'name': (_name).toString(),
+              }),
               style: rmText(15, color: c.ink2, height: 1.45),
             ),
             const SizedBox(height: 18),
             Align(
               alignment: Alignment.centerLeft,
               child: RmSegmented<OutboundTransport>(
-                options: const [
-                  (OutboundTransport.direct, 'Direct'),
-                  (OutboundTransport.relay, 'Relay'),
+                options: [
+                  (OutboundTransport.direct, tr(context, 'admin.relay.direct')),
+                  (OutboundTransport.relay, tr(context, 'admin.relay.relay')),
                 ],
                 value: _transport,
                 onChanged: (transport) => setState(() {
@@ -228,13 +244,13 @@ class _RelayScreenState extends State<RelayScreen> {
             const SizedBox(height: 8),
             Text(
               viaRelay
-                  ? 'Handed to an SMTP relay, which delivers it.'
-                  : "Sent straight to each recipient's mail servers.",
+                  ? tr(context, 'admin.relay.handedToAnSMTPRelayWhichDelivers')
+                  : tr(context, 'admin.relay.sentStraightToEachRecipientSMail'),
               style: rmText(13, color: c.ink3, height: 1.4),
             ),
             if (viaRelay) ...[
               const SizedBox(height: 18),
-              const SectionLabel('Relay'),
+              SectionLabel(tr(context, 'admin.relay.relay')),
               const SizedBox(height: 8),
               _field(
                 _host,
@@ -242,11 +258,11 @@ class _RelayScreenState extends State<RelayScreen> {
                 keyboard: TextInputType.url,
               ),
               const SizedBox(height: 18),
-              const SectionLabel('Port'),
+              SectionLabel(tr(context, 'admin.relay.port')),
               const SizedBox(height: 8),
               _field(_port, hint: '587', keyboard: TextInputType.number),
               const SizedBox(height: 18),
-              const SectionLabel('Security'),
+              SectionLabel(tr(context, 'admin.relay.security')),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
@@ -260,23 +276,22 @@ class _RelayScreenState extends State<RelayScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const SectionLabel('Username'),
+              SectionLabel(tr(context, 'imap.username')),
               const SizedBox(height: 8),
-              _field(_username, hint: 'Optional'),
+              _field(_username, hint: tr(context, 'contacts.nameHint')),
               const SizedBox(height: 18),
-              const SectionLabel('Password'),
+              SectionLabel(tr(context, 'signIn.password')),
               const SizedBox(height: 8),
               _field(
                 _password,
                 hint: relay.passwordSet
-                    ? 'Saved. Leave empty to keep it'
-                    : 'Needed with a username',
+                    ? tr(context, 'admin.relay.savedLeaveEmptyToKeepIt')
+                    : tr(context, 'admin.relay.neededWithAUsername'),
                 obscure: true,
               ),
               const SizedBox(height: 8),
               Text(
-                'A username and a password go together. Clear the username to '
-                'remove both.',
+                tr(context, 'admin.relay.aUsernameAndAPasswordGoTogether'),
                 style: rmText(13, color: c.ink3, height: 1.4),
               ),
             ],
@@ -286,7 +301,7 @@ class _RelayScreenState extends State<RelayScreen> {
             ],
             const SizedBox(height: 26),
             RmPrimaryButton(
-              label: 'Save',
+              label: tr(context, 'common.save'),
               busy: _busy,
               onPressed: _busy ? null : () => unawaited(_save()),
             ),

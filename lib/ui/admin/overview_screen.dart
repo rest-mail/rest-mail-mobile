@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -57,7 +59,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.overview,
-      title: 'Overview',
+      title: tr(context, 'admin.section.overview.title'),
       body: (_) {
         if (error != null) {
           return AdminMessage(
@@ -87,25 +89,31 @@ class _OverviewScreenState extends State<OverviewScreen> {
             children: [
               RmGroup(
                 children: [
-                  RmRow(label: 'Domains', value: countLabel(stats.domains)),
-                  RmRow(label: 'Mailboxes', value: countLabel(stats.mailboxes)),
                   RmRow(
-                    label: 'Waiting to go out',
+                    label: tr(context, 'health.domains'),
+                    value: countLabel(stats.domains),
+                  ),
+                  RmRow(
+                    label: tr(context, 'health.mailboxes'),
+                    value: countLabel(stats.mailboxes),
+                  ),
+                  RmRow(
+                    label: tr(context, 'health.waiting'),
                     value: countLabel(stats.queuePending),
                   ),
                   RmRow(
-                    label: 'Being delivered',
+                    label: tr(context, 'admin.overview.beingDelivered'),
                     value: countLabel(stats.queueProcessing),
                   ),
                   RmRow(
-                    label: 'Given up on',
+                    label: tr(context, 'health.failed'),
                     value: countLabel(stats.queueFailed),
                   ),
                 ],
               ),
               if (stats.volume.isNotEmpty) ...[
                 const SizedBox(height: 22),
-                const SectionLabel('Messages a day'),
+                SectionLabel(tr(context, 'admin.overview.messagesADay')),
                 const SizedBox(height: 9),
                 RmGroup(
                   children: [
@@ -158,48 +166,71 @@ class _OverviewScreenState extends State<OverviewScreen> {
                 ),
               ],
               const SizedBox(height: 22),
-              const SectionLabel('Inbound transport'),
+              SectionLabel(tr(context, 'admin.overview.inboundTransport')),
               const SizedBox(height: 9),
               if (stats.inboundMx == 0)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
-                    'No inbound MX deliveries have been recorded yet.',
+                    tr(
+                      context,
+                      'admin.overview.noInboundMXDeliveriesHaveBeenRecorded',
+                    ),
                     style: rmText(14, color: c.ink2, height: 1.45),
                   ),
                 ),
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Deliveries from other servers',
+                    label: tr(
+                      context,
+                      'admin.overview.deliveriesFromOtherServers',
+                    ),
                     value: countLabel(stats.inboundMx),
                   ),
                   RmRow(
-                    label: 'Encrypted with TLS',
+                    label: tr(context, 'admin.overview.encryptedWithTLS'),
                     value: countLabel(stats.inboundOverTls),
-                    subtitle:
-                        '${stats.inboundTlsPercent}% of inbound deliveries',
+                    subtitle: trArgs(
+                      context,
+                      'admin.overview.inboundtlspercentOfInboundDeliveries',
+                      {
+                        'inboundTlsPercent': (stats.inboundTlsPercent)
+                            .toString(),
+                      },
+                    ),
                   ),
                   RmRow(
-                    label: 'Unencrypted',
+                    label: tr(context, 'admin.overview.unencrypted'),
                     value: countLabel(stats.inboundPlaintext),
-                    subtitle:
-                        '${stats.inboundPlaintextPercent}% of inbound '
-                        'deliveries',
+                    subtitle: trArgs(
+                      context,
+                      'admin.overview.inboundplaintextpercentOfInboundDeliveries',
+                      {
+                        'inboundPlaintextPercent':
+                            (stats.inboundPlaintextPercent).toString(),
+                      },
+                    ),
                   ),
                   RmRow(
-                    label: 'Unencrypted, sender authentication passed',
+                    label: tr(
+                      context,
+                      'admin.overview.unencryptedSenderAuthenticationPassed',
+                    ),
                     value: countLabel(stats.plaintextAuthPass),
                   ),
                   RmRow(
-                    label: 'Unencrypted, no passing sender authentication',
+                    label: tr(
+                      context,
+                      'admin.overview.unencryptedNoPassingSenderAuthentication',
+                    ),
                     value: countLabel(stats.plaintextAuthFail),
                   ),
                 ],
               ),
               if (stats.recent.isNotEmpty) ...[
                 const SizedBox(height: 22),
-                const SectionLabel('Lately'),
+                SectionLabel(tr(context, 'admin.overview.lately')),
                 const SizedBox(height: 9),
                 for (final item in stats.recent) ...[
                   _ActivityCard(activity: item),
@@ -245,14 +276,18 @@ class _ActivityCard extends StatelessWidget {
                 if (activity.type.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   SelectableText(
-                    'Event type: ${activity.type}',
+                    trArgs(context, 'admin.overview.eventTypeType', {
+                      'type': (activity.type).toString(),
+                    }),
                     style: rmText(12.5, color: c.ink3),
                   ),
                 ],
                 if (activity.id.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   SelectableText(
-                    'ID: ${activity.id}',
+                    trArgs(context, 'admin.overview.idId', {
+                      'id': (activity.id).toString(),
+                    }),
                     style: rmText(12.5, color: c.ink3),
                   ),
                 ],

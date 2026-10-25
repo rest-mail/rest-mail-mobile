@@ -253,7 +253,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
           'web_login_required' => trArgs(context, 'imap.turnedAway', {
             'provider': kind.label,
             'host': settings.imapHost,
-            'reason': e.message,
+            'reason': describeError(context, e),
           }),
           _ => describeError(context, e),
         };

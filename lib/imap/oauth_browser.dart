@@ -1,6 +1,8 @@
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
-import 'package:restmail_api/restmail_api.dart';
 
 /// Shows a sign-in page in the system browser: ASWebAuthenticationSession on
 /// iOS, a Custom Tab (an Auth Tab where Chrome has them) on Android. Not a
@@ -18,18 +20,24 @@ Future<Uri> systemOAuthBrowser(Uri authorize, Uri redirect) async {
     return Uri.parse(back);
   } on PlatformException catch (e) {
     if (e.code == 'CANCELED') {
-      throw const ApiException(0, 'cancelled', 'Sign-in was cancelled.');
+      throw LocalizedApiException(
+        0,
+        'cancelled',
+        UiText('client.signInWasCancelled'),
+      );
     }
-    throw ApiException(
+    throw LocalizedApiException(
       0,
       'browser_error',
-      "Couldn't open the sign-in page: ${e.message ?? e.code}",
+      UiText('client.couldnTOpenTheSignInPage', {
+        'value': (e.message ?? e.code).toString(),
+      }),
     );
   } on FormatException {
-    throw const ApiException(
+    throw LocalizedApiException(
       0,
       'oauth_redirect',
-      'The sign-in came back with an address REST Mail could not read.',
+      UiText('client.theSignInCameBackWithAn'),
     );
   }
 }

@@ -32,9 +32,14 @@ void _push(BuildContext context, Widget screen) => unawaited(
   Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen)),
 );
 
-String _storage(QuotaInfo quota) => quota.quotaBytes > 0
-    ? '${sizeLabel(quota.usedBytes)} of ${sizeLabel(quota.quotaBytes)} used'
-    : '${sizeLabel(quota.usedBytes)} used';
+String _storage(BuildContext context, QuotaInfo quota) => quota.quotaBytes > 0
+    ? trArgs(context, 'ui.valueOfValue2Used', {
+        'value': (sizeLabel(quota.usedBytes)).toString(),
+        'value2': (sizeLabel(quota.quotaBytes)).toString(),
+      })
+    : trArgs(context, 'ui.valueUsed', {
+        'value': (sizeLabel(quota.usedBytes)).toString(),
+      });
 
 class MailboxSettingsScreen extends StatefulWidget {
   const MailboxSettingsScreen({super.key, required this.mailbox});
@@ -87,25 +92,27 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
       final signedIn = app.current;
       final sure = await confirmAction(
         context,
-        title: 'Sign out?',
+        title: tr(context, 'settings.signOut'),
         message: [
-          'The session for ${account.address} ends. The account stays on this '
-              'phone, signed out. Your mail stays on $host.',
-          if (app.accounts.length > 1) 'Your other accounts stay signed in.',
+          trArgs(context, 'settings.theSessionForAddressEndsTheAccount', {
+            'address': (account.address).toString(),
+            'host': (host).toString(),
+          }),
+          if (app.accounts.length > 1)
+            tr(context, 'settings.yourOtherAccountsStaySignedIn'),
         ].join(' '),
-        action: 'Sign out',
+        action: tr(context, 'settings.signOut2'),
       );
       if (sure && signedIn != null) await app.signOut(signedIn);
       return;
     }
     final sure = await confirmAction(
       context,
-      title: 'Unlink ${account.address}?',
-      message:
-          'This account gives up its access to it. The mailbox and its mail '
-          'are untouched. If it has no password of its own, only an '
-          'administrator can give access to it back.',
-      action: 'Unlink',
+      title: trArgs(context, 'settings.unlinkAddress', {
+        'address': (account.address).toString(),
+      }),
+      message: tr(context, 'settings.thisAccountGivesUpItsAccessTo'),
+      action: tr(context, 'settings.unlink'),
     );
     if (!sure || !mounted) return;
     setState(() => _busy = true);
@@ -116,7 +123,13 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
       messenger.showSnackBar(
-        SnackBar(content: Text('Unlinked ${account.address}')),
+        SnackBar(
+          content: Text(
+            trArgs(context, 'settings.unlinkedAddress', {
+              'address': (account.address).toString(),
+            }),
+          ),
+        ),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -131,11 +144,13 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     if (signedIn == null) return;
     final sure = await confirmAction(
       context,
-      title: 'Remove ${signedIn.address}?',
-      message:
-          'The account and its settings are removed from this phone. '
-          'Your mail stays on ${signedIn.host}.',
-      action: 'Remove',
+      title: trArgs(context, 'mailbox.removeAddress', {
+        'address': (signedIn.address).toString(),
+      }),
+      message: trArgs(context, 'settings.theAccountAndItsSettingsAreRemoved', {
+        'host': (signedIn.host).toString(),
+      }),
+      action: tr(context, 'common.remove'),
     );
     if (sure) await app.removeAccount(signedIn);
   }
@@ -189,7 +204,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           _AccountRow(
                             label: out.label,
                             address: out.address,
-                            subtitle: 'Signed out · ${out.host}',
+                            subtitle: trArgs(
+                              context,
+                              'settings.signedOutHost',
+                              {'host': (out.host).toString()},
+                            ),
                             primary: true,
                             onTap: () => Navigator.pop(context),
                           )
@@ -233,26 +252,35 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           ),
                           RmRow(
-                            label: 'Display name',
+                            label: tr(context, 'settings.displayName'),
                             value: account.displayName.isEmpty
                                 ? '—'
                                 : account.displayName,
                           ),
-                          RmRow(label: 'Server', value: host),
-                          if (quota != null)
-                            RmRow(label: 'Storage', value: _storage(quota)),
                           RmRow(
-                            label: 'Updates',
+                            label: tr(context, 'settings.server'),
+                            value: host,
+                          ),
+                          if (quota != null)
+                            RmRow(
+                              label: tr(context, 'mailboxes.storage'),
+                              value: _storage(context, quota),
+                            ),
+                          RmRow(
+                            label: tr(context, 'settings.updates'),
                             value: m.backend.canLinkMailboxes
-                                ? 'Pushed live by the server'
-                                : 'Live while the app is open',
+                                ? tr(context, 'settings.pushedLiveByTheServer')
+                                : tr(context, 'settings.liveWhileTheAppIsOpen'),
                           ),
                           if (session != null &&
                               session.signedOut == null &&
                               account.isPrimary)
                             RmRow(
-                              label: 'Two-factor sign-in',
-                              subtitle: 'Authenticator and recovery codes',
+                              label: tr(context, 'twoFactor.title'),
+                              subtitle: tr(
+                                context,
+                                'settings.authenticatorAndRecoveryCodes',
+                              ),
                               onTap: () => _push(
                                 context,
                                 TwoFactorScreen(account: session),
@@ -260,8 +288,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           if (session != null)
                             RmRow(
-                              label: 'App passwords',
-                              subtitle: 'For mail apps and automations',
+                              label: tr(context, 'apppasswords.appPasswords'),
+                              subtitle: tr(
+                                context,
+                                'settings.forMailAppsAndAutomations',
+                              ),
                               onTap: () => _push(
                                 context,
                                 AppPasswordsScreen(
@@ -272,8 +303,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           if (session != null)
                             RmRow(
-                              label: 'API keys',
-                              subtitle: 'Scoped permissions for automations',
+                              label: tr(context, 'apikeys.apiKeys'),
+                              subtitle: tr(
+                                context,
+                                'settings.scopedPermissionsForAutomations',
+                              ),
                               onTap: () => _push(
                                 context,
                                 APIKeysScreen(
@@ -306,14 +340,14 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           ],
                           RmRow(
                             label: account.isPrimary
-                                ? 'Sign out'
-                                : 'Unlink from this account',
+                                ? tr(context, 'settings.signOut2')
+                                : tr(context, 'settings.unlinkFromThisAccount'),
                             danger: true,
                             onTap: _busy ? null : () => unawaited(_remove()),
                           ),
                           if (account.isPrimary)
                             RmRow(
-                              label: 'Remove from this phone',
+                              label: tr(context, 'mailbox.removeFromThisPhone'),
                               danger: true,
                               onTap: _busy
                                   ? null
@@ -335,7 +369,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           if (administers)
                             RmRow(
                               label: tr(context, 'settings.administration'),
-                              subtitle: 'What this session may run on $host',
+                              subtitle: trArgs(
+                                context,
+                                'settings.whatThisSessionMayRunOnHost',
+                                {'host': (host).toString()},
+                              ),
                               onTap: () => _push(
                                 context,
                                 AdministrationScreen(account: current),
@@ -373,13 +411,16 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                     // Last, so the sections above stay where they were.
                     if (session != null && m.account != null) ...[
                       const SizedBox(height: 22),
-                      const SectionLabel('Mail rules'),
+                      SectionLabel(tr(context, 'settings.mailRules')),
                       const SizedBox(height: 9),
                       RmGroup(
                         children: [
                           RmRow(
-                            label: 'Vacation reply',
-                            subtitle: 'An automatic answer while you are away',
+                            label: tr(context, 'mailrules.vacationReply'),
+                            subtitle: tr(
+                              context,
+                              'settings.anAutomaticAnswerWhileYouAreAway',
+                            ),
                             onTap: () => _push(
                               context,
                               VacationReplyScreen(
@@ -389,10 +430,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           ),
                           RmRow(
-                            label: 'Mail filters',
-                            subtitle:
-                                'A Sieve script that files, forwards or '
-                                'refuses mail',
+                            label: tr(context, 'mailrules.mailFilters'),
+                            subtitle: tr(
+                              context,
+                              'settings.aSieveScriptThatFilesForwardsOr',
+                            ),
                             onTap: () => _push(
                               context,
                               MailFiltersScreen(
@@ -412,7 +454,11 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                           null => host,
                         },
                         if (quota != null)
-                          '${countLabel(quota.messageCount)} messages · ${_storage(quota)}',
+                          trArgs(context, 'ui.valueMessagesValue2', {
+                            'value': (countLabel(quota.messageCount))
+                                .toString(),
+                            'value2': (_storage(context, quota)).toString(),
+                          }),
                       ].join('\n'),
                       textAlign: TextAlign.center,
                       style: rmText(11.5, color: c.ink3, height: 1.5),
@@ -463,13 +509,16 @@ class AppSettingsScreen extends StatelessWidget {
                     children: [
                       RmRow(
                         label: tr(context, 'settings.language'),
-                        value: languageLabel(settings.languageCode),
+                        value: languageLabel(
+                          settings.languageCode,
+                          context: context,
+                        ),
                         onTap: () => _push(context, const LanguageScreen()),
                       ),
                       RmRow(
                         label: tr(context, 'settings.signature'),
                         value: signature.isEmpty
-                            ? 'None'
+                            ? tr(context, 'interface.none')
                             : signature.split('\n').first,
                         onTap: () => _push(context, const SignatureScreen()),
                       ),
@@ -534,7 +583,7 @@ class AppSettingsScreen extends StatelessWidget {
                               )
                             else
                               Text(
-                                'Sets its own',
+                                tr(context, 'settings.setsItsOwn'),
                                 style: rmText(12, color: c.ink3),
                               ),
                           ],
@@ -571,7 +620,9 @@ class AppSettingsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 22),
                   Text(
-                    'rest-mail for mobile $appVersion',
+                    trArgs(context, 'settings.restMailForMobileAppVersion', {
+                      'appVersion': (appVersion).toString(),
+                    }),
                     textAlign: TextAlign.center,
                     style: rmText(11.5, color: c.ink3, height: 1.5),
                   ),
@@ -610,7 +661,9 @@ class LanguageScreen extends StatelessWidget {
                     children: [
                       for (final entry in languageNames.entries)
                         RmRow(
-                          label: entry.value,
+                          label: entry.key == 'system'
+                              ? tr(context, 'settings.system')
+                              : entry.value,
                           trailing: entry.key == selected
                               ? Icon(
                                   Icons.check_rounded,
@@ -657,8 +710,13 @@ class _NotificationsSection extends StatelessWidget {
         for (final account in app.accounts)
           if (account is RestAccount &&
               push.statusOf(account) == PushStatus.unsupported)
-            "${account.address}: its server doesn't send notifications yet.",
-        if (app.accounts.any((a) => a is ImapAccount)) notificationsImapNote,
+            trArgs(
+              context,
+              'settings.addressItsServerDoesnTSendNotifications',
+              {'address': (account.address).toString()},
+            ),
+        if (app.accounts.any((a) => a is ImapAccount))
+          tr(context, notificationsImapNote),
       ];
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,15 +726,13 @@ class _NotificationsSection extends StatelessWidget {
           RmGroup(
             children: [
               RmRow(
-                label: 'New mail',
+                label: tr(context, 'settings.newMail'),
                 subtitle: push.permission == NotificationPermission.denied
-                    ? "Turned off for REST Mail in the iPhone's Settings, "
-                          'under Notifications.'
-                    : 'Only a signal goes through Apple. The app fetches '
-                          'the mail from your server itself.',
+                    ? tr(context, 'settings.turnedOffForRESTMailInThe')
+                    : tr(context, 'settings.onlyASignalGoesThroughAppleThe'),
                 trailing: RmSwitch(
                   key: const Key('notifications-switch'),
-                  label: 'New mail notifications',
+                  label: tr(context, 'settings.newMailNotifications'),
                   value: push.enabled,
                   onChanged: (on) =>
                       unawaited(on ? push.enable() : push.disable()),
@@ -828,9 +884,9 @@ class _SignatureScreenState extends State<SignatureScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Signature',
+              title: tr(context, 'settings.signature'),
               onBack: () => Navigator.pop(context),
-              trailingText: 'Save',
+              trailingText: tr(context, 'common.save'),
               onTrailing: () => unawaited(_save()),
             ),
             Expanded(
@@ -845,13 +901,13 @@ class _SignatureScreenState extends State<SignatureScreen> {
                     textCapitalization: TextCapitalization.sentences,
                     onChanged: (_) => setState(() {}),
                     style: rmText(15, color: c.ink, height: 1.55),
-                    decoration: const InputDecoration(
-                      hintText: 'Your name\nWhat you do',
+                    decoration: InputDecoration(
+                      hintText: tr(context, 'settings.yourNameWhatYouDo'),
                       hintMaxLines: 2,
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Preview'),
+                  SectionLabel(tr(context, 'quarantine.preview')),
                   const SizedBox(height: 9),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -864,14 +920,16 @@ class _SignatureScreenState extends State<SignatureScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '…thanks for the quick turnaround.',
+                          tr(context, 'settings.thanksForTheQuickTurnaround'),
                           style: rmText(15, color: c.ink2, height: 1.6),
                         ),
                         const SizedBox(height: 12),
                         DashedLine(color: c.line),
                         const SizedBox(height: 12),
                         Text(
-                          preview.isEmpty ? 'No signature' : preview,
+                          preview.isEmpty
+                              ? tr(context, 'settings.noSignature')
+                              : preview,
                           style: rmText(
                             14,
                             color: preview.isEmpty ? c.ink3 : c.ink,
@@ -885,11 +943,14 @@ class _SignatureScreenState extends State<SignatureScreen> {
                   RmGroup(
                     children: [
                       RmRow(
-                        label: 'Append on replies',
-                        subtitle: 'New messages always get it',
+                        label: tr(context, 'settings.appendOnReplies'),
+                        subtitle: tr(
+                          context,
+                          'settings.newMessagesAlwaysGetIt',
+                        ),
                         trailing: RmSwitch(
                           value: _signReplies,
-                          label: 'Append on replies',
+                          label: tr(context, 'settings.appendOnReplies'),
                           onChanged: (value) =>
                               setState(() => _signReplies = value),
                         ),
@@ -958,7 +1019,13 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
       messenger.showSnackBar(
-        SnackBar(content: Text('Linked ${linked.address}')),
+        SnackBar(
+          content: Text(
+            trArgs(context, 'settings.linkedAddress', {
+              'address': (linked.address).toString(),
+            }),
+          ),
+        ),
       );
     } on TotpRequiredException {
       if (!mounted) return;
@@ -977,13 +1044,19 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       setState(() {
         _busy = false;
         _error = switch (e) {
-          ApiException(code: 'invalid_credentials') =>
-            'Wrong address or password.',
-          ApiException(code: 'invalid_totp') => "That code didn't work.",
-          ApiException(code: 'setup_required') =>
-            'That account has to sign in and choose its own password first.',
-          ApiException(statusCode: 409) =>
-            'That mailbox is already linked, or is this account.',
+          ApiException(code: 'invalid_credentials') => tr(
+            context,
+            'signIn.badPassword',
+          ),
+          ApiException(code: 'invalid_totp') => tr(context, 'signIn.badCode'),
+          ApiException(code: 'setup_required') => tr(
+            context,
+            'settings.thatAccountHasToSignInAnd',
+          ),
+          ApiException(statusCode: 409) => tr(
+            context,
+            'settings.thatMailboxIsAlreadyLinkedOrIs',
+          ),
           _ => describeError(context, e, host: host),
         };
       });
@@ -1000,7 +1073,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Link a mailbox',
+              title: tr(context, 'settings.linkAMailbox'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -1008,12 +1081,13 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                 children: [
                   Text(
-                    'Add another mailbox on $host to this account, with its '
-                    'own password. Switch between them from the menu.',
+                    trArgs(context, 'settings.addAnotherMailboxOnHostToThis', {
+                      'host': (host).toString(),
+                    }),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Email address'),
+                  SectionLabel(tr(context, 'signIn.email')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _email,
@@ -1026,7 +1100,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                     decoration: InputDecoration(hintText: 'someone@$host'),
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Password'),
+                  SectionLabel(tr(context, 'signIn.password')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _password,
@@ -1036,11 +1110,13 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                       if (_ready) unawaited(_link());
                     },
                     style: rmText(16, color: c.ink),
-                    decoration: const InputDecoration(hintText: 'Its password'),
+                    decoration: InputDecoration(
+                      hintText: tr(context, 'settings.itsPassword'),
+                    ),
                   ),
                   if (_needsCode) ...[
                     const SizedBox(height: 22),
-                    const SectionLabel('Two-factor code'),
+                    SectionLabel(tr(context, 'signIn.twoFactorCode')),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _code,
@@ -1053,8 +1129,8 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                         if (_ready) unawaited(_link());
                       },
                       style: rmText(16, color: c.ink, tracking: 0.08),
-                      decoration: const InputDecoration(
-                        hintText: 'From its authenticator',
+                      decoration: InputDecoration(
+                        hintText: tr(context, 'settings.fromItsAuthenticator'),
                       ),
                     ),
                   ],
@@ -1064,7 +1140,7 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: 'Link mailbox',
+                    label: tr(context, 'settings.linkMailboxAction'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_link()) : null,
                   ),
@@ -1199,21 +1275,39 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
       messenger.showSnackBar(
-        SnackBar(content: Text('Created ${created.address}')),
+        SnackBar(
+          content: Text(
+            trArgs(context, 'settings.createdAddress', {
+              'address': (created.address).toString(),
+            }),
+          ),
+        ),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
         _error = switch (e) {
-          ApiException(statusCode: 403) =>
-            "${widget.account.address} can't create mailboxes on $_domain.",
-          ApiException(statusCode: 409) => '$address already exists.',
+          ApiException(statusCode: 403) => trArgs(
+            context,
+            'settings.addressCanTCreateMailboxesOnDomain',
+            {
+              'address': (widget.account.address).toString(),
+              'domain': (_domain).toString(),
+            },
+          ),
+          ApiException(statusCode: 409) => trArgs(
+            context,
+            'settings.addressAlreadyExists',
+            {'address': (address).toString()},
+          ),
           ApiException(statusCode: 422, :final fields, :final message) =>
             fields.values.firstOrNull ?? message,
-          ApiException(statusCode: 404) =>
-            "$host can't create mailboxes: its REST Mail is older than "
-                'this app.',
+          ApiException(statusCode: 404) => trArgs(
+            context,
+            'settings.hostCanTCreateMailboxesItsREST',
+            {'host': (host).toString()},
+          ),
           _ => describeError(context, e, host: host),
         };
       });
@@ -1229,7 +1323,7 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Create a mailbox',
+              title: tr(context, 'settings.createMailbox'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -1237,13 +1331,13 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                 children: [
                   Text(
-                    'A new mailbox owned by ${widget.account.address}. It has '
-                    'no password of its own: you read it and send as it from '
-                    'this account. Switch to it from the menu.',
+                    trArgs(context, 'settings.aNewMailboxOwnedByAddressIt', {
+                      'address': (widget.account.address).toString(),
+                    }),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 22),
-                  const SectionLabel('Address'),
+                  SectionLabel(tr(context, 'contacts.address')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _localPart,
@@ -1279,7 +1373,7 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                     ),
                   ],
                   const SizedBox(height: 22),
-                  const SectionLabel('Display name'),
+                  SectionLabel(tr(context, 'settings.displayName')),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _displayName,
@@ -1288,7 +1382,9 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                       if (_ready) unawaited(_create());
                     },
                     style: rmText(16, color: c.ink),
-                    decoration: const InputDecoration(hintText: 'Optional'),
+                    decoration: InputDecoration(
+                      hintText: tr(context, 'contacts.nameHint'),
+                    ),
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 16),
@@ -1296,7 +1392,7 @@ class _CreateMailboxScreenState extends State<CreateMailboxScreen> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: 'Create mailbox',
+                    label: tr(context, 'settings.createMailboxAction'),
                     busy: _busy,
                     onPressed: _ready ? () => unawaited(_create()) : null,
                   ),
@@ -1357,12 +1453,12 @@ class _PackTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    pack.name,
+                    tr(context, pack.nameKey),
                     style: rmText(14.5, color: c.ink, weight: FontWeight.w600),
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    pack.tagline,
+                    tr(context, pack.taglineKey),
                     style: rmText(12, color: c.ink3, height: 1.35),
                   ),
                 ],

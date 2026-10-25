@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:restmail_api/restmail_api.dart';
@@ -51,7 +54,9 @@ sealed class SignedInAccount {
   /// it can: its session ended, or Microsoft or Google stopped letting REST
   /// Mail in. It stays on the phone all the same, with its settings and its
   /// place in the list, until it is signed in again or removed.
-  String? get signedOut;
+  UiText? get signedOutText;
+
+  String? get signedOut => signedOutText?.inEnglish;
 
   /// Lets go of its connections, for good.
   void close();
@@ -95,8 +100,8 @@ class RestAccount extends SignedInAccount {
   String get host => server.host;
 
   @override
-  String? get signedOut => client.tokens == null
-      ? 'Your session for $address ended. Sign in again to carry on.'
+  UiText? get signedOutText => client.tokens == null
+      ? UiText('account.sessionEnded', {'address': address})
       : null;
 
   @override
@@ -144,14 +149,17 @@ class ImapAccount extends SignedInAccount {
   String get host => settings.imapHost;
 
   @override
-  String? get signedOut => wasSignedOut
-      ? 'You signed out of $address. Sign in again to carry on.'
+  UiText? get signedOutText => wasSignedOut
+      ? UiText('account.youSignedOut', {'address': address})
       : switch (oauth) {
-          final session? when session.hasEnded =>
-            '${session.kind.label} no longer lets REST Mail into $address. '
-                'Sign in again to carry on.',
-          final session? when session.refreshToken == null =>
-            'Sign in with ${session.kind.label} again to carry on with $address.',
+          final session? when session.hasEnded => UiText(
+            'account.providerAccessEnded',
+            {'provider': session.kind.label, 'address': address},
+          ),
+          final session? when session.refreshToken == null => UiText(
+            'account.providerSignInAgain',
+            {'provider': session.kind.label, 'address': address},
+          ),
           _ => null,
         };
 
@@ -217,11 +225,11 @@ class AppState extends ChangeNotifier {
   /// and listening; switching stops it and starts the next one's.
   MailboxState? mailbox;
 
-  final _notices = StreamController<String>.broadcast();
+  final _notices = StreamController<UiText>.broadcast();
 
   /// One-line news for whoever is looking, such as another account's session
   /// running out. The app shows each as a snackbar.
-  Stream<String> get notices => _notices.stream;
+  Stream<UiText> get notices => _notices.stream;
 
   int _sessions = 0;
   final _signingOut = <SignedInAccount>{};
@@ -336,11 +344,12 @@ class AppState extends ChangeNotifier {
       if (!result.isSetUp) {
         // A session that can only finish the setup is no use kept.
         await candidate.logout();
-        throw ApiException(
+        throw LocalizedApiException(
           403,
           'setup_required',
-          '${result.user.email} has to choose its own password and set up '
-              'two-factor sign-in first.',
+          UiText('client.emailHasToChooseItsOwnPassword', {
+            'email': (result.user.email).toString(),
+          }),
         );
       }
       await keep(server, result.user, result.tokens);
@@ -449,10 +458,12 @@ class AppState extends ChangeNotifier {
   }) async {
     final client = oauth[kind];
     if (client == null) {
-      throw ApiException(
+      throw LocalizedApiException(
         0,
         'oauth_unavailable',
-        "This build of REST Mail can't sign in with ${kind.label}.",
+        UiText('client.thisBuildOfRESTMailCanT', {
+          'label': (kind.label).toString(),
+        }),
       );
     }
     final http = httpClientFactory();
@@ -469,11 +480,14 @@ class AppState extends ChangeNotifier {
     }
     final email = grant.email ?? address.trim();
     if (only != null && email.toLowerCase() != only.toLowerCase()) {
-      throw ApiException(
+      throw LocalizedApiException(
         409,
         'other_account',
-        'You signed in to ${kind.label} as $email. Sign in as $only to carry '
-            'on with it, or add $email as an account of its own.',
+        UiText('client.youSignedInToLabelAsEmail', {
+          'label': (kind.label).toString(),
+          'email': (email).toString(),
+          'only': (only).toString(),
+        }),
       );
     }
     final name = displayName.trim();
@@ -617,7 +631,9 @@ class AppState extends ChangeNotifier {
       await store.write(_accountKey(saved.key), saved.encode());
       notifyListeners();
     }
-    if (accounts.isNotEmpty) _notices.add('Signed out of ${account.address}');
+    if (accounts.isNotEmpty) {
+      _notices.add(UiText('account.signedOutOf', {'address': account.address}));
+    }
   }
 
   Future<void> updateSettings(AppSettings next) async {
@@ -705,7 +721,7 @@ class AppState extends ChangeNotifier {
     if (_signingOut.contains(account) || !accounts.contains(account)) return;
     notifyListeners();
     // The one on screen says so in place of its mail.
-    if (!identical(account, current)) _notices.add(account.signedOut!);
+    if (!identical(account, current)) _notices.add(account.signedOutText!);
     unawaited(
       _queueWrite(account, () async {
         // Taken off the phone while this waited: it is not brought back.

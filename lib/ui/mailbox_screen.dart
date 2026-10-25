@@ -230,7 +230,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
             child: Text(
-              'No messages match “$query”.',
+              trArgs(context, 'mailbox.noMessagesMatchQuery', {
+                'query': (query).toString(),
+              }),
               textAlign: TextAlign.center,
               style: rmText(14, color: c.ink3, height: 1.5),
             ),
@@ -240,7 +242,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Text(
               '${countLabel(results.items.length)}${results.hasMore ? '+' : ''} '
-              '${results.items.length == 1 ? 'result' : 'results'} · '
+              '${results.items.length == 1 ? tr(context, 'ui.result') : tr(context, 'ui.results')} · '
               '$_searchMs ms',
               style: rmText(12, color: c.ink3, weight: FontWeight.w600),
             ),
@@ -583,12 +585,17 @@ class _Footer extends StatelessWidget {
     final label = folderLabelOf(context, m.folder);
     final String text;
     if (m.messages.isEmpty) {
-      text = 'Nothing in $label';
+      text = trArgs(context, 'mailbox.nothingInLabel', {
+        'label': (label).toString(),
+      });
     } else if (m.hasMore) {
       return const SizedBox(height: 24);
     } else {
-      text =
-          'All caught up — ${countLabel(m.currentFolder?.total ?? m.messages.length)} in $label';
+      text = trArgs(context, 'mailbox.allCaughtUpValueInLabel', {
+        'value': (countLabel(m.currentFolder?.total ?? m.messages.length))
+            .toString(),
+        'label': (label).toString(),
+      });
     }
     return Padding(
       padding: EdgeInsets.fromLTRB(16, m.messages.isEmpty ? 80 : 24, 16, 24),
@@ -627,7 +634,7 @@ class _Problem extends StatelessWidget {
             TextButton(
               onPressed: onRetry,
               child: Text(
-                'Try again',
+                tr(context, 'health.retry'),
                 style: rmText(14, color: c.accent, weight: FontWeight.w700),
               ),
             ),
@@ -702,13 +709,17 @@ class _SignedOutState extends State<_SignedOut> {
     final account = widget.account;
     final sure = await confirmAction(
       context,
-      title: 'Remove ${account.address}?',
+      title: trArgs(context, 'mailbox.removeAddress', {
+        'address': (account.address).toString(),
+      }),
       message: [
-        'It comes off this phone, with its settings. Your mail stays on '
-            '${account.host}.',
-        if (app.accounts.length > 1) 'Your other accounts stay.',
+        trArgs(context, 'mailbox.itComesOffThisPhoneWithIts', {
+          'host': (account.host).toString(),
+        }),
+        if (app.accounts.length > 1)
+          tr(context, 'mailbox.yourOtherAccountsStay'),
       ].join(' '),
-      action: 'Remove',
+      action: tr(context, 'common.remove'),
     );
     if (sure) await app.removeAccount(account);
   }
@@ -719,8 +730,10 @@ class _SignedOutState extends State<_SignedOut> {
     final account = widget.account;
     final error = _error;
     final label = switch (account) {
-      ImapAccount(:final oauth?) => 'Sign in with ${oauth.kind.label}',
-      _ => 'Sign in again',
+      ImapAccount(:final oauth?) => trArgs(context, 'mailbox.signInWithLabel', {
+        'label': (oauth.kind.label).toString(),
+      }),
+      _ => tr(context, 'twoFactor.signInAgain'),
     };
     return Center(
       child: SingleChildScrollView(
@@ -731,7 +744,9 @@ class _SignedOutState extends State<_SignedOut> {
             Icon(Icons.lock_outline_rounded, size: 28, color: c.ink3),
             const SizedBox(height: 12),
             Text(
-              account.signedOut ?? '',
+              account.signedOutText == null
+                  ? ''
+                  : trText(context, account.signedOutText!),
               textAlign: TextAlign.center,
               style: rmText(14, color: c.ink2, height: 1.45),
             ),
@@ -749,7 +764,7 @@ class _SignedOutState extends State<_SignedOut> {
             TextButton(
               onPressed: _busy ? null : () => unawaited(_remove()),
               child: Text(
-                'Remove from this phone',
+                tr(context, 'mailbox.removeFromThisPhone'),
                 style: rmText(14, color: c.ink2, weight: FontWeight.w600),
               ),
             ),

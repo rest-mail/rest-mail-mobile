@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -11,19 +13,20 @@ import '../widgets/common.dart';
 import 'admin_widgets.dart';
 import 'report_filters.dart';
 
-String _outcomeLabel(String outcome) => switch (outcome) {
-  'success' => 'Allowed',
-  'denied' => 'Denied',
-  'failed' => 'Failed',
-  'error' => 'Server error',
+String _outcomeLabel(BuildContext context, String outcome) => switch (outcome) {
+  'success' => tr(context, 'admin.audit.allowed'),
+  'denied' => tr(context, 'admin.audit.denied'),
+  'failed' => tr(context, 'admin.audit.failed'),
+  'error' => tr(context, 'admin.audit.serverError'),
   _ => outcome,
 };
 
-String _actor(AuditEntry entry) => switch (entry.actorKind) {
-  'system' => 'The server',
-  _ when entry.actorName.isNotEmpty => entry.actorName,
-  _ => 'Someone not signed in',
-};
+String _actor(BuildContext context, AuditEntry entry) =>
+    switch (entry.actorKind) {
+      'system' => tr(context, 'admin.audit.theServer'),
+      _ when entry.actorName.isNotEmpty => entry.actorName,
+      _ => tr(context, 'admin.audit.someoneNotSignedIn'),
+    };
 
 /// What was done on the server and by whom, newest first: the audit log's
 /// entries that went through. Tapping one opens it as the audit log does.
@@ -60,16 +63,22 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.activity,
-    title: 'Activity',
+    title: tr(context, 'admin.section.activity.title'),
     body: (_) => AdminListView(
       list: _list,
       host: widget.account.server.host,
-      empty: 'Nothing has been done yet.',
+      empty: tr(context, 'admin.audit.nothingHasBeenDoneYet'),
       row: (entry) => RmRow(
         label: [entry.action, ?entry.target['address']].join(' · '),
         subtitle: [
-          'By ${_actor(entry)} · ${timeLabel(entry.occurredAt)}',
-          if (entry.ip.isNotEmpty) 'From ${entry.ip}',
+          trArgs(context, 'admin.audit.byValueValue2', {
+            'value': (_actor(context, entry)).toString(),
+            'value2': (timeLabel(entry.occurredAt)).toString(),
+          }),
+          if (entry.ip.isNotEmpty)
+            trArgs(context, 'admin.audit.fromIp', {
+              'ip': (entry.ip).toString(),
+            }),
         ].join('\n'),
         onTap: () => pushScreen(
           context,
@@ -153,27 +162,28 @@ class _AuditScreenState extends State<AuditScreen> {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Verify saved anchor',
+        title: tr(context, 'admin.audit.verifySavedAnchor'),
         host: _host,
-        intro:
-            'Paste a sequence number and hash saved independently of this server. '
-            'This checks that the chain still contains that entry unchanged.',
-        fields: const [
+        intro: tr(context, 'admin.audit.pasteASequenceNumberAndHashSaved'),
+        fields: [
           AdminField(
-            'Saved anchor',
-            hint: '42: followed by its 64-character hash',
+            tr(context, 'admin.audit.savedAnchor'),
+            hint: tr(context, 'admin.audit.42FollowedByIts64CharacterHash'),
           ),
         ],
-        action: 'Verify anchor',
+        action: tr(context, 'admin.audit.verifyAnchor'),
         submit: (values) async {
           if (!RegExp(r'^[1-9][0-9]{0,17}:[0-9a-fA-F]{64}$')
               .hasMatch(values[0])) {
-            throw const ApiException(
+            throw ApiException(
               422,
               'validation_failed',
-              'Invalid anchor',
+              tr(context, 'admin.audit.invalidAnchor'),
               fields: {
-                'anchor': 'must be a positive sequence number, a colon and 64 hex characters',
+                'anchor': tr(
+                  context,
+                  'admin.audit.mustBeAPositiveSequenceNumberA',
+                ),
               },
             );
           }
@@ -189,50 +199,57 @@ class _AuditScreenState extends State<AuditScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.audit,
-      title: 'Audit log',
+      title: tr(context, 'admin.section.audit.title'),
       body: (_) => AdminListView(
         list: _list,
         host: _host,
         empty: switch (_outcome) {
-          'denied' => 'Nothing was denied.',
-          'failed' => 'Nothing failed.',
-          'error' => 'The server has had no errors.',
-          _ => 'Nothing has been recorded yet.',
+          'denied' => tr(context, 'admin.audit.nothingWasDenied'),
+          'failed' => tr(context, 'admin.audit.nothingFailed'),
+          'error' => tr(context, 'admin.audit.theServerHasHadNoErrors'),
+          _ => tr(context, 'admin.audit.nothingHasBeenRecordedYet'),
         },
         header: [
           ReportFiltersBar(
             host: _host,
             values: _filters,
-            fields: const [
+            fields: [
               ReportField(
                 'actor_kind',
-                'Actor kind',
+                tr(context, 'admin.audit.actorKind'),
                 choices: [
-                  ('', 'All'),
-                  ('account', 'Account'),
-                  ('system', 'Server'),
-                  ('anonymous', 'Not signed in'),
+                  ('', tr(context, 'contacts.all')),
+                  ('account', tr(context, 'admin.audit.account')),
+                  ('system', tr(context, 'settings.server')),
+                  ('anonymous', tr(context, 'admin.audit.notSignedIn')),
                 ],
               ),
-              ReportField('actor_id', 'Account number', number: true),
-              ReportField('actor', 'Actor name contains'),
-              ReportField('action', 'Action'),
+              ReportField(
+                'actor_id',
+                tr(context, 'admin.audit.accountNumber'),
+                number: true,
+              ),
+              ReportField(
+                'actor',
+                tr(context, 'admin.audit.actorNameContains'),
+              ),
+              ReportField('action', tr(context, 'admin.audit.action')),
               ReportField(
                 'outcome',
-                'Outcome',
+                tr(context, 'admin.audit.outcome'),
                 choices: [
-                  ('', 'All'),
-                  ('success', 'Success'),
-                  ('denied', 'Denied'),
-                  ('failed', 'Failed'),
-                  ('error', 'Server error'),
+                  ('', tr(context, 'contacts.all')),
+                  ('success', tr(context, 'admin.audit.success')),
+                  ('denied', tr(context, 'admin.audit.denied')),
+                  ('failed', tr(context, 'admin.audit.failed')),
+                  ('error', tr(context, 'admin.audit.serverError')),
                 ],
               ),
               reportSince,
               reportUntil,
               ReportField(
                 'before_seq',
-                'Before entry',
+                tr(context, 'admin.audit.beforeEntry'),
                 number: true,
                 positive: true,
               ),
@@ -246,12 +263,14 @@ class _AuditScreenState extends State<AuditScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: RmOutlineButton(
-              label: _checking ? 'Checking the chain…' : 'Verify chain',
+              label: _checking
+                  ? tr(context, 'admin.audit.checkingTheChain')
+                  : tr(context, 'admin.audit.verifyChain'),
               onPressed: _checking ? null : () => unawaited(_verify()),
             ),
           ),
           RmOutlineButton(
-            label: 'Verify saved anchor',
+            label: tr(context, 'admin.audit.verifySavedAnchor'),
             onPressed: _checking ? null : () => unawaited(_verifyAnchor()),
           ),
           const SizedBox(height: 14),
@@ -268,12 +287,12 @@ class _AuditScreenState extends State<AuditScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: RmSegmented<String?>(
-                options: const [
-                  (null, 'All'),
-                  ('success', 'Success'),
-                  ('denied', 'Denied'),
-                  ('failed', 'Failed'),
-                  ('error', 'Errors'),
+                options: [
+                  (null, tr(context, 'contacts.all')),
+                  ('success', tr(context, 'admin.audit.success')),
+                  ('denied', tr(context, 'admin.audit.denied')),
+                  ('failed', tr(context, 'admin.audit.failed')),
+                  ('error', tr(context, 'admin.audit.errors')),
                 ],
                 value: _outcome,
                 onChanged: (outcome) {
@@ -287,9 +306,9 @@ class _AuditScreenState extends State<AuditScreen> {
           const SizedBox(height: 14),
         ],
         row: (entry) => RmRow(
-          label: _actor(entry),
+          label: _actor(context, entry),
           subtitle:
-              '${entry.action} · ${_outcomeLabel(entry.outcome)} · '
+              '${entry.action} · ${_outcomeLabel(context, entry.outcome)} · '
               '${timeLabel(entry.occurredAt)}',
           onTap: () => pushScreen(
             context,
@@ -312,33 +331,52 @@ class _ChainResult extends StatelessWidget {
     final c = context.rm;
     final broken = check.brokenAtSeq;
     final entries = check.checked == 1
-        ? '1 entry'
-        : '${countLabel(check.checked)} entries';
+        ? tr(context, 'ui.1Entry')
+        : trArgs(context, 'ui.valueEntries', {
+            'value': (countLabel(check.checked)).toString(),
+          });
     final text = [
       if (check.ok && check.checked == 0)
-        'The chain holds: there is nothing in it yet.'
+        tr(context, 'admin.audit.theChainHoldsThereIsNothingIn')
       else if (check.ok && check.checked == 1)
-        'The chain holds: its one entry matches its hash.'
+        tr(context, 'admin.audit.theChainHoldsItsOneEntryMatches')
       else if (check.ok)
-        'The chain holds: all $entries, from ${check.firstSeq} to '
-            '${check.lastSeq}, follow one another and match their hashes.'
+        trArgs(context, 'admin.audit.theChainHoldsAllEntriesFromFirstSeq', {
+          'entries': (entries).toString(),
+          'firstSeq': (check.firstSeq).toString(),
+          'lastSeq': (check.lastSeq).toString(),
+        })
       else if (broken == null)
-        'The chain could not be verified${check.reason.isEmpty ? '.' : ': ${check.reason}.'}'
+        trArgs(context, 'admin.audit.theChainCouldNotBeVerifiedValue', {
+          'value': (check.reason.isEmpty ? '.' : ': ${check.reason}.')
+              .toString(),
+        })
       else
         [
-          'The chain breaks at entry $broken'
-              '${check.reason.isEmpty ? '' : ': ${check.reason}'}.',
+          trArgs(context, 'admin.audit.theChainBreaksAtEntryBrokenValue', {
+            'broken': (broken).toString(),
+            'value': (check.reason.isEmpty ? '' : ': ${check.reason}')
+                .toString(),
+          }),
           if (check.checked == 1)
-            'The entry before it holds.'
+            tr(context, 'admin.audit.theEntryBeforeItHolds')
           else if (check.checked > 1)
-            'The $entries before it hold.',
+            trArgs(context, 'admin.audit.theEntriesBeforeItHold', {
+              'entries': (entries).toString(),
+            }),
         ].join(' '),
       if (check.note.isNotEmpty) check.note,
       if (check.anchor case final anchor?)
-        'Checked against saved anchor ${anchor.value}.',
+        trArgs(context, 'admin.audit.checkedAgainstSavedAnchorValue', {
+          'value': (anchor.value).toString(),
+        }),
       if (check.lastHash.isNotEmpty)
-        'Last verified entry: ${check.lastSeq}:${check.lastHash}',
-      if (check.anchor == null) 'An independently saved anchor can also detect history that was rewritten and rehashed.',
+        trArgs(context, 'admin.audit.lastVerifiedEntryLastSeqLastHash', {
+          'lastSeq': (check.lastSeq).toString(),
+          'lastHash': (check.lastHash).toString(),
+        }),
+      if (check.anchor == null)
+        tr(context, 'admin.audit.anIndependentlySavedAnchorCanAlsoDetect'),
     ].join('\n\n');
     return Container(
       padding: const EdgeInsets.all(14),
@@ -386,47 +424,91 @@ class AuditEntryScreen extends StatelessWidget {
     return AdminPage(
       account: account,
       section: AdminSection.audit,
-      title: 'Entry ${entry.seq}',
+      title: trArgs(context, 'admin.audit.entrySeq', {
+        'seq': (entry.seq).toString(),
+      }),
       body: (_) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
         children: [
           RmGroup(
             children: [
-              RmRow(label: 'When', value: longDate(entry.occurredAt)),
-              RmRow(label: 'Who', subtitle: _actor(entry)),
-              RmRow(label: 'As', value: entry.actorKind),
-              if (entry.actorId case final id?)
-                RmRow(label: 'Account number', value: '$id'),
-              if (entry.credentialId case final id?)
-                RmRow(label: 'Credential number', value: '$id'),
-              if (entry.sessionId.isNotEmpty)
-                RmRow(label: 'Session', subtitle: entry.sessionId),
-              if (entry.requestId.isNotEmpty)
-                RmRow(label: 'Request ID', subtitle: entry.requestId),
-              RmRow(label: 'Action', value: entry.action),
               RmRow(
-                label: 'Outcome',
+                label: tr(context, 'admin.audit.when'),
+                value: longDate(entry.occurredAt),
+              ),
+              RmRow(
+                label: tr(context, 'admin.audit.who'),
+                subtitle: _actor(context, entry),
+              ),
+              RmRow(
+                label: tr(context, 'admin.audit.as'),
+                value: entry.actorKind,
+              ),
+              if (entry.actorId case final id?)
+                RmRow(
+                  label: tr(context, 'admin.audit.accountNumber'),
+                  value: '$id',
+                ),
+              if (entry.credentialId case final id?)
+                RmRow(
+                  label: tr(context, 'admin.audit.credentialNumber'),
+                  value: '$id',
+                ),
+              if (entry.sessionId.isNotEmpty)
+                RmRow(
+                  label: tr(context, 'admin.audit.session'),
+                  subtitle: entry.sessionId,
+                ),
+              if (entry.requestId.isNotEmpty)
+                RmRow(
+                  label: tr(context, 'admin.audit.requestID'),
+                  subtitle: entry.requestId,
+                ),
+              RmRow(
+                label: tr(context, 'admin.audit.action'),
+                value: entry.action,
+              ),
+              RmRow(
+                label: tr(context, 'admin.audit.outcome'),
                 value: [
-                  _outcomeLabel(entry.outcome),
+                  _outcomeLabel(context, entry.outcome),
                   if (entry.status > 0) '${entry.status}',
                 ].join(' · '),
               ),
               if (entry.errorCode.isNotEmpty)
-                RmRow(label: 'Error', value: entry.errorCode),
+                RmRow(
+                  label: tr(context, 'admin.audit.error'),
+                  value: entry.errorCode,
+                ),
               if (request.isNotEmpty)
-                RmRow(label: 'Request', subtitle: request),
+                RmRow(
+                  label: tr(context, 'admin.audit.request'),
+                  subtitle: request,
+                ),
               for (final MapEntry(:key, :value) in entry.target.entries)
                 RmRow(label: key, value: value),
-              if (entry.ip.isNotEmpty) RmRow(label: 'From', value: entry.ip),
+              if (entry.ip.isNotEmpty)
+                RmRow(label: tr(context, 'compose.from'), value: entry.ip),
               if (entry.userAgent.isNotEmpty)
-                RmRow(label: 'App', subtitle: entry.userAgent),
+                RmRow(
+                  label: tr(context, 'admin.audit.app'),
+                  subtitle: entry.userAgent,
+                ),
             ],
           ),
           const SizedBox(height: 22),
-          const SectionLabel('Its hash, and the one before'),
+          SectionLabel(tr(context, 'admin.audit.itsHashAndTheOneBefore')),
           const SizedBox(height: 9),
           SelectableText(
-            'Saved anchor: ${entry.seq}:${entry.hash}\nPrevious hash: ${entry.prevHash}',
+            trArgs(
+              context,
+              'admin.audit.savedAnchorSeqHashPreviousHashPrevHash',
+              {
+                'seq': (entry.seq).toString(),
+                'hash': (entry.hash).toString(),
+                'prevHash': (entry.prevHash).toString(),
+              },
+            ),
             style: rmText(12.5, color: c.ink2, height: 1.5),
           ),
         ],

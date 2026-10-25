@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -139,13 +141,18 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         builder: (_) => _StepForm(account: widget.account, grant: grant),
       ),
     );
-    if (step == null) return;
+    if (step == null || !mounted) return;
     final until = step.grant.activation?.expiresAt;
     _stepped(
       step,
       until == null
-          ? 'Switched on ${grant.role}'
-          : 'Switched on ${grant.role} until ${longDate(until)}',
+          ? trArgs(context, 'mypermissions.switchedOnRole', {
+              'role': (grant.role).toString(),
+            })
+          : trArgs(context, 'mypermissions.switchedOnRoleUntilValue', {
+              'role': (grant.role).toString(),
+              'value': (longDate(until)).toString(),
+            }),
     );
   }
 
@@ -160,22 +167,35 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         ),
       ),
     );
-    if (step != null) _stepped(step, '${grant.role} is eligible now');
+    if (step != null && mounted) {
+      _stepped(
+        step,
+        trArgs(context, 'mypermissions.roleIsEligibleNow', {
+          'role': (grant.role).toString(),
+        }),
+      );
+    }
   }
 
   Future<void> _deactivate(Grant grant) async {
     final sure = await confirmAction(
       context,
-      title: 'Switch off ${grant.role}?',
-      message:
-          'It stops applying at once. Switching it on again takes a reason '
-          'and a fresh code.',
-      action: 'Switch off',
+      title: trArgs(context, 'mypermissions.switchOffRole', {
+        'role': (grant.role).toString(),
+      }),
+      message: tr(context, 'mypermissions.itStopsApplyingAtOnceSwitchingIt'),
+      action: tr(context, 'mypermissions.switchOff'),
     );
     if (!sure || !mounted) return;
     try {
       final step = await widget.account.client.deactivateGrant(grant.id);
-      _stepped(step, 'Switched off ${grant.role}');
+      if (!mounted) return;
+      _stepped(
+        step,
+        trArgs(context, 'mypermissions.switchedOffRole', {
+          'role': (grant.role).toString(),
+        }),
+      );
     } on ApiException catch (e) {
       if (mounted) {
         showToast(
@@ -207,7 +227,11 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         onRetry: () => unawaited(_load(reconcile: true)),
       );
     } else if (grants == null || grants.isEmpty) {
-      content = AdminMessage('You hold no roles on $_host.');
+      content = AdminMessage(
+        trArgs(context, 'mypermissions.youHoldNoRolesOnHost', {
+          'host': (_host).toString(),
+        }),
+      );
     } else {
       content = Column(
         children: [
@@ -228,7 +252,7 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
         child: Column(
           children: [
             RmTopBar(
-              title: 'My permissions',
+              title: tr(context, 'settings.myPermissions'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -245,9 +269,10 @@ class _MyPermissionsScreenState extends State<MyPermissionsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'An active role always applies. An eligible one gives '
-                      'nothing until you switch it on for a while, with a '
-                      'reason and a fresh code from your authenticator.',
+                      tr(
+                        context,
+                        'mypermissions.anActiveRoleAlwaysAppliesAnEligible',
+                      ),
                       style: rmText(14, color: c.ink2, height: 1.45),
                     ),
                     const SizedBox(height: 16),
@@ -291,22 +316,34 @@ class _GrantCard extends StatelessWidget {
     return RmGroup(
       children: [
         RmRow(
-          label: '${grant.role} · ${scopeLabel(grant.scope)}',
+          label: '${grant.role} · ${scopeLabel(context, grant.scope)}',
           subtitle: [
-            if (ended) 'Ended' else grantState(grant),
+            if (ended)
+              tr(context, 'admin.granttext.ended')
+            else
+              grantState(context, grant),
             if (activation != null && activation.reason.isNotEmpty)
-              'Why: ${activation.reason}',
-            grantEnds(grant),
+              trArgs(context, 'mypermissions.whyReason', {
+                'reason': (activation.reason).toString(),
+              }),
+            grantEnds(context, grant),
           ].join('\n'),
         ),
         if (!ended && grant.mode == GrantMode.eligible && !switchedOn)
-          RmRow(label: 'Switch on…', onTap: onActivate),
+          RmRow(
+            label: tr(context, 'mypermissions.switchOn'),
+            onTap: onActivate,
+          ),
         if (switchedOn)
-          RmRow(label: 'Switch off', danger: true, onTap: onDeactivate),
+          RmRow(
+            label: tr(context, 'mypermissions.switchOff'),
+            danger: true,
+            onTap: onDeactivate,
+          ),
         if (!ended && grant.mode == GrantMode.active)
           RmRow(
-            label: 'Make eligible…',
-            subtitle: 'Hold it only when you switch it on',
+            label: tr(context, 'mypermissions.makeEligible'),
+            subtitle: tr(context, 'mypermissions.holdItOnlyWhenYouSwitchIt'),
             onTap: onMakeEligible,
           ),
       ],
@@ -334,14 +371,25 @@ class _StepSummary extends StatelessWidget {
           label: title,
           subtitle: names.isEmpty
               ? scoped.isEmpty
-                    ? 'This session now holds no capabilities.'
-                    : 'This session now holds capabilities at the scopes below.'
+                    ? tr(
+                        context,
+                        'mypermissions.thisSessionNowHoldsNoCapabilities',
+                      )
+                    : tr(
+                        context,
+                        'mypermissions.thisSessionNowHoldsCapabilitiesAtThe',
+                      )
               : names.contains(Capabilities.all)
-              ? 'This session now holds every capability.'
-              : 'This session now holds: ${names.join(', ')}',
+              ? tr(context, 'mypermissions.thisSessionNowHoldsEveryCapability')
+              : trArgs(context, 'mypermissions.thisSessionNowHoldsValue', {
+                  'value': (names.join(', ')).toString(),
+                }),
         ),
         for (final entry in scoped.entries)
-          RmRow(label: scopeLabel(entry.key), subtitle: entry.value.join(', ')),
+          RmRow(
+            label: scopeLabel(context, entry.key),
+            subtitle: entry.value.join(', '),
+          ),
       ],
     );
   }
@@ -387,17 +435,24 @@ class _StepFormState extends State<_StepForm> {
   String? get _problem {
     if (!widget.makeEligible) {
       final reason = _reason.text.trim();
-      if (reason.isEmpty) return 'Say why you are switching it on.';
-      if (reason.runes.length > 500) return 'Keep the reason to 500 letters.';
+      if (reason.isEmpty) {
+        return tr(context, 'mypermissions.sayWhyYouAreSwitchingItOn');
+      }
+      if (reason.runes.length > 500) {
+        return tr(context, 'mypermissions.keepTheReasonTo500Letters');
+      }
     }
     final code = _code.text.trim();
     if (code.isEmpty) {
       return _kind == _CodeKind.totp
-          ? 'Enter the current code from your authenticator.'
-          : 'Enter one of your recovery codes.';
+          ? tr(
+              context,
+              'mypermissions.enterTheCurrentCodeFromYourAuthenticator',
+            )
+          : tr(context, 'mypermissions.enterOneOfYourRecoveryCodes');
     }
     if (_kind == _CodeKind.totp && !RegExp(r'^\d{6}$').hasMatch(code)) {
-      return 'An authenticator code is 6 digits.';
+      return tr(context, 'mypermissions.anAuthenticatorCodeIs6Digits');
     }
     return null;
   }
@@ -458,7 +513,11 @@ class _StepFormState extends State<_StepForm> {
         child: Column(
           children: [
             RmTopBar(
-              title: eligible ? 'Make eligible' : 'Switch on ${grant.role}',
+              title: eligible
+                  ? tr(context, 'mypermissions.makeEligible2')
+                  : trArgs(context, 'mypermissions.switchOnRole', {
+                      'role': (grant.role).toString(),
+                    }),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -467,18 +526,33 @@ class _StepFormState extends State<_StepForm> {
                 children: [
                   Text(
                     eligible
-                        ? '${grant.role} at ${scopeLabel(grant.scope)} will '
-                              'give nothing until you switch it on, with a '
-                              'reason and a fresh code each time.'
-                        : '${grant.role} at ${scopeLabel(grant.scope)} '
-                              'applies until the time is up, or until you '
-                              'switch it off. The reason goes in the audit '
-                              'log.',
+                        ? trArgs(
+                            context,
+                            'mypermissions.roleAtValueWillGiveNothingUntil',
+                            {
+                              'role': (grant.role).toString(),
+                              'value': (scopeLabel(
+                                context,
+                                grant.scope,
+                              )).toString(),
+                            },
+                          )
+                        : trArgs(
+                            context,
+                            'mypermissions.roleAtValueAppliesUntilTheTime',
+                            {
+                              'role': (grant.role).toString(),
+                              'value': (scopeLabel(
+                                context,
+                                grant.scope,
+                              )).toString(),
+                            },
+                          ),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   if (!eligible) ...[
                     const SizedBox(height: 18),
-                    const SectionLabel('Why'),
+                    SectionLabel(tr(context, 'quarantine.why')),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _reason,
@@ -488,12 +562,12 @@ class _StepFormState extends State<_StepForm> {
                       textCapitalization: TextCapitalization.sentences,
                       onChanged: (_) => _changed(),
                       style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(
-                        hintText: 'What you need it for',
+                      decoration: InputDecoration(
+                        hintText: tr(context, 'mypermissions.whatYouNeedItFor'),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const SectionLabel('For'),
+                    SectionLabel(tr(context, 'admin.bans.for')),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -501,7 +575,15 @@ class _StepFormState extends State<_StepForm> {
                       children: [
                         for (final m in _lengths)
                           ChoiceChip(
-                            label: Text(m < 60 ? '$m min' : '${m ~/ 60} h'),
+                            label: Text(
+                              m < 60
+                                  ? trArgs(context, 'ui.mMin', {
+                                      'm': (m).toString(),
+                                    })
+                                  : trArgs(context, 'ui.valueH', {
+                                      'value': (m ~/ 60).toString(),
+                                    }),
+                            ),
                             selected: _minutes == m,
                             onSelected: (_) => setState(() => _minutes = m),
                           ),
@@ -509,14 +591,20 @@ class _StepFormState extends State<_StepForm> {
                     ),
                   ],
                   const SizedBox(height: 18),
-                  const SectionLabel('Code'),
+                  SectionLabel(tr(context, 'mypermissions.code')),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: RmSegmented<_CodeKind>(
-                      options: const [
-                        (_CodeKind.totp, 'Authenticator'),
-                        (_CodeKind.recovery, 'Recovery code'),
+                      options: [
+                        (
+                          _CodeKind.totp,
+                          tr(context, 'twoFactor.authenticator'),
+                        ),
+                        (
+                          _CodeKind.recovery,
+                          tr(context, 'twoFactor.recoveryCode'),
+                        ),
                       ],
                       value: _kind,
                       onChanged: (kind) => setState(() {
@@ -543,8 +631,11 @@ class _StepFormState extends State<_StepForm> {
                     style: rmText(16, color: c.ink),
                     decoration: InputDecoration(
                       hintText: _kind == _CodeKind.totp
-                          ? '6-digit code'
-                          : 'A recovery code; it is used up',
+                          ? tr(context, 'signIn.codeHint')
+                          : tr(
+                              context,
+                              'mypermissions.aRecoveryCodeItIsUsedUp',
+                            ),
                     ),
                   ),
                   if (error != null) ...[
@@ -553,7 +644,9 @@ class _StepFormState extends State<_StepForm> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: eligible ? 'Make eligible' : 'Switch on',
+                    label: eligible
+                        ? tr(context, 'mypermissions.makeEligible2')
+                        : tr(context, 'mypermissions.switchOn2'),
                     busy: _busy,
                     onPressed: _busy ? null : () => unawaited(_send()),
                   ),

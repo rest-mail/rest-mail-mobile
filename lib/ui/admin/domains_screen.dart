@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -20,26 +22,32 @@ import 'suppressions_screen.dart';
 /// The `server_type` values a domain may have, with what they mean.
 const serverTypes = [
   ('restmail', 'REST Mail'),
-  ('traditional', 'Postfix and Dovecot'),
+  ('traditional', 'admin.domains.postfixAndDovecot'),
 ];
 
 /// The `sending_policy` values a domain may have; empty is no rule.
 const sendingPolicies = [
-  ('', 'None'),
-  ('transactional', 'Transactional'),
-  ('bulk', 'Bulk'),
+  ('', 'interface.none'),
+  ('transactional', 'admin.domains.transactional'),
+  ('bulk', 'admin.domains.bulk'),
 ];
 
 /// The `dmarc_policy` values a domain's DMARC record may ask for, mildest
 /// first.
 const dmarcPolicies = [
-  ('none', 'None: reports only'),
-  ('quarantine', 'Quarantine'),
-  ('reject', 'Reject'),
+  ('none', 'admin.domains.noneReportsOnly'),
+  ('quarantine', 'mailboxes.quarantine'),
+  ('reject', 'admin.domains.reject'),
 ];
 
-String _choiceLabel(List<(String, String)> choices, String value) =>
-    choices.firstWhere((c) => c.$1 == value, orElse: () => (value, value)).$2;
+String _choiceLabel(
+  BuildContext context,
+  List<(String, String)> choices,
+  String value,
+) {
+  final choice = choices.where((choice) => choice.$1 == value).firstOrNull;
+  return choice == null ? value : tr(context, choice.$2);
+}
 
 /// The domains the server holds mail for.
 class DomainsScreen extends StatefulWidget {
@@ -78,22 +86,38 @@ class _DomainsScreenState extends State<DomainsScreen> {
     final added = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Add a domain',
-        intro:
-            'Point its MX record at $_host for mail to arrive. A new domain '
-            'starts off; turn it on once it is ready.',
-        fields: const [
-          AdminField('Domain', hint: 'example.com', email: true),
-          AdminField('Mail kept by', initial: 'restmail', choices: serverTypes),
-          AdminField('Sending policy', choices: sendingPolicies),
+        title: tr(context, 'admin.domains.addADomain'),
+        intro: trArgs(context, 'admin.domains.pointItsMXRecordAtHostFor', {
+          'host': (_host).toString(),
+        }),
+        fields: [
           AdminField(
-            'Mailbox size in MB',
-            hint: 'The server default',
+            tr(context, 'admin.aliases.domain'),
+            hint: 'example.com',
+            email: true,
+          ),
+          AdminField(
+            tr(context, 'admin.domains.mailKeptBy'),
+            initial: 'restmail',
+            choices: [
+              for (final (value, key) in serverTypes) (value, tr(context, key)),
+            ],
+          ),
+          AdminField(
+            tr(context, 'admin.domains.sendingPolicy'),
+            choices: [
+              for (final (value, key) in sendingPolicies)
+                (value, tr(context, key)),
+            ],
+          ),
+          AdminField(
+            tr(context, 'admin.domains.mailboxSizeInMB'),
+            hint: tr(context, 'admin.domains.theServerDefault'),
             number: true,
             optional: true,
           ),
         ],
-        action: 'Add domain',
+        action: tr(context, 'admin.domains.addDomain'),
         host: _host,
         submit: (values) async =>
             created = await widget.account.client.createDomain(
@@ -128,18 +152,23 @@ class _DomainsScreenState extends State<DomainsScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.domains,
-    title: 'Domains',
+    title: tr(context, 'health.domains'),
     body: (access) => AdminListView(
       list: _list,
       host: _host,
-      empty: 'No domains yet.',
+      empty: tr(context, 'admin.domains.noDomainsYet'),
       header: [
         if (access.canWrite(AdminSection.domains))
-          AdminAddButton(label: 'Add a domain', onTap: () => unawaited(_add())),
+          AdminAddButton(
+            label: tr(context, 'admin.domains.addADomain'),
+            onTap: () => unawaited(_add()),
+          ),
       ],
       row: (domain) => RmRow(
         label: domain.name,
-        subtitle: domain.active ? 'Receiving mail' : 'Off',
+        subtitle: domain.active
+            ? tr(context, 'admin.domains.receivingMail')
+            : tr(context, 'twoFactor.off'),
         onTap: () => unawaited(_open(domain)),
       ),
     ),
@@ -241,16 +270,18 @@ class _DomainScreenState extends State<DomainScreen> {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Mailbox size',
-        intro: 'The storage each new mailbox on ${_domain.name} gets.',
+        title: tr(context, 'admin.domains.mailboxSize'),
+        intro: trArgs(context, 'admin.domains.theStorageEachNewMailboxOnName', {
+          'name': (_domain.name).toString(),
+        }),
         fields: [
           AdminField(
-            'Mailbox size in MB',
+            tr(context, 'admin.domains.mailboxSizeInMB'),
             initial: '${_domain.defaultQuotaBytes ~/ (1024 * 1024)}',
             number: true,
           ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => _domain = await widget.account.client
             .updateDomain(_domain.id, defaultQuotaBytes: megabytes(values[0])),
@@ -263,15 +294,18 @@ class _DomainScreenState extends State<DomainScreen> {
     await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'Sending policy',
+        title: tr(context, 'admin.domains.sendingPolicy'),
         fields: [
           AdminField(
-            'Sending policy',
+            tr(context, 'admin.domains.sendingPolicy'),
             initial: _domain.sendingPolicy,
-            choices: sendingPolicies,
+            choices: [
+              for (final (value, key) in sendingPolicies)
+                (value, tr(context, key)),
+            ],
           ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => _domain = await widget.account.client
             .updateDomain(_domain.id, sendingPolicy: values[0]),
@@ -287,20 +321,21 @@ class _DomainScreenState extends State<DomainScreen> {
     final picked = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: 'DMARC policy',
-        intro:
-            'What ${_domain.name}\'s DMARC record asks other servers to do with '
-            'mail that claims to be from it and fails the check. Start at None '
-            'and read a month of reports, then a month at Quarantine, before '
-            'Reject.',
+        title: tr(context, 'admin.domains.dmarcPolicy'),
+        intro: trArgs(context, 'admin.domains.whatNameSDMARCRecordAsksOther', {
+          'name': (_domain.name).toString(),
+        }),
         fields: [
           AdminField(
-            'DMARC policy',
+            tr(context, 'admin.domains.dmarcPolicy'),
             initial: _domain.dmarcPolicy,
-            choices: dmarcPolicies,
+            choices: [
+              for (final (value, key) in dmarcPolicies)
+                (value, tr(context, key)),
+            ],
           ),
         ],
-        action: 'Save',
+        action: tr(context, 'common.save'),
         host: _host,
         submit: (values) async => chosen = values[0],
       ),
@@ -314,14 +349,13 @@ class _DomainScreenState extends State<DomainScreen> {
       host: _host,
       confirm: policy == 'reject' && _domain.sendingPolicy != 'transactional'
           ? (
-              title: 'Reject failing mail?',
-              message:
-                  'People who write ordinary mail from ${_domain.name} may post '
-                  'to mailing lists. A list that adds a footer or tags the '
-                  'subject makes their message fail DMARC, and with Reject '
-                  'the subscribers\' servers refuse it. RFC 9989 asks such a '
-                  'domain not to choose Reject.',
-              action: 'Reject',
+              title: tr(context, 'admin.domains.rejectFailingMail'),
+              message: trArgs(
+                context,
+                'admin.domains.peopleWhoWriteOrdinaryMailFromName',
+                {'name': (_domain.name).toString()},
+              ),
+              action: tr(context, 'admin.domains.reject'),
             )
           : null,
       change: () async => _domain = await widget.account.client.updateDomain(
@@ -340,16 +374,21 @@ class _DomainScreenState extends State<DomainScreen> {
       host: _host,
       change: () => widget.account.client.deleteDomain(_domain.id),
       confirm: (
-        title: 'Delete $name?',
-        message:
-            'The server stops taking mail for it. Its mailboxes and aliases '
-            'have to go first.',
-        action: 'Delete',
+        title: trArgs(context, 'folders.deleteTitle', {
+          'name': (name).toString(),
+        }),
+        message: tr(context, 'admin.domains.theServerStopsTakingMailForIt'),
+        action: tr(context, 'message.delete'),
       ),
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pop(context, 'Deleted $name');
+      Navigator.pop(
+        context,
+        trArgs(context, 'admin.domains.deletedName', {
+          'name': (name).toString(),
+        }),
+      );
     } else {
       setState(() => _busy = false);
     }
@@ -375,14 +414,16 @@ class _DomainScreenState extends State<DomainScreen> {
             RmGroup(
               children: [
                 RmRow(
-                  label: 'Receiving mail',
+                  label: tr(context, 'admin.domains.receivingMail'),
                   value: access.canWrite(AdminSection.domains)
                       ? null
-                      : (domain.active ? 'On' : 'Off'),
+                      : (domain.active
+                            ? tr(context, 'twoFactor.on')
+                            : tr(context, 'twoFactor.off')),
                   trailing: access.canWrite(AdminSection.domains)
                       ? RmSwitch(
                           value: domain.active,
-                          label: 'Receiving mail',
+                          label: tr(context, 'admin.domains.receivingMail'),
                           onChanged: (value) {
                             if (!_busy) unawaited(_setActive(value));
                           },
@@ -390,36 +431,53 @@ class _DomainScreenState extends State<DomainScreen> {
                       : null,
                 ),
                 RmRow(
-                  label: 'Mail kept by',
-                  value: _choiceLabel(serverTypes, domain.serverType),
+                  label: tr(context, 'admin.domains.mailKeptBy'),
+                  value: _choiceLabel(context, serverTypes, domain.serverType),
                 ),
                 RmRow(
-                  label: 'Mailbox size',
+                  label: tr(context, 'admin.domains.mailboxSize'),
                   value: sizeLabel(domain.defaultQuotaBytes),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editQuota())
                       : null,
                 ),
                 RmRow(
-                  label: 'Sending policy',
-                  value: _choiceLabel(sendingPolicies, domain.sendingPolicy),
+                  label: tr(context, 'admin.domains.sendingPolicy'),
+                  value: _choiceLabel(
+                    context,
+                    sendingPolicies,
+                    domain.sendingPolicy,
+                  ),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editPolicy())
                       : null,
                 ),
                 RmRow(
-                  label: 'DMARC policy',
-                  value: _choiceLabel(dmarcPolicies, domain.dmarcPolicy),
+                  label: tr(context, 'admin.domains.dmarcPolicy'),
+                  value: _choiceLabel(
+                    context,
+                    dmarcPolicies,
+                    domain.dmarcPolicy,
+                  ),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editDMARC())
                       : null,
                 ),
                 if (domain.dkimSelector.isNotEmpty)
-                  RmRow(label: 'DKIM selector', value: domain.dkimSelector),
+                  RmRow(
+                    label: tr(context, 'admin.domains.dkimSelector'),
+                    value: domain.dkimSelector,
+                  ),
                 if (domain.createdAt case final at?)
-                  RmRow(label: 'Added', value: longDate(at)),
+                  RmRow(
+                    label: tr(context, 'admin.aliases.added'),
+                    value: longDate(at),
+                  ),
                 if (domain.updatedAt case final at?)
-                  RmRow(label: 'Changed', value: longDate(at)),
+                  RmRow(
+                    label: tr(context, 'admin.domains.changed'),
+                    value: longDate(at),
+                  ),
               ],
             ),
             if (access.canList(AdminSection.mailboxes) ||
@@ -429,7 +487,7 @@ class _DomainScreenState extends State<DomainScreen> {
                 children: [
                   if (access.canList(AdminSection.mailboxes))
                     RmRow(
-                      label: 'Mailboxes',
+                      label: tr(context, 'health.mailboxes'),
                       onTap: () => pushScreen(
                         context,
                         MailboxesScreen(
@@ -440,7 +498,7 @@ class _DomainScreenState extends State<DomainScreen> {
                     ),
                   if (access.canList(AdminSection.aliases))
                     RmRow(
-                      label: 'Aliases',
+                      label: tr(context, 'admin.section.aliases.title'),
                       onTap: () => pushScreen(
                         context,
                         AliasesScreen(account: widget.account, domain: domain),
@@ -456,8 +514,8 @@ class _DomainScreenState extends State<DomainScreen> {
                   for (final section in access.domainSections)
                     if (_screenFor(section) case final screen?)
                       RmRow(
-                        label: section.title,
-                        subtitle: section.subtitle,
+                        label: tr(context, section.titleKey),
+                        subtitle: tr(context, section.subtitleKey),
                         onTap: () => pushScreen(context, screen),
                       ),
                 ],
@@ -468,7 +526,7 @@ class _DomainScreenState extends State<DomainScreen> {
               RmGroup(
                 children: [
                   RmRow(
-                    label: 'Delete domain',
+                    label: tr(context, 'admin.domains.deleteDomain'),
                     danger: true,
                     onTap: _busy ? null : () => unawaited(_delete()),
                   ),

@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
-import 'package:restmail/ui/admin/admin_widgets.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -722,7 +721,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'refused');
       await tap(tester, 'Paste');
       await tap(tester, 'Set key');
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       expect(
         fake.domains
@@ -860,7 +859,7 @@ void main() {
       await tap(tester, 'Add a certificate');
       await fillCertificate(tester, domain: '${fake.domains.first.id}');
       await tap(tester, 'Add certificate');
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(find.text('Add a certificate'), findsOneWidget);
       expect(fake.certificates, hasLength(count));
       expect((state.current! as RestAccount).client.tokens, same(tokens));
@@ -931,7 +930,7 @@ void main() {
           .onRefresh();
       await tester.pumpAndSettle();
       expect(find.text('Fresh issuer'), findsNothing);
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       transport.failureStatus = null;
       await tap(tester, 'Try again');
@@ -953,7 +952,12 @@ void main() {
         await tap(tester, 'Certificates');
         await tap(tester, FakeAccounts.host);
         expect(find.text('Try again'), findsOneWidget);
-        if (status == 403) expect(find.text(noPermission), findsOneWidget);
+        if (status == 403) {
+          expect(
+            find.text("You don't have permission for this"),
+            findsOneWidget,
+          );
+        }
         expect((state.current! as RestAccount).client.tokens, isNotNull);
         transport.failureStatus = null;
         await tap(tester, 'Try again');
@@ -1112,10 +1116,10 @@ void main() {
     final recorded = fake.auditLog.length;
 
     await tap(tester, 'Audit log');
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(find.textContaining('auth.sign_in'), findsNothing);
     await tap(tester, 'Verify chain');
-    expect(find.text(noPermission), findsNWidgets(2));
+    expect(find.text("You don't have permission for this"), findsNWidgets(2));
     expect(find.textContaining('The chain holds'), findsNothing);
     // The server recorded both refusals.
     expect(fake.auditLog.skip(recorded).map((e) => (e.action, e.outcome)), [
@@ -1380,19 +1384,19 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), '@spam.test');
     await tester.pump();
     await tap(tester, 'Turn away');
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     await back(tester);
     await tester.tap(find.byTooltip('Remove @deals.test'));
     await tester.pumpAndSettle();
     await tap(tester, 'Remove');
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(fake.senderRules, hasLength(rules));
     await back(tester);
 
     await tap(tester, 'MTA-STS');
     await tester.tap(find.byType(RmSwitch));
     await tester.pumpAndSettle();
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect(
       fake.domains.firstWhere((d) => d.name == FakeAccounts.host).mtaSts,
       isNotNull,
@@ -1621,7 +1625,12 @@ void main() {
         expect(transport.detailRequests, 1);
         expect(find.text(delete), findsNothing);
         expect(find.text('Try again'), findsOneWidget);
-        if (status == 403) expect(find.text(noPermission), findsOneWidget);
+        if (status == 403) {
+          expect(
+            find.text("You don't have permission for this"),
+            findsOneWidget,
+          );
+        }
         expect((state.current! as RestAccount).client.tokens, isNotNull);
         transport.failureStatus = null;
         await tap(tester, 'Try again');
@@ -1652,7 +1661,7 @@ void main() {
     expect(find.text('Fresh detail name'), findsNothing);
     expect(find.text('End sessions'), findsNothing);
     expect(find.text('Delete mailbox'), findsNothing);
-    expect(find.text(noPermission), findsOneWidget);
+    expect(find.text("You don't have permission for this"), findsOneWidget);
     expect((state.current! as RestAccount).client.tokens, isNotNull);
     transport.failureStatus = null;
     await tap(tester, 'Try again');

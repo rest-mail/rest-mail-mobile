@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,17 +12,20 @@ import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String queueStatusLabel(QueueStatus status) => switch (status) {
-  QueueStatus.pending => 'Pending',
-  QueueStatus.delivering => 'Delivering',
-  QueueStatus.deferred => 'Deferred',
-  QueueStatus.delivered => 'Delivered',
-  QueueStatus.bounced => 'Bounced',
-  QueueStatus.expired => 'Expired',
-  QueueStatus.unknown => 'Unknown',
-};
+String queueStatusLabel(BuildContext context, QueueStatus status) =>
+    switch (status) {
+      QueueStatus.pending => tr(context, 'admin.logs.pending'),
+      QueueStatus.delivering => tr(context, 'admin.aliases.delivering'),
+      QueueStatus.deferred => tr(context, 'admin.logs.deferred'),
+      QueueStatus.delivered => tr(context, 'admin.logs.delivered'),
+      QueueStatus.bounced => tr(context, 'admin.logs.bounced'),
+      QueueStatus.expired => tr(context, 'admin.logs.expired'),
+      QueueStatus.unknown => tr(context, 'admin.queue.unknown'),
+    };
 
-String attemptsLabel(int n) => n == 1 ? '1 attempt' : '$n attempts';
+String attemptsLabel(BuildContext context, int n) => n == 1
+    ? tr(context, 'ui.1Attempt')
+    : trArgs(context, 'ui.nAttempts', {'n': (n).toString()});
 
 enum _BulkAction { retry, bounce, delete }
 
@@ -137,7 +142,10 @@ class _QueueScreenState extends State<QueueScreen> {
   void _select(int id) {
     if (_allMatching || _changing) return;
     if (!_selected.contains(id) && _selected.length == 1000) {
-      showToast(context, 'Select at most 1000 messages, or use all matches.');
+      showToast(
+        context,
+        tr(context, 'admin.queue.selectAtMost1000MessagesOrUse'),
+      );
       return;
     }
     setState(() {
@@ -152,23 +160,51 @@ class _QueueScreenState extends State<QueueScreen> {
         : QueueSelection.ids(_selected.toList());
     final target = _allMatching
         ? _filter.toJson().isEmpty
-              ? 'the entire queue'
-              : 'all entries matching ${_filter.toJson().entries.map((e) => '${e.key}: ${e.value}').join(', ')}'
-        : '${_selected.length} selected messages';
+              ? tr(context, 'admin.queue.theEntireQueue')
+              : trArgs(context, 'admin.queue.allEntriesMatchingValue', {
+                  'value':
+                      (_filter
+                              .toJson()
+                              .entries
+                              .map((e) => '${e.key}: ${e.value}')
+                              .join(', '))
+                          .toString(),
+                })
+        : trArgs(context, 'admin.queue.lengthSelectedMessages', {
+            'length': (_selected.length).toString(),
+          });
     final verb = switch (action) {
-      _BulkAction.retry => 'Retry',
-      _BulkAction.bounce => 'Bounce',
-      _BulkAction.delete => 'Delete',
+      _BulkAction.retry => tr(context, 'admin.queue.retry'),
+      _BulkAction.bounce => tr(context, 'admin.queue.bounce'),
+      _BulkAction.delete => tr(context, 'message.delete'),
     };
     final sure = await confirmAction(
       context,
-      title: '$verb these messages?',
-      message:
-          '$verb $target across all matching pages. ${switch (action) {
-            _BulkAction.retry => 'Only pending or deferred entries will be retried.',
-            _BulkAction.bounce => 'Only entries still in flight will be marked bounced.',
-            _BulkAction.delete => 'They leave the queue without delivery or notification.',
-          }}',
+      title: trArgs(context, 'admin.queue.verbTheseMessages', {
+        'verb': (verb).toString(),
+      }),
+      message: trArgs(
+        context,
+        'admin.queue.verbTargetAcrossAllMatchingPagesValue',
+        {
+          'verb': (verb).toString(),
+          'target': (target).toString(),
+          'value': (switch (action) {
+            _BulkAction.retry => tr(
+              context,
+              'ui.onlyPendingOrDeferredEntriesWillBe',
+            ),
+            _BulkAction.bounce => tr(
+              context,
+              'ui.onlyEntriesStillInFlightWillBe',
+            ),
+            _BulkAction.delete => tr(
+              context,
+              'ui.theyLeaveTheQueueWithoutDeliveryOr',
+            ),
+          }).toString(),
+        },
+      ),
       action: verb,
     );
     if (!sure || !mounted) return;
@@ -186,7 +222,12 @@ class _QueueScreenState extends State<QueueScreen> {
         _allMatching = false;
         _selecting = false;
       });
-      showToast(context, '${result.affected} queue entries changed');
+      showToast(
+        context,
+        trArgs(context, 'admin.queue.affectedQueueEntriesChanged', {
+          'affected': (result.affected).toString(),
+        }),
+      );
       await _reload();
     } on ApiException catch (error) {
       if (mounted) {
@@ -204,26 +245,37 @@ class _QueueScreenState extends State<QueueScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.queue,
-      title: 'Outbound queue',
+      title: tr(context, 'admin.section.queue.title'),
       body: (access) => AdminListView(
         list: _list,
         host: _host,
         empty: _filter.status == null
-            ? 'Nothing in the queue.'
-            : 'Nothing ${queueStatusLabel(_filter.status!).toLowerCase()}.',
+            ? tr(context, 'admin.queue.nothingInTheQueue')
+            : trArgs(context, 'admin.logs.nothingValue', {
+                'value': (queueStatusLabel(
+                  context,
+                  _filter.status!,
+                ).toLowerCase()).toString(),
+              }),
         onRefresh: _reload,
         header: [
           if (stats != null) ...[
             Text(
-              '${countLabel(stats.of(QueueStatus.pending))} pending · '
-              '${countLabel(stats.of(QueueStatus.deferred))} deferred · '
-              '${countLabel(stats.of(QueueStatus.bounced))} bounced',
+              trArgs(context, 'queue.waitingSummary', {
+                'pending': countLabel(stats.of(QueueStatus.pending)),
+                'deferred': countLabel(stats.of(QueueStatus.deferred)),
+                'bounced': countLabel(stats.of(QueueStatus.bounced)),
+              }),
               style: rmText(13, color: c.ink3),
             ),
             const SizedBox(height: 12),
             Text(
-              '${stats.total} total · ${stats.of(QueueStatus.delivering)} delivering · '
-              '${stats.of(QueueStatus.delivered)} delivered · ${stats.of(QueueStatus.expired)} expired',
+              trArgs(context, 'queue.deliverySummary', {
+                'total': '${stats.total}',
+                'delivering': '${stats.of(QueueStatus.delivering)}',
+                'delivered': '${stats.of(QueueStatus.delivered)}',
+                'expired': '${stats.of(QueueStatus.expired)}',
+              }),
               style: rmText(13, color: c.ink3),
             ),
           ],
@@ -233,10 +285,10 @@ class _QueueScreenState extends State<QueueScreen> {
               scrollDirection: Axis.horizontal,
               child: RmSegmented<QueueStatus?>(
                 options: [
-                  (null, 'All'),
+                  (null, tr(context, 'contacts.all')),
                   for (final status in QueueStatus.values)
                     if (status != QueueStatus.unknown)
-                      (status, queueStatusLabel(status)),
+                      (status, queueStatusLabel(context, status)),
                 ],
                 value: _filter.status,
                 onChanged: (status) {
@@ -247,12 +299,12 @@ class _QueueScreenState extends State<QueueScreen> {
           ),
           const SizedBox(height: 14),
           ExpansionTile(
-            title: const Text('Filter queue'),
+            title: Text(tr(context, 'admin.queue.filterQueue')),
             children: [
               for (final (label, controller) in [
-                ('Domain', _domain),
-                ('Sender', _sender),
-                ('Recipient', _recipient),
+                (tr(context, 'admin.aliases.domain'), _domain),
+                (tr(context, 'admin.queue.sender'), _sender),
+                (tr(context, 'compose.recipient'), _recipient),
               ])
                 TextField(
                   controller: controller,
@@ -267,7 +319,7 @@ class _QueueScreenState extends State<QueueScreen> {
                     onPressed: _changing
                         ? null
                         : () => _apply(status: _filter.status, useFields: true),
-                    child: const Text('Apply filters'),
+                    child: Text(tr(context, 'admin.bans.applyFilters')),
                   ),
                   TextButton(
                     onPressed: _changing
@@ -278,7 +330,7 @@ class _QueueScreenState extends State<QueueScreen> {
                             _recipient.clear();
                             _apply(useFields: true);
                           },
-                    child: const Text('Clear filters'),
+                    child: Text(tr(context, 'admin.bans.clearFilters')),
                   ),
                 ],
               ),
@@ -293,13 +345,19 @@ class _QueueScreenState extends State<QueueScreen> {
                       _selected.clear();
                       _allMatching = false;
                     }),
-              child: Text(_selecting ? 'Cancel selection' : 'Select messages'),
+              child: Text(
+                _selecting
+                    ? tr(context, 'admin.queue.cancelSelection')
+                    : tr(context, 'admin.queue.selectMessages'),
+              ),
             ),
             if (_selecting) ...[
               CheckboxListTile(
                 value: _allMatching,
-                title: const Text('All matching entries'),
-                subtitle: const Text('Includes every matching page'),
+                title: Text(tr(context, 'admin.queue.allMatchingEntries')),
+                subtitle: Text(
+                  tr(context, 'admin.queue.includesEveryMatchingPage'),
+                ),
                 onChanged: _changing
                     ? null
                     : (value) => setState(() {
@@ -318,12 +376,14 @@ class _QueueScreenState extends State<QueueScreen> {
                               .take(1000 - _selected.length),
                         );
                       }),
-                child: const Text('Select loaded messages'),
+                child: Text(tr(context, 'admin.queue.selectLoadedMessages')),
               ),
               Text(
                 _allMatching
-                    ? 'All matching entries selected'
-                    : '${_selected.length} selected',
+                    ? tr(context, 'admin.queue.allMatchingEntriesSelected')
+                    : trArgs(context, 'ui.lengthSelected', {
+                        'length': (_selected.length).toString(),
+                      }),
               ),
               Wrap(
                 children: [
@@ -334,11 +394,11 @@ class _QueueScreenState extends State<QueueScreen> {
                           ? null
                           : () => unawaited(_bulk(action)),
                       child: Text(
-                        '${switch (action) {
-                          _BulkAction.retry => 'Retry',
-                          _BulkAction.bounce => 'Bounce',
-                          _BulkAction.delete => 'Delete',
-                        }} messages',
+                        tr(context, switch (action) {
+                          _BulkAction.retry => 'queue.retryMessages',
+                          _BulkAction.bounce => 'queue.bounceMessages',
+                          _BulkAction.delete => 'queue.deleteMessages',
+                        }),
                       ),
                     ),
                 ],
@@ -359,7 +419,7 @@ class _QueueScreenState extends State<QueueScreen> {
               child: RmRow(
                 label: entry.recipient,
                 subtitle: [
-                  '${queueStatusLabel(entry.status)} · ${attemptsLabel(entry.attempts)} · '
+                  '${queueStatusLabel(context, entry.status)} · ${attemptsLabel(context, entry.attempts)} · '
                       '${timeLabel(entry.createdAt)}',
                   if (entry.lastError.isNotEmpty) entry.lastError,
                 ].join('\n'),
@@ -421,46 +481,79 @@ class _QueueEntryScreenState extends State<QueueEntryScreen> {
     return AdminPage(
       account: widget.account,
       section: AdminSection.queue,
-      title: 'Queued message',
+      title: tr(context, 'admin.queue.queuedMessage'),
       body: (access) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
         children: [
           RmGroup(
             children: [
-              RmRow(label: 'To', value: entry.recipient),
-              RmRow(label: 'From', value: entry.sender),
-              RmRow(label: 'Queue ID', value: '${entry.id}'),
-              if (entry.messageId case final id?)
-                RmRow(label: 'Message ID', value: '$id'),
-              RmRow(label: 'Destination domain', value: entry.domain),
-              if (entry.bodyType.isNotEmpty)
-                RmRow(label: 'Body type', value: entry.bodyType),
-              RmRow(label: 'Status', value: queueStatusLabel(entry.status)),
+              RmRow(label: tr(context, 'compose.to'), value: entry.recipient),
+              RmRow(label: tr(context, 'compose.from'), value: entry.sender),
               RmRow(
-                label: 'Attempts',
+                label: tr(context, 'admin.queue.queueID'),
+                value: '${entry.id}',
+              ),
+              if (entry.messageId case final id?)
+                RmRow(
+                  label: tr(context, 'admin.queue.messageID'),
+                  value: '$id',
+                ),
+              RmRow(
+                label: tr(context, 'admin.logs.destinationDomain'),
+                value: entry.domain,
+              ),
+              if (entry.bodyType.isNotEmpty)
+                RmRow(
+                  label: tr(context, 'admin.logs.bodyType'),
+                  value: entry.bodyType,
+                ),
+              RmRow(
+                label: tr(context, 'admin.logs.status'),
+                value: queueStatusLabel(context, entry.status),
+              ),
+              RmRow(
+                label: tr(context, 'admin.logs.attempts'),
                 value: entry.maxRetries > 0
-                    ? '${entry.attempts} of ${entry.maxRetries}'
+                    ? trArgs(context, 'ui.attemptsOfMaxRetries', {
+                        'attempts': (entry.attempts).toString(),
+                        'maxRetries': (entry.maxRetries).toString(),
+                      })
                     : '${entry.attempts}',
               ),
-              RmRow(label: 'Queued', value: longDate(entry.createdAt)),
+              RmRow(
+                label: tr(context, 'admin.pipelinelog.queued'),
+                value: longDate(entry.createdAt),
+              ),
               if (entry.lastAttempt case final at?)
-                RmRow(label: 'Last try', value: longDate(at)),
+                RmRow(
+                  label: tr(context, 'admin.logs.lastTry'),
+                  value: longDate(at),
+                ),
               if (entry.expiresAt case final at?)
-                RmRow(label: 'Expires', value: longDate(at)),
+                RmRow(
+                  label: tr(context, 'admin.logs.expires'),
+                  value: longDate(at),
+                ),
               if (entry.failureCategory.isNotEmpty)
                 RmRow(
-                  label: 'Failure type',
+                  label: tr(context, 'admin.queue.failureType'),
                   value: entry.failureCategory.replaceAll('_', ' '),
                 ),
               if (entry.lastErrorCode != 0)
-                RmRow(label: 'SMTP response', value: '${entry.lastErrorCode}'),
+                RmRow(
+                  label: tr(context, 'admin.queue.smtpResponse'),
+                  value: '${entry.lastErrorCode}',
+                ),
               if (next != null && entry.status.canRetry)
-                RmRow(label: 'Next try', value: longDate(next)),
+                RmRow(
+                  label: tr(context, 'admin.logs.nextTry'),
+                  value: longDate(next),
+                ),
             ],
           ),
           if (entry.lastError.isNotEmpty) ...[
             const SizedBox(height: 22),
-            const SectionLabel('Last answer'),
+            SectionLabel(tr(context, 'admin.logs.lastAnswer')),
             const SizedBox(height: 9),
             SelectableText(
               entry.lastError,
@@ -475,53 +568,63 @@ class _QueueEntryScreenState extends State<QueueEntryScreen> {
                 if (access.canWrite(AdminSection.queue) &&
                     entry.status.canRetry)
                   RmRow(
-                    label: 'Retry now',
+                    label: tr(context, 'admin.queue.retryNow'),
                     onTap: _busy
                         ? null
                         : () => unawaited(
                             _act(
                               () => client.retryQueueEntry(entry.id),
-                              'Retrying ${entry.recipient}',
+                              trArgs(context, 'admin.queue.retryingRecipient', {
+                                'recipient': (entry.recipient).toString(),
+                              }),
                             ),
                           ),
                   ),
                 if (access.canWrite(AdminSection.queue) &&
                     entry.status.canRetry)
                   RmRow(
-                    label: 'Bounce to sender',
+                    label: tr(context, 'admin.queue.bounceToSender'),
                     onTap: _busy
                         ? null
                         : () => unawaited(
                             _act(
                               () => client.bounceQueueEntry(entry.id),
-                              'Bounced',
+                              tr(context, 'admin.logs.bounced'),
                               confirm: (
-                                title: 'Bounce this message?',
-                                message:
-                                    'It is not tried again, and '
-                                    '${entry.sender} is told it was not '
-                                    'delivered to ${entry.recipient}.',
-                                action: 'Bounce',
+                                title: tr(
+                                  context,
+                                  'admin.queue.bounceThisMessage',
+                                ),
+                                message: trArgs(
+                                  context,
+                                  'admin.queue.itIsNotTriedAgainAndSender',
+                                  {
+                                    'sender': (entry.sender).toString(),
+                                    'recipient': (entry.recipient).toString(),
+                                  },
+                                ),
+                                action: tr(context, 'admin.queue.bounce'),
                               ),
                             ),
                           ),
                   ),
                 if (access.canDelete(AdminSection.queue))
                   RmRow(
-                    label: 'Delete',
+                    label: tr(context, 'message.delete'),
                     danger: true,
                     onTap: _busy
                         ? null
                         : () => unawaited(
                             _act(
                               () => client.deleteQueueEntry(entry.id),
-                              'Deleted',
+                              tr(context, 'message.deleted'),
                               confirm: (
-                                title: 'Delete this message?',
-                                message:
-                                    'It leaves the queue without being '
-                                    'delivered, and no one is told.',
-                                action: 'Delete',
+                                title: tr(context, 'quarantine.deleteOne'),
+                                message: tr(
+                                  context,
+                                  'admin.queue.itLeavesTheQueueWithoutBeingDelivered',
+                                ),
+                                action: tr(context, 'message.delete'),
                               ),
                             ),
                           ),

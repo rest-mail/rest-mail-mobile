@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -116,7 +118,9 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
       if (!mounted) return;
       showToast(
         context,
-        _enabled ? 'Vacation reply is on' : 'Vacation reply is off',
+        _enabled
+            ? tr(context, 'mailrules.vacationReplyIsOn')
+            : tr(context, 'mailrules.vacationReplyIsOff'),
       );
       Navigator.pop(context);
     } on ApiException catch (e) {
@@ -124,10 +128,14 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
       setState(() {
         _busy = false;
         _error = switch (e.fields) {
-          final f when f.containsKey('subject') || f.containsKey('body') =>
-            'Add a subject and a message to turn the reply on.',
-          final f when f.containsKey('end_date') =>
-            "The last day can't be before the first.",
+          final f when f.containsKey('subject') || f.containsKey('body') => tr(
+            context,
+            'mailrules.addASubjectAndAMessageTo',
+          ),
+          final f when f.containsKey('end_date') => tr(
+            context,
+            'mailrules.theLastDayCanTBeBefore',
+          ),
           _ => describeError(context, e, host: _host),
         };
       });
@@ -142,7 +150,7 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Vacation reply',
+              title: tr(context, 'mailrules.vacationReply'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(child: _content(context, c)),
@@ -180,7 +188,7 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Send a vacation reply',
+                      tr(context, 'mailrules.sendAVacationReply'),
                       style: rmText(
                         14.5,
                         color: c.ink,
@@ -190,7 +198,7 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
                   ),
                   RmSwitch(
                     value: _enabled,
-                    label: 'Send a vacation reply',
+                    label: tr(context, 'mailrules.sendAVacationReply'),
                     onChanged: (on) => setState(() {
                       _enabled = on;
                       _error = null;
@@ -203,11 +211,11 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Each sender gets it once while it is on, not for every message.',
+          tr(context, 'mailrules.eachSenderGetsItOnceWhileIt'),
           style: rmText(13, color: c.ink3, height: 1.4),
         ),
         const SizedBox(height: 22),
-        const SectionLabel('Subject'),
+        SectionLabel(tr(context, 'compose.subject')),
         const SizedBox(height: 8),
         TextField(
           controller: _subject,
@@ -215,10 +223,12 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
           textInputAction: TextInputAction.next,
           onChanged: (_) => setState(() => _error = null),
           style: rmText(16, color: c.ink),
-          decoration: const InputDecoration(hintText: 'Out of office'),
+          decoration: InputDecoration(
+            hintText: tr(context, 'mailrules.outOfOffice'),
+          ),
         ),
         const SizedBox(height: 22),
-        const SectionLabel('Message'),
+        SectionLabel(tr(context, 'admin.logs.message')),
         const SizedBox(height: 8),
         TextField(
           controller: _body,
@@ -227,20 +237,20 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
           textCapitalization: TextCapitalization.sentences,
           onChanged: (_) => setState(() => _error = null),
           style: rmText(16, color: c.ink, height: 1.4),
-          decoration: const InputDecoration(
-            hintText: "I'm away until Monday and will reply then.",
+          decoration: InputDecoration(
+            hintText: tr(context, 'mailrules.iMAwayUntilMondayAndWill'),
           ),
         ),
         const SizedBox(height: 22),
-        const SectionLabel('When'),
+        SectionLabel(tr(context, 'admin.audit.when')),
         const SizedBox(height: 8),
         RmGroup(
           children: [
             RmRow(
-              label: 'First day',
+              label: tr(context, 'mailrules.firstDay'),
               value: switch (_start) {
                 final at? => days.format(at),
-                null => 'Now',
+                null => tr(context, 'mailrules.now'),
               },
               trailing: _start == null
                   ? null
@@ -248,10 +258,10 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
               onTap: _busy ? null : () => unawaited(_pick(start: true)),
             ),
             RmRow(
-              label: 'Last day',
+              label: tr(context, 'mailrules.lastDay'),
               value: switch (_end) {
                 final at? => days.format(at),
-                null => 'Until turned off',
+                null => tr(context, 'mailrules.untilTurnedOff'),
               },
               trailing: _end == null
                   ? null
@@ -263,7 +273,7 @@ class _VacationReplyScreenState extends State<VacationReplyScreen> {
         if (error != null) ...[const SizedBox(height: 16), ErrorText(error)],
         const SizedBox(height: 26),
         RmPrimaryButton(
-          label: 'Save',
+          label: tr(context, 'common.save'),
           busy: _busy,
           onPressed: _busy ? null : () => unawaited(_save()),
         ),
@@ -279,7 +289,7 @@ class _ClearDate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-    tooltip: 'Clear',
+    tooltip: tr(context, 'admin.suppressions.clear'),
     icon: Icon(Icons.close_rounded, size: 18, color: context.rm.ink3),
     onPressed: onClear,
   );
@@ -306,7 +316,11 @@ class _LoadFailed extends StatelessWidget {
               style: rmText(14, color: c.ink2, height: 1.4),
             ),
             const SizedBox(height: 14),
-            RmOutlineButton(label: 'Try again', height: 44, onPressed: onRetry),
+            RmOutlineButton(
+              label: tr(context, 'health.retry'),
+              height: 44,
+              onPressed: onRetry,
+            ),
           ],
         ),
       ),
@@ -410,7 +424,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
         active: _active,
       );
       if (!mounted) return;
-      showToast(context, 'Filters saved');
+      showToast(context, tr(context, 'mailrules.filtersSaved'));
       Navigator.pop(context);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -430,18 +444,16 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
     if (_busy) return;
     final sure = await confirmAction(
       context,
-      title: 'Delete the filters?',
-      message:
-          "This mailbox's mail is delivered to the inbox again, with no "
-          'script to file, forward or refuse it.',
-      action: 'Delete',
+      title: tr(context, 'mailrules.deleteTheFilters'),
+      message: tr(context, 'mailrules.thisMailboxSMailIsDeliveredTo'),
+      action: tr(context, 'message.delete'),
     );
     if (!sure || !mounted) return;
     setState(() => _busy = true);
     try {
       await _client.deleteSieveScript(widget.mailbox.id);
       if (!mounted) return;
-      showToast(context, 'Filters deleted');
+      showToast(context, tr(context, 'mailrules.filtersDeleted'));
       Navigator.pop(context);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -458,7 +470,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Mail filters',
+              title: tr(context, 'mailrules.mailFilters'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(child: _content(context, c)),
@@ -488,13 +500,11 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
       children: [
         Text(
-          'A Sieve script (RFC 5228) files, forwards or refuses this '
-          "mailbox's mail as it arrives. REST Mail checks it before saving "
-          'it, so a mistake is caught here, not when mail comes in.',
+          tr(context, 'mailrules.aSieveScriptRFC5228FilesForwards'),
           style: rmText(13, color: c.ink3, height: 1.4),
         ),
         const SizedBox(height: 18),
-        const SectionLabel('Script'),
+        SectionLabel(tr(context, 'mailrules.script')),
         const SizedBox(height: 8),
         TextField(
           controller: _script,
@@ -517,7 +527,9 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
           const SizedBox(height: 12),
           if (check.valid)
             Text(
-              check.message.isEmpty ? 'The script is valid.' : check.message,
+              check.message.isEmpty
+                  ? tr(context, 'mailrules.theScriptIsValid')
+                  : check.message,
               style: rmText(13.5, color: c.accent, weight: FontWeight.w600),
             )
           else
@@ -532,7 +544,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Run on new mail',
+                      tr(context, 'mailrules.runOnNewMail'),
                       style: rmText(
                         14.5,
                         color: c.ink,
@@ -542,7 +554,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
                   ),
                   RmSwitch(
                     value: _active,
-                    label: 'Run on new mail',
+                    label: tr(context, 'mailrules.runOnNewMail'),
                     onChanged: (on) => setState(() => _active = on),
                   ),
                 ],
@@ -555,7 +567,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
           children: [
             Expanded(
               child: RmOutlineButton(
-                label: 'Check',
+                label: tr(context, 'mailrules.check'),
                 height: 48,
                 onPressed: _busy ? null : () => unawaited(_validate()),
               ),
@@ -563,7 +575,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: RmPrimaryButton(
-                label: 'Save',
+                label: tr(context, 'common.save'),
                 busy: _busy,
                 onPressed: _busy ? null : () => unawaited(_save()),
               ),
@@ -573,7 +585,7 @@ class _MailFiltersScreenState extends State<MailFiltersScreen> {
         if (_stored) ...[
           const SizedBox(height: 12),
           RmOutlineButton(
-            label: 'Delete filters',
+            label: tr(context, 'mailrules.deleteFilters'),
             color: c.danger,
             onPressed: _busy ? null : () => unawaited(_delete()),
           ),

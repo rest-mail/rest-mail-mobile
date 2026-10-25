@@ -250,9 +250,22 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     if (sampleMode) ...[
                       const SizedBox(height: 14),
                       Text(
-                        'Sample mail: ${FakeAccounts.email}, password '
-                        '${FakeAccounts.password}'
-                        '${sampleScenario == 'twoFactor' ? ', code ${FakeAccounts.totpCode}' : ''}.',
+                        trArgs(
+                          context,
+                          'addaccount.sampleMailEmailPasswordPasswordValue',
+                          {
+                            'email': (FakeAccounts.email).toString(),
+                            'password': (FakeAccounts.password).toString(),
+                            'value':
+                                (sampleScenario == 'twoFactor'
+                                        ? trArgs(context, 'ui.codeTotpCode', {
+                                            'totpCode': (FakeAccounts.totpCode)
+                                                .toString(),
+                                          })
+                                        : '')
+                                    .toString(),
+                          },
+                        ),
                         style: rmText(
                           13,
                           color: c.accent,

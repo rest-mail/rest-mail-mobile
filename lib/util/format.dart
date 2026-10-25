@@ -1,22 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
-/// The relative day words, keyed by language. DateFormat handles every
-/// other date; these two are words, not a date pattern.
-const _relativeDayWords = <String, Map<String, String>>{
-  'en': {'today': 'Today', 'yesterday': 'Yesterday'},
-  'de': {'today': 'Heute', 'yesterday': 'Gestern'},
-  'es': {'today': 'Hoy', 'yesterday': 'Ayer'},
-  'hi': {'today': 'आज', 'yesterday': 'कल'},
-  'ne': {'today': 'आज', 'yesterday': 'हिजो'},
-  'ar': {'today': 'اليوم', 'yesterday': 'أمس'},
-  'fa': {'today': 'امروز', 'yesterday': 'دیروز'},
-};
+import '../l10n/catalog.dart';
 
-String relativeDayLabel(String key) {
-  final language = (Intl.defaultLocale ?? 'en').split(RegExp(r'[-_]')).first;
-  return _relativeDayWords[language]?[key] ?? _relativeDayWords['en']![key]!;
-}
+String relativeDayLabel(String key) =>
+    languageLine(Intl.defaultLocale ?? 'en', 'date.$key');
 
 /// A list row's time: the clock today, then "Yesterday", the weekday within
 /// a week, and a date after that.

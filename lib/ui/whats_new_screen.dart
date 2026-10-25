@@ -159,7 +159,11 @@ class _ReleaseNotes extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          notes.title,
+          notes.title.isEmpty
+              ? trArgs(context, 'whatsNew.releaseTitle', {
+                  'version': notes.version,
+                })
+              : notes.title,
           style: rmText(
             latest ? 25 : 20,
             color: c.ink,
@@ -169,7 +173,12 @@ class _ReleaseNotes extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(notes.summary, style: rmText(14.5, color: c.ink2, height: 1.5)),
+        Text(
+          notes.summary.isEmpty
+              ? tr(context, 'whatsNew.latestReleaseSummary')
+              : notes.summary,
+          style: rmText(14.5, color: c.ink2, height: 1.5),
+        ),
         if (notes.items.isNotEmpty) ...[
           const SizedBox(height: 20),
           SectionLabel(tr(context, 'whatsNew.fixed')),

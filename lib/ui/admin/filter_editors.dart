@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -10,18 +12,28 @@ import '../../theme/tokens.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-Map<String, dynamic> _object(String source, String label) {
+Map<String, dynamic> _object(
+  BuildContext context,
+  String source,
+  String label,
+) {
   final value = jsonDecode(source);
   if (value is! Map<String, dynamic>) {
-    throw FormatException('$label must be a JSON object.');
+    throw FormatException(
+      trArgs(context, 'admin.filtereditors.labelMustBeAJSONObject', {
+        'label': (label).toString(),
+      }),
+    );
   }
   return value;
 }
 
-int _domainId(String source) {
+int _domainId(BuildContext context, String source) {
   final value = int.tryParse(source.trim());
   if (value == null || value <= 0) {
-    throw const FormatException('Enter a positive domain ID.');
+    throw FormatException(
+      tr(context, 'admin.filtereditors.enterAPositiveDomainID'),
+    );
   }
   return value;
 }
@@ -35,7 +47,7 @@ class _EditorFrame extends StatelessWidget {
     required this.busy,
     required this.save,
     this.error,
-    this.action = 'Save',
+    this.action = 'common.save',
   });
   final String title;
   final List<Widget> children;
@@ -66,7 +78,11 @@ class _EditorFrame extends StatelessWidget {
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: busy ? null : save,
-                  child: Text(busy ? 'Working…' : action),
+                  child: Text(
+                    busy
+                        ? tr(context, 'admin.filtereditors.working')
+                        : tr(context, action),
+                  ),
                 ),
               ],
             ),
@@ -160,11 +176,19 @@ class _DomainFieldState extends State<_DomainField> {
           child: ListView(
             children: [
               if (domains.isEmpty)
-                const ListTile(title: Text('No domains available')),
+                ListTile(
+                  title: Text(
+                    tr(context, 'admin.filtereditors.noDomainsAvailable'),
+                  ),
+                ),
               for (final domain in domains)
                 ListTile(
                   title: Text(domain.name),
-                  subtitle: Text('Domain ${domain.id}'),
+                  subtitle: Text(
+                    trArgs(context, 'admin.filtereditors.domainId', {
+                      'id': (domain.id).toString(),
+                    }),
+                  ),
                   onTap: () => Navigator.pop(context, domain.id),
                 ),
             ],
@@ -190,12 +214,20 @@ class _DomainFieldState extends State<_DomainField> {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      _field(widget.controller, 'Domain ID', number: true),
+      _field(
+        widget.controller,
+        tr(context, 'admin.filtereditors.domainID'),
+        number: true,
+      ),
       if (AdminAccess(widget.account.capabilities)
           .canRead(AdminSection.domains))
         TextButton(
           onPressed: _busy ? null : () => unawaited(_pick()),
-          child: Text(_busy ? 'Loading domains…' : 'Choose a domain'),
+          child: Text(
+            _busy
+                ? tr(context, 'admin.filtereditors.loadingDomains')
+                : tr(context, 'admin.filtereditors.chooseADomain'),
+          ),
         ),
       if (_error case final error?) Text(error),
     ],
@@ -254,7 +286,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
       final existing = widget.pipeline;
       final saved = existing == null
           ? await widget.account.client.createPipeline(
-              domainId: _domainId(_domain.text),
+              domainId: _domainId(context, _domain.text),
               direction: _direction,
               filters: _filters,
               active: _active,
@@ -279,27 +311,34 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
 
   @override
   Widget build(BuildContext context) => _EditorFrame(
-    title: widget.pipeline == null ? 'Add a pipeline' : 'Edit pipeline',
+    title: widget.pipeline == null
+        ? tr(context, 'admin.filtereditors.addAPipeline')
+        : tr(context, 'admin.filtereditors.editPipeline'),
     busy: _busy,
     error: _error,
     save: () => unawaited(_save()),
     children: [
       if (widget.pipeline == null) ...[
         _DomainField(widget.account, _domain),
-        _choice('Direction', _direction, const [
-          'inbound',
-          'outbound',
-        ], (value) => setState(() => _direction = value)),
+        _choice(
+          tr(context, 'admin.filtereditors.direction'),
+          _direction,
+          const ['inbound', 'outbound'],
+          (value) => setState(() => _direction = value),
+        ),
       ] else
-        Text('Domain ${widget.pipeline!.domainId} · $_direction'),
+        Text(
+          trArgs(context, 'admin.filtereditors.domainValueDirection', {
+            'value': (widget.pipeline!.domainId).toString(),
+            'direction': (_direction).toString(),
+          }),
+        ),
       SwitchListTile(
-        title: const Text('Pipeline on'),
+        title: Text(tr(context, 'admin.filtereditors.pipelineOn')),
         value: _active,
         onChanged: _busy ? null : (value) => setState(() => _active = value),
       ),
-      const Text(
-        'Filters run in the order shown. Tap a step to edit its configuration.',
-      ),
+      Text(tr(context, 'admin.filtereditors.filtersRunInTheOrderShownTap')),
       for (var i = 0; i < _filters.length; i++)
         Card(
           child: Column(
@@ -307,7 +346,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
               ListTile(
                 title: Text(_filters[i].name),
                 subtitle: Text(
-                  '${_filters[i].type} · ${_filters[i].enabled ? 'On' : 'Off'}',
+                  '${_filters[i].type} · ${_filters[i].enabled ? tr(context, 'ui.on') : tr(context, 'ui.off')}',
                 ),
                 onTap: _busy ? null : () => unawaited(_edit(i)),
               ),
@@ -315,7 +354,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    tooltip: 'Move step up',
+                    tooltip: tr(context, 'admin.filtereditors.moveStepUp'),
                     icon: const Icon(Icons.arrow_upward),
                     onPressed: _busy || i == 0
                         ? null
@@ -325,7 +364,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
                           }),
                   ),
                   IconButton(
-                    tooltip: 'Move step down',
+                    tooltip: tr(context, 'admin.filtereditors.moveStepDown'),
                     icon: const Icon(Icons.arrow_downward),
                     onPressed: _busy || i == _filters.length - 1
                         ? null
@@ -335,7 +374,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
                           }),
                   ),
                   IconButton(
-                    tooltip: 'Remove step',
+                    tooltip: tr(context, 'admin.filtereditors.removeStep'),
                     icon: const Icon(Icons.remove_circle_outline),
                     onPressed: _busy
                         ? null
@@ -348,7 +387,7 @@ class _PipelineEditorScreenState extends State<PipelineEditorScreen> {
         ),
       TextButton(
         onPressed: _busy ? null : () => unawaited(_edit()),
-        child: const Text('Add a filter step'),
+        child: Text(tr(context, 'admin.filtereditors.addAFilterStep')),
       ),
     ],
   );
@@ -380,9 +419,15 @@ class _StepEditorScreenState extends State<_StepEditorScreen> {
   void _save() {
     try {
       if (_name.text.trim().isEmpty) {
-        throw const FormatException('Enter a filter name.');
+        throw FormatException(
+          tr(context, 'admin.filtereditors.enterAFilterName'),
+        );
       }
-      final config = _object(_config.text, 'Configuration');
+      final config = _object(
+        context,
+        _config.text,
+        tr(context, 'admin.filtereditors.configuration'),
+      );
       Navigator.pop(
         context,
         PipelineFilter(
@@ -400,31 +445,38 @@ class _StepEditorScreenState extends State<_StepEditorScreen> {
 
   @override
   Widget build(BuildContext context) => _EditorFrame(
-    title: 'Filter step',
+    title: tr(context, 'admin.filtereditors.filterStep'),
     busy: false,
     error: _error,
     save: _save,
-    action: 'Use step',
+    action: tr(context, 'admin.filtereditors.useStep'),
     children: [
-      _field(_name, 'Filter name'),
-      _choice('Kind', _type, const [
+      _field(_name, tr(context, 'admin.filtereditors.filterName')),
+      _choice(tr(context, 'admin.filtereditors.kind'), _type, const [
         'action',
         'transform',
       ], (value) => setState(() => _type = value)),
       SwitchListTile(
-        title: const Text('Enabled'),
+        title: Text(tr(context, 'admin.filtereditors.enabled')),
         value: _enabled,
         onChanged: (value) => setState(() => _enabled = value),
       ),
       SwitchListTile(
-        title: const Text('Always run'),
-        subtitle: const Text(
-          'Ignore requests from earlier filters to skip this step',
+        title: Text(tr(context, 'admin.filtereditors.alwaysRun')),
+        subtitle: Text(
+          tr(
+            context,
+            'admin.filtereditors.ignoreRequestsFromEarlierFiltersToSkip',
+          ),
         ),
         value: _unskippable,
         onChanged: (value) => setState(() => _unskippable = value),
       ),
-      _field(_config, 'Configuration (JSON object)', multiline: true),
+      _field(
+        _config,
+        tr(context, 'admin.filtereditors.configurationJSONObject'),
+        multiline: true,
+      ),
     ],
   );
 }
@@ -479,13 +531,19 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
     });
     try {
       if (_name.text.trim().isEmpty) {
-        throw const FormatException('Enter a filter name.');
+        throw FormatException(
+          tr(context, 'admin.filtereditors.enterAFilterName'),
+        );
       }
-      final config = _object(_config.text, 'Configuration');
+      final config = _object(
+        context,
+        _config.text,
+        tr(context, 'admin.filtereditors.configuration'),
+      );
       final existing = widget.filter;
       final saved = existing == null
           ? await widget.account.client.createCustomFilter(
-              domainId: _domainId(_domain.text),
+              domainId: _domainId(context, _domain.text),
               name: _name.text.trim(),
               description: _description.text,
               filterType: _type,
@@ -517,11 +575,18 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
 
   Future<void> _validate() async {
     try {
-      final config = _object(_config.text, 'Configuration');
+      final config = _object(
+        context,
+        _config.text,
+        tr(context, 'admin.filtereditors.configuration'),
+      );
       final script = config['script'];
       if (script is! String || script.isEmpty) {
-        throw const FormatException(
-          'Configuration needs a nonempty script to validate JavaScript.',
+        throw FormatException(
+          tr(
+            context,
+            'admin.filtereditors.configurationNeedsANonemptyScriptToValidate',
+          ),
         );
       }
       await Navigator.push<void>(
@@ -538,38 +603,44 @@ class _CustomFilterEditorScreenState extends State<CustomFilterEditorScreen> {
 
   @override
   Widget build(BuildContext context) => _EditorFrame(
-    title: widget.filter == null ? 'Add a custom filter' : 'Edit custom filter',
+    title: widget.filter == null
+        ? tr(context, 'admin.filtereditors.addACustomFilter')
+        : tr(context, 'admin.filtereditors.editCustomFilter'),
     busy: _busy,
     error: _error,
     save: () => unawaited(_save()),
     children: [
       if (widget.filter == null) _DomainField(widget.account, _domain),
-      _field(_name, 'Name'),
-      _field(_description, 'Description'),
-      _choice('Kind', _type, const [
+      _field(_name, tr(context, 'folders.name')),
+      _field(_description, tr(context, 'admin.filtereditors.description')),
+      _choice(tr(context, 'admin.filtereditors.kind'), _type, const [
         'action',
         'transform',
       ], (value) => setState(() => _type = value)),
-      _choice('Direction', _direction, const [
+      _choice(tr(context, 'admin.filtereditors.direction'), _direction, const [
         'inbound',
         'outbound',
         'both',
       ], (value) => setState(() => _direction = value)),
       SwitchListTile(
-        title: const Text('Running'),
+        title: Text(tr(context, 'admin.filtereditors.running')),
         value: _enabled,
         onChanged: _busy ? null : (value) => setState(() => _enabled = value),
       ),
-      _field(_config, 'Configuration (JSON object)', multiline: true),
+      _field(
+        _config,
+        tr(context, 'admin.filtereditors.configurationJSONObject'),
+        multiline: true,
+      ),
       TextButton(
         onPressed: _busy ? null : () => unawaited(_validate()),
-        child: const Text('Validate JavaScript'),
+        child: Text(tr(context, 'admin.filtereditors.validateJavaScript')),
       ),
     ],
   );
 }
 
-const _sampleEmail = <String, dynamic>{
+Map<String, dynamic> _sampleEmail(BuildContext context) => {
   'envelope': {
     'mail_from': 'sender@example.com',
     'rcpt_to': ['recipient@example.com'],
@@ -583,11 +654,14 @@ const _sampleEmail = <String, dynamic>{
     'to': [
       {'address': 'recipient@example.com'},
     ],
-    'subject': 'Preview',
+    'subject': tr(context, 'ui.preview'),
     'date': '',
     'message-id': '<preview@example.com>',
   },
-  'body': {'content_type': 'text/plain', 'content': 'A sample message.'},
+  'body': {
+    'content_type': 'text/plain',
+    'content': tr(context, 'ui.aSampleMessage'),
+  },
 };
 
 /// JSON email input keeps every server-supported envelope/MIME field usable.
@@ -610,7 +684,9 @@ class FilterPreviewScreen extends StatefulWidget {
 }
 
 class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
-  late final _email = TextEditingController(text: prettyJson(_sampleEmail));
+  late final _email = TextEditingController(
+    text: prettyJson(_sampleEmail(context)),
+  );
   late final _script = TextEditingController(text: widget.script ?? '');
   var _busy = false;
   String? _error;
@@ -633,7 +709,11 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
     try {
       final email = _email.text.trim().isEmpty
           ? null
-          : _object(_email.text, 'Sample email');
+          : _object(
+              context,
+              _email.text,
+              tr(context, 'admin.filtereditors.sampleEmail'),
+            );
       final client = widget.account.client;
       Map<String, dynamic> result;
       String summary;
@@ -642,38 +722,59 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
           _script.text,
           email: email,
         );
+        if (!mounted) return;
         result = validation.json;
         summary = !validation.valid
-            ? 'Syntax failed: ${validation.error ?? 'Invalid script'}'
+            ? trArgs(context, 'admin.filtereditors.syntaxFailedValue', {
+                'value': (validation.error ?? tr(context, 'ui.invalidScript'))
+                    .toString(),
+              })
             : validation.dryRun?.error != null
-            ? 'Syntax valid; dry run failed: ${validation.dryRun!.error}'
+            ? trArgs(
+                context,
+                'admin.filtereditors.syntaxValidDryRunFailedValue',
+                {'value': (validation.dryRun!.error).toString()},
+              )
             : validation.dryRun == null
-            ? 'Syntax valid'
-            : 'Syntax valid; dry run completed';
+            ? tr(context, 'admin.filtereditors.syntaxValid')
+            : tr(context, 'admin.filtereditors.syntaxValidDryRunCompleted');
       } else if (widget.filter case final filter?) {
         final preview = await client.testCustomFilter(filter.id, email: email);
+        if (!mounted) return;
         result = preview.json;
-        summary = 'Script completed';
+        summary = tr(context, 'admin.filtereditors.scriptCompleted');
       } else if (widget.pipeline case final pipeline?) {
         if (email == null) {
-          throw const FormatException('Sample email is required.');
+          throw FormatException(
+            tr(context, 'admin.filtereditors.sampleEmailIsRequired'),
+          );
         }
         final preview = await client.testPipeline(pipeline.id, email: email);
+        if (!mounted) return;
         result = preview.json;
-        summary = 'Decision: ${preview.finalAction}';
+        summary = trArgs(context, 'admin.filtereditors.decisionFinalAction', {
+          'finalAction': (preview.finalAction).toString(),
+        });
       } else if (widget.step case final step?) {
         if (email == null) {
-          throw const FormatException('Sample email is required.');
+          throw FormatException(
+            tr(context, 'admin.filtereditors.sampleEmailIsRequired'),
+          );
         }
         final preview = await client.testFilter(
           filterName: step.name,
           config: step.config ?? {},
           email: email,
         );
+        if (!mounted) return;
         result = preview.json;
-        summary = 'Decision: ${preview.action}';
+        summary = trArgs(context, 'admin.filtereditors.decisionAction', {
+          'action': (preview.action).toString(),
+        });
       } else {
-        throw const FormatException('Choose a filter to preview.');
+        throw FormatException(
+          tr(context, 'admin.filtereditors.chooseAFilterToPreview'),
+        );
       }
       if (mounted) {
         setState(() {
@@ -701,22 +802,34 @@ class _FilterPreviewScreenState extends State<FilterPreviewScreen> {
   @override
   Widget build(BuildContext context) => _EditorFrame(
     title: widget.script != null
-        ? 'Validate JavaScript'
-        : 'Preview filter execution',
+        ? tr(context, 'admin.filtereditors.validateJavaScript')
+        : tr(context, 'admin.filtereditors.previewFilterExecution'),
     busy: _busy,
     error: _error,
-    action: widget.script != null ? 'Validate' : 'Run preview',
+    action: widget.script != null
+        ? tr(context, 'admin.filtereditors.validate')
+        : tr(context, 'admin.filtereditors.runPreview'),
     save: () => unawaited(_run()),
     children: [
-      if (widget.script != null) _field(_script, 'JavaScript', multiline: true),
-      const Text(
-        'Edit the complete sample email below. Preview runs the filters on the server.',
+      if (widget.script != null)
+        _field(
+          _script,
+          tr(context, 'admin.filtereditors.javascript'),
+          multiline: true,
+        ),
+      Text(
+        tr(
+          context,
+          'admin.filtereditors.editTheCompleteSampleEmailBelowPreview',
+        ),
       ),
       if (widget.filter != null || widget.script != null)
-        const Text(
-          'Leave the email empty to use the server default or validate syntax only.',
-        ),
-      _field(_email, 'Sample email (JSON object)', multiline: true),
+        Text(tr(context, 'admin.filtereditors.leaveTheEmailEmptyToUseThe')),
+      _field(
+        _email,
+        tr(context, 'admin.filtereditors.sampleEmailJSONObject'),
+        multiline: true,
+      ),
       if (_summary case final summary?)
         Text(summary, style: const TextStyle(fontWeight: FontWeight.bold)),
       if (_result case final result?) SelectableText(prettyJson(result)),

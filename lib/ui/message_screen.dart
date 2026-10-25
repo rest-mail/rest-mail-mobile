@@ -728,8 +728,14 @@ class _MessageScreenState extends State<MessageScreen> {
                             height: 44,
                             radius: 11,
                             fontSize: 14.5,
-                            onPressed: () =>
-                                _compose(replySeed(m, ownAddresses: own)),
+                            onPressed: () => _compose(
+                              replySeed(
+                                m,
+                                ownAddresses: own,
+                                languageCode: Localizations.localeOf(context)
+                                    .languageCode,
+                              ),
+                            ),
                           ),
                         ),
                         if (othersOnIt) ...[
@@ -742,7 +748,13 @@ class _MessageScreenState extends State<MessageScreen> {
                               fontSize: 14.5,
                               color: c.ink,
                               onPressed: () => _compose(
-                                replySeed(m, ownAddresses: own, all: true),
+                                replySeed(
+                                  m,
+                                  ownAddresses: own,
+                                  all: true,
+                                  languageCode: Localizations.localeOf(context)
+                                      .languageCode,
+                                ),
                               ),
                             ),
                           ),
@@ -752,7 +764,14 @@ class _MessageScreenState extends State<MessageScreen> {
                             ? RmOutlineIconButton(
                                 icon: Icons.arrow_forward_rounded,
                                 tooltip: tr(context, 'message.forward'),
-                                onPressed: () => _compose(forwardSeed(m)),
+                                onPressed: () => _compose(
+                                  forwardSeed(
+                                    m,
+                                    languageCode: Localizations.localeOf(
+                                      context,
+                                    ).languageCode,
+                                  ),
+                                ),
                               )
                             : RmOutlineButton(
                                 label: v.actions == ActionStyle.keyed
@@ -762,7 +781,14 @@ class _MessageScreenState extends State<MessageScreen> {
                                 radius: 11,
                                 fontSize: 14.5,
                                 color: c.ink,
-                                onPressed: () => _compose(forwardSeed(m)),
+                                onPressed: () => _compose(
+                                  forwardSeed(
+                                    m,
+                                    languageCode: Localizations.localeOf(
+                                      context,
+                                    ).languageCode,
+                                  ),
+                                ),
                               ),
                       ],
                     ),

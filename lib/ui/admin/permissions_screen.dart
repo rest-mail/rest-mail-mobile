@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -13,9 +15,9 @@ import 'grant_text.dart';
 
 /// What the screen shows: the grants, or what can be granted.
 enum _Tab {
-  grants('Grants'),
-  roles('Roles'),
-  capabilities('Capabilities');
+  grants('admin.permissions.grants'),
+  roles('admin.permissions.roles'),
+  capabilities('admin.permissions.capabilities');
 
   const _Tab(this.label);
 
@@ -100,7 +102,10 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   }
 
   String _holder(GrantHolder holder) =>
-      _addresses[holder.id] ?? 'Account #${holder.id}';
+      _addresses[holder.id] ??
+      trArgs(context, 'admin.permissions.accountId', {
+        'id': (holder.id).toString(),
+      });
 
   void _applyFilters({bool clear = false}) {
     if (clear) {
@@ -110,7 +115,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     final text = _holderFilter.text.trim();
     final id = int.tryParse(text);
     if (text.isNotEmpty && (id == null || id < 0 || id > 0xffffffff)) {
-      setState(() => _filterError = 'Enter a valid account number.');
+      setState(
+        () => _filterError = tr(
+          context,
+          'admin.permissions.enterAValidAccountNumber',
+        ),
+      );
       return;
     }
     final scope = _scopeFilter.text.trim().toLowerCase();
@@ -137,11 +147,14 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   Future<void> _remove(Grant grant) async {
     final sure = await confirmAction(
       context,
-      title: 'Remove ${grant.role} from ${_holder(grant.holder)}?',
-      message:
-          '${scopeLabel(grant.scope)}. They lose what it gives at once, '
-          'in every session.',
-      action: 'Remove',
+      title: trArgs(context, 'admin.permissions.removeRoleFromValue', {
+        'role': (grant.role).toString(),
+        'value': (_holder(grant.holder)).toString(),
+      }),
+      message: trArgs(context, 'admin.permissions.valueTheyLoseWhatItGivesAt', {
+        'value': (scopeLabel(context, grant.scope)).toString(),
+      }),
+      action: tr(context, 'common.remove'),
     );
     if (!sure || !mounted) return;
     try {
@@ -153,7 +166,13 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       return;
     }
     if (!mounted) return;
-    showToast(context, 'Removed ${grant.role} from ${_holder(grant.holder)}');
+    showToast(
+      context,
+      trArgs(context, 'admin.permissions.removedRoleFromValue', {
+        'role': (grant.role).toString(),
+        'value': (_holder(grant.holder)).toString(),
+      }),
+    );
     unawaited(_list.reload());
   }
 
@@ -161,7 +180,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   Widget build(BuildContext context) => AdminPage(
     account: widget.account,
     section: AdminSection.permissions,
-    title: 'Permissions',
+    title: tr(context, 'admin.section.permissions.title'),
     body: (access) => Column(
       children: [
         Padding(
@@ -169,7 +188,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: RmSegmented<_Tab>(
-              options: [for (final t in _Tab.values) (t, t.label)],
+              options: [for (final t in _Tab.values) (t, tr(context, t.label))],
               value: _tab,
               onChanged: (tab) => setState(() {
                 _tab = tab;
@@ -205,11 +224,14 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       list: _list,
       host: _host,
       empty: _scopeQuery == null && _holderQuery == null
-          ? 'Nobody holds a role.'
-          : 'No grants match these filters.',
+          ? tr(context, 'admin.permissions.nobodyHoldsARole')
+          : tr(context, 'admin.permissions.noGrantsMatchTheseFilters'),
       header: [
         if (access.canWrite(AdminSection.permissions))
-          AdminAddButton(label: 'Grant a role', onTap: () => unawaited(_add())),
+          AdminAddButton(
+            label: tr(context, 'admin.permissions.grantARole'),
+            onTap: () => unawaited(_add()),
+          ),
         TextField(
           key: const ValueKey('grant-scope-filter'),
           controller: _scopeFilter,
@@ -218,8 +240,8 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           textInputAction: TextInputAction.search,
           onSubmitted: (_) => _applyFilters(),
           style: rmText(15, color: c.ink),
-          decoration: const InputDecoration(
-            hintText: 'Only at a scope: *, domain:a.com, mailbox:x@a.com',
+          decoration: InputDecoration(
+            hintText: tr(context, 'admin.permissions.onlyAtAScopeDomainACom'),
             prefixIcon: Icon(Icons.filter_list_rounded),
           ),
         ),
@@ -233,35 +255,49 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           onSubmitted: (_) => _applyFilters(),
           style: rmText(15, color: c.ink),
           decoration: InputDecoration(
-            labelText: 'Only for account number',
-            hintText: 'All accounts',
+            labelText: tr(context, 'admin.permissions.onlyForAccountNumber'),
+            hintText: tr(context, 'admin.permissions.allAccounts'),
             errorText: _filterError,
           ),
         ),
         const SizedBox(height: 10),
-        RmOutlineButton(label: 'Filter grants', onPressed: _applyFilters),
+        RmOutlineButton(
+          label: tr(context, 'admin.permissions.filterGrants'),
+          onPressed: _applyFilters,
+        ),
         TextButton(
           onPressed: () => _applyFilters(clear: true),
-          child: const Text('Clear filters'),
+          child: Text(tr(context, 'admin.bans.clearFilters')),
         ),
         const SizedBox(height: 14),
       ],
       row: (grant) => RmRow(
-        label: '${grant.role} · ${scopeLabel(grant.scope)}',
+        label: '${grant.role} · ${scopeLabel(context, grant.scope)}',
         subtitle: [
           _holder(grant.holder),
-          grantState(grant),
-          grantEnds(grant),
+          grantState(context, grant),
+          grantEnds(context, grant),
           if (grant.grantedBy.id case final by?)
-            'Granted by ${_holder(GrantHolder.account(by))}, '
-                '${longDate(grant.grantedAt)}'
+            trArgs(context, 'admin.permissions.grantedByValueValue2', {
+              'value': (_holder(GrantHolder.account(by))).toString(),
+              'value2': (longDate(grant.grantedAt)).toString(),
+            })
           else
-            'Granted by the server, ${longDate(grant.grantedAt)}',
+            trArgs(context, 'admin.permissions.grantedByTheServerValue', {
+              'value': (longDate(grant.grantedAt)).toString(),
+            }),
         ].join('\n'),
         trailing: access.canDelete(AdminSection.permissions)
             ? RmIconButton(
                 icon: Icons.close_rounded,
-                tooltip: 'Remove ${grant.role} from ${_holder(grant.holder)}',
+                tooltip: trArgs(
+                  context,
+                  'admin.permissions.removeRoleFromValue2',
+                  {
+                    'role': (grant.role).toString(),
+                    'value': (_holder(grant.holder)).toString(),
+                  },
+                ),
                 color: c.ink3,
                 onPressed: () => unawaited(_remove(grant)),
               )
@@ -319,12 +355,16 @@ class _CatalogView extends StatelessWidget {
                       RmRow(
                         label: role.systemRole
                             ? role.name
-                            : '${role.name} (made here)',
+                            : trArgs(
+                                context,
+                                'admin.permissions.nameMadeHere',
+                                {'name': (role.name).toString()},
+                              ),
                         subtitle: [
                           if (role.description.isNotEmpty) role.description,
                           for (final name in role.capabilities)
                             name == Capabilities.all
-                                ? '* · everything'
+                                ? tr(context, 'ui.everything')
                                 : switch (described[name]) {
                                     final d? when d.isNotEmpty => '$name · $d',
                                     _ => name,
@@ -351,9 +391,9 @@ class _CatalogView extends StatelessWidget {
 
 /// Where a new grant applies.
 enum _ScopeKind {
-  everywhere('Everywhere'),
-  domain('A domain'),
-  mailbox('A mailbox');
+  everywhere('admin.granttext.everywhere'),
+  domain('admin.permissions.aDomain'),
+  mailbox('admin.permissions.aMailbox');
 
   const _ScopeKind(this.label);
 
@@ -362,11 +402,11 @@ enum _ScopeKind {
 
 /// How long a new grant lasts.
 enum _Lasts {
-  ever('Until removed', null),
-  day('A day', Duration(days: 1)),
-  week('A week', Duration(days: 7)),
-  month('30 days', Duration(days: 30)),
-  date('Until a date', null);
+  ever('admin.permissions.untilRemoved', null),
+  day('admin.bans.aDay', Duration(days: 1)),
+  week('admin.bans.aWeek', Duration(days: 7)),
+  month('duration.thirtyDays', Duration(days: 30)),
+  date('admin.permissions.untilADate', null);
 
   const _Lasts(this.label, this.duration);
 
@@ -417,18 +457,25 @@ class _GrantFormState extends State<_GrantForm> {
   /// What is wrong with the form before it is sent, or null.
   String? get _problem {
     final id = _holderId;
-    if (id == null || id <= 0) return 'Choose the account to grant to.';
-    if (_role == null) return 'Choose a role.';
+    if (id == null || id <= 0) {
+      return tr(context, 'admin.permissions.chooseTheAccountToGrantTo');
+    }
+    if (_role == null) return tr(context, 'admin.permissions.chooseARole');
     final name = _scopeName.text.trim();
     if (_scope == _ScopeKind.domain &&
         (!name.contains('.') || name.contains('@'))) {
-      return 'Enter a domain name, like example.com.';
+      return tr(context, 'admin.permissions.enterADomainNameLikeExampleCom');
     }
     if (_scope == _ScopeKind.mailbox &&
         !RegExp(r'^[^@\s]+@[^@\s]+$').hasMatch(name)) {
-      return 'Enter a mailbox address, like dana@example.com.';
+      return tr(
+        context,
+        'admin.permissions.enterAMailboxAddressLikeDanaExample',
+      );
     }
-    if (_lasts == _Lasts.date && _until == null) return 'Pick the end date.';
+    if (_lasts == _Lasts.date && _until == null) {
+      return tr(context, 'admin.permissions.pickTheEndDate');
+    }
     return null;
   }
 
@@ -500,7 +547,7 @@ class _GrantFormState extends State<_GrantForm> {
         child: Column(
           children: [
             RmTopBar(
-              title: 'Grant a role',
+              title: tr(context, 'admin.permissions.grantARole'),
               onBack: () => Navigator.pop(context),
             ),
             Expanded(
@@ -508,13 +555,11 @@ class _GrantFormState extends State<_GrantForm> {
                 padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                 children: [
                   Text(
-                    'You can grant only a role you hold, at a scope at least '
-                    'as wide. The change needs a session signed in with a '
-                    'two-factor code.',
+                    tr(context, 'admin.permissions.youCanGrantOnlyARoleYou'),
                     style: rmText(15, color: c.ink2, height: 1.45),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Account'),
+                  SectionLabel(tr(context, 'admin.audit.account')),
                   const SizedBox(height: 8),
                   if (_manualHolder)
                     TextField(
@@ -523,15 +568,17 @@ class _GrantFormState extends State<_GrantForm> {
                       keyboardType: TextInputType.number,
                       onChanged: (_) => _changed(),
                       style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(
-                        hintText: 'Account number',
+                      decoration: InputDecoration(
+                        hintText: tr(context, 'admin.audit.accountNumber'),
                       ),
                     )
                   else
                     DropdownButtonFormField<int>(
                       initialValue: _holder,
                       isExpanded: true,
-                      hint: const Text('Choose an account'),
+                      hint: Text(
+                        tr(context, 'admin.permissions.chooseAnAccount'),
+                      ),
                       items: [
                         for (final entry in addresses)
                           DropdownMenuItem(
@@ -552,12 +599,18 @@ class _GrantFormState extends State<_GrantForm> {
                       }),
                       child: Text(
                         _manualHolder
-                            ? 'Choose from accounts'
-                            : 'Enter an account number',
+                            ? tr(
+                                context,
+                                'admin.permissions.chooseFromAccounts',
+                              )
+                            : tr(
+                                context,
+                                'admin.permissions.enterAnAccountNumber',
+                              ),
                       ),
                     ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Role'),
+                  SectionLabel(tr(context, 'admin.granttext.role')),
                   const SizedBox(height: 8),
                   FutureBuilder<List<AdminRole>>(
                     future: _roles,
@@ -584,7 +637,9 @@ class _GrantFormState extends State<_GrantForm> {
                           DropdownButtonFormField<String>(
                             initialValue: _role,
                             isExpanded: true,
-                            hint: const Text('Choose a role'),
+                            hint: Text(
+                              tr(context, 'admin.permissions.chooseARole2'),
+                            ),
                             items: [
                               for (final role in roles)
                                 DropdownMenuItem(
@@ -603,7 +658,14 @@ class _GrantFormState extends State<_GrantForm> {
                               [
                                 if (chosen.description.isNotEmpty)
                                   chosen.description,
-                                'Gives ${chosen.capabilities.join(', ')}',
+                                trArgs(
+                                  context,
+                                  'admin.permissions.givesValue',
+                                  {
+                                    'value': (chosen.capabilities.join(', '))
+                                        .toString(),
+                                  },
+                                ),
                               ].join('. '),
                               style: rmText(13, color: c.ink3, height: 1.4),
                             ),
@@ -613,13 +675,14 @@ class _GrantFormState extends State<_GrantForm> {
                     },
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Where'),
+                  SectionLabel(tr(context, 'admin.permissions.where')),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: RmSegmented<_ScopeKind>(
                       options: [
-                        for (final s in _ScopeKind.values) (s, s.label),
+                        for (final s in _ScopeKind.values)
+                          (s, tr(context, s.label)),
                       ],
                       value: _scope,
                       onChanged: (scope) => setState(() {
@@ -648,14 +711,20 @@ class _GrantFormState extends State<_GrantForm> {
                     ),
                   ],
                   const SizedBox(height: 18),
-                  const SectionLabel('Mode'),
+                  SectionLabel(tr(context, 'admin.granttext.mode')),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: RmSegmented<GrantMode>(
-                      options: const [
-                        (GrantMode.active, 'Active'),
-                        (GrantMode.eligible, 'Eligible'),
+                      options: [
+                        (
+                          GrantMode.active,
+                          tr(context, 'admin.permissions.active'),
+                        ),
+                        (
+                          GrantMode.eligible,
+                          tr(context, 'admin.permissions.eligible'),
+                        ),
                       ],
                       value: _mode,
                       onChanged: (mode) => setState(() => _mode = mode),
@@ -664,13 +733,15 @@ class _GrantFormState extends State<_GrantForm> {
                   const SizedBox(height: 6),
                   Text(
                     _mode == GrantMode.active
-                        ? 'It applies all the time.'
-                        : 'It gives nothing until they switch it on for a '
-                              'while, with a reason and a fresh code.',
+                        ? tr(context, 'admin.permissions.itAppliesAllTheTime')
+                        : tr(
+                            context,
+                            'admin.permissions.itGivesNothingUntilTheySwitchIt',
+                          ),
                     style: rmText(13, color: c.ink3, height: 1.4),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('For'),
+                  SectionLabel(tr(context, 'admin.bans.for')),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -678,7 +749,7 @@ class _GrantFormState extends State<_GrantForm> {
                     children: [
                       for (final l in _Lasts.values)
                         ChoiceChip(
-                          label: Text(l.label),
+                          label: Text(tr(context, l.label)),
                           selected: _lasts == l,
                           onSelected: (_) {
                             setState(() {
@@ -693,7 +764,9 @@ class _GrantFormState extends State<_GrantForm> {
                   if (_lasts == _Lasts.date && until != null) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'Ends ${longDate(until)}',
+                      trArgs(context, 'admin.permissions.endsValue', {
+                        'value': (longDate(until)).toString(),
+                      }),
                       style: rmText(13, color: c.ink3),
                     ),
                   ],
@@ -703,7 +776,7 @@ class _GrantFormState extends State<_GrantForm> {
                   ],
                   const SizedBox(height: 26),
                   RmPrimaryButton(
-                    label: 'Grant',
+                    label: tr(context, 'admin.permissions.grant'),
                     busy: _busy,
                     onPressed: _busy ? null : () => unawaited(_send()),
                   ),

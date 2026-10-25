@@ -172,10 +172,8 @@ WhatsNewNotes parseRelease({
 
   return WhatsNewNotes(
     version: version,
-    title: name.trim().isEmpty ? 'What’s new in $version' : name.trim(),
-    summary: summary.isEmpty
-        ? 'The latest release of REST Mail.'
-        : summary.toString(),
+    title: name.trim(),
+    summary: summary.toString(),
     items: items,
   );
 }

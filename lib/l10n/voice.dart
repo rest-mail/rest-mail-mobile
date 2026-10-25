@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
+import '../imap/imap_backend.dart';
 import '../state/app_scope.dart';
 import '../state/mailbox_state.dart';
 import '../theme/packs.dart';
-import 'strings_ar.dart';
-import 'strings_de.dart';
-import 'strings_en.dart';
-import 'strings_es.dart';
-import 'strings_fa.dart';
-import 'strings_hi.dart';
-import 'strings_ne.dart';
+import 'catalog.dart';
 
 /// Two layers of words, resolved per string.
 ///
@@ -22,16 +17,8 @@ import 'strings_ne.dart';
 /// is one file plus one line here, not one file per voice.
 ///
 /// To add a language: copy `strings_en.dart`, translate the values, add the
-/// import, the entry in [_voices] and the `Locale` in [supportedLocales].
-const _voices = <String, Map<String, Map<String, String>>>{
-  'en': stringsEn,
-  'de': stringsDe,
-  'es': stringsEs,
-  'hi': stringsHi,
-  'ne': stringsNe,
-  'ar': stringsAr,
-  'fa': stringsFa,
-};
+/// import, the registry entry in `catalog.dart`, the `Locale` in [supportedLocales],
+/// and its self-name in [languageNames].
 
 /// What the app can speak. A device set to anything else gets the first of
 /// these rather than a half-translated mix.
@@ -48,7 +35,7 @@ const supportedLocales = <Locale>[
 /// The languages the app offers, and what each calls itself. `system` means
 /// the phone's choice.
 const languageNames = <String, String>{
-  'system': 'System',
+  'system': 'settings.system',
   'en': 'English',
   'de': 'Deutsch',
   'es': 'Español',
@@ -58,7 +45,12 @@ const languageNames = <String, String>{
   'fa': 'فارسی',
 };
 
-String languageLabel(String code) => languageNames[code] ?? 'System';
+String languageLabel(String code, {BuildContext? context}) =>
+    code == 'system' || !languageNames.containsKey(code)
+    ? (context == null
+          ? languageLine('en', 'settings.system')
+          : tr(context, 'settings.system'))
+    : languageNames[code]!;
 
 /// The UI string [key] in the language the app is set to and the current
 /// theme's voice.
@@ -73,11 +65,7 @@ String tr(BuildContext context, String key) {
 
 /// [key] with `{name}` placeholders replaced by [args].
 String trArgs(BuildContext context, String key, Map<String, String> args) {
-  var text = tr(context, key);
-  for (final entry in args.entries) {
-    text = text.replaceAll('{${entry.key}}', entry.value);
-  }
-  return text;
+  return fillPlaceholders(tr(context, key), args);
 }
 
 /// A standard folder's name in the current language; custom folders keep
@@ -91,8 +79,24 @@ const _folderKeys = <String, String>{
   StandardFolder.trash: 'folder.trash',
 };
 
+const _systemFolderKeys = <String, String>{
+  'All Mail': 'folder.allMail',
+  'Important': 'folder.important',
+  'Starred': 'folder.starred',
+};
+
 String folderLabelOf(BuildContext context, String name) {
-  final key = _folderKeys[name];
+  var key = _folderKeys[name];
+  if (key == null) {
+    final backend = context
+        .dependOnInheritedWidgetOfExactType<AppScope>()
+        ?.notifier
+        ?.mailbox
+        ?.backend;
+    if (backend is ImapBackend && backend.isSystemFolder(name)) {
+      key = _systemFolderKeys[name];
+    }
+  }
   return key == null ? name : tr(context, key);
 }
 
@@ -122,12 +126,8 @@ String trustDetailOf(BuildContext context, TrustVerdict verdict) {
 /// The string for [key] in [pack]'s voice and [locale], falling back
 /// voice+locale → base+locale → voice+en → base+en.
 String voiceLine(ThemePack pack, Locale locale, String key) {
-  final lang = locale.languageCode;
-  final inLang = _voices[lang];
-  final inEn = _voices['en']!;
-  return inLang?[pack.id]?[key] ??
-      inLang?['classic']?[key] ??
-      inEn[pack.id]?[key] ??
-      inEn['classic']?[key] ??
-      key;
+  return languageLine(locale.languageCode, key, voice: pack.id);
 }
+
+String trText(BuildContext context, UiText text) =>
+    trArgs(context, text.key, text.args);

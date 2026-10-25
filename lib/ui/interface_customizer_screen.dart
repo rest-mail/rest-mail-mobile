@@ -160,9 +160,9 @@ class _PreviewFrame extends StatelessWidget {
                 ),
                 const SizedBox(width: 7),
                 Text(switch (area) {
-                  PanelArea.list => 'Inbox',
-                  PanelArea.reader => 'Reading',
-                  PanelArea.composer => 'New message',
+                  PanelArea.list => tr(context, 'folder.inbox'),
+                  PanelArea.reader => tr(context, 'interface.reading'),
+                  PanelArea.composer => tr(context, 'compose.title.fresh'),
                 }, style: rmText(12.5, color: c.ink, weight: FontWeight.w700)),
                 const Spacer(),
                 _StatusPill(),
@@ -227,7 +227,7 @@ class _ListPreview extends StatelessWidget {
           Row(
             children: [
               Text(
-                'TODAY',
+                tr(context, 'interfacecustomizer.today'),
                 style: rmText(
                   9.5,
                   color: c.ink3,
@@ -249,7 +249,7 @@ class _ListPreview extends StatelessWidget {
         _PreviewRow(
           initials: 'DR',
           sender: 'Dana Ruiz',
-          subject: 'Rota for next week',
+          subject: tr(context, 'interfacecustomizer.rotaForNextWeek'),
           lines: lines,
           attachment: attachments,
           count: showCount ? 2 : 0,
@@ -260,7 +260,7 @@ class _ListPreview extends StatelessWidget {
         _PreviewRow(
           initials: 'NO',
           sender: 'Nadia Oakline',
-          subject: 'Re: sync latency',
+          subject: tr(context, 'interfacecustomizer.reSyncLatency'),
           lines: lines,
           attachment: attachments,
           count: 0,
@@ -402,7 +402,7 @@ class _ReaderPreview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Re: sync latency on flaky networks',
+          tr(context, 'interfacecustomizer.reSyncLatencyOnFlakyNetworks'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: rmText(13, color: c.ink, weight: FontWeight.w800),
@@ -447,7 +447,7 @@ class _ReaderPreview extends StatelessWidget {
                     Icon(Icons.verified_rounded, size: 9, color: c.accent),
                     const SizedBox(width: 3),
                     Text(
-                      'signed',
+                      tr(context, 'ui.signed'),
                       style: rmText(
                         8,
                         color: c.accent,
@@ -473,7 +473,7 @@ class _ReaderPreview extends StatelessWidget {
                 Icon(Icons.shield_outlined, size: 11, color: c.accent),
                 const SizedBox(width: 5),
                 Text(
-                  'SPF, DKIM and DMARC aligned',
+                  tr(context, 'interfacecustomizer.spfDKIMAndDMARCAligned'),
                   style: rmText(8.5, color: c.ink2),
                 ),
               ],
@@ -517,7 +517,7 @@ class _ComposerPreview extends StatelessWidget {
         Row(
           children: [
             Text(
-              'New message',
+              tr(context, 'compose.title.fresh'),
               style: rmText(11.5, color: c.ink, weight: FontWeight.w700),
             ),
             const Spacer(),
@@ -525,7 +525,7 @@ class _ComposerPreview extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: Text(
-                  'Later',
+                  tr(context, 'compose.later'),
                   style: rmText(10, color: c.accent, weight: FontWeight.w700),
                 ),
               ),
@@ -536,24 +536,40 @@ class _ComposerPreview extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                'Send',
+                tr(context, 'compose.send'),
                 style: rmText(9, color: Colors.white, weight: FontWeight.w700),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        if (from) _ComposerField(label: 'From', value: 'dana@oakline.test'),
-        _ComposerField(label: 'To', value: 'nadia@oakline.test'),
+        if (from)
+          _ComposerField(
+            label: tr(context, 'compose.from'),
+            value: 'dana@oakline.test',
+          ),
+        _ComposerField(
+          label: tr(context, 'compose.to'),
+          value: 'nadia@oakline.test',
+        ),
         if (cc) ...[
-          _ComposerField(label: 'Cc', value: ''),
-          _ComposerField(label: 'Bcc', value: ''),
+          _ComposerField(label: tr(context, 'compose.cc'), value: ''),
+          _ComposerField(label: tr(context, 'compose.bcc'), value: ''),
         ],
-        _ComposerField(label: 'Subject', value: 'Rota for next week'),
+        _ComposerField(
+          label: tr(context, 'compose.subject'),
+          value: tr(context, 'interfacecustomizer.rotaForNextWeek'),
+        ),
         if (unsubscribe)
-          _ComposerField(label: 'Opt-out', value: 'leave@oakline.test'),
+          _ComposerField(
+            label: tr(context, 'compose.unsubscribe'),
+            value: 'leave@oakline.test',
+          ),
         if (requireTls)
-          _ComposerField(label: 'TLS', value: 'Required on every hop'),
+          _ComposerField(
+            label: tr(context, 'compose.tls'),
+            value: tr(context, 'interfacecustomizer.requiredOnEveryHop'),
+          ),
         const SizedBox(height: 8),
         for (final width in [230.0, 200.0, 160.0])
           Padding(

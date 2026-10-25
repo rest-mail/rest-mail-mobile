@@ -86,23 +86,17 @@ class AdministrationScreen extends StatelessWidget {
                   for (final group in AdminGroup.values)
                     if (sections.where((s) => s.group == group).toList()
                         case final inGroup when inGroup.isNotEmpty) ...[
-                      if (group.title != null) ...[
+                      if (group.titleKey != null) ...[
                         const SizedBox(height: 22),
-                        SectionLabel(tr(context, 'admin.group.${group.name}')),
+                        SectionLabel(tr(context, group.titleKey!)),
                         const SizedBox(height: 9),
                       ],
                       RmGroup(
                         children: [
                           for (final section in inGroup)
                             RmRow(
-                              label: tr(
-                                context,
-                                'admin.section.${section.name}.title',
-                              ),
-                              subtitle: tr(
-                                context,
-                                'admin.section.${section.name}.subtitle',
-                              ),
+                              label: tr(context, section.titleKey),
+                              subtitle: tr(context, section.subtitleKey),
                               onTap: () =>
                                   pushScreen(context, _screenFor(section)),
                             ),

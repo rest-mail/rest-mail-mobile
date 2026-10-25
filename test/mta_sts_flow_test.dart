@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
-import 'package:restmail/ui/admin/admin_widgets.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -221,7 +220,7 @@ void main() {
       transport.holdRead!.complete();
       transport.holdRead = null;
       await tester.pumpAndSettle();
-      expect(find.text(noPermission), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsOneWidget);
       expect(find.text('Set up a policy'), findsNothing);
       expect((state.current! as RestAccount).client.tokens, isNotNull);
       transport.refuseRead = false;

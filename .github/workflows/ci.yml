@@ -71,11 +71,16 @@ jobs:
           python3 -m unittest discover -s tool/ci -p 'test_admin_api_manifest.py'
       # Before the check: it imports the app's notes as a package.
       - run: flutter pub get
+      - name: Check UI translation entry points
+        run: |
+          python3 tool/ci/check_ui_text.py
+          python3 -m unittest discover -s tool/ci -p 'test_check_ui_text.py'
       - name: Check accumulated release notes
         run: |
           python3 -m unittest discover -s tool/ci -p 'test_build_whats_new.py'
           dart tool/ci/check_whats_new.dart
       - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: dart tool/ci/generate_ios_localizations.dart --check
       - run: flutter analyze
       - run: flutter test
       # The screen tour against the fake. It passes or fails only on whether

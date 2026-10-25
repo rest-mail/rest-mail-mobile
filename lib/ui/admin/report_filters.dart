@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -32,14 +34,18 @@ class ReportField {
 
 const reportPageSize = ReportField(
   'limit',
-  'Page size',
+  'admin.reportfilters.pageSize',
   number: true,
   positive: true,
   max: 200,
-  hint: '50 (up to 200)',
+  hint: 'admin.reportfilters.50UpTo200',
 );
-const reportSince = ReportField('since', 'From', date: true);
-const reportUntil = ReportField('until', 'Through', date: true);
+const reportSince = ReportField('since', 'compose.from', date: true);
+const reportUntil = ReportField(
+  'until',
+  'admin.reportfilters.through',
+  date: true,
+);
 
 DateTime? reportDate(Map<String, String> values, String key) =>
     DateTime.tryParse(values[key] ?? '');
@@ -54,7 +60,7 @@ class ReportFiltersBar extends StatelessWidget {
     required this.fields,
     required this.values,
     required this.onChanged,
-    this.title = 'Filters',
+    this.title = 'admin.reportfilters.filters',
     this.intro,
   });
   final String host;
@@ -69,22 +75,26 @@ class ReportFiltersBar extends StatelessWidget {
     final saved = await AdminFormScreen.open(
       context,
       AdminFormScreen(
-        title: title,
+        title: tr(context, title),
         host: host,
-        action: 'Apply filters',
+        action: tr(context, 'admin.bans.applyFilters'),
         intro:
             intro ??
-            'Leave a field empty to include everything. Times include a timezone, '
-                'for example 2026-10-23T07:00:00+01:00.',
+            tr(
+              context,
+              'admin.reportfilters.leaveAFieldEmptyToIncludeEverything',
+            ),
         fields: [
           for (final f in fields)
             AdminField(
-              f.label,
+              tr(context, f.label),
               initial: values[f.key] ?? '',
               optional: true,
               choices: f.choices,
               number: f.number,
-              hint: f.date ? '2026-10-23T06:00:00Z' : f.hint,
+              hint: f.date
+                  ? '2026-10-23T06:00:00Z'
+                  : (f.hint == null ? null : tr(context, f.hint!)),
             ),
         ],
         submit: (input) async {
@@ -100,12 +110,32 @@ class ReportFiltersBar extends StatelessWidget {
                   number < (f.positive ? 1 : 0) ||
                   (f.max != null && number > f.max!)) {
                 invalid[f.key] = f.max == null
-                    ? 'must be a ${f.positive ? 'positive' : 'non-negative'} whole number'
-                    : 'must be between ${f.positive ? 1 : 0} and ${f.max}';
+                    ? trArgs(
+                        context,
+                        'admin.reportfilters.mustBeAValueWholeNumber',
+                        {
+                          'value':
+                              (f.positive
+                                      ? tr(context, 'ui.positive')
+                                      : tr(context, 'ui.nonNegative'))
+                                  .toString(),
+                        },
+                      )
+                    : trArgs(
+                        context,
+                        'admin.reportfilters.mustBeBetweenValueAndMax',
+                        {
+                          'value': (f.positive ? 1 : 0).toString(),
+                          'max': (f.max).toString(),
+                        },
+                      );
               }
             }
             if (f.date && !_validReportTime(value)) {
-              invalid[f.key] = 'must be a date and time with a timezone';
+              invalid[f.key] = tr(
+                context,
+                'admin.reportfilters.mustBeADateAndTimeWith',
+              );
             }
             if (f.validate?.call(value) case final error?) {
               invalid[f.key] = error;
@@ -114,13 +144,16 @@ class ReportFiltersBar extends StatelessWidget {
           final since = reportDate(result, 'since'),
               until = reportDate(result, 'until');
           if (since != null && until != null && since.isAfter(until)) {
-            invalid['until'] = 'must not be before From';
+            invalid['until'] = tr(
+              context,
+              'admin.reportfilters.mustNotBeBeforeFrom',
+            );
           }
           if (invalid.isNotEmpty) {
             throw ApiException(
               422,
               'validation_failed',
-              'Check the filters',
+              tr(context, 'admin.reportfilters.checkTheFilters'),
               fields: invalid,
             );
           }
@@ -140,12 +173,14 @@ class ReportFiltersBar extends StatelessWidget {
         runSpacing: 8,
         children: [
           RmOutlineButton(
-            label: values.isEmpty ? title : '$title (${values.length})',
+            label: values.isEmpty
+                ? tr(context, title)
+                : '${tr(context, title)} (${values.length})',
             onPressed: () => unawaited(_open(context)),
           ),
           if (values.isNotEmpty)
             RmOutlineButton(
-              label: 'Clear filters',
+              label: tr(context, 'admin.bans.clearFilters'),
               onPressed: () => onChanged({}),
             ),
         ],
@@ -167,12 +202,12 @@ class ReportFiltersBar extends StatelessWidget {
 }
 
 /// Go time.ParseDuration syntax, including compound and subsecond durations.
-String? positiveGoDuration(String value) {
+String? positiveGoDuration(BuildContext context, String value) {
   final text = value.startsWith('+') ? value.substring(1) : value;
   final parts = RegExp(r'(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)')
       .allMatches(text);
   if (parts.map((p) => p[0]).join() != text) {
-    return 'must be a duration such as 90m or 1h30m';
+    return tr(context, 'admin.reportfilters.mustBeADurationSuchAs90m');
   }
   const units = {
     'ns': 1.0,
@@ -190,7 +225,7 @@ String? positiveGoDuration(String value) {
   );
   return nanos >= 1 && nanos < 9223372036854775808.0
       ? null
-      : 'must be positive and fit within the server duration range';
+      : tr(context, 'admin.reportfilters.mustBePositiveAndFitWithinThe');
 }
 
 // DateTime.parse otherwise normalizes dates such as February 31 into March.

@@ -10,37 +10,37 @@ import 'package:restmail_api/restmail_api.dart';
 /// its 403 for what it is.
 enum AdminSection {
   queue(
-    'Outbound queue',
-    'Mail waiting to go to other servers',
+    'admin.section.queue.title',
+    'admin.section.queue.subtitle',
     read: Capability.queueRead,
     write: Capability.queueManage,
     delete: Capability.queueManage,
   ),
   domains(
-    'Domains',
-    'The domains this server holds mail for',
+    'health.domains',
+    'admin.section.domains.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsDelete,
   ),
   mailboxes(
-    'Mailboxes',
-    'Who has mail here',
+    'health.mailboxes',
+    'admin.section.mailboxes.subtitle',
     read: Capability.mailboxesRead,
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
   ),
   aliases(
-    'Aliases',
-    'Addresses that deliver to another',
+    'admin.section.aliases.title',
+    'admin.section.aliases.subtitle',
     read: Capability.mailboxesRead,
     write: Capability.mailboxesWrite,
     delete: Capability.mailboxesDelete,
   ),
 
   bans(
-    'Bans',
-    'Addresses kept out of SMTP, IMAP and POP3',
+    'admin.section.bans.title',
+    'admin.section.bans.subtitle',
     read: Capability.bansRead,
     write: Capability.bansWrite,
     delete: Capability.bansDelete,
@@ -50,36 +50,36 @@ enum AdminSection {
   /// `users:write`, not `users:delete`, and checks each change against what
   /// the granter holds itself.
   permissions(
-    'Permissions',
-    'Who holds which role, and where',
+    'admin.section.permissions.title',
+    'admin.section.permissions.subtitle',
     read: Capability.usersRead,
     write: Capability.usersWrite,
     delete: Capability.usersWrite,
   ),
 
   overview.readOnly(
-    'Overview',
-    'Mail volume, the queue and TLS at a glance',
+    'admin.section.overview.title',
+    'admin.section.overview.subtitle',
     // GET /admin/stats needs domains:read.
     read: Capability.domainsRead,
   ),
   deliveryLog.readOnly(
-    'Delivery log',
-    'What went out to other servers, and how it went',
+    'admin.section.deliveryLog.title',
+    'admin.section.deliveryLog.subtitle',
     read: Capability.messagesRead,
     group: AdminGroup.logs,
   ),
 
   /// What went through, from the audit log, so under `audit:read` too.
   activity.readOnly(
-    'Activity',
-    'What was done on the server, and by whom',
+    'admin.section.activity.title',
+    'admin.section.activity.subtitle',
     read: Capability.auditRead,
     group: AdminGroup.logs,
   ),
   trace.readOnly(
-    'Message trace',
-    'Each filter a message went through',
+    'admin.section.trace.title',
+    'admin.section.trace.subtitle',
     read: Capability.observabilityRead,
     group: AdminGroup.logs,
   ),
@@ -87,34 +87,34 @@ enum AdminSection {
   /// The log is the pipelines', under `pipelines:read`; its analytics are
   /// observability, as message traces are.
   pipelineLog.readOnly(
-    'Pipeline log',
-    'Each message the filters handled, and how it ended',
+    'admin.section.pipelineLog.title',
+    'admin.section.pipelineLog.subtitle',
     read: Capability.pipelinesRead,
     group: AdminGroup.logs,
   ),
   pipelineAnalytics.readOnly(
-    'Pipeline analytics',
-    'What the filters did with a day or a week of mail',
+    'admin.section.pipelineAnalytics.title',
+    'admin.section.pipelineAnalytics.subtitle',
     read: Capability.observabilityRead,
     group: AdminGroup.logs,
   ),
   tlsReports.readOnly(
-    'TLS reports',
-    'How other servers fare reaching this one over TLS',
+    'admin.section.tlsReports.title',
+    'admin.section.tlsReports.subtitle',
     read: Capability.domainsRead,
     group: AdminGroup.logs,
   ),
   audit.readOnly(
-    'Audit log',
-    'Every sign-in and change, chained so tampering shows',
+    'admin.section.audit.title',
+    'admin.section.audit.subtitle',
     read: Capability.auditRead,
     group: AdminGroup.logs,
   ),
 
   /// The server removes a key with `domains:write`, not `domains:delete`.
   dkim(
-    'DKIM keys',
-    'The keys mail from each domain is signed with',
+    'admin.section.dkim.title',
+    'admin.section.dkim.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
@@ -123,24 +123,24 @@ enum AdminSection {
 
   /// As with DKIM keys, a certificate goes with `domains:write`.
   certificates(
-    'Certificates',
-    'The TLS certificates each domain is served with',
+    'admin.section.certificates.title',
+    'admin.section.certificates.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.setup,
   ),
   pipelines(
-    'Pipelines',
-    'The filters mail goes through, in order',
+    'admin.section.pipelines.title',
+    'admin.section.pipelines.subtitle',
     read: Capability.pipelinesRead,
     write: Capability.pipelinesWrite,
     delete: Capability.pipelinesDelete,
     group: AdminGroup.setup,
   ),
   customFilters(
-    'Custom filters',
-    'Filters written for this server',
+    'admin.section.customFilters.title',
+    'admin.section.customFilters.subtitle',
     read: Capability.pipelinesRead,
     write: Capability.pipelinesWrite,
     delete: Capability.pipelinesDelete,
@@ -152,46 +152,46 @@ enum AdminSection {
   /// and removes a sender or a policy with `domains:write`, not
   /// `domains:delete`.
   domainDkim(
-    'DKIM signing',
-    'Signing key and automatic rotation for this domain',
+    'admin.section.domainDkim.title',
+    'admin.section.domainDkim.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   dnsCheck.readOnly(
-    'DNS check',
-    'Which records are right, and which are missing',
+    'admin.section.dnsCheck.title',
+    'admin.section.dnsCheck.subtitle',
     read: Capability.domainsRead,
     group: AdminGroup.domain,
   ),
   senderLists(
-    'Sender lists',
-    'Senders turned away, and senders let in',
+    'admin.section.senderLists.title',
+    'admin.section.senderLists.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   mtaSts(
-    'MTA-STS',
-    'Whether other servers must send here over TLS',
+    'admin.section.mtaSts.title',
+    'admin.section.mtaSts.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   relay(
-    'Outgoing mail',
-    'Sent straight to other servers, or through a relay',
+    'admin.relay.outgoingMail',
+    'admin.section.relay.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
     group: AdminGroup.domain,
   ),
   suppressions(
-    'Suppressed recipients',
-    'Addresses no longer sent to, after mail to them bounced',
+    'admin.suppressions.suppressedRecipients',
+    'admin.section.suppressions.subtitle',
     read: Capability.domainsRead,
     write: Capability.domainsWrite,
     delete: Capability.domainsWrite,
@@ -199,8 +199,8 @@ enum AdminSection {
   );
 
   const AdminSection(
-    this.title,
-    this.subtitle, {
+    this.titleKey,
+    this.subtitleKey, {
     required this.read,
     required this.write,
     required this.delete,
@@ -209,15 +209,15 @@ enum AdminSection {
 
   /// Only to look at: nothing in it changes.
   const AdminSection.readOnly(
-    this.title,
-    this.subtitle, {
+    this.titleKey,
+    this.subtitleKey, {
     required this.read,
     this.group = AdminGroup.manage,
   }) : write = read,
        delete = read;
 
-  final String title;
-  final String subtitle;
+  final String titleKey;
+  final String subtitleKey;
   final AdminGroup group;
 
   /// To see the section at all.
@@ -234,16 +234,16 @@ enum AdminSection {
 enum AdminGroup {
   /// Mail, the people who have it, and bans: what a phone is for.
   manage(null),
-  logs('Logs and reports'),
-  setup('Signing and filtering'),
+  logs('admin.group.logs'),
+  setup('admin.group.setup'),
 
   /// In a domain's own screen, not in Administration's list.
   domain(null);
 
-  const AdminGroup(this.title);
+  const AdminGroup(this.titleKey);
 
   /// None for the first, which needs none.
-  final String? title;
+  final String? titleKey;
 }
 
 /// What a session's capabilities let it see and do in Administration.

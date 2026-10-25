@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../l10n/catalog.dart';
+import '../l10n/localized_error.dart';
+
 import 'package:enough_mail/enough_mail.dart';
 // Not exported, but needed to hand the client a socket this app opened, with
 // its own certificate trust, rather than one enough_mail opens.
@@ -364,11 +367,13 @@ Future<SmtpClient> openSmtp(
       // Required, never opportunistic: without it the password and the
       // message would cross the network in the clear.
       if (!client.serverInfo.supportsStartTls) {
-        throw ApiException(
+        throw LocalizedApiException(
           0,
           'no_tls',
-          "$host doesn't offer STARTTLS on port $port, so REST Mail won't "
-              'send through it.',
+          UiText('client.hostDoesnTOfferSTARTTLSOnPort', {
+            'host': (host).toString(),
+            'port': (port).toString(),
+          }),
         );
       }
       await client.startTls().timeout(_smtpTimeout);
@@ -465,48 +470,62 @@ ApiException signInRefused(String? serverText, {required String host}) {
   if (lower.contains('web browser') || lower.contains('webalert')) {
     return ApiException(401, 'web_login_required', text);
   }
-  return ApiException(
+  return LocalizedApiException(
     401,
     'unauthorized',
-    text.isEmpty ? '$host turned down the address or password.' : text,
+    text.isEmpty
+        ? UiText('client.hostTurnedDownTheAddressOrPassword', {
+            'host': (host).toString(),
+          })
+        : text,
   );
 }
 
 /// What went wrong, as the [ApiException] the screens already handle.
-ApiException mailException(Object error, {required String host}) =>
-    switch (error) {
-      ApiException() => error,
-      HandshakeException() || TlsException()
-          when '$error'.toUpperCase().contains('CERTIFICATE') =>
-        ApiException(0, 'tls_error', "$host's certificate isn't trusted."),
-      HandshakeException() || TlsException() => ApiException(
-        0,
-        'no_tls',
-        "$host didn't answer over TLS, so REST Mail won't use it.",
-      ),
-      TimeoutException() => ApiException(
-        0,
-        'timeout',
-        '$host took too long to answer.',
-      ),
-      SocketException() => ApiException(
-        0,
-        'network_error',
-        "Can't reach $host.",
-      ),
-      ImapException(:final message) => ApiException(
-        502,
-        'imap_error',
-        message?.trim().isNotEmpty == true
-            ? '$host said: ${message!.trim()}'
-            : '$host turned that down.',
-      ),
-      SmtpException(:final message) => ApiException(
-        502,
-        'smtp_error',
-        message?.trim().isNotEmpty == true
-            ? '$host said: ${message!.trim()}'
-            : "$host wouldn't send it.",
-      ),
-      _ => ApiException(0, 'mail_error', 'Something went wrong with $host.'),
-    };
+ApiException mailException(
+  Object error, {
+  required String host,
+}) => switch (error) {
+  ApiException() => error,
+  HandshakeException() || TlsException()
+      when '$error'.toUpperCase().contains('CERTIFICATE') =>
+    LocalizedApiException(
+      0,
+      'tls_error',
+      UiText('client.hostSCertificateIsnTTrusted', {'host': (host).toString()}),
+    ),
+  HandshakeException() || TlsException() => LocalizedApiException(
+    0,
+    'no_tls',
+    UiText('client.hostDidnTAnswerOverTLSSo', {'host': (host).toString()}),
+  ),
+  TimeoutException() => LocalizedApiException(
+    0,
+    'timeout',
+    UiText('client.hostTookTooLongToAnswer', {'host': (host).toString()}),
+  ),
+  SocketException() => LocalizedApiException(
+    0,
+    'network_error',
+    UiText('client.canTReachHost', {'host': (host).toString()}),
+  ),
+  ImapException(:final message) => LocalizedApiException(
+    502,
+    'imap_error',
+    message?.trim().isNotEmpty == true
+        ? '$host said: ${message!.trim()}'
+        : UiText('client.hostTurnedThatDown', {'host': (host).toString()}),
+  ),
+  SmtpException(:final message) => LocalizedApiException(
+    502,
+    'smtp_error',
+    message?.trim().isNotEmpty == true
+        ? '$host said: ${message!.trim()}'
+        : UiText('client.hostWouldnTSendIt', {'host': (host).toString()}),
+  ),
+  _ => LocalizedApiException(
+    0,
+    'mail_error',
+    UiText('client.somethingWentWrongWithHost', {'host': (host).toString()}),
+  ),
+};

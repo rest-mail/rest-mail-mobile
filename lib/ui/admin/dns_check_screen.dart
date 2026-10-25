@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../l10n/voice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:restmail_api/restmail_api.dart';
 
@@ -9,10 +11,10 @@ import '../../theme/tokens.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
 
-String _statusLabel(String status) => switch (status) {
-  'ok' => 'Right',
-  'missing' => 'Missing',
-  _ => "Couldn't check",
+String _statusLabel(BuildContext context, String status) => switch (status) {
+  'ok' => tr(context, 'admin.dnscheck.right'),
+  'missing' => tr(context, 'admin.dnscheck.missing'),
+  _ => tr(context, 'admin.dnscheck.couldnTCheck'),
 };
 
 /// The selector the server's check looks under for a DKIM key, whatever the
@@ -78,7 +80,7 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
       scope: CapabilityScope.domain(widget.domain.name),
       account: widget.account,
       section: AdminSection.dnsCheck,
-      title: 'DNS check',
+      title: tr(context, 'admin.section.dnsCheck.title'),
       body: (_) {
         if (error != null) {
           return AdminMessage(
@@ -109,10 +111,23 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
             children: [
               Text(
                 right == check.records.length
-                    ? 'All ${check.records.length} records '
-                          '${widget.domain.name} needs are right.'
-                    : '$right of ${check.records.length} records '
-                          '${widget.domain.name} needs are right.',
+                    ? trArgs(
+                        context,
+                        'admin.dnscheck.allLengthRecordsNameNeedsAreRight',
+                        {
+                          'length': (check.records.length).toString(),
+                          'name': (widget.domain.name).toString(),
+                        },
+                      )
+                    : trArgs(
+                        context,
+                        'admin.dnscheck.rightOfLengthRecordsNameNeedsAre',
+                        {
+                          'right': (right).toString(),
+                          'length': (check.records.length).toString(),
+                          'name': (widget.domain.name).toString(),
+                        },
+                      ),
                 style: rmText(15, color: c.ink2, height: 1.45),
               ),
               const SizedBox(height: 14),
@@ -132,7 +147,7 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
                       trailing: Padding(
                         padding: const EdgeInsets.only(left: 12, right: 4),
                         child: Text(
-                          _statusLabel(record.status),
+                          _statusLabel(context, record.status),
                           style: rmText(
                             13.5,
                             color: record.ok ? c.ink3 : c.danger,
@@ -150,16 +165,19 @@ class _DnsCheckScreenState extends State<DnsCheckScreen> {
                   selector != _checkedSelector) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'The check looks for the DKIM key under the selector '
-                  '"$_checkedSelector", and ${widget.domain.name} signs with '
-                  '"$selector": look for $selector._domainkey.'
-                  '${widget.domain.name} instead.',
+                  trArgs(context, 'admin.dnscheck.theCheckLooksForTheDKIMKey', {
+                    'checkedSelector': (_checkedSelector).toString(),
+                    'name': (widget.domain.name).toString(),
+                    'selector': (selector).toString(),
+                  }),
                   style: rmText(13, color: c.ink3, height: 1.4),
                 ),
               ],
               const SizedBox(height: 22),
               RmOutlineButton(
-                label: _checking ? 'Checking…' : 'Check again',
+                label: _checking
+                    ? tr(context, 'server.checking')
+                    : tr(context, 'admin.dnscheck.checkAgain'),
                 onPressed: _checking ? null : () => unawaited(_load()),
               ),
             ],
