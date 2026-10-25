@@ -26,17 +26,21 @@ String languageLine(
   final language = languageCode.split(RegExp('[-_]')).first;
   final words = _voices[language];
   final english = _voices['en']!;
-  var text =
+  final text =
       words?[voice]?[key] ??
       words?['classic']?[key] ??
       english[voice]?[key] ??
       english['classic']?[key] ??
       key;
-  for (final entry in args.entries) {
-    text = text.replaceAll('{${entry.key}}', entry.value);
-  }
-  return text;
+  return fillPlaceholders(text, args);
 }
+
+/// Replace only slots in the template; inserted user content is never reparsed.
+String fillPlaceholders(String text, Map<String, String> args) =>
+    text.replaceAllMapped(
+      RegExp(r'\{(\w+)\}'),
+      (match) => args[match[1]] ?? match[0]!,
+    );
 
 /// A translation key and its values, kept unresolved until it is displayed.
 /// Server messages and user content must never be wrapped as translation keys.

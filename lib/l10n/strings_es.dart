@@ -1787,6 +1787,11 @@ const Map<String, Map<String, String>> stringsEs = {
     'settings.linkMailboxAction': 'Vincular otro buzón',
     'settings.createMailboxAction': 'Crear un buzón',
     'duration.thirtyDays': '30 días',
+    'senderLists.patternHint': 'someone@example.com, o @example.com',
+    'server.enterAddress': 'Introduce la dirección de tu servidor',
+    'server.httpsRequired':
+        'Los servidores de rest-mail solo se conectan por HTTPS',
+    'server.invalidAddress': '«{address}» no es una dirección de servidor',
   },
   'brand': {'splash.tagline': 'Correo que va a tu ritmo.'},
   'ledger': {'splash.tagline': 'Abriendo la correspondencia del día.'},

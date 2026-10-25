@@ -5,6 +5,25 @@ void main() {
   group('parseServerUrl', () {
     String parse(String input) => parseServerUrl(input).toString();
 
+    test('exposes stable reasons for localized validation', () {
+      for (final (input, reason) in [
+        ('', ServerUrlReason.empty),
+        ('https://', ServerUrlReason.invalid),
+        ('http://mail.example.test', ServerUrlReason.httpsRequired),
+      ]) {
+        expect(
+          () => parseServerUrl(input),
+          throwsA(
+            isA<ServerUrlFormatException>().having(
+              (error) => error.reason,
+              'reason',
+              reason,
+            ),
+          ),
+        );
+      }
+    });
+
     test('gives a bare host https', () {
       expect(parse('mail.example.test'), 'https://mail.example.test');
     });

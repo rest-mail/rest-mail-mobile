@@ -719,11 +719,7 @@ String _name(BuildContext context, TlsCertificate cert) =>
         'domainId': (cert.domainId).toString(),
       });
 
-String _expiry(
-  BuildContext context,
-  BuildContext context,
-  TlsCertificate cert,
-) {
+String _expiry(BuildContext context, TlsCertificate cert) {
   final date = DateFormat.yMMMd().format(cert.notAfter);
   final days = cert.notAfter.difference(DateTime.now()).inDays;
   if (days < 0) {

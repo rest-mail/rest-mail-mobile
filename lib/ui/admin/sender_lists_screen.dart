@@ -96,7 +96,7 @@ class _SenderListsScreenState extends State<SenderListsScreen> {
         fields: [
           AdminField(
             tr(context, 'admin.queue.sender'),
-            hint: 'someone@example.com, or @example.com',
+            hint: tr(context, 'senderLists.patternHint'),
             email: true,
           ),
           AdminField(

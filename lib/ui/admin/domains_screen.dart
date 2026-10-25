@@ -40,8 +40,14 @@ const dmarcPolicies = [
   ('reject', 'admin.domains.reject'),
 ];
 
-String _choiceLabel(List<(String, String)> choices, String value) =>
-    choices.firstWhere((c) => c.$1 == value, orElse: () => (value, value)).$2;
+String _choiceLabel(
+  BuildContext context,
+  List<(String, String)> choices,
+  String value,
+) {
+  final choice = choices.where((choice) => choice.$1 == value).firstOrNull;
+  return choice == null ? value : tr(context, choice.$2);
+}
 
 /// The domains the server holds mail for.
 class DomainsScreen extends StatefulWidget {
@@ -426,10 +432,7 @@ class _DomainScreenState extends State<DomainScreen> {
                 ),
                 RmRow(
                   label: tr(context, 'admin.domains.mailKeptBy'),
-                  value: tr(
-                    context,
-                    _choiceLabel(serverTypes, domain.serverType),
-                  ),
+                  value: _choiceLabel(context, serverTypes, domain.serverType),
                 ),
                 RmRow(
                   label: tr(context, 'admin.domains.mailboxSize'),
@@ -440,9 +443,10 @@ class _DomainScreenState extends State<DomainScreen> {
                 ),
                 RmRow(
                   label: tr(context, 'admin.domains.sendingPolicy'),
-                  value: tr(
+                  value: _choiceLabel(
                     context,
-                    _choiceLabel(sendingPolicies, domain.sendingPolicy),
+                    sendingPolicies,
+                    domain.sendingPolicy,
                   ),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editPolicy())
@@ -450,9 +454,10 @@ class _DomainScreenState extends State<DomainScreen> {
                 ),
                 RmRow(
                   label: tr(context, 'admin.domains.dmarcPolicy'),
-                  value: tr(
+                  value: _choiceLabel(
                     context,
-                    _choiceLabel(dmarcPolicies, domain.dmarcPolicy),
+                    dmarcPolicies,
+                    domain.dmarcPolicy,
                   ),
                   onTap: access.canWrite(AdminSection.domains) && !_busy
                       ? () => unawaited(_editDMARC())

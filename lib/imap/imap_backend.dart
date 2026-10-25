@@ -175,6 +175,10 @@ class ImapBackend implements MailBackend {
   List<MappedFolder>? _folders;
   final _counts = <String, Folder>{};
 
+  /// Only server-identified system folders get app-owned display labels.
+  bool isSystemFolder(String name) =>
+      _folders?.any((folder) => folder.name == name && folder.role) ?? false;
+
   Future<List<MappedFolder>> _list(
     ImapConnection c, {
     bool fresh = false,

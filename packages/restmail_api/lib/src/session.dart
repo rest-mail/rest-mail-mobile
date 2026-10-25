@@ -57,6 +57,15 @@ const _pastedSuffixes = [
   ['admin'],
 ];
 
+enum ServerUrlReason { empty, invalid, httpsRequired }
+
+/// A stable reason for clients to display their own localized validation text.
+class ServerUrlFormatException extends FormatException {
+  const ServerUrlFormatException(this.reason, super.message);
+
+  final ServerUrlReason reason;
+}
+
 /// Turns what someone typed as their server into the base URL the API hangs
 /// off.
 ///
@@ -67,16 +76,23 @@ const _pastedSuffixes = [
 Uri parseServerUrl(String input) {
   final trimmed = input.trim();
   if (trimmed.isEmpty) {
-    throw const FormatException('Enter your server address');
+    throw const ServerUrlFormatException(
+      ServerUrlReason.empty,
+      'Enter your server address',
+    );
   }
   final uri = Uri.tryParse(
     trimmed.contains('://') ? trimmed : 'https://$trimmed',
   );
   if (uri == null || uri.host.isEmpty) {
-    throw FormatException('"$trimmed" is not a server address');
+    throw ServerUrlFormatException(
+      ServerUrlReason.invalid,
+      '"$trimmed" is not a server address',
+    );
   }
   if (uri.scheme.toLowerCase() != 'https') {
-    throw const FormatException(
+    throw const ServerUrlFormatException(
+      ServerUrlReason.httpsRequired,
       'rest-mail servers are reached over HTTPS only',
     );
   }

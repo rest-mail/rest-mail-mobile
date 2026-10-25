@@ -71,6 +71,10 @@ jobs:
           python3 -m unittest discover -s tool/ci -p 'test_admin_api_manifest.py'
       # Before the check: it imports the app's notes as a package.
       - run: flutter pub get
+      - name: Check UI translation entry points
+        run: |
+          python3 tool/ci/check_ui_text.py
+          python3 -m unittest discover -s tool/ci -p 'test_check_ui_text.py'
       - name: Check accumulated release notes
         run: |
           python3 -m unittest discover -s tool/ci -p 'test_build_whats_new.py'

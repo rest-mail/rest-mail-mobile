@@ -46,7 +46,20 @@ class _ServerScreenState extends State<ServerScreen> {
     } on FormatException catch (e) {
       setState(() {
         _verified = null;
-        _result = (ok: false, text: e.message);
+        _result = (
+          ok: false,
+          text: switch (e) {
+            ServerUrlFormatException(reason: ServerUrlReason.empty) => tr(
+              context,
+              'server.enterAddress',
+            ),
+            ServerUrlFormatException(reason: ServerUrlReason.httpsRequired) =>
+              tr(context, 'server.httpsRequired'),
+            _ => trArgs(context, 'server.invalidAddress', {
+              'address': _address.text.trim(),
+            }),
+          },
+        );
       });
       return;
     }
