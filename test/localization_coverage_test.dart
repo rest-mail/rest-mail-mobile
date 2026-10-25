@@ -10,6 +10,7 @@ import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/interface_prefs.dart';
 import 'package:restmail/state/storage.dart';
 import 'package:restmail/theme/packs.dart';
+import 'package:restmail/theme/theme.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -128,6 +129,7 @@ void main() {
     const content = 'Create a mailbox';
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildTheme(ThemePack.classic, Brightness.light),
         locale: const Locale('fa'),
         supportedLocales: const [Locale('fa')],
         localizationsDelegates: const [
