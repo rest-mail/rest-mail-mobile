@@ -91,7 +91,7 @@ String folderLabelOf(BuildContext context, String name) {
     final backend = context
         .dependOnInheritedWidgetOfExactType<AppScope>()
         ?.notifier
-        .mailbox
+        ?.mailbox
         ?.backend;
     if (backend is ImapBackend && backend.isSystemFolder(name)) {
       key = _systemFolderKeys[name];
