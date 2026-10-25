@@ -187,6 +187,13 @@ const composerUnsubscribePanel = PanelSpec(
   descriptionKey: 'interface.whereRecipientsUnsubscribeForMailFrom',
 );
 
+const composerRequireTlsPanel = PanelSpec(
+  id: 'composer_require_tls',
+  area: PanelArea.composer,
+  nameKey: 'interface.requireTls',
+  descriptionKey: 'interface.requireTlsDescription',
+);
+
 /// Everything the user can add to or remove from their client.
 const panelRegistry = <PanelSpec>[
   dateSeparatorsPanel,
@@ -199,6 +206,7 @@ const panelRegistry = <PanelSpec>[
   composerFromPanel,
   composerLaterPanel,
   composerUnsubscribePanel,
+  composerRequireTlsPanel,
 ];
 
 /// The layout choices, kept on the device with the rest of the settings.

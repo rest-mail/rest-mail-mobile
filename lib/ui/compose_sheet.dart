@@ -94,6 +94,8 @@ class _ComposeSheetState extends State<ComposeSheet>
   bool _counting = false;
   bool _showLater = false;
   bool _showUnsubscribe = false;
+  bool _showRequireTls = false;
+  bool _requireTls = false;
   String? _error;
   ({List<String> to, List<String> cc, List<String> bcc})? _pendingSend;
   late final AnimationController _undo;
@@ -138,6 +140,8 @@ class _ComposeSheetState extends State<ComposeSheet>
         widget.seed.kind != ComposeKind.draft;
     _showUnsubscribe =
         prefs.isOn(composerUnsubscribePanel) && _backend.canSetListUnsubscribe;
+    _showRequireTls =
+        prefs.isOn(composerRequireTlsPanel) && _backend.canRequireTls;
   }
 
   @override
@@ -177,6 +181,7 @@ class _ComposeSheetState extends State<ComposeSheet>
     _body.text,
     _unsubscribeMailto.text,
     _unsubscribeHttps.text,
+    '$_requireTls',
   ].join('\u0000');
 
   String get _title => switch (widget.seed.kind) {
@@ -200,6 +205,7 @@ class _ComposeSheetState extends State<ComposeSheet>
     inReplyTo: widget.seed.inReplyTo,
     references: widget.seed.references,
     listUnsubscribe: _listUnsubscribe,
+    requireTls: _showRequireTls && _requireTls,
   );
 
   /// Where the recipients unsubscribe, when the composer says so.
@@ -272,13 +278,14 @@ class _ComposeSheetState extends State<ComposeSheet>
       final draftId = _draftId;
       if (draftId != null &&
           pending.bcc.isEmpty &&
-          message.listUnsubscribe == null) {
+          message.listUnsubscribe == null &&
+          !message.requireTls) {
         await _backend.updateDraft(draftId, message);
         await _backend.sendDraft(draftId);
       } else {
-        // The draft endpoints have no Bcc or List-Unsubscribe, so a draft
-        // that gained one is sent as a new message and the draft put in
-        // Trash.
+        // The draft endpoints have no Bcc, List-Unsubscribe or REQUIRETLS,
+        // so a draft that gained one is sent as a new message and the draft
+        // put in Trash.
         await _backend.send(message);
         if (draftId != null) {
           unawaited(
@@ -780,6 +787,26 @@ class _ComposeSheetState extends State<ComposeSheet>
                       ),
                     ),
                   ],
+                  if (_showRequireTls)
+                    _FieldRow(
+                      label: tr(context, 'compose.tls'),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tr(context, 'compose.requireTls'),
+                              style: rmText(15, color: c.ink),
+                            ),
+                          ),
+                          Switch(
+                            value: _requireTls,
+                            onChanged: _counting
+                                ? null
+                                : (on) => setState(() => _requireTls = on),
+                          ),
+                        ],
+                      ),
+                    ),
                   Expanded(
                     child: TextField(
                       controller: _body,

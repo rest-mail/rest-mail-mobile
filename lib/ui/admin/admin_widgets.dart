@@ -409,6 +409,7 @@ class AdminField {
     this.pasteOnly = false,
     this.number = false,
     this.choices,
+    this.clearFieldsOnChange = const [],
   });
 
   final String label;
@@ -434,6 +435,10 @@ class AdminField {
   /// When given, the field is one of these (value, label) pairs, chosen with
   /// a tap; its value is the choice's value, starting at [initial].
   final List<(String, String)>? choices;
+
+  /// Clear these field indices when a different choice is selected, so a
+  /// secret entered for one credential type is never reused for another.
+  final List<int> clearFieldsOnChange;
 }
 
 /// A few fields and a button that sends them. Pops with true once the
@@ -586,6 +591,12 @@ class _AdminFormScreenState extends State<AdminFormScreen> {
                               label: Text(label),
                               selected: _controllers[i].text == value,
                               onSelected: (_) => setState(() {
+                                if (_controllers[i].text != value) {
+                                  for (final index
+                                      in widget.fields[i].clearFieldsOnChange) {
+                                    _controllers[index].clear();
+                                  }
+                                }
                                 _controllers[i].text = value;
                                 _error = null;
                               }),

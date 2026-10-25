@@ -9,6 +9,9 @@ environment:
 dependencies:
   # Already used by the app; parse certificate metadata in the HTTP fake.
   basic_utils: ^5.8.2
+  # Verify imported credentials in the HTTP fake using the format libraries.
+  bcrypt: ^1.2.0
+  crypt: ^4.3.1
   http: ^1.6.0
 
 dev_dependencies:

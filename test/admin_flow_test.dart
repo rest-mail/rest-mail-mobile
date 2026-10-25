@@ -195,6 +195,16 @@ void main() {
     );
     await tester.enterText(find.byType(TextField).at(1), 'Hello');
     await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text('Add mailbox'),
+      150,
+      scrollable: find
+          .descendant(
+            of: find.byType(AdminFormScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tap(tester, 'Add mailbox');
 
     expect(find.text('hello@${FakeAccounts.host}'), findsOneWidget);

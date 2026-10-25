@@ -76,7 +76,16 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
           ),
           AdminField(tr(context, 'folders.name'), optional: true),
           AdminField(
-            tr(context, 'signIn.password'),
+            tr(context, 'admin.mailboxes.credentialType'),
+            initial: 'password',
+            choices: [
+              ('password', tr(context, 'signIn.password')),
+              ('hash', tr(context, 'admin.mailboxes.importedPasswordHash')),
+            ],
+            clearFieldsOnChange: [3],
+          ),
+          AdminField(
+            tr(context, 'admin.mailboxes.passwordOrImportedHash'),
             obscure: true,
             optional: true,
           ),
@@ -86,7 +95,12 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
         submit: (values) => widget.account.client.createAccount(
           address: values[0].toLowerCase(),
           displayName: values[1].isEmpty ? null : values[1],
-          password: values[2].isEmpty ? null : values[2],
+          password: values[2] == 'password' && values[3].isNotEmpty
+              ? values[3]
+              : null,
+          passwordHash: values[2] == 'hash' && values[3].isNotEmpty
+              ? values[3]
+              : null,
         ),
       ),
     );
