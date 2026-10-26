@@ -84,6 +84,52 @@ void main() {
     expect(image.decodeIco(bytes), isNull);
   });
 
+  test('falls back to the www host when the apex has no icon', () async {
+    final png = image.encodePng(image.Image(width: 2, height: 2));
+    final client = MockClient((request) async {
+      requests++;
+      if (request.url.host == 'www.example.com') {
+        if (request.url.path == '/') {
+          return http.Response(
+            '<link rel="icon" type="image/png" href="/icon.png">',
+            200,
+          );
+        }
+        if (request.url.path == '/icon.png') {
+          return http.Response.bytes(png, 200);
+        }
+      }
+      return http.Response('', 404);
+    });
+
+    final file = await cache(client).iconForHost('example.com');
+    expect(file, isNotNull);
+    expect(image.decodePng(await file!.readAsBytes()), isNotNull);
+  });
+
+  test('scans common mail hosts after the apex and www', () async {
+    final png = image.encodePng(image.Image(width: 2, height: 2));
+    final client = MockClient((request) async {
+      requests++;
+      if (request.url.host == 'smtp.example.com') {
+        if (request.url.path == '/') {
+          return http.Response(
+            '<link rel="icon" type="image/png" href="/icon.png">',
+            200,
+          );
+        }
+        if (request.url.path == '/icon.png') {
+          return http.Response.bytes(png, 200);
+        }
+      }
+      return http.Response('', 404);
+    });
+
+    final file = await cache(client).iconForHost('example.com');
+    expect(file, isNotNull);
+    expect(image.decodePng(await file!.readAsBytes()), isNotNull);
+  });
+
   test('a denied host is never fetched or served', () async {
     final client = MockClient((request) async {
       requests++;

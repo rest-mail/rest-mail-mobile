@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,7 @@ class RmAvatar extends StatelessWidget {
     this.color,
     this.radius,
     this.iconFileName,
-    this.faviconHost,
+    this.faviconHosts,
   });
 
   final String name;
@@ -37,8 +38,9 @@ class RmAvatar extends StatelessWidget {
   /// The custom icon this account picked, or null for the initials.
   final String? iconFileName;
 
-  /// When set, the account's provider or domain favicon, if cached.
-  final String? faviconHost;
+  /// When set, the account's provider or domain favicons, in preference
+  /// order.
+  final List<String>? faviconHosts;
 
   @override
   Widget build(BuildContext context) {
@@ -63,10 +65,13 @@ class RmAvatar extends StatelessWidget {
         ),
       ),
     );
-    if (iconFileName == null && faviconHost == null) return fallback;
+    if (iconFileName == null &&
+        (faviconHosts == null || faviconHosts!.isEmpty)) {
+      return fallback;
+    }
     return AccountIcon(
       fileName: iconFileName,
-      faviconHost: faviconHost,
+      faviconHosts: faviconHosts,
       fallback: fallback,
       size: size,
       radius: radius,
@@ -95,7 +100,7 @@ class AccountIcon extends StatefulWidget {
   const AccountIcon({
     super.key,
     this.fileName,
-    this.faviconHost,
+    this.faviconHosts,
     required this.fallback,
     this.size = 42,
     this.radius,
@@ -104,8 +109,8 @@ class AccountIcon extends StatefulWidget {
   /// The file name in the app's `account_icons` folder, or null.
   final String? fileName;
 
-  /// The host whose favicon labels this account, or null.
-  final String? faviconHost;
+  /// The hosts whose favicon may label this account, in order.
+  final List<String>? faviconHosts;
   final Widget fallback;
   final double size;
   final BorderRadius? radius;
@@ -137,7 +142,7 @@ class _AccountIconState extends State<AccountIcon> {
       _file = _load();
       _favicon = _loadFavicon();
     }
-    if (oldWidget.faviconHost != widget.faviconHost) {
+    if (!listEquals(oldWidget.faviconHosts, widget.faviconHosts)) {
       _favicon = _loadFavicon();
     }
   }
@@ -149,9 +154,9 @@ class _AccountIconState extends State<AccountIcon> {
   }
 
   Future<File?>? _loadFavicon() {
-    final host = widget.faviconHost;
-    if (widget.fileName != null || host == null) return null;
-    return AppScope.of(context).faviconFileOfHost(host);
+    final hosts = widget.faviconHosts;
+    if (widget.fileName != null || hosts == null || hosts.isEmpty) return null;
+    return AppScope.of(context).favicons.iconFor(hosts);
   }
 
   @override
@@ -159,7 +164,7 @@ class _AccountIconState extends State<AccountIcon> {
     if (widget.fileName != null) {
       return _fileBuilder(_file);
     }
-    if (widget.faviconHost != null) {
+    if (widget.faviconHosts?.isNotEmpty ?? false) {
       return _fileBuilder(_favicon);
     }
     return widget.fallback;

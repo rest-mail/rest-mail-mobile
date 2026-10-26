@@ -60,42 +60,95 @@ class FaviconCache {
   /// The cache version and deny list are read at startup; a denied host's
   /// cached copy is dropped here too.
   Future<File?> _load(String host) async {
-    final directory = await _cacheDirectory();
-    final cached = File('${directory.path}/${_name(host)}.png');
-    if (_denied(host)) {
-      if (await cached.exists()) {
-        try {
-          await cached.delete();
-        } on FileSystemException {
-          // The next denied read still refuses it.
-        }
-      }
-      return null;
-    }
-    if (await cached.exists()) return cached;
-
-    final client = _clientFactory();
     try {
-      for (final uri in await _candidates(client, host)) {
-        final bytes = await _get(client, uri, accept: 'image/*');
-        if (bytes == null) continue;
-        final png = _asPng(bytes);
-        if (png == null) continue;
-        try {
-          await cached.writeAsBytes(png, flush: true);
-          return cached;
-        } on FileSystemException {
-          return null;
+      final directory = await _cacheDirectory();
+      final cached = File('${directory.path}/${_name(host)}.png');
+      if (_denied(host)) {
+        if (await cached.exists()) {
+          try {
+            await cached.delete();
+          } on FileSystemException {
+            // The next denied read still refuses it.
+          }
         }
+        return null;
       }
-    } finally {
-      client.close();
+      if (await cached.exists()) return cached;
+
+      final client = _clientFactory();
+      try {
+        for (final base in _bases(host)) {
+          for (final uri in await _candidates(client, base)) {
+            final bytes = await _get(client, uri, accept: 'image/*');
+            if (bytes == null) continue;
+            final png = _asPng(bytes);
+            if (png == null) continue;
+            try {
+              await cached.writeAsBytes(png, flush: true);
+              return cached;
+            } on FileSystemException {
+              return null;
+            }
+          }
+        }
+      } finally {
+        client.close();
+      }
+    } on Object {
+      // No cache directory (for example a host without path_provider) or an
+      // unreadable one: the caller shows the generic mark.
     }
     return null;
   }
 
-  Future<List<Uri>> _candidates(http.Client client, String host) async {
-    final base = Uri.parse('https://$host/');
+  /// The base domain first, then the host itself when it is a mail
+  /// subdomain, then the common website hosts. This is a bounded, ordered
+  /// scan; the first usable icon wins.
+  static List<Uri> _bases(String host) {
+    final base = _baseDomain(host) ?? host;
+    final hosts = <String>[base];
+    if (host != base) hosts.add(host);
+    for (final prefix in _commonPrefixes) {
+      final candidate = '$prefix$base';
+      if (!hosts.contains(candidate)) hosts.add(candidate);
+    }
+    return [for (final candidate in hosts) Uri.parse('https://$candidate/')];
+  }
+
+  static const _commonPrefixes = [
+    'www.',
+    'mail.',
+    'webmail.',
+    'smtp.',
+    'imap.',
+  ];
+
+  static const _mailPrefixes = ['www.', 'mail.', 'webmail.', 'smtp.', 'imap.'];
+
+  /// The registrable-looking host under a mail subdomain, or null when the
+  /// host is already the base. `mail.com` stays `mail.com`; `mail.example.com`
+  /// becomes `example.com`.
+  static String? _baseDomain(String host) {
+    var value = host;
+    var changed = false;
+    while (true) {
+      for (final prefix in _mailPrefixes) {
+        if (!value.startsWith(prefix)) continue;
+        final rest = value.substring(prefix.length);
+        if (!rest.contains('.')) continue;
+        value = rest;
+        changed = true;
+        break;
+      }
+      if (value == host || !changed) break;
+      // One pass is enough for the mail prefixes; avoid looping forever on a
+      // pathological name such as mail.mail.example.com.
+      if (!_mailPrefixes.any(value.startsWith)) break;
+    }
+    return changed ? value : null;
+  }
+
+  Future<List<Uri>> _candidates(http.Client client, Uri base) async {
     final found = <({Uri uri, int score})>[];
     final page = await _get(client, base, accept: 'text/html');
     if (page != null) {

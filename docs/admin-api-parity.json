@@ -190,7 +190,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -292,7 +292,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -395,7 +395,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -498,7 +498,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -587,7 +587,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -690,7 +690,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -812,7 +812,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -926,7 +926,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1040,7 +1040,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1143,7 +1143,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1257,7 +1257,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1412,7 +1412,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1525,7 +1525,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1628,7 +1628,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1717,7 +1717,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1847,7 +1847,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -1950,7 +1950,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -2078,7 +2078,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -2209,7 +2209,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -2551,7 +2551,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -2737,7 +2737,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -2928,7 +2928,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3021,7 +3021,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3136,7 +3136,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3286,7 +3286,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3439,7 +3439,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3595,7 +3595,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3697,7 +3697,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3830,7 +3830,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -3969,7 +3969,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4289,7 +4289,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4410,7 +4410,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4531,7 +4531,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4668,7 +4668,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4811,7 +4811,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -4953,7 +4953,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -5091,7 +5091,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -5346,7 +5346,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -5527,7 +5527,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -5799,7 +5799,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -5975,7 +5975,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -6148,7 +6148,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -6365,7 +6365,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -6505,7 +6505,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -6718,7 +6718,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7023,7 +7023,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7278,7 +7278,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7371,7 +7371,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7567,7 +7567,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7666,7 +7666,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -7812,7 +7812,7 @@
       "request_assessment": "documented_and_unit_tested",
       "response_assessment": "documented_and_unit_tested",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false,
       "field_mapping_document": {
         "revision": "27a7888d718f816fd198931defc16f1c4a912b1d",
@@ -8072,7 +8072,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -8242,7 +8242,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -8467,7 +8467,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -8693,7 +8693,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -8929,7 +8929,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9115,7 +9115,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9268,7 +9268,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9435,7 +9435,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9587,7 +9587,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9779,7 +9779,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -9943,7 +9943,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -10106,7 +10106,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -10323,7 +10323,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -10496,7 +10496,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -10669,7 +10669,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -10942,7 +10942,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -11268,7 +11268,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -11530,7 +11530,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -11825,7 +11825,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12007,7 +12007,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12185,7 +12185,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12337,7 +12337,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12467,7 +12467,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12597,7 +12597,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12705,7 +12705,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -12813,7 +12813,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -13001,7 +13001,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -13175,7 +13175,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -13417,7 +13417,7 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     },
     {
@@ -13676,14 +13676,20 @@
       "request_assessment": "needs_field_review",
       "response_assessment": "needs_field_review",
       "ui_runtime_assessment": "requires exact-head Flutter CI evidence",
-      "integration_assessment": "Source spans pending PRs; not all branches are on main. The source revision is not a release or deployment claim.",
+      "integration_assessment": "Listed source PRs and server #618-#621 are merged on main; source links stay pinned. Field review and exact-head runtime evidence remain required.",
       "overall_parity": false
     }
   ],
   "limitations": [
     "OpenAPI is a declared contract; opaque success shapes are reported and still require handler/DTO comparison.",
     "Literal JSON keys and UI call sites are lexical discovery only, not proof every field is wired or every screen works.",
-    "Source revisions span feature PRs; integration, scope correctness and exact-head CI must be verified separately.",
-    "Scoped API key lifecycle and refresh/auth operations are outside this81-operation admin inventory and remain part of the broader objective."
-  ]
+    "Source revisions are pinned feature commits; integration and exact-head CI must be verified separately.",
+    "Scoped API key lifecycle and refresh/auth operations are outside this 81-operation admin inventory and remain part of the broader objective."
+  ],
+  "revalidated_at": "2026-10-26T14:37:50+00:00",
+  "revalidation": {
+    "server_revision": "48b81639491375056b1ed7efcfad1e479ce66d2a",
+    "mobile_revision": "6eb7d66dd9fe2d0073e3424e5b950d531d42c315",
+    "result": "81 production routes and operation IDs unchanged; server #618-#621 and mobile #102-#114 merged."
+  }
 }
