@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'model.dart';
+import 'forward_source.dart';
 import 'imported_password.dart';
 import 'sample_mail.dart';
 
@@ -69,12 +70,18 @@ class FakeRestmail {
     this.accessTokenLifetime = const Duration(minutes: 15),
     this.latency = Duration.zero,
     this.pushPlatforms = const {'apns'},
+    this.maxForwardMessageBytes = 10 * 1024 * 1024,
+    this.discardForwards = false,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     _load();
   }
 
   final FakeScenario scenario;
+
+  /// The full forwarded MIME cap and an explicit outbound-discard fixture.
+  final int maxForwardMessageBytes;
+  final bool discardForwards;
 
   /// Requests to any other host fail as if it could not be reached.
   final String host;
@@ -249,6 +256,7 @@ class FakeRestmail {
     required String subject,
     String? fromName,
     String body = '',
+    List<FakeAttachment> attachments = const [],
   }) {
     final box = _mailboxAt(to);
     if (box == null) throw ArgumentError.value(to, 'to', 'No such mailbox');
@@ -261,6 +269,7 @@ class FakeRestmail {
         to: [FakeRecipient(box.address, box.displayName)],
         subject: subject,
         bodyText: body,
+        attachments: attachments,
         receivedAt: _clock(),
       ),
     );
@@ -832,6 +841,8 @@ class FakeRestmail {
         session,
         id,
       ),
+      ('POST', ['api', 'v1', 'messages', final id, 'forward']) =>
+        _forwardMessage(session, id, _object(bytes)),
       ('POST', ['api', 'v1', 'messages', 'send']) => _send(
         session,
         _object(bytes),
@@ -2218,6 +2229,98 @@ class FakeRestmail {
         (!withFiles || m.attachments.isNotEmpty) &&
         (after == null || m.receivedAt.isAfter(after)) &&
         (before == null || m.receivedAt.isBefore(before));
+  }
+
+  http.StreamedResponse _forwardMessage(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final original = _messages[int.tryParse(id)];
+    if (original == null) _fail(404, 'message_not_found', 'Message not found');
+    if (!_reach(session).contains(original.mailboxId)) {
+      _fail(403, 'forbidden', 'You cannot read that message');
+    }
+    if ((body['from'] as String? ?? '').isEmpty ||
+        body['to'] is! List ||
+        (body['to'] as List).isEmpty) {
+      _fail(400, 'bad_request', 'from and to are required');
+    }
+    final sender = _sender(session, body);
+    final to = _recipients(body['to']);
+    _checkUnsubscribe(sender, null);
+    if (discardForwards) {
+      return _json({
+        'data': {'status': 'discarded'},
+      });
+    }
+    List<FakeAttachment> copies() => [
+      for (final part in original.attachments)
+        FakeAttachment(
+          filename: part.filename,
+          contentType: part.contentType,
+          bytes: List<int>.of(part.bytes),
+          disposition: part.disposition,
+          contentId: part.contentId,
+        ),
+    ];
+    final bodies = forwardedBodies(
+      body['body_text'] as String? ?? '',
+      original,
+    );
+    final sent = FakeMessage(
+      folder: 'Sent',
+      sender: sender.address,
+      senderName: sender.displayName,
+      to: to,
+      subject: 'Fwd: ${original.subject}',
+      bodyText: bodies.text,
+      bodyHtml: bodies.html,
+      receivedAt: _clock(),
+      isRead: true,
+      attachments: copies(),
+    )..rfcMessageId = '<$_nextId@fake.restmail.test>';
+    final source = forwardedSource(sent);
+    if (utf8.encode(source).length > maxForwardMessageBytes) {
+      _fail(
+        413,
+        'message_too_large',
+        'The forwarded message exceeds the message size limit',
+      );
+    }
+    final used = _messages.values
+        .where((m) => m.mailboxId == sender.id)
+        .fold<int>(0, (n, m) => n + m.sizeBytes);
+    if (sender.quotaBytes > 0 &&
+        used + sent.sizeBytes + utf8.encode(sent.subject).length >
+            sender.quotaBytes) {
+      _fail(422, 'mailbox_full', 'The sender account has insufficient quota');
+    }
+    sent.raw = source;
+    _add(sender, sent);
+    for (final address in to.map((r) => r.address.toLowerCase()).toSet()) {
+      final target = _mailboxAt(address);
+      if (target == null) continue;
+      final local = FakeMessage(
+        folder: 'INBOX',
+        sender: sent.sender,
+        senderName: sent.senderName,
+        to: to,
+        subject: sent.subject,
+        bodyText: sent.bodyText,
+        bodyHtml: sent.bodyHtml,
+        receivedAt: _clock(),
+        attachments: copies(),
+      )..rfcMessageId = sent.messageId;
+      local.raw = source;
+      _announce(_add(target, local));
+    }
+    _emit(sender.id, 'message_sent', {
+      'message_id': sent.id,
+      'folder': 'Sent',
+      'subject': sent.subject,
+    });
+    return _json({'data': sent.toJson()}, status: 201);
   }
 
   http.StreamedResponse _send(_Session session, Map<String, dynamic> body) {

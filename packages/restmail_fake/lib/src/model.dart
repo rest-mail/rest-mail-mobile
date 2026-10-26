@@ -259,6 +259,8 @@ class FakeAttachment {
     required this.filename,
     required this.contentType,
     required this.bytes,
+    this.disposition = 'attachment',
+    this.contentId,
   });
 
   /// Given by the fake when the message is stored.
@@ -267,6 +269,8 @@ class FakeAttachment {
   final String filename;
   final String contentType;
   final List<int> bytes;
+  final String disposition;
+  final String? contentId;
 }
 
 /// One message as the fake stores it: changeable in place, as a server's row
@@ -348,7 +352,10 @@ class FakeMessage {
     ].join('\r\n');
   }
 
-  String get messageId => '<$id@fake.restmail.test>';
+  /// A forwarded local copy retains the sent message's RFC identity.
+  String? rfcMessageId;
+
+  String get messageId => rfcMessageId ?? '<$id@fake.restmail.test>';
 
   int get sizeBytes =>
       utf8.encode(bodyText).length +

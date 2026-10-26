@@ -448,6 +448,9 @@ const Map<String, Map<String, String>> stringsHi = {
     'compose.saveDraftChanges': 'ड्राफ़्ट में बदलाव सहेजें?',
     'compose.draftNote':
         'सहेजा गया ड्राफ़्ट ड्राफ़्ट फ़ोल्डर में आपका इंतज़ार करता है।',
+    'compose.discardForward': 'यह अग्रेषण छोड़ दें?',
+    'compose.forwardDiscarded':
+        'सर्वर की मेल नीति के कारण अग्रेषण छोड़ दिया गया।',
     'compose.discard': 'छोड़ें',
     'compose.keepEditing': 'संपादन जारी रखें',
     'compose.saveDraft': 'ड्राफ़्ट सहेजें',

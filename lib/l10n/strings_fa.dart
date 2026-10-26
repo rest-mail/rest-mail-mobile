@@ -455,6 +455,8 @@ const Map<String, Map<String, String>> stringsFa = {
     'compose.saveDraftChanges': 'تغییرات پیش‌نویس ذخیره شود؟',
     'compose.draftNote':
         'پیش‌نویس ذخیره‌شده در «پیش‌نویس‌ها» منتظر می‌ماند تا کاملش کنید.',
+    'compose.discardForward': 'این بازارسال کنار گذاشته شود؟',
+    'compose.forwardDiscarded': 'بازارسال طبق سیاست ایمیل سرور کنار گذاشته شد.',
     'compose.discard': 'دور انداختن',
     'compose.keepEditing': 'ادامه ویرایش',
     'compose.saveDraft': 'ذخیره پیش‌نویس',
