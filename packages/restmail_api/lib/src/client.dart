@@ -2150,6 +2150,24 @@ class RestmailClient {
     ),
   );
 
+  /// Forwards message [id] to [to] from [from], the server composing the
+  /// forwarded body and carrying the original's attachments. [bodyText] is
+  /// the note above the forwarded text. Needs `mail:read` and `mail:send`.
+  Future<Message> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String? bodyText,
+  }) async => Message.fromJson(
+    _data(
+      await _authed(
+        'POST',
+        ['messages', '$id', 'forward'],
+        body: {'from': from, 'to': to, 'body_text': ?bodyText},
+      ),
+    ),
+  );
+
   /// Leaves [message] with the server to send at [at]. Returns the stored
   /// scheduled message rather than a sent one.
   Future<ScheduledSend> schedule(OutgoingMessage message, DateTime at) async =>

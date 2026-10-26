@@ -109,6 +109,21 @@ abstract interface class MailBackend {
 
   Future<Message> send(OutgoingMessage message);
 
+  /// Whether the server composes a forwarded message from the original,
+  /// carrying its attachments (REST Mail). Where false, the app composes
+  /// the forward itself from the original's text.
+  bool get canServerForward;
+
+  /// Forwards message [id] from [from] to [to], the server composing the
+  /// forwarded body and carrying the original's attachments. [bodyText] is
+  /// the note above the forwarded text. Needs `mail:read` and `mail:send`.
+  Future<Message> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String? bodyText,
+  });
+
   /// Whether the server can hold a message and send it at a chosen time.
   bool get canScheduleSend;
 
@@ -330,6 +345,17 @@ class RestBackend implements MailBackend {
 
   @override
   Future<Message> send(OutgoingMessage message) => client.send(message);
+
+  @override
+  bool get canServerForward => true;
+
+  @override
+  Future<Message> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String? bodyText,
+  }) => client.forwardMessage(id, from: from, to: to, bodyText: bodyText);
 
   @override
   bool get canScheduleSend => true;

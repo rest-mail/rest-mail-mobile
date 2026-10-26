@@ -1164,6 +1164,22 @@ class ImapBackend implements MailBackend {
     UiText('client.invitationsCannotBeAnsweredOnThisAccount'),
   );
 
+  // IMAP has no server-side forward: the app composes the forward itself.
+  @override
+  bool get canServerForward => false;
+
+  @override
+  Future<Message> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String? bodyText,
+  }) => throw LocalizedApiException(
+    400,
+    'not_supported',
+    UiText('client.forwardingCannotBeDoneOnThisAccount'),
+  );
+
   // Not yet over IMAP, whose BODY.PEEK[] is the source.
   @override
   bool get hasMessageSource => false;

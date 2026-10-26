@@ -183,10 +183,13 @@ class FakeRestmail {
   List<FakeMessage> messagesIn(String address, String folder) {
     final box = _mailboxAt(address);
     if (box == null) return const [];
-    return [
-      for (final m in _messages.values)
-        if (m.mailboxId == box.id && m.folder == folder) m,
-    ];
+    final result = <FakeMessage>[];
+    for (final m in _messages.values) {
+      if (m.mailboxId == box.id && m.folder == folder) {
+        result.add(m);
+      }
+    }
+    return result;
   }
 
   /// Messages waiting for the server to send them, for a test to check.
@@ -872,6 +875,11 @@ class FakeRestmail {
         _calendarEvents(session, id),
       ('POST', ['api', 'v1', 'messages', final id, 'calendar-reply']) =>
         _calendarReply(session, id, _object(bytes)),
+      ('POST', ['api', 'v1', 'messages', final id, 'forward']) => _forward(
+        session,
+        id,
+        _object(bytes),
+      ),
       _ => _fail(404, 'not_found', 'No route for $method ${request.url.path}'),
     };
   }
@@ -2304,6 +2312,54 @@ class FakeRestmail {
       );
     }
     return _json({'data': sent.toJson()}, status: 201);
+  }
+
+  http.StreamedResponse _forward(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final problems = _undeclared(body, const {'from', 'to', 'body_text'});
+    _typed<String>(body, 'from', 'a string', problems);
+    _typed<List<dynamic>>(body, 'to', 'an array', problems);
+    if (problems.isNotEmpty) _invalid(problems);
+    final messageId = int.tryParse(id);
+    if (messageId == null) _invalid({'id': 'must be an integer'});
+    if (messageId < 1) _invalid({'id': 'must be at least 1'});
+    final original = _messages[messageId];
+    if (original == null) _fail(404, 'message_not_found', 'Message not found');
+    if (!_reach(session).contains(original.mailboxId)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    final from = '${body['from'] ?? ''}';
+    if (from.isEmpty) _fail(400, 'bad_request', 'from is required');
+    final sender = _mailboxAt(from);
+    if (sender == null || !_reach(session).contains(sender.id)) {
+      _fail(
+        403,
+        'forbidden',
+        'You are not authorized to send from this address',
+      );
+    }
+    final to = _recipients(body['to']);
+    if (to.isEmpty) _fail(400, 'bad_request', 'to is required');
+    final note = _nonEmpty(body['body_text']);
+    final forwardedBody = [
+      '---------- Forwarded message ----------',
+      'From: ${original.sender}',
+      'Subject: ${original.subject}',
+      '',
+      ?note,
+      '',
+      original.bodyText,
+    ].join('\n');
+    return _send(session, {
+      'from': from,
+      'to': [for (final r in to) r.address],
+      'subject': 'Fwd: ${original.subject}',
+      'body_text': forwardedBody,
+      'body_html': _nonEmpty(original.bodyHtml),
+    });
   }
 
   /// A send's list_unsubscribe, checked as the server checks it before

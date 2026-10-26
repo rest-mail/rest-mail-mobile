@@ -24,7 +24,17 @@ import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, note, labels, spam, notSpam, block, source }
+enum _More {
+  markUnread,
+  flag,
+  note,
+  labels,
+  spam,
+  notSpam,
+  block,
+  source,
+  forwardOriginal,
+}
 
 /// One message, read in full, with reply, reply all and forward along the
 /// bottom. On Gmail, with its labels, and the rest of its conversation
@@ -315,6 +325,8 @@ class _MessageScreenState extends State<MessageScreen> {
           );
         case _More.block:
           await _blockSender();
+        case _More.forwardOriginal:
+          await _forwardOriginal();
         case _More.source:
           await Navigator.push(
             context,
@@ -362,6 +374,41 @@ class _MessageScreenState extends State<MessageScreen> {
         context,
         trArgs(context, 'message.blocked', {'sender': sender}),
       );
+    }
+  }
+
+  /// Forwards the original message from the server, carrying its
+  /// attachments. Where the backend cannot, the action is not shown.
+  Future<void> _forwardOriginal() async {
+    final account = _mailbox.account;
+    if (account == null || !_mailbox.backend.canServerForward) return;
+    final recipients = await showDialog<String>(
+      context: context,
+      builder: (_) => const _ForwardOriginalDialog(),
+    );
+    if (recipients == null || !mounted) return;
+    final to = recipients
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (to.isEmpty) return;
+    try {
+      await _mailbox.backend.forwardMessage(
+        _message.id,
+        from: account.address,
+        to: to,
+      );
+      if (mounted) {
+        showToast(context, tr(context, 'message.forwardedOriginal'));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        showToast(
+          context,
+          describeError(context, e, host: _mailbox.backend.host),
+        );
+      }
     }
   }
 
@@ -513,6 +560,11 @@ class _MessageScreenState extends State<MessageScreen> {
                         PopupMenuItem(
                           value: _More.block,
                           child: Text(tr(context, 'message.block')),
+                        ),
+                      if (_mailbox.backend.canServerForward)
+                        PopupMenuItem(
+                          value: _More.forwardOriginal,
+                          child: Text(tr(context, 'message.forwardOriginal')),
                         ),
                       // Last, so the items above keep their places.
                       if (_mailbox.backend.hasMessageSource)
@@ -1036,6 +1088,47 @@ class _WordAction extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The sheet that collects the recipients for a server-side forward. It owns
+/// its controller, so the field survives the dialog's closing animation.
+class _ForwardOriginalDialog extends StatefulWidget {
+  const _ForwardOriginalDialog();
+
+  @override
+  State<_ForwardOriginalDialog> createState() => _ForwardOriginalDialogState();
+}
+
+class _ForwardOriginalDialogState extends State<_ForwardOriginalDialog> {
+  final _to = TextEditingController();
+
+  @override
+  void dispose() {
+    _to.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(tr(context, 'message.forwardOriginal')),
+      content: TextField(
+        controller: _to,
+        decoration: InputDecoration(hintText: tr(context, 'message.forwardTo')),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(tr(context, 'common.cancel')),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _to.text),
+          child: Text(tr(context, 'message.forward')),
+        ),
+      ],
     );
   }
 }
