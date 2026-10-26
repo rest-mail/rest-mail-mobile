@@ -300,10 +300,13 @@ class ImapConnection {
       if (!tls) {
         await client.capability().timeout(_greetingTimeout);
         if (!client.serverInfo.supportsStartTls) {
-          throw ApiException(
+          throw LocalizedApiException(
             0,
             'no_tls',
-            '$host does not offer IMAP STARTTLS.',
+            UiText('imap.starttlsRequired', {
+              'host': host,
+              'port': '${settings.imapPort}',
+            }),
           );
         }
         await client.startTls().timeout(_greetingTimeout);

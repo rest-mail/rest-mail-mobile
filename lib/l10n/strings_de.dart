@@ -364,6 +364,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'imap.checking': 'Verbindung wird geprüft …',
     'imap.connectionConfirmed': 'Verbindung für diese Einstellungen bestätigt',
     'imap.checkAgain': 'Erneut prüfen',
+    'imap.starttlsRequired':
+        '{host} bietet auf Port {port} kein IMAP mit STARTTLS an.',
     'imap.change': 'Ändern',
     'imap.notFound': 'Die Server für {domain} wurden nicht gefunden. Die Hilfeseiten Ihres Anbieters nennen sie.',
     'imap.imapServer': 'IMAP-Server (TLS)',
