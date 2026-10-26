@@ -12,6 +12,7 @@ import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
 import '../state/push_state.dart';
+import '../state/settings.dart';
 import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
@@ -578,6 +579,17 @@ class AppSettingsScreen extends StatelessWidget {
                             : signature.split('\n').first,
                         onTap: () => _push(context, const SignatureScreen()),
                       ),
+                      RmRow(
+                        label: tr(context, 'settings.mailCheck'),
+                        subtitle: tr(context, 'settings.mailCheckSubtitle'),
+                        value: settings.mailCheckLive
+                            ? tr(context, 'settings.mailCheckLive')
+                            : trArgs(context, 'settings.everyMinutes', {
+                                'minutes':
+                                    '${settings.mailCheckInterval.inMinutes}',
+                              }),
+                        onTap: () => _push(context, const MailCheckScreen()),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 22),
@@ -731,6 +743,91 @@ class LanguageScreen extends StatelessWidget {
                             unawaited(
                               app.updateSettings(
                                 app.settings.copyWith(languageCode: entry.key),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// How often accounts without live updates check for new mail.
+class MailCheckScreen extends StatelessWidget {
+  const MailCheckScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final app = AppScope.of(context);
+    final settings = app.settings;
+    final selected = settings.mailCheckInterval.inMinutes;
+    final live = settings.mailCheckLive;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            RmTopBar(
+              title: tr(context, 'settings.mailCheck'),
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+                children: [
+                  Text(
+                    tr(context, 'settings.mailCheckNote'),
+                    style: rmText(12.5, color: c.ink3, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  RmGroup(
+                    children: [
+                      RmRow(
+                        label: tr(context, 'settings.mailCheckLive'),
+                        subtitle: tr(context, 'settings.mailCheckLiveSubtitle'),
+                        trailing: live
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: 20,
+                                color: c.accent,
+                              )
+                            : const SizedBox(width: 20),
+                        onTap: () {
+                          unawaited(
+                            app.updateSettings(
+                              settings.copyWith(mailCheckLive: true),
+                            ),
+                          );
+                          Navigator.pop(context);
+                        },
+                      ),
+                      for (final minutes in AppSettings.mailCheckMinutes)
+                        RmRow(
+                          label: trArgs(context, 'settings.everyMinutes', {
+                            'minutes': '$minutes',
+                          }),
+                          trailing: !live && minutes == selected
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  size: 20,
+                                  color: c.accent,
+                                )
+                              : const SizedBox(width: 20),
+                          onTap: () {
+                            unawaited(
+                              app.updateSettings(
+                                settings.copyWith(
+                                  mailCheckLive: false,
+                                  mailCheckInterval: Duration(minutes: minutes),
+                                ),
                               ),
                             );
                             Navigator.pop(context);

@@ -637,6 +637,60 @@ void main() {
     ]);
   });
 
+  test('without IDLE, the configured interval is used to poll', () async {
+    final server = await ScriptedServer.start(gmailGreeting, [
+      Rule(
+        r'^LOGIN ',
+        '{tag} OK [CAPABILITY IMAP4rev1 UNSELECT NAMESPACE QUOTA] '
+            'ada@gmail.com authenticated (Success)',
+        repeat: true,
+      ),
+      Rule(
+        r'^CAPABILITY',
+        '* CAPABILITY IMAP4rev1 UNSELECT NAMESPACE QUOTA\n{tag} OK done',
+        repeat: true,
+      ),
+      gmailList(),
+      Rule(r'^SELECT', selected('INBOX'), repeat: true),
+      Rule(r'^NOOP', '{tag} OK NOOP completed', repeat: true),
+      _logout(),
+    ]);
+    addTearDown(server.close);
+    final backend = _backend(server);
+    addTearDown(backend.close);
+    backend.pollInterval = const Duration(milliseconds: 50);
+
+    final subscription = backend.events(ImapBackend.accountId).listen((_) {});
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    await subscription.cancel();
+
+    final noops = server.commands.where((c) => c.startsWith('NOOP')).length;
+    expect(noops, greaterThanOrEqualTo(2));
+  });
+
+  test('live checks can be turned off on a server that offers IDLE', () async {
+    final server = await _gmailServer([
+      Rule(r'^SELECT', selected('INBOX'), repeat: true),
+      Rule(r'^NOOP', '{tag} OK NOOP completed', repeat: true),
+    ]);
+    addTearDown(server.close);
+    final backend = _backend(server);
+    addTearDown(backend.close);
+    backend
+      ..useIdle = false
+      ..pollInterval = const Duration(milliseconds: 50);
+
+    final subscription = backend.events(ImapBackend.accountId).listen((_) {});
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    await subscription.cancel();
+
+    expect(server.commands, isNot(contains('IDLE')));
+    expect(
+      server.commands.where((c) => c.startsWith('NOOP')).length,
+      greaterThanOrEqualTo(2),
+    );
+  });
+
   group('helpers', () {
     test('search criteria', () {
       expect(

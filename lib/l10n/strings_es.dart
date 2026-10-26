@@ -73,6 +73,13 @@ const Map<String, Map<String, String>> stringsEs = {
     'settings.thisPhone': 'Este teléfono',
     'settings.language': 'Idioma',
     'settings.signature': 'Firma',
+    'settings.mailCheck': 'Comprobación de correo',
+    'settings.mailCheckSubtitle': 'Con qué frecuencia se busca correo nuevo',
+    'settings.everyMinutes': 'Cada {minutes} min',
+    'settings.mailCheckNote': 'REST Mail siempre se actualiza en vivo. Para IMAP, elige actualizaciones en vivo si el servidor las admite o un intervalo fijo; POP3 usa el intervalo.',
+    'settings.mailCheckLive': 'En vivo cuando esté disponible',
+    'settings.mailCheckLiveSubtitle':
+        'Usa el canal en vivo del servidor cuando lo ofrece',
     'settings.addAccount': 'Añadir una cuenta',
     'settings.interface': 'Interfaz',
     'settings.customizeScreens': 'Personalizar pantallas',

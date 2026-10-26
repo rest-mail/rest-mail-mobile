@@ -26,7 +26,12 @@ class AppSettings {
     this.interface = const InterfacePrefs(),
     this.languageCode = 'system',
     this.lastSeenVersion = '',
+    this.mailCheckInterval = const Duration(minutes: 1),
+    this.mailCheckLive = true,
   });
+
+  /// The intervals the app offers for accounts without live updates.
+  static const mailCheckMinutes = [1, 5, 15, 30, 60];
 
   factory AppSettings.decode(String? raw) {
     if (raw == null) return const AppSettings();
@@ -44,6 +49,8 @@ class AppSettings {
         interface: InterfacePrefs.decode(json['interface']),
         languageCode: json['language'] as String? ?? 'system',
         lastSeenVersion: json['last_seen_version'] as String? ?? '',
+        mailCheckInterval: _mailCheckInterval(json['mail_check_minutes']),
+        mailCheckLive: json['mail_check_live'] as bool? ?? true,
       );
     } on Object {
       return const AppSettings();
@@ -77,6 +84,21 @@ class AppSettings {
   /// has been.
   final String lastSeenVersion;
 
+  /// How often an account without live updates checks its inbox. REST Mail
+  /// is live over SSE; IMAP uses IDLE where its server supports it. The
+  /// interval is the fallback there, and what POP3 will use.
+  final Duration mailCheckInterval;
+
+  /// Whether IMAP may use IDLE, the server's live channel. False makes it
+  /// check at [mailCheckInterval] instead, which is what a fixed interval
+  /// asks for. REST Mail is live either way.
+  final bool mailCheckLive;
+
+  static Duration _mailCheckInterval(Object? value) {
+    final minutes = value is num ? value.toInt() : 1;
+    return Duration(minutes: mailCheckMinutes.contains(minutes) ? minutes : 1);
+  }
+
   String encode() => jsonEncode({
     'theme': themeMode.name,
     'pack': packId,
@@ -86,6 +108,8 @@ class AppSettings {
     'interface': interface.toJson(),
     'language': languageCode,
     'last_seen_version': lastSeenVersion,
+    'mail_check_minutes': mailCheckInterval.inMinutes,
+    'mail_check_live': mailCheckLive,
   });
 
   AppSettings copyWith({
@@ -97,6 +121,8 @@ class AppSettings {
     InterfacePrefs? interface,
     String? languageCode,
     String? lastSeenVersion,
+    Duration? mailCheckInterval,
+    bool? mailCheckLive,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     packId: packId ?? this.packId,
@@ -106,5 +132,7 @@ class AppSettings {
     interface: interface ?? this.interface,
     languageCode: languageCode ?? this.languageCode,
     lastSeenVersion: lastSeenVersion ?? this.lastSeenVersion,
+    mailCheckInterval: mailCheckInterval ?? this.mailCheckInterval,
+    mailCheckLive: mailCheckLive ?? this.mailCheckLive,
   );
 }

@@ -80,6 +80,13 @@ const Map<String, Map<String, String>> stringsEn = {
     'settings.thisPhone': 'This phone',
     'settings.language': 'Language',
     'settings.signature': 'Signature',
+    'settings.mailCheck': 'Mail check',
+    'settings.mailCheckSubtitle': 'How often to check for new mail',
+    'settings.everyMinutes': 'Every {minutes} min',
+    'settings.mailCheckNote': 'REST Mail always updates live. For IMAP, choose live updates where the server supports them or a fixed interval; POP3 uses the interval.',
+    'settings.mailCheckLive': 'Live when available',
+    'settings.mailCheckLiveSubtitle':
+        "Use the server's live channel when it offers one",
     'settings.addAccount': 'Add an account',
     'settings.interface': 'Interface',
     'settings.customizeScreens': 'Customize screens',
