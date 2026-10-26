@@ -6,7 +6,6 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/interface_prefs.dart';
-import '../imap/mail_settings.dart';
 import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
@@ -343,6 +342,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
                   iconFileName: account == null
                       ? null
                       : app.iconFileNameOf(account),
+                  faviconHosts: account == null
+                      ? null
+                      : app.faviconHostsOf(account),
                 ),
                 if (account != null && !signedOut) _searchBar(context),
                 Expanded(
@@ -458,6 +460,7 @@ class _Header extends StatelessWidget {
     required this.mailbox,
     required this.account,
     this.iconFileName,
+    this.faviconHosts,
   });
 
   final MailboxState mailbox;
@@ -467,6 +470,9 @@ class _Header extends StatelessWidget {
 
   /// The account's custom icon, or null for the REST Mail mark.
   final String? iconFileName;
+
+  /// The hosts to try for the account's provider or server icon.
+  final List<String>? faviconHosts;
 
   @override
   Widget build(BuildContext context) {
@@ -504,7 +510,7 @@ class _Header extends StatelessWidget {
                     children: [
                       AccountIcon(
                         fileName: iconFileName,
-                        faviconHost: address == null ? null : domainOf(address),
+                        faviconHosts: faviconHosts,
                         fallback: const LogoMark(size: 40),
                         size: 40,
                       ),

@@ -402,7 +402,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             label: other.label,
             address: other.address,
             iconFileName: app.iconFileNameOf(other),
-            faviconHost: domainOf(other.address),
+            faviconHosts: app.faviconHostsOf(other),
             current: false,
             signedOut: other.signedOut != null,
             open: (folder) =>
@@ -414,7 +414,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             label: other.label,
             address: other.address,
             iconFileName: app.iconFileNameOf(other),
-            faviconHost: domainOf(other.address),
+            faviconHosts: app.faviconHostsOf(other),
             current: true,
             signedOut: other.signedOut != null,
             open: m.selectFolder,
@@ -426,7 +426,10 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
               label: linked.label,
               address: linked.address,
               iconFileName: app.iconFileNameOf(other),
-              faviconHost: domainOf(linked.address) ?? domainOf(other.address),
+              faviconHosts: [
+                ?domainOf(linked.address),
+                ...app.faviconHostsOf(other),
+              ],
               current: linked.id == account?.id,
               open: (folder) => m.selectAccount(linked, folder: folder),
             ),
@@ -499,7 +502,7 @@ class _AccountSelector extends StatelessWidget {
                   size: 42,
                   color: c.accent,
                   iconFileName: a.iconFileName,
-                  faviconHost: a.faviconHost,
+                  faviconHosts: a.faviconHosts,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -642,7 +645,7 @@ class _AccountChoice extends StatelessWidget {
                 size: 32,
                 color: a.current ? c.accent : null,
                 iconFileName: a.iconFileName,
-                faviconHost: a.faviconHost,
+                faviconHosts: a.faviconHosts,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -1330,7 +1333,7 @@ class _MailboxAccount {
     required this.open,
     this.signedOut = false,
     this.iconFileName,
-    this.faviconHost,
+    this.faviconHosts,
   });
 
   final String key;
@@ -1340,8 +1343,8 @@ class _MailboxAccount {
   /// The signed-in account's custom icon, or null for the REST Mail mark.
   final String? iconFileName;
 
-  /// The host whose favicon labels this account, or null.
-  final String? faviconHost;
+  /// The hosts whose favicon may label this account, in order.
+  final List<String>? faviconHosts;
 
   /// The account the app is on.
   final bool current;

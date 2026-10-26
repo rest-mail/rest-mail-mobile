@@ -191,6 +191,10 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     final host = m.backend.host;
     final quota = _quota;
     final current = app.current;
+    final faviconHosts = <String>[
+      ?domainOf(m.account?.address ?? ''),
+      if (current != null) ...app.faviconHostsOf(current),
+    ];
     final session = switch (app.current) {
       final RestAccount rest when identical(rest.backend, m.backend) => rest,
       _ => null,
@@ -246,6 +250,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                               {'host': (out.host).toString()},
                             ),
                             primary: true,
+                            faviconHosts: [?domainOf(out.address), out.host],
                             onTap: () => Navigator.pop(context),
                           )
                         else if (m.account case final account?) ...[
@@ -261,7 +266,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                   iconFileName: iconAccount == null
                                       ? null
                                       : app.iconFileNameOf(iconAccount),
-                                  faviconHost: domainOf(account.address),
+                                  faviconHosts: faviconHosts,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -914,6 +919,7 @@ class _AccountRow extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.primary = false,
+    this.faviconHosts,
   });
 
   final String label;
@@ -921,6 +927,7 @@ class _AccountRow extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool primary;
+  final List<String>? faviconHosts;
 
   @override
   Widget build(BuildContext context) {
@@ -936,7 +943,7 @@ class _AccountRow extends StatelessWidget {
               seed: address,
               size: 32,
               color: primary ? c.accent : null,
-              faviconHost: domainOf(address),
+              faviconHosts: faviconHosts,
             ),
             const SizedBox(width: 12),
             Expanded(

@@ -716,7 +716,10 @@ class AppState extends ChangeNotifier {
 
   /// [account]'s provider or server favicon, fetched and kept on this phone.
   Future<File?> faviconFileOf(SignedInAccount account) =>
-      favicons.iconFor(faviconHostsOf(account));
+      faviconFileOfHosts(faviconHostsOf(account));
+
+  Future<File?> faviconFileOfHosts(Iterable<String> hosts) =>
+      favicons.iconFor(hosts);
 
   /// The hosts to try for [account], its mail domain first and its server
   /// second.
@@ -730,7 +733,13 @@ class AppState extends ChangeNotifier {
     }
 
     add(domainOf(account.address));
-    add(account.host);
+    switch (account) {
+      case RestAccount(:final server):
+        add(server.host);
+      case ImapAccount(:final settings):
+        add(settings.imapHost);
+        add(settings.smtpHost);
+    }
     return hosts;
   }
 

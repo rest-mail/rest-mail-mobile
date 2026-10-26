@@ -12,9 +12,12 @@ therefore deliberately `needs_field_review`; that does not mean their feature
 implementation is absent. It means this source map has not independently
 reconciled every field against that feature's tests and current server DTOs.
 
-The checked-in snapshot pins server feature PR #619. It includes its scoped
-list/alias policy; deployment needs the ordered server queue, including #618
-and #619, to merge normally. Test-only routes are excluded. Auth, token rotation
+The checked-in source links were generated from server revision `831a0b4`
+(the scoped-admin feature snapshot, including #618 and #619) and the mobile
+feature branches. The route inventory was revalidated on 2026-10-26 against
+server `main` `48b81639` and mobile `main` `6eb7d66`: the same 81 production
+operations and operation IDs are present. Server #618-#621 and mobile
+#102-#114 are now merged. Test-only routes are excluded. Auth, token rotation
 and API-key lifecycle routes outside `/admin` remain additional completion
 criteria and are not hidden inside the 81 count.
 
@@ -22,15 +25,15 @@ criteria and are not hidden inside the 81 count.
 
 | Mobile source | Surface | Integration caveat |
 | --- | --- | --- |
-| #108, including #99/#98/#103/#107 | Grants, domains, mailboxes, aliases, DKIM and domain delivery | Scoped source branch, not all on main |
-| #102 | Queue detail, filters and bulk actions | Pending feature integration |
-| #104 | Certificate upload/detail | Pending feature integration |
-| #105 | Pipeline/custom filter editing, validation and testing | Pending feature integration |
-| #106 | Ban filters, creation and IP removal | Pending feature integration |
-| #109 | Delivery/pipeline logs, trace, analytics, TLS reports and audit | Pending feature integration |
-| #111 | Full MTA-STS policy fields | Needs server #621 for explicit create defaults |
-| #112 | Sender allow/block lists | Pending feature integration |
-| #114 | Complete dashboard DTO and activity records | Local API/fake evidence; Flutter CI pending |
+| #108, including #99/#98/#103/#107 | Grants, domains, mailboxes, aliases, DKIM and domain delivery | Merged on main; scoped source links remain pinned |
+| #102 | Queue detail, filters and bulk actions | Merged on main |
+| #104 | Certificate upload/detail | Merged on main |
+| #105 | Pipeline/custom filter editing, validation and testing | Merged on main |
+| #106 | Ban filters, creation and IP removal | Merged on main |
+| #109 | Delivery/pipeline logs, trace, analytics, TLS reports and audit | Merged on main |
+| #111 | Full MTA-STS policy fields | Merged on main; server #621 merged |
+| #112 | Sender allow/block lists | Merged on main |
+| #114 | Complete dashboard DTO and activity records | Merged on main; Flutter CI runs on main |
 
 The JSON records the exact revision for each entry. A PR number is an
 implementation location, not a claim about its current checks or release state.
@@ -54,28 +57,28 @@ contains JSON.
 The normal App CI job runs the validator and its dependency-free Python unit
 tests before Flutter validation. This checks manifest consistency; it cannot
 detect an unannounced change in another repository. Server PR #620 separately
-guards router/OpenAPI inventory. Refresh this consumer snapshot when that
-server contract changes.
+guards router/OpenAPI inventory. The 2026-10-26 revalidation above checked the
+route set only; the JSON's source links still point at the pinned revisions.
+Refresh this consumer snapshot when that server contract changes.
 
 ## Findings to resolve
 
-1. `deletePipeline`, `deleteCustomFilter`, `retryQueueEntry` and
-   `bounceQueueEntry` return `Future<void>` while their declared 200 response
-   contains `data.status`. Confirm the real handler and fake, then explicitly
-   validate/process those acknowledgements. A successful HTTP code alone does
-   not establish full response handling.
+1. `retryQueueEntry` and `bounceQueueEntry` now return a typed
+   `QueueActionResult`. `deletePipeline` and `deleteCustomFilter` still return
+   `Future<void>`, but explicitly require 200 and `data.status == "deleted"`.
+   The validator's `void_clients_with_success_json` report still names those
+   deletes by design; it is not an unhandled response.
 2. Fourteen success contracts contain opaque objects or dynamic JSON. Inspect
    the Go DTO/handler and compare every actual field with the client model and
    screen. Dynamic filter configuration and raw reports need faithful structured
    handling; an opaque OpenAPI object alone cannot prove coverage.
-3. Reconcile each feature branch's field/request/UI tests with the corresponding
-   source-map entry. The dashboard has an 18-leaf field map and local test
-   evidence; this map intentionally leaves other assessments unpromoted until
-   their evidence has been checked.
-4. Integrate #108's scope checks with the pending feature screens, finish scoped
-   fake resource filtering/redaction, and obtain native Flutter/platform and
-   server integration evidence after normal merges. Keep token rotation/resume
-   and API-key lifecycle evidence separately.
+3. All listed mobile feature PRs are merged, but 80 of 81 operations remain
+   `needs_field_review`. Reconcile each handler/DTO and request field with the
+   client model and screen; source coverage is not field certification.
+4. #108's scoped access is merged, and its scoped fake filtering/tests are on
+   main. Native Flutter/platform and deployed-server integration evidence is
+   still not implied by this snapshot. Keep token rotation/resume and API-key
+   lifecycle evidence separately.
 
 ## Refreshing the snapshot
 
@@ -97,4 +100,6 @@ server route set against the audited baseline. Mobile source selection is
 explicit in `source_groups`; adding a feature or new route requires reviewing
 that mapping. The initial mobile audit supplies legacy method names, not
 current coverage claims. Local field evidence is promoted only when its saved
-head exactly matches the generated source revision.
+head exactly matches the generated source revision. Until it is regenerated,
+this checklist is a historical source map with a revalidated route inventory,
+not a current line-by-line snapshot.
