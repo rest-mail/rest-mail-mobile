@@ -172,6 +172,16 @@ final class PushChannel: NSObject, UNUserNotificationCenterDelegate {
       if let badge = arguments["badge"] as? Int {
         content.badge = NSNumber(value: badge)
       }
+      // The account's custom icon, as the notification's thumbnail. iOS keeps
+      // the app icon itself fixed; this is the closest it allows.
+      if let icon = arguments["icon"] as? String, !icon.isEmpty,
+         FileManager.default.fileExists(atPath: icon),
+         let attachment = try? UNNotificationAttachment(
+           identifier: "account-icon",
+           url: URL(fileURLWithPath: icon),
+           options: nil) {
+        content.attachments = [attachment]
+      }
       center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil)) { error in
         DispatchQueue.main.async { result(error == nil) }
       }

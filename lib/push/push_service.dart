@@ -28,6 +28,7 @@ class LocalNotification {
     this.thread,
     this.data = const {},
     this.badge,
+    this.icon,
   });
 
   /// One per message, so the same one posted twice shows once.
@@ -44,6 +45,10 @@ class LocalNotification {
   /// Handed back by [PushService.onOpen] when the notification is tapped.
   final Map<String, String> data;
   final int? badge;
+
+  /// The account's custom icon on disk, when it has one. iOS shows it as the
+  /// notification's attachment; the app icon itself cannot be replaced.
+  final String? icon;
 }
 
 /// The phone's push service: its token, the permission to show
@@ -207,6 +212,7 @@ class ApplePushService implements PushService {
     'thread': ?n.thread,
     'data': n.data,
     'badge': ?n.badge,
+    'icon': ?n.icon,
   });
 
   @override

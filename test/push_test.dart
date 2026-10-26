@@ -270,9 +270,9 @@ void main() {
       expect(await push.deliver(tampered), isTrue);
 
       final shown = push.shown.single;
-      expect(shown.title, 'Nadia Osei');
-      expect(shown.body, startsWith('Quarterly numbers'));
-      expect(shown.subtitle, isNull);
+      expect(shown.title, 'Quarterly numbers');
+      expect(shown.body, startsWith('Nadia Osei'));
+      expect(shown.subtitle, FakeAccounts.email);
       for (final text in [shown.title, shown.body, shown.subtitle ?? '']) {
         expect(text, isNot(contains('Injected')));
         expect(text, isNot(contains('mallory')));
@@ -315,8 +315,9 @@ void main() {
         );
 
         final shown = push.shown.single;
-        expect(shown.body, startsWith('Rota swap'));
-        // Two accounts on the phone: each says whose it is.
+        expect(shown.title, 'Rota swap');
+        expect(shown.body, startsWith('Sam'));
+        // Every notification names the account it belongs to.
         expect(shown.subtitle, FakeAccounts.otherEmail);
         expect(
           push.badges.last,

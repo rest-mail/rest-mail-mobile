@@ -400,6 +400,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             key: other.key,
             label: other.label,
             address: other.address,
+            iconFileName: app.iconFileNameOf(other),
             current: false,
             signedOut: other.signedOut != null,
             open: (folder) =>
@@ -410,6 +411,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             key: other.key,
             label: other.label,
             address: other.address,
+            iconFileName: app.iconFileNameOf(other),
             current: true,
             signedOut: other.signedOut != null,
             open: m.selectFolder,
@@ -420,6 +422,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
               key: '${other.key}#${linked.id}',
               label: linked.label,
               address: linked.address,
+              iconFileName: app.iconFileNameOf(other),
               current: linked.id == account?.id,
               open: (folder) => m.selectAccount(linked, folder: folder),
             ),
@@ -491,6 +494,7 @@ class _AccountSelector extends StatelessWidget {
                   seed: a.address,
                   size: 42,
                   color: c.accent,
+                  iconFileName: a.iconFileName,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -632,6 +636,7 @@ class _AccountChoice extends StatelessWidget {
                 seed: a.address,
                 size: 32,
                 color: a.current ? c.accent : null,
+                iconFileName: a.iconFileName,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -1318,11 +1323,15 @@ class _MailboxAccount {
     required this.current,
     required this.open,
     this.signedOut = false,
+    this.iconFileName,
   });
 
   final String key;
   final String label;
   final String address;
+
+  /// The signed-in account's custom icon, or null for the REST Mail mark.
+  final String? iconFileName;
 
   /// The account the app is on.
   final bool current;

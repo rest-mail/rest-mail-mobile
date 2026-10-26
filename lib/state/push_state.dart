@@ -354,7 +354,6 @@ class PushNotifications extends ChangeNotifier {
       return false;
     }
     final named = mailboxes.where((m) => m.id == signal?.account).toList();
-    final several = _app.accounts.length > 1 || mailboxes.length > 1;
     var news = false;
     for (final mailbox in named.isNotEmpty ? named : mailboxes) {
       try {
@@ -380,7 +379,7 @@ class PushNotifications extends ChangeNotifier {
         if (fresh.isEmpty) continue;
         news = true;
         if (_onScreen(account, mailbox)) continue;
-        await _post(account, mailbox, fresh, several: several);
+        await _post(account, mailbox, fresh);
       } on ApiException {
         if (signal?.account == mailbox.id) _takeServerCount(saved, signal);
       }
@@ -418,11 +417,11 @@ class PushNotifications extends ChangeNotifier {
   Future<void> _post(
     RestAccount account,
     Account mailbox,
-    List<Message> fresh, {
-    required bool several,
-  }) async {
+    List<Message> fresh,
+  ) async {
     final data = {'account': account.key, 'mailbox': '${mailbox.id}'};
     final thread = '${account.key}#${mailbox.id}';
+    final icon = await _app.iconFileOf(account);
     for (final m in fresh.take(_shownPerPush)) {
       final subject = m.subject.trim().isEmpty
           ? _line('message.noSubject')
@@ -430,11 +429,12 @@ class PushNotifications extends ChangeNotifier {
       await service.show(
         LocalNotification(
           id: '${account.key}#${m.id}',
-          title: m.senderLabel,
-          subtitle: several ? mailbox.address : null,
-          body: [subject, if (m.preview.isNotEmpty) m.preview].join('\n'),
+          title: subject,
+          subtitle: account.address,
+          body: [m.senderLabel, if (m.preview.isNotEmpty) m.preview].join('\n'),
           thread: thread,
           data: data,
+          icon: icon?.path,
         ),
       );
     }
@@ -443,12 +443,14 @@ class PushNotifications extends ChangeNotifier {
       await service.show(
         LocalNotification(
           id: '$thread#more',
-          title: mailbox.address,
-          body: more == 1
+          title: more == 1
               ? _line('push.oneMoreMessage')
               : _line('push.moreMessages', {'count': '$more'}),
+          subtitle: account.address,
+          body: mailbox.address,
           thread: thread,
           data: data,
+          icon: icon?.path,
         ),
       );
     }

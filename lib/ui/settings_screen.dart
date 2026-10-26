@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../l10n/voice.dart';
@@ -155,6 +157,30 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
     if (sure) await app.removeAccount(signedIn);
   }
 
+  Future<void> _changeIcon({bool clear = false}) async {
+    final app = AppScope.read(context);
+    final signedIn = app.current;
+    if (signedIn == null) return;
+    File? picked;
+    if (!clear) {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 90,
+      );
+      if (image == null) return;
+      picked = File(image.path);
+    }
+    final saved = await app.setAccountIcon(signedIn, picked);
+    if (!mounted) return;
+    if (!saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(context, 'settings.iconCouldNotBeSaved'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
@@ -177,6 +203,14 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
         current is RestAccount &&
         identical(current.backend, m.backend) &&
         AdminAccess(current.capabilities).canWrite(AdminSection.mailboxes);
+    // The custom icon belongs to the signed-in account, so the row only
+    // appears for the account this phone is on, not for a linked mailbox.
+    final iconAccount =
+        current != null &&
+            m.account != null &&
+            current.address.toLowerCase() == m.account!.address.toLowerCase()
+        ? current
+        : null;
     return ListenableBuilder(
       listenable: m,
       builder: (context, _) => Scaffold(
@@ -222,6 +256,9 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                   seed: account.address,
                                   size: 40,
                                   color: account.isPrimary ? c.accent : null,
+                                  iconFileName: iconAccount == null
+                                      ? null
+                                      : app.iconFileNameOf(iconAccount),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -257,6 +294,25 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                 ? '—'
                                 : account.displayName,
                           ),
+                          if (iconAccount != null) ...[
+                            RmRow(
+                              label: tr(context, 'settings.accountIcon'),
+                              value: app.iconFileNameOf(iconAccount) == null
+                                  ? tr(context, 'settings.restMailMark')
+                                  : tr(context, 'settings.customPhoto'),
+                              onTap: _busy
+                                  ? null
+                                  : () => unawaited(_changeIcon()),
+                            ),
+                            if (app.iconFileNameOf(iconAccount) != null)
+                              RmRow(
+                                label: tr(context, 'settings.removeIcon'),
+                                danger: true,
+                                onTap: _busy
+                                    ? null
+                                    : () => unawaited(_changeIcon(clear: true)),
+                              ),
+                          ],
                           RmRow(
                             label: tr(context, 'settings.server'),
                             value: host,
