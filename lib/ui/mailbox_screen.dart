@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/interface_prefs.dart';
+import '../imap/mail_settings.dart';
 import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
@@ -503,6 +504,7 @@ class _Header extends StatelessWidget {
                     children: [
                       AccountIcon(
                         fileName: iconFileName,
+                        faviconHost: address == null ? null : domainOf(address),
                         fallback: const LogoMark(size: 40),
                         size: 40,
                       ),

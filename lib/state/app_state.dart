@@ -20,6 +20,7 @@ import '../net/http_client.dart';
 import '../push/push_service.dart';
 import '../util/sign_in_link.dart';
 import '../version.dart';
+import 'favicons.dart';
 import 'mail_backend.dart';
 import 'mailbox_state.dart';
 import 'push_state.dart';
@@ -182,8 +183,15 @@ class AppState extends ChangeNotifier {
     this.oauth = OAuthClients.none,
     this.oauthBrowser = systemOAuthBrowser,
     PushService pushService = const NoPushService(),
+    FaviconCache? favicons,
   }) : mailSockets = mailSockets ?? defaultMailSockets(createSecurityContext) {
     push = PushNotifications(this, pushService);
+    this.favicons =
+        favicons ??
+        FaviconCache(
+          clientFactory: httpClientFactory,
+          cacheVersion: appVersion,
+        );
   }
 
   final KeyValueStore store;
@@ -205,6 +213,9 @@ class AppState extends ChangeNotifier {
   /// New mail notifications, for the REST Mail accounts whose server can
   /// send them.
   late final PushNotifications push;
+
+  /// Provider and domain icons fetched at runtime, kept on this phone.
+  late final FaviconCache favicons;
 
   /// Which accounts there are, in order, and which one is on screen. Each
   /// account's session is stored under its own key, so one that can't be
@@ -702,6 +713,30 @@ class AppState extends ChangeNotifier {
       return null;
     }
   }
+
+  /// [account]'s provider or server favicon, fetched and kept on this phone.
+  Future<File?> faviconFileOf(SignedInAccount account) =>
+      favicons.iconFor(faviconHostsOf(account));
+
+  /// The hosts to try for [account], its mail domain first and its server
+  /// second.
+  List<String> faviconHostsOf(SignedInAccount account) {
+    final hosts = <String>[];
+    void add(String? host) {
+      final value = host?.trim().toLowerCase();
+      if (value != null && value.isNotEmpty && !hosts.contains(value)) {
+        hosts.add(value);
+      }
+    }
+
+    add(domainOf(account.address));
+    add(account.host);
+    return hosts;
+  }
+
+  /// A favicon for a mailbox or account that is not a [SignedInAccount], such
+  /// as a linked mailbox in a picker.
+  Future<File?> faviconFileOfHost(String host) => favicons.iconForHost(host);
 
   /// Replaces [account]'s icon with [picked], or goes back to the default
   /// when [picked] is null. False when the image couldn't be saved.

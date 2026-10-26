@@ -479,7 +479,6 @@ const Map<String, Map<String, String>> stringsDe = {
     'compose.send': 'Senden',
     'date.created': 'Erstellt am {date}',
     'admin.title': 'Verwaltung',
-    'admin.empty': 'Dieses Konto kann auf {host} nichts verwalten.',
     'admin.group.logs': 'Protokolle und Berichte',
     'admin.group.setup': 'Signierung und Filterung',
     'admin.section.queue.title': 'Ausgangswarteschlange',

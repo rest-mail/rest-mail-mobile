@@ -61,6 +61,7 @@ class AdministrationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.rm;
     final sections = adminAccessOf(context, account).sections;
+    if (sections.isEmpty) return const AdminAbsent();
     final host = account.server.host;
     return Scaffold(
       body: SafeArea(
@@ -79,10 +80,6 @@ class AdministrationScreen extends StatelessWidget {
                     style: rmText(13, color: c.ink3),
                   ),
                   const SizedBox(height: 14),
-                  if (sections.isEmpty)
-                    AdminMessage(
-                      trArgs(context, 'admin.empty', {'host': host}),
-                    ),
                   for (final group in AdminGroup.values)
                     if (sections.where((s) => s.group == group).toList()
                         case final inGroup when inGroup.isNotEmpty) ...[

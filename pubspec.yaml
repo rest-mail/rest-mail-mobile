@@ -74,6 +74,8 @@ dependencies:
   # Reads the autoconfig files that say where a domain's IMAP and SMTP
   # servers are. MIT.
   xml: ^6.6.1
+  # Decodes ICO favicons, which Flutter cannot, into PNG once. MIT.
+  image: ^4.12.0
   # Sign in with Microsoft or Google: shows the provider's page in the
   # system browser (ASWebAuthenticationSession on iOS, a Custom Tab on
   # Android) and hands back the URL it returns to. MIT; its Android side is

@@ -335,6 +335,9 @@ class PushNotifications extends ChangeNotifier {
       // Notifications may have been turned on or off in iOS's Settings. Put
       // the badge back too: the launcher may have cleared it while away.
       _badge = null;
+      // A token request that failed last time (no network, or APNs not ready
+      // yet) is worth trying again now that the app is back.
+      if (_token == null) _tokenAsked = false;
       unawaited(sync());
       unawaited(reconcileBadge());
     } else {
@@ -637,6 +640,7 @@ class PushNotifications extends ChangeNotifier {
     final keys = _app.accounts.map((a) => a.key).toSet();
     if (!setEquals(keys, _watchedAccounts)) {
       _watchedAccounts = keys;
+      if (_token == null) _tokenAsked = false;
       _scheduleReconcile();
     }
     _watchCurrentMailbox();

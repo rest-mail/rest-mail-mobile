@@ -213,6 +213,29 @@ void main() {
     },
   );
 
+  test(
+    'a token that was not ready is asked for again when the app resumes',
+    () async {
+      push.deviceToken = null;
+      await start();
+      await signIn(FakeAccounts.email);
+
+      expect(state.push.available, isFalse);
+
+      push.deviceToken =
+          'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
+      state.push.lifecycleChanged(onScreen: false);
+      state.push.lifecycleChanged(onScreen: true);
+      await state.push.sync();
+
+      expect(state.push.available, isTrue);
+      expect(
+        state.push.statusOf(accountOf(FakeAccounts.email)),
+        PushStatus.off,
+      );
+    },
+  );
+
   test('"Not now" is not asked again, and registers nothing', () async {
     await start();
     await signIn(FakeAccounts.email);

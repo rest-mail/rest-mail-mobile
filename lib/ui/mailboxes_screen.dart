@@ -7,6 +7,7 @@ import '../state/admin_access.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
+import '../imap/mail_settings.dart';
 import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
@@ -401,6 +402,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             label: other.label,
             address: other.address,
             iconFileName: app.iconFileNameOf(other),
+            faviconHost: domainOf(other.address),
             current: false,
             signedOut: other.signedOut != null,
             open: (folder) =>
@@ -412,6 +414,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
             label: other.label,
             address: other.address,
             iconFileName: app.iconFileNameOf(other),
+            faviconHost: domainOf(other.address),
             current: true,
             signedOut: other.signedOut != null,
             open: m.selectFolder,
@@ -423,6 +426,7 @@ class _MailboxesScreenState extends State<MailboxesScreen> {
               label: linked.label,
               address: linked.address,
               iconFileName: app.iconFileNameOf(other),
+              faviconHost: domainOf(linked.address) ?? domainOf(other.address),
               current: linked.id == account?.id,
               open: (folder) => m.selectAccount(linked, folder: folder),
             ),
@@ -495,6 +499,7 @@ class _AccountSelector extends StatelessWidget {
                   size: 42,
                   color: c.accent,
                   iconFileName: a.iconFileName,
+                  faviconHost: a.faviconHost,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -637,6 +642,7 @@ class _AccountChoice extends StatelessWidget {
                 size: 32,
                 color: a.current ? c.accent : null,
                 iconFileName: a.iconFileName,
+                faviconHost: a.faviconHost,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -1324,6 +1330,7 @@ class _MailboxAccount {
     required this.open,
     this.signedOut = false,
     this.iconFileName,
+    this.faviconHost,
   });
 
   final String key;
@@ -1332,6 +1339,9 @@ class _MailboxAccount {
 
   /// The signed-in account's custom icon, or null for the REST Mail mark.
   final String? iconFileName;
+
+  /// The host whose favicon labels this account, or null.
+  final String? faviconHost;
 
   /// The account the app is on.
   final bool current;
