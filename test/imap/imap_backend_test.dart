@@ -282,8 +282,8 @@ void main() {
       expect(back.id, lunch.id);
       expect(back.folder, StandardFolder.inbox);
       expect(server.commands.where((c) => c.startsWith('UID')), [
-        'UID MOVE 101 [Gmail]/Trash',
-        'UID MOVE 33 INBOX',
+        'UID MOVE 101 "[Gmail]/Trash"',
+        'UID MOVE 33 "INBOX"',
         r'UID STORE 130 +FLAGS.SILENT (\Flagged)',
       ]);
     });
@@ -323,7 +323,7 @@ void main() {
 
       expect(server.unexpected, isEmpty);
       expect(server.commands.where((c) => !c.startsWith('LOGIN')).skip(3), [
-        'UID COPY 101 [Gmail]/Spam',
+        'UID COPY 101 "[Gmail]/Spam"',
         r'UID STORE 101 +FLAGS.SILENT (\Deleted)',
         'EXPUNGE',
         'SELECT "[Gmail]/Spam"',
@@ -394,7 +394,7 @@ void main() {
             (c) => c.startsWith('UID') || c.startsWith('EXPUNGE'),
           ),
           [
-            'UID MOVE 20 [Gmail]/Trash',
+            'UID MOVE 20 "[Gmail]/Trash"',
             r'UID STORE 51 +FLAGS.SILENT (\Deleted)',
             'UID EXPUNGE 51',
           ],
