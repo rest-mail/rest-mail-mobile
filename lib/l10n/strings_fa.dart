@@ -76,6 +76,13 @@ const Map<String, Map<String, String>> stringsFa = {
     'settings.thisPhone': 'این تلفن',
     'settings.language': 'زبان',
     'settings.signature': 'امضا',
+    'settings.mailCheck': 'بررسی ایمیل',
+    'settings.mailCheckSubtitle': 'هر چند وقت ایمیل جدید بررسی شود',
+    'settings.everyMinutes': 'هر {minutes} دقیقه',
+    'settings.mailCheckNote': 'REST Mail همیشه زنده به‌روز می‌شود. برای IMAP، اگر سرور پشتیبانی می‌کند به‌روزرسانی زنده یا یک فاصله ثابت را انتخاب کنید؛ POP3 از فاصله استفاده می‌کند.',
+    'settings.mailCheckLive': 'زنده در صورت امکان',
+    'settings.mailCheckLiveSubtitle':
+        'از کانال زنده سرور در صورت ارائه استفاده کنید',
     'settings.addAccount': 'افزودن حساب',
     'settings.interface': 'رابط کاربری',
     'settings.customizeScreens': 'شخصی‌سازی صفحه‌ها',

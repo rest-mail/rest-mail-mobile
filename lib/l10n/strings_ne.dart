@@ -73,6 +73,13 @@ const Map<String, Map<String, String>> stringsNe = {
     'settings.thisPhone': 'यो फोन',
     'settings.language': 'भाषा',
     'settings.signature': 'हस्ताक्षर',
+    'settings.mailCheck': 'मेल जाँच',
+    'settings.mailCheckSubtitle': 'नयाँ मेल कति पटक हेरिने',
+    'settings.everyMinutes': 'हरेक {minutes} मिनेट',
+    'settings.mailCheckNote': 'REST Mail सधैं लाइभ अपडेट हुन्छ। IMAP का लागि, सर्भरले समर्थन गरेमा लाइभ अपडेट वा निश्चित अन्तराल छान्नुहोस्; POP3 ले अन्तराल प्रयोग गर्छ।',
+    'settings.mailCheckLive': 'उपलब्ध हुँदा लाइभ',
+    'settings.mailCheckLiveSubtitle':
+        'सर्भरको लाइभ च्यानल उपलब्ध भएमा प्रयोग गर्नुहोस्',
     'settings.addAccount': 'खाता थप्नुहोस्',
     'settings.interface': 'इन्टरफेस',
     'settings.customizeScreens': 'स्क्रिन अनुकूलन गर्नुहोस्',

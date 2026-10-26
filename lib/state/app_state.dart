@@ -652,6 +652,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateSettings(AppSettings next) async {
     settings = next;
+    for (final account in accounts) {
+      if (account is ImapAccount) {
+        account.backend
+          ..pollInterval = next.mailCheckInterval
+          ..useIdle = next.mailCheckLive;
+      }
+    }
     notifyListeners();
     await store.write(_settingsKey, next.encode());
   }
@@ -786,6 +793,8 @@ class AppState extends ChangeNotifier {
         accessToken: session?.accessToken,
         settings: saved.settings,
         openSocket: mailSockets,
+        pollInterval: settings.mailCheckInterval,
+        useIdle: settings.mailCheckLive,
         signedOut:
             saved.signedOut ||
             (saved.password == null && saved.oauth?.refreshToken == null),

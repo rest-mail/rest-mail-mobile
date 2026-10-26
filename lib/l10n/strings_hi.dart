@@ -74,6 +74,13 @@ const Map<String, Map<String, String>> stringsHi = {
     'settings.thisPhone': 'यह फ़ोन',
     'settings.language': 'भाषा',
     'settings.signature': 'हस्ताक्षर',
+    'settings.mailCheck': 'मेल जाँच',
+    'settings.mailCheckSubtitle': 'नया मेल कितनी बार देखा जाए',
+    'settings.everyMinutes': 'हर {minutes} मिनट',
+    'settings.mailCheckNote': 'REST Mail हमेशा लाइव अपडेट होता है। IMAP के लिए, सर्वर समर्थन करे तो लाइव अपडेट या तय अंतराल चुनें; POP3 अंतराल का उपयोग करता है।',
+    'settings.mailCheckLive': 'उपलब्ध होने पर लाइव',
+    'settings.mailCheckLiveSubtitle':
+        'सर्वर का लाइव चैनल उपलब्ध हो तो उसका उपयोग करें',
     'settings.addAccount': 'खाता जोड़ें',
     'settings.interface': 'इंटरफ़ेस',
     'settings.customizeScreens': 'स्क्रीन अनुकूलित करें',

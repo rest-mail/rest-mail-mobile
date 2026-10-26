@@ -36,6 +36,8 @@ class ImapBackend implements MailBackend {
     this.accessToken,
     required this.settings,
     required this.openSocket,
+    this.pollInterval = const Duration(minutes: 1),
+    this.useIdle = true,
     bool signedOut = false,
   }) : assert(signedOut || (password == null) != (accessToken == null));
 
@@ -49,6 +51,15 @@ class ImapBackend implements MailBackend {
 
   final MailServerSettings settings;
   final OpenMailSocket openSocket;
+
+  /// How often the event stream asks for new mail when the server has no
+  /// IDLE. The setting can change while a stream is listening, so this is
+  /// read afresh each time the watcher waits.
+  Duration pollInterval;
+
+  /// Whether the event stream may use IDLE. False makes it poll at
+  /// [pollInterval] even when the server offers IDLE.
+  bool useIdle;
 
   /// An IMAP account is a single mailbox.
   static const accountId = 1;
@@ -1547,9 +1558,10 @@ class ImapBackend implements MailBackend {
 }
 
 /// Keeps a second connection in IDLE on the inbox while the stream has a
-/// listener, and turns what the server says into [MailEvent]s. Without IDLE
-/// it asks every minute instead. A dropped connection is reopened, waiting
-/// longer each time, up to a minute.
+/// listener, and turns what the server says into [MailEvent]s. Without IDLE,
+/// or when live checks are off, it asks at the account's check interval
+/// instead. A dropped connection is reopened, waiting longer each time, up to
+/// a minute.
 class _Watcher {
   _Watcher(this.backend, this.events, this.onLiveChanged);
 
@@ -1577,11 +1589,11 @@ class _Watcher {
         heard = c.client.eventBus.on<ImapEvent>().listen(_heard);
         onLiveChanged?.call(true);
         delay = const Duration(seconds: 2);
-        final idle = c.server.supportsIdle;
+        final idle = backend.useIdle && c.server.supportsIdle;
         while (!_stopped && c.isOpen) {
           if (idle) await c.client.idleStart();
           await Future.any<void>([
-            Future<void>.delayed(idle ? _renew : const Duration(minutes: 1)),
+            Future<void>.delayed(idle ? _renew : backend.pollInterval),
             c.lost.then<void>((_) {}, onError: (Object _) {}),
             _stop.future,
           ]);

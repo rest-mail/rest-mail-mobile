@@ -80,6 +80,13 @@ const Map<String, Map<String, String>> stringsAr = {
     'settings.thisPhone': 'هذا الهاتف',
     'settings.language': 'اللغة',
     'settings.signature': 'التوقيع',
+    'settings.mailCheck': 'فحص البريد',
+    'settings.mailCheckSubtitle': 'كم مرة يُبحث عن بريد جديد',
+    'settings.everyMinutes': 'كل {minutes} دقيقة',
+    'settings.mailCheckNote': 'يتحدث REST Mail مباشرة دائمًا. بالنسبة إلى IMAP، اختر التحديثات المباشرة حيث يدعمها الخادم أو فاصلًا ثابتًا؛ ويستخدم POP3 الفاصل.',
+    'settings.mailCheckLive': 'مباشر عند الإتاحة',
+    'settings.mailCheckLiveSubtitle':
+        'استخدم القناة المباشرة للخادم عندما يوفرها',
     'settings.addAccount': 'إضافة حساب',
     'settings.interface': 'الواجهة',
     'settings.customizeScreens': 'تخصيص الشاشات',
