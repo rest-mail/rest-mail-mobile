@@ -149,10 +149,11 @@ class _Imap extends ImapClient {
     }
   }
 
-  static String? _text(String? value, Uint8List? data) {
-    final text = value ?? (data == null ? null : utf8.decode(data));
-    return text == null ? null : unquote(text);
-  }
+  // enough_mail 3 decodes a quoted string's escapes itself (`"\\Important"`
+  // is `\Important`), and a literal's bytes are the text as they are, so
+  // neither is unescaped again: that took the backslash off `\Important`.
+  static String? _text(String? value, Uint8List? data) =>
+      value ?? (data == null ? null : utf8.decode(data));
 
   @override
   void onConnectionError(dynamic error) {
@@ -315,7 +316,7 @@ class ImapConnection {
       final user = settings.usernameFor(address);
       try {
         if (accessToken == null) {
-          await client.login(quoted(user), quoted(password!));
+          await client.login(user, password!);
         } else {
           await _withToken(
             accessToken,

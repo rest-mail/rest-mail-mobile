@@ -71,6 +71,8 @@ jobs:
           python3 -m unittest discover -s tool/ci -p 'test_admin_api_manifest.py'
       # Before the check: it imports the app's notes as a package.
       - run: flutter pub get
+      - name: Check upstream IMAP transport compatibility
+        run: dart tool/ci/check_enough_mail.dart
       - name: Check UI translation entry points
         run: |
           python3 tool/ci/check_ui_text.py
