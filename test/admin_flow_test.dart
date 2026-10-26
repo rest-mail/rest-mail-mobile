@@ -262,11 +262,9 @@ void main() {
     await (state.current! as RestAccount).client.refresh();
     await tester.pumpAndSettle();
 
-    // The screen open on it says so, and the section is gone behind it.
-    expect(find.text("You don't have permission for this"), findsOneWidget);
+    // The screen open on it is gone, and the section is gone behind it.
+    expect(find.text("You don't have permission for this"), findsNothing);
     expect(find.text(FakeAccounts.host), findsNothing);
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
     expect(find.text('Outbound queue'), findsOneWidget);
     expect(find.text('Domains'), findsNothing);
 

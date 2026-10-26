@@ -478,7 +478,6 @@ const Map<String, Map<String, String>> stringsFa = {
     'compose.send': 'ارسال',
     'date.created': 'ایجادشده در {date}',
     'admin.title': 'مدیریت',
-    'admin.empty': 'این حساب اجازه مدیریت هیچ بخشی از {host} را ندارد.',
     'admin.group.logs': 'گزارش‌ها و سوابق',
     'admin.group.setup': 'امضا و پالایش',
     'admin.section.queue.title': 'صف خروجی',

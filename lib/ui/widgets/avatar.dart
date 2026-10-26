@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../state/app_scope.dart';
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
 
@@ -17,6 +18,7 @@ class RmAvatar extends StatelessWidget {
     this.color,
     this.radius,
     this.iconFileName,
+    this.faviconHost,
   });
 
   final String name;
@@ -34,6 +36,9 @@ class RmAvatar extends StatelessWidget {
 
   /// The custom icon this account picked, or null for the initials.
   final String? iconFileName;
+
+  /// When set, the account's provider or domain favicon, if cached.
+  final String? faviconHost;
 
   @override
   Widget build(BuildContext context) {
@@ -58,9 +63,10 @@ class RmAvatar extends StatelessWidget {
         ),
       ),
     );
-    if (iconFileName == null) return fallback;
+    if (iconFileName == null && faviconHost == null) return fallback;
     return AccountIcon(
       fileName: iconFileName,
+      faviconHost: faviconHost,
       fallback: fallback,
       size: size,
       radius: radius,
@@ -82,19 +88,24 @@ class LogoMark extends StatelessWidget {
   );
 }
 
-/// An account's custom icon when it has one, otherwise [fallback]: the
-/// REST Mail mark in the mailbox header, or initials in a list.
+/// An account's custom icon when it has one, otherwise its fetched provider
+/// favicon, otherwise [fallback]: the REST Mail mark in the mailbox header,
+/// or initials in a list.
 class AccountIcon extends StatefulWidget {
   const AccountIcon({
     super.key,
-    required this.fileName,
+    this.fileName,
+    this.faviconHost,
     required this.fallback,
     this.size = 42,
     this.radius,
   });
 
-  /// The file name in the app's `account_icons` folder; null for the default.
+  /// The file name in the app's `account_icons` folder, or null.
   final String? fileName;
+
+  /// The host whose favicon labels this account, or null.
+  final String? faviconHost;
   final Widget fallback;
   final double size;
   final BorderRadius? radius;
@@ -105,6 +116,7 @@ class AccountIcon extends StatefulWidget {
 
 class _AccountIconState extends State<AccountIcon> {
   Future<File?>? _file;
+  Future<File?>? _favicon;
 
   @override
   void initState() {
@@ -113,9 +125,21 @@ class _AccountIconState extends State<AccountIcon> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _favicon = _loadFavicon();
+  }
+
+  @override
   void didUpdateWidget(covariant AccountIcon oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.fileName != widget.fileName) _file = _load();
+    if (oldWidget.fileName != widget.fileName) {
+      _file = _load();
+      _favicon = _loadFavicon();
+    }
+    if (oldWidget.faviconHost != widget.faviconHost) {
+      _favicon = _loadFavicon();
+    }
   }
 
   Future<File?>? _load() {
@@ -124,25 +148,42 @@ class _AccountIconState extends State<AccountIcon> {
     return _iconFile(name);
   }
 
+  Future<File?>? _loadFavicon() {
+    final host = widget.faviconHost;
+    if (widget.fileName != null || host == null) return null;
+    return AppScope.of(context).faviconFileOfHost(host);
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (widget.fileName == null) return widget.fallback;
-    return FutureBuilder<File?>(
-      future: _file,
-      builder: (context, snapshot) {
-        final file = snapshot.data;
-        if (file == null) return widget.fallback;
-        return ClipRRect(
-          borderRadius: widget.radius ?? BorderRadius.circular(widget.size / 2),
-          child: Image.file(
-            file,
-            width: widget.size,
-            height: widget.size,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stack) => widget.fallback,
-          ),
-        );
-      },
+    if (widget.fileName != null) {
+      return _fileBuilder(_file);
+    }
+    if (widget.faviconHost != null) {
+      return _fileBuilder(_favicon);
+    }
+    return widget.fallback;
+  }
+
+  Widget _fileBuilder(Future<File?>? future) => FutureBuilder<File?>(
+    future: future,
+    builder: (context, snapshot) {
+      final file = snapshot.data;
+      return _imageOrFallback(file);
+    },
+  );
+
+  Widget _imageOrFallback(File? file) {
+    if (file == null) return widget.fallback;
+    return ClipRRect(
+      borderRadius: widget.radius ?? BorderRadius.circular(widget.size / 2),
+      child: Image.file(
+        file,
+        width: widget.size,
+        height: widget.size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stack) => widget.fallback,
+      ),
     );
   }
 

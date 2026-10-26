@@ -13,6 +13,7 @@ import '../state/app_state.dart';
 import '../state/mailbox_state.dart';
 import '../state/push_state.dart';
 import '../state/settings.dart';
+import '../imap/mail_settings.dart';
 import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
@@ -260,6 +261,7 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                                   iconFileName: iconAccount == null
                                       ? null
                                       : app.iconFileNameOf(iconAccount),
+                                  faviconHost: domainOf(account.address),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -934,6 +936,7 @@ class _AccountRow extends StatelessWidget {
               seed: address,
               size: 32,
               color: primary ? c.accent : null,
+              faviconHost: domainOf(address),
             ),
             const SizedBox(width: 12),
             Expanded(

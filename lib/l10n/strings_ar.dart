@@ -481,7 +481,6 @@ const Map<String, Map<String, String>> stringsAr = {
     'compose.send': 'إرسال',
     'date.created': 'أُنشئ {date}',
     'admin.title': 'الإدارة',
-    'admin.empty': 'لا يستطيع هذا الحساب إدارة أي شيء على {host}.',
     'admin.group.logs': 'السجلات والتقارير',
     'admin.group.setup': 'التوقيع والتصفية',
     'admin.section.queue.title': 'قائمة انتظار الصادر',

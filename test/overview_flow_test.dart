@@ -179,7 +179,8 @@ void main() {
     'Overview requires global domains:read and sends no unauthorized request',
     (tester) async {
       final (fake, state, transport) = await open(tester, allowed: false);
-      expect(find.text("You don't have permission for this"), findsOneWidget);
+      expect(find.text("You don't have permission for this"), findsNothing);
+      expect(find.byType(ListView), findsNothing);
       expect(transport.reads, 0);
       await close(tester, fake, state);
     },

@@ -490,7 +490,6 @@ const Map<String, Map<String, String>> stringsEn = {
     'compose.send': 'Send',
     'date.created': 'Created {date}',
     'admin.title': 'Administration',
-    'admin.empty': "This account can't administer anything on {host}.",
     'admin.group.logs': 'Logs and reports',
     'admin.group.setup': 'Signing and filtering',
     'admin.section.queue.title': 'Outbound queue',

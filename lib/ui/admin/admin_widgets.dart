@@ -86,8 +86,30 @@ void pushScreen(BuildContext context, Widget screen) => unawaited(
   Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen)),
 );
 
+/// An admin surface the session may not see. It builds no admin UI and leaves
+/// the route at once, so no unauthorized admin widget stays in the tree.
+class AdminAbsent extends StatefulWidget {
+  const AdminAbsent({super.key});
+
+  @override
+  State<AdminAbsent> createState() => _AdminAbsentState();
+}
+
+class _AdminAbsentState extends State<AdminAbsent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.maybePop(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 /// An inner admin screen: the top bar, and [body] when the session may see
-/// [section]. One whose capability went at a refresh shows why instead.
+/// [section]. One whose capability went at a refresh is not built at all.
 class AdminPage extends StatelessWidget {
   const AdminPage({
     super.key,
@@ -116,7 +138,7 @@ class AdminPage extends StatelessWidget {
       scope: scope,
       collection: collection,
     );
-    final allowed = access.canRead(section);
+    if (!access.canRead(section)) return const AdminAbsent();
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -124,13 +146,9 @@ class AdminPage extends StatelessWidget {
             RmTopBar(
               title: title,
               onBack: () => Navigator.pop(context),
-              actions: allowed ? actions : const [],
+              actions: actions,
             ),
-            Expanded(
-              child: allowed
-                  ? body(access)
-                  : AdminMessage(tr(context, noPermission)),
-            ),
+            Expanded(child: body(access)),
           ],
         ),
       ),

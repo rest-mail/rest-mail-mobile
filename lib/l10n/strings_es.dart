@@ -479,7 +479,6 @@ const Map<String, Map<String, String>> stringsEs = {
     'compose.send': 'Enviar',
     'date.created': 'Creado el {date}',
     'admin.title': 'Administraci\u00f3n',
-    'admin.empty': 'Esta cuenta no puede administrar nada en {host}.',
     'admin.group.logs': 'Registros e informes',
     'admin.group.setup': 'Firma y filtrado',
     'admin.section.queue.title': 'Cola de salida',
