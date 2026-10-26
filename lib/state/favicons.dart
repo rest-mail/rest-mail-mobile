@@ -60,38 +60,43 @@ class FaviconCache {
   /// The cache version and deny list are read at startup; a denied host's
   /// cached copy is dropped here too.
   Future<File?> _load(String host) async {
-    final directory = await _cacheDirectory();
-    final cached = File('${directory.path}/${_name(host)}.png');
-    if (_denied(host)) {
-      if (await cached.exists()) {
-        try {
-          await cached.delete();
-        } on FileSystemException {
-          // The next denied read still refuses it.
-        }
-      }
-      return null;
-    }
-    if (await cached.exists()) return cached;
-
-    final client = _clientFactory();
     try {
-      for (final base in _bases(host)) {
-        for (final uri in await _candidates(client, base)) {
-          final bytes = await _get(client, uri, accept: 'image/*');
-          if (bytes == null) continue;
-          final png = _asPng(bytes);
-          if (png == null) continue;
+      final directory = await _cacheDirectory();
+      final cached = File('${directory.path}/${_name(host)}.png');
+      if (_denied(host)) {
+        if (await cached.exists()) {
           try {
-            await cached.writeAsBytes(png, flush: true);
-            return cached;
+            await cached.delete();
           } on FileSystemException {
-            return null;
+            // The next denied read still refuses it.
           }
         }
+        return null;
       }
-    } finally {
-      client.close();
+      if (await cached.exists()) return cached;
+
+      final client = _clientFactory();
+      try {
+        for (final base in _bases(host)) {
+          for (final uri in await _candidates(client, base)) {
+            final bytes = await _get(client, uri, accept: 'image/*');
+            if (bytes == null) continue;
+            final png = _asPng(bytes);
+            if (png == null) continue;
+            try {
+              await cached.writeAsBytes(png, flush: true);
+              return cached;
+            } on FileSystemException {
+              return null;
+            }
+          }
+        }
+      } finally {
+        client.close();
+      }
+    } on Object {
+      // No cache directory (for example a host without path_provider) or an
+      // unreadable one: the caller shows the generic mark.
     }
     return null;
   }
