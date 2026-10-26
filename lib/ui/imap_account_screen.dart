@@ -6,6 +6,7 @@ import 'package:restmail_api/restmail_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../imap/discovery.dart';
+import '../imap/mail_probe.dart';
 import '../imap/mail_settings.dart';
 import '../imap/oauth.dart';
 import '../l10n/voice.dart';
@@ -50,6 +51,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   final _smtpPort = TextEditingController(text: '465');
   final _username = TextEditingController();
   SmtpSecurity _smtpSecurity = SmtpSecurity.tls;
+  ImapSecurity _imapSecurity = ImapSecurity.tls;
 
   FoundSettings? _found;
   bool _looking = false;
@@ -57,6 +59,19 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   String _searchedDomain = '';
   int _lookups = 0;
   Timer? _debounce;
+  MailSearchResults? _searchResults;
+  MailEndpoint? _incoming;
+  MailEndpoint? _outgoing;
+  MailSearchCancellation? _searchCancellation;
+  void Function()? _closeSearchHttp;
+  bool _searching = false;
+  int _searchRun = 0, _searchedCount = 0, _searchTotal = 0;
+
+  bool _checking = false;
+  String? _checkedAddress;
+  MailServerSettings? _checkedSettings;
+  String? _checkError;
+  int _checkRun = 0;
 
   bool _busy = false;
   String? _error;
@@ -67,6 +82,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     _name.text = widget.initialDisplayName;
     if (widget.initialSettings case final settings?) {
       _found = FoundSettings(settings, SettingsSource.saved);
+      _fillManual(settings);
     }
     _email.addListener(_emailChanged);
     if (_found == null && domainOf(widget.email) != null) {
@@ -77,6 +93,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _cancelSearch();
     for (final c in [
       _email,
       _password,
@@ -96,6 +113,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
 
   /// The servers to use: typed in, or found.
   MailServerSettings? get _settings {
+    if (_looking || _searching) return null;
     if (!_manual) return _found?.settings;
     final imapPort = int.tryParse(_imapPort.text.trim());
     final smtpPort = int.tryParse(_smtpPort.text.trim());
@@ -106,6 +124,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     return MailServerSettings(
       imapHost: imapHost,
       imapPort: imapPort!,
+      imapSecurity: _imapSecurity,
       smtpHost: smtpHost,
       smtpPort: smtpPort!,
       smtpSecurity: _smtpSecurity,
@@ -116,6 +135,8 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
 
   bool get _canContinue =>
       !_busy &&
+      !_checking &&
+      !_searching &&
       domainOf(_email.text) != null &&
       _password.text.isNotEmpty &&
       _settings != null &&
@@ -130,10 +151,44 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
   }
 
   bool get _canSignIn =>
-      !_busy && domainOf(_email.text) != null && _settings != null;
+      !_busy &&
+      !_checking &&
+      !_searching &&
+      domainOf(_email.text) != null &&
+      _settings != null;
+
+  bool get _connectionConfirmed =>
+      _checkedAddress == _email.text.trim() && _checkedSettings == _settings;
+
+  bool get _canCheckConnection =>
+      !_checking &&
+      !_searching &&
+      !_busy &&
+      domainOf(_email.text) != null &&
+      _password.text.isNotEmpty &&
+      _settings != null;
+
+  void _settingsChanged() {
+    _checkRun++;
+    setState(() {
+      _checkedAddress = null;
+      _checkedSettings = null;
+      _checkError = null;
+      _error = null;
+    });
+  }
 
   void _emailChanged() {
-    setState(() => _error = null);
+    _cancelSearch();
+    _checkRun++;
+    setState(() {
+      _searching = false;
+      _searchResults = null;
+      _error = null;
+      _checkedAddress = null;
+      _checkedSettings = null;
+      _checkError = null;
+    });
     _debounce?.cancel();
     final domain = domainOf(_email.text);
     if (domain == null) {
@@ -146,6 +201,14 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       return;
     }
     if (domain == _searchedDomain) return;
+    // An old domain's lookup must not populate a newly edited address,
+    // including during the debounce before the new lookup starts.
+    _lookups++;
+    setState(() {
+      _found = null;
+      _manual = false;
+      _looking = false;
+    });
     _debounce = Timer(
       const Duration(milliseconds: 500),
       () => unawaited(_lookUp(domain)),
@@ -185,10 +248,98 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     final domain = domainOf(_email.text) ?? '';
     _imapHost.text = s?.imapHost ?? 'imap.$domain';
     _imapPort.text = '${s?.imapPort ?? 993}';
+    _imapSecurity = s?.imapSecurity ?? ImapSecurity.tls;
     _smtpHost.text = s?.smtpHost ?? 'smtp.$domain';
     _smtpPort.text = '${s?.smtpPort ?? 465}';
     _smtpSecurity = s?.smtpSecurity ?? SmtpSecurity.tls;
     _username.text = s?.username ?? '';
+  }
+
+  void _cancelSearch() {
+    _searchRun++;
+    _searchCancellation?.cancel();
+    _searchCancellation = null;
+    _closeSearchHttp?.call();
+    _closeSearchHttp = null;
+  }
+
+  Future<void> _searchServers() async {
+    if (domainOf(_email.text) == null || _busy || _checking) return;
+    _cancelSearch();
+    _debounce?.cancel();
+    _lookups++;
+    _checkRun++;
+    final run = _searchRun;
+    final address = _email.text.trim();
+    final app = AppScope.read(context);
+    final http = app.httpClientFactory();
+    final cancellation = MailSearchCancellation();
+    _searchCancellation = cancellation;
+    _closeSearchHttp = http.close;
+    setState(() {
+      _looking = false;
+      _searching = true;
+      _searchResults = null;
+      _searchedCount = _searchTotal = 0;
+      _checkedSettings = null;
+      _checkedAddress = null;
+      _checkError = null;
+      _error = null;
+    });
+    try {
+      final results = await searchMailSettings(
+        address,
+        httpClient: http,
+        openSocket: app.mailSockets,
+        cancellation: cancellation,
+        onProgress: (checked, total) {
+          if (!mounted || run != _searchRun) return;
+          setState(() {
+            _searchedCount = checked;
+            _searchTotal = total;
+          });
+        },
+      );
+      if (!mounted || run != _searchRun) return;
+      setState(() {
+        _searchResults = results;
+        _searching = false;
+        if (results.canConfigure) {
+          _incoming = results.imap.first;
+          _outgoing = results.smtp.first;
+          _found = results.settingsFor(_incoming!, _outgoing!);
+          _fillManual(_found!.settings);
+          _manual = false;
+        } else {
+          _found = null;
+          _manual = true;
+          if (_imapHost.text.isEmpty || _smtpHost.text.isEmpty) {
+            _fillManual(null);
+          }
+        }
+      });
+    } finally {
+      http.close();
+      if (run == _searchRun) {
+        _searchCancellation = null;
+        _closeSearchHttp = null;
+        if (mounted) setState(() => _searching = false);
+      }
+    }
+  }
+
+  void _chooseEndpoints({MailEndpoint? incoming, MailEndpoint? outgoing}) {
+    _checkRun++;
+    setState(() {
+      _incoming = incoming ?? _incoming;
+      _outgoing = outgoing ?? _outgoing;
+      _found = _searchResults!.settingsFor(_incoming!, _outgoing!);
+      _fillManual(_found!.settings);
+      _manual = false;
+      _checkedSettings = null;
+      _checkedAddress = null;
+      _checkError = _error = null;
+    });
   }
 
   Future<void> _continue() async {
@@ -220,6 +371,41 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
         _busy = false;
         _error = _describe(e, provider);
       });
+    }
+  }
+
+  Future<void> _checkConnection() async {
+    final settings = _settings;
+    if (settings == null || !_canCheckConnection) return;
+    final provider = _provider;
+    final run = ++_checkRun;
+    final address = _email.text.trim();
+    final password = provider?.isGmail ?? false
+        ? _password.text.replaceAll(RegExp(r'\s'), '')
+        : _password.text;
+    setState(() {
+      _checking = true;
+      _checkedAddress = null;
+      _checkedSettings = null;
+      _checkError = null;
+    });
+    try {
+      await AppScope.read(context).verifyImapSettings(
+        address: address,
+        password: password,
+        settings: settings,
+        provider: provider,
+      );
+      if (!mounted || run != _checkRun) return;
+      setState(() {
+        _checkedAddress = address;
+        _checkedSettings = settings;
+      });
+    } on ApiException catch (e) {
+      if (!mounted || run != _checkRun) return;
+      setState(() => _checkError = _describe(e, provider));
+    } finally {
+      if (mounted) setState(() => _checking = false);
     }
   }
 
@@ -331,6 +517,8 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                         hintText: 'you@example.com',
                       ),
                     ),
+                    const SizedBox(height: 14),
+                    _serverSearch(c),
                     if (microsoft) ...[
                       const SizedBox(height: 22),
                       _Guide(
@@ -410,7 +598,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                         autocorrect: false,
                         enableSuggestions: false,
                         autofillHints: const [AutofillHints.password],
-                        onChanged: (_) => setState(() => _error = null),
+                        onChanged: (_) => _settingsChanged(),
                         onSubmitted: (_) => unawaited(_continue()),
                         style: rmText(16, color: c.ink),
                         decoration: InputDecoration(
@@ -426,6 +614,8 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
                       _nameField(c),
                       const SizedBox(height: 22),
                       _servers(c),
+                      const SizedBox(height: 10),
+                      _connectionCheck(c),
                       const SizedBox(height: 10),
                       Text(
                         tr(context, 'imap.keychainNote'),
@@ -495,6 +685,200 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     ],
   );
 
+  Widget _connectionCheck(RmColors c) {
+    final confirmed = _connectionConfirmed;
+    final error = _checkError;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (confirmed)
+          Row(
+            children: [
+              Icon(Icons.check_circle, color: c.good, size: 19),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  tr(context, 'imap.connectionConfirmed'),
+                  style: rmText(13.5, color: c.good, weight: FontWeight.w600),
+                ),
+              ),
+              TextButton(
+                onPressed: _checking
+                    ? null
+                    : () => unawaited(_checkConnection()),
+                child: Text(
+                  tr(context, 'imap.checkAgain'),
+                  style: rmText(13.5, color: c.accent, weight: FontWeight.w600),
+                ),
+              ),
+            ],
+          )
+        else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _canCheckConnection
+                  ? () => unawaited(_checkConnection())
+                  : null,
+              icon: _checking
+                  ? SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: c.accent,
+                      ),
+                    )
+                  : const Icon(Icons.wifi_tethering, size: 18),
+              label: Text(
+                tr(
+                  context,
+                  _checking ? 'imap.checking' : 'imap.checkConnection',
+                ),
+              ),
+            ),
+          ),
+        if (error != null) ...[const SizedBox(height: 6), ErrorText(error)],
+      ],
+    );
+  }
+
+  Widget _serverSearch(RmColors c) {
+    final results = _searchResults;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          tr(context, 'imap.searchHint'),
+          style: rmText(13, color: c.ink2, height: 1.4),
+        ),
+        if (_searching) ...[
+          const SizedBox(height: 10),
+          _Card(
+            title: tr(context, 'imap.searchingServers'),
+            detail: _searchTotal == 0
+                ? tr(context, 'imap.searchingDns')
+                : trArgs(context, 'imap.searchProgress', {
+                    'checked': '$_searchedCount',
+                    'total': '$_searchTotal',
+                  }),
+            busy: true,
+            action: TextButton(
+              onPressed: () {
+                _cancelSearch();
+                setState(() => _searching = false);
+              },
+              child: Text(tr(context, 'common.cancel')),
+            ),
+          ),
+        ] else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: domainOf(_email.text) != null && !_busy && !_checking
+                  ? () => unawaited(_searchServers())
+                  : null,
+              icon: const Icon(Icons.search, size: 19),
+              label: Text(
+                tr(
+                  context,
+                  results == null ? 'imap.searchServers' : 'imap.searchAgain',
+                ),
+              ),
+            ),
+          ),
+        if (results != null) ...[
+          if (results.canConfigure) ...[
+            Row(
+              children: [
+                Icon(Icons.check_circle, color: c.good, size: 19),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tr(context, 'imap.serversConfirmed'),
+                    style: rmText(13.5, color: c.good, weight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            if (!_manual) ...[
+              const SizedBox(height: 12),
+              _endpointChoices(c, results),
+            ],
+          ] else
+            Text(
+              tr(
+                context,
+                results.imap.isEmpty
+                    ? (results.pop3.isEmpty
+                          ? 'imap.searchNoImap'
+                          : 'imap.pop3Only')
+                    : 'imap.searchNoSmtp',
+              ),
+              style: rmText(13.5, color: c.ink2, height: 1.4),
+            ),
+          if (results.pop3.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${tr(context, 'imap.pop3Detected')}\n'
+              '${results.pop3.map((endpoint) => endpoint.label).join('\n')}',
+              style: rmText(12.5, color: c.ink3, height: 1.4),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _endpointChoices(RmColors c, MailSearchResults results) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        tr(context, 'imap.chooseServers'),
+        style: rmText(13.5, color: c.ink2, height: 1.4),
+      ),
+      const SizedBox(height: 10),
+      SectionLabel(tr(context, 'imap.imapServer')),
+      DropdownButton<MailEndpoint>(
+        value: _incoming,
+        isExpanded: true,
+        items: [
+          for (final endpoint in results.imap)
+            DropdownMenuItem(
+              value: endpoint,
+              child: Text(
+                endpoint.label,
+                overflow: TextOverflow.ellipsis,
+                style: rmText(13, color: c.ink),
+              ),
+            ),
+        ],
+        onChanged: _busy || _checking
+            ? null
+            : (endpoint) => _chooseEndpoints(incoming: endpoint),
+      ),
+      const SizedBox(height: 10),
+      SectionLabel(tr(context, 'imap.smtpServer')),
+      DropdownButton<MailEndpoint>(
+        value: _outgoing,
+        isExpanded: true,
+        items: [
+          for (final endpoint in results.smtp)
+            DropdownMenuItem(
+              value: endpoint,
+              child: Text(
+                endpoint.label,
+                overflow: TextOverflow.ellipsis,
+                style: rmText(13, color: c.ink),
+              ),
+            ),
+        ],
+        onChanged: _busy || _checking
+            ? null
+            : (endpoint) => _chooseEndpoints(outgoing: endpoint),
+      ),
+    ],
+  );
+
   Widget _servers(RmColors c) {
     final found = _found;
     if (_looking) {
@@ -507,15 +891,13 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
     if (!_manual) {
       if (found == null) return const SizedBox.shrink();
       final s = found.settings;
-      return _Card(
+      final card = _Card(
         title: '${s.imapHost} · ${s.smtpHost}',
-        detail: trArgs(
-          context,
-          s.smtpSecurity == SmtpSecurity.tls
-              ? 'imap.foundTls'
-              : 'imap.foundStarttls',
-          {'source': tr(context, 'imap.source.${found.source.name}')},
-        ),
+        detail: trArgs(context, 'imap.foundSecurity', {
+          'source': tr(context, 'imap.source.${found.source.name}'),
+          'imap': s.imapSecurity == ImapSecurity.tls ? 'TLS' : 'STARTTLS',
+          'smtp': s.smtpSecurity == SmtpSecurity.tls ? 'TLS' : 'STARTTLS',
+        }),
         action: TextButton(
           onPressed: () => setState(() => _manual = true),
           child: Text(
@@ -524,6 +906,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
           ),
         ),
       );
+      return card;
     }
     TextField field(
       TextEditingController controller,
@@ -534,7 +917,7 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
       keyboardType: number ? TextInputType.number : TextInputType.url,
       autocorrect: false,
       enableSuggestions: false,
-      onChanged: (_) => setState(() => _error = null),
+      onChanged: (_) => _settingsChanged(),
       style: rmText(15, color: c.ink),
       decoration: InputDecoration(hintText: hint),
     );
@@ -557,6 +940,26 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
             Expanded(child: field(_imapPort, '993', number: true)),
           ],
         ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: RmSegmented<ImapSecurity>(
+            options: const [
+              (ImapSecurity.tls, 'TLS'),
+              (ImapSecurity.starttls, 'STARTTLS'),
+            ],
+            value: _imapSecurity,
+            onChanged: (security) {
+              _settingsChanged();
+              setState(() {
+                _imapSecurity = security;
+                if (['993', '143', ''].contains(_imapPort.text.trim())) {
+                  _imapPort.text = security == ImapSecurity.tls ? '993' : '143';
+                }
+              });
+            },
+          ),
+        ),
         const SizedBox(height: 16),
         SectionLabel(tr(context, 'imap.smtpServer')),
         const SizedBox(height: 8),
@@ -577,7 +980,12 @@ class _ImapAccountScreenState extends State<ImapAccountScreen> {
             ],
             value: _smtpSecurity,
             onChanged: (security) => setState(() {
+              _checkRun++;
               _smtpSecurity = security;
+              _checkedAddress = null;
+              _checkedSettings = null;
+              _checkError = null;
+              _error = null;
               final port = _smtpPort.text.trim();
               if (port == '465' || port == '587' || port.isEmpty) {
                 _smtpPort.text = security == SmtpSecurity.tls ? '465' : '587';

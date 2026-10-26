@@ -67,6 +67,11 @@ void main() {
     expect(find.text('Gmail needs an app password'), findsOneWidget);
     expect(find.text('Turn on 2-Step Verification'), findsOneWidget);
     expect(find.text('Make an app password'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('APP PASSWORD'),
+      150,
+      scrollable: _setupList,
+    );
     expect(find.text('APP PASSWORD'), findsOneWidget);
     final servers = find.text('imap.gmail.com · smtp.gmail.com');
     await tester.scrollUntilVisible(servers, 200, scrollable: _setupList);
@@ -93,6 +98,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Gmail needs an app password'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('APP PASSWORD'),
+      150,
+      scrollable: _setupList,
+    );
     expect(find.text('APP PASSWORD'), findsOneWidget);
     final note = find.textContaining('For personal use only.');
     await tester.scrollUntilVisible(note, 200, scrollable: _setupList);
@@ -158,5 +168,8 @@ void main() {
     await tester.scrollUntilVisible(notFound, 200, scrollable: _setupList);
     expect(find.text('IMAP SERVER (TLS)'), findsOneWidget);
     expect(find.text('imap.nowhere.example'), findsOneWidget);
+    final check = find.text('Check connection');
+    await tester.scrollUntilVisible(check, 200, scrollable: _setupList);
+    expect(check, findsOneWidget);
   });
 }

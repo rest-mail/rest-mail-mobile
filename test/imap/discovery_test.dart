@@ -142,6 +142,34 @@ void main() {
     );
   });
 
+  test('a DNS address alone never confirms working mail settings', () async {
+    final found = await discoverMailSettings(
+      'ada@example.net',
+      httpClient: MockClient((r) async {
+        if (r.url.queryParameters['name'] == 'mail.example.net' &&
+            r.url.queryParameters['type'] == 'A') {
+          return http.Response(
+            jsonEncode({
+              'Status': 0,
+              'Answer': [
+                {
+                  'name': 'mail.example.net',
+                  'type': 1,
+                  'TTL': 3600,
+                  'data': '192.0.2.20',
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('', 404);
+      }),
+    );
+
+    expect(found, isNull);
+  });
+
   test('nothing found means typing them in', () async {
     final found = await discoverMailSettings(
       'ada@nowhere.example',
@@ -149,6 +177,15 @@ void main() {
     );
 
     expect(found, isNull);
+  });
+
+  test('an IMAP STARTTLS-only configuration keeps its protocol and port', () {
+    final settings = parseAutoconfig(
+      _gmx.replaceAll('SSL', 'STARTTLS'),
+      'ada@gmx.de',
+    );
+    expect(settings!.imapPort, 143);
+    expect(settings.imapSecurity, ImapSecurity.starttls);
   });
 
   test('a plaintext-only file is not used', () {
@@ -165,6 +202,7 @@ void main() {
     const settings = MailServerSettings(
       imapHost: 'imap.example.org',
       imapPort: 1993,
+      imapSecurity: ImapSecurity.starttls,
       smtpHost: 'smtp.example.org',
       smtpPort: 587,
       smtpSecurity: SmtpSecurity.starttls,
@@ -172,6 +210,8 @@ void main() {
     );
 
     expect(MailServerSettings.fromJson(settings.toJson()), settings);
+    final legacy = settings.toJson()..remove('imap_security');
+    expect(MailServerSettings.fromJson(legacy)!.imapSecurity, ImapSecurity.tls);
     expect(MailServerSettings.fromJson({'imap_host': 'x'}), isNull);
   });
 }
