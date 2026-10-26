@@ -17,6 +17,7 @@ export 'src/discovery.dart';
 export 'src/errors.dart';
 export 'src/events.dart';
 export 'src/filter_models.dart';
+export 'src/forward.dart';
 export 'src/grants_models.dart';
 export 'src/models.dart';
 export 'src/push.dart';

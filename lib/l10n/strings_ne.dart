@@ -448,6 +448,8 @@ const Map<String, Map<String, String>> stringsNe = {
     'compose.saveDraftChanges': 'मस्यौदाका परिवर्तनहरू सुरक्षित गर्ने?',
     'compose.draftNote':
         'सुरक्षित मस्यौदा तपाईंले सक्नका लागि मस्यौदाहरूमा पर्खिरहन्छ।',
+    'compose.discardForward': 'यो फरवार्ड त्याग्ने?',
+    'compose.forwardDiscarded': 'सर्भरको मेल नीतिअनुसार फरवार्ड त्यागियो।',
     'compose.discard': 'खारेज गर्नुहोस्',
     'compose.keepEditing': 'सम्पादन जारी राख्नुहोस्',
     'compose.saveDraft': 'मस्यौदा सुरक्षित गर्नुहोस्',

@@ -456,6 +456,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'compose.saveDraftChanges': 'Änderungen am Entwurf speichern?',
     'compose.draftNote':
         'Ein gespeicherter Entwurf wartet in Entwürfe, bis er fertig ist.',
+    'compose.discardForward': 'Diese Weiterleitung verwerfen?',
+    'compose.forwardDiscarded': 'Die Weiterleitung wurde durch die Mailrichtlinie des Servers verworfen.',
     'compose.discard': 'Verwerfen',
     'compose.keepEditing': 'Weiter bearbeiten',
     'compose.saveDraft': 'Entwurf speichern',

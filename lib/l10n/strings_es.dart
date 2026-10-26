@@ -456,6 +456,9 @@ const Map<String, Map<String, String>> stringsEs = {
     'compose.saveDraftChanges': '¿Guardar los cambios del borrador?',
     'compose.draftNote':
         'Un borrador guardado te espera en Borradores para que lo termines.',
+    'compose.discardForward': '¿Descartar este reenvío?',
+    'compose.forwardDiscarded':
+        'El reenvío fue descartado por la política de correo del servidor.',
     'compose.discard': 'Descartar',
     'compose.keepEditing': 'Seguir editando',
     'compose.saveDraft': 'Guardar borrador',

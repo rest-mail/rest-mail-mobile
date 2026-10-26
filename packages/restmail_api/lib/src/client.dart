@@ -12,6 +12,7 @@ import 'capabilities.dart';
 import 'errors.dart';
 import 'events.dart';
 import 'filter_models.dart';
+import 'forward.dart';
 import 'grants_models.dart';
 import 'models.dart';
 import 'push.dart';
@@ -2142,6 +2143,38 @@ class RestmailClient {
   /// it for good.
   Future<void> deleteMessage(int id) async {
     await _authed('DELETE', ['messages', '$id']);
+  }
+
+  /// Forwards a stored message with its original bodies and attachments.
+  /// [bodyText] is only the new note, placed above the original by the server.
+  /// Refusals retain their HTTP status, code and field details as ApiException.
+  Future<ForwardResult> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String bodyText = '',
+  }) async {
+    final response = await _authed(
+      'POST',
+      ['messages', '$id', 'forward'],
+      body: {'from': from, 'to': to, 'body_text': bodyText},
+    );
+    final data = _data(response);
+    if (response.statusCode == 200 && data['status'] == 'discarded') {
+      return const ForwardDiscarded();
+    }
+    if (response.statusCode != 201 ||
+        data['id'] is! int ||
+        data['mailbox_id'] is! int) {
+      throw _unreadable(response);
+    }
+    try {
+      return ForwardSent(Message.fromJson(data));
+    } on FormatException {
+      throw _unreadable(response);
+    } on TypeError {
+      throw _unreadable(response);
+    }
   }
 
   Future<Message> send(OutgoingMessage message) async => Message.fromJson(

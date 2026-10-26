@@ -458,6 +458,9 @@ const Map<String, Map<String, String>> stringsAr = {
     'compose.keepDraft': 'الاحتفاظ بها كمسودة؟',
     'compose.saveDraftChanges': 'حفظ تغييرات المسودة؟',
     'compose.draftNote': 'تنتظرك المسودة المحفوظة في «المسودات» لتكملها.',
+    'compose.discardForward': 'هل تريد تجاهل إعادة التوجيه هذه؟',
+    'compose.forwardDiscarded':
+        'تم تجاهل إعادة التوجيه وفق سياسة البريد في الخادم.',
     'compose.discard': 'تجاهل',
     'compose.keepEditing': 'متابعة التحرير',
     'compose.saveDraft': 'حفظ المسودة',
