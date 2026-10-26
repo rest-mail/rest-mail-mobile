@@ -1586,17 +1586,13 @@ class _Watcher {
         final c = _connection = await backend._open();
         if (_stopped) break;
         await c.run((client) => client.selectInbox());
-        heard = c.client.eventBus.on<ImapEvent>().listen(_heard);
+        heard = c.client.eventStream.listen(_heard);
         onLiveChanged?.call(true);
         delay = const Duration(seconds: 2);
         final idle = backend.useIdle && c.server.supportsIdle;
         while (!_stopped && c.isOpen) {
           if (idle) await c.client.idleStart();
-          await Future.any<void>([
-            Future<void>.delayed(idle ? _renew : backend.pollInterval),
-            c.lost.then<void>((_) {}, onError: (Object _) {}),
-            _stop.future,
-          ]);
+          await _wait(idle ? _renew : backend.pollInterval, connection: c);
           if (!c.isOpen) break;
           if (idle) {
             await c.client.idleDone();
@@ -1621,12 +1617,29 @@ class _Watcher {
       if (_stopped) break;
       onLiveChanged?.call(false);
       unawaited(_connection?.close());
-      await Future.any([Future<void>.delayed(delay), _stop.future]);
+      await _wait(delay);
       delay = delay * 2 > const Duration(minutes: 1)
           ? const Duration(minutes: 1)
           : delay * 2;
     }
     await _connection?.close();
+  }
+
+  /// A stopped watcher or a lost connection must release the losing timer;
+  /// Future.delayed inside Future.any would otherwise keep it until expiry.
+  Future<void> _wait(Duration duration, {ImapConnection? connection}) async {
+    final elapsed = Completer<void>();
+    final timer = Timer(duration, elapsed.complete);
+    try {
+      await Future.any<void>([
+        elapsed.future,
+        if (connection != null)
+          connection.lost.then<void>((_) {}, onError: (Object _) {}),
+        _stop.future,
+      ]);
+    } finally {
+      timer.cancel();
+    }
   }
 
   void _heard(ImapEvent event) {

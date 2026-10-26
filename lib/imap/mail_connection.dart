@@ -315,7 +315,7 @@ class ImapConnection {
       final user = settings.usernameFor(address);
       try {
         if (accessToken == null) {
-          await client.login(quoted(user), quoted(password!));
+          await client.login(user, password!);
         } else {
           await _withToken(
             accessToken,
