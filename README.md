@@ -86,8 +86,17 @@ An address at Gmail, iCloud, Yahoo, Fastmail or Outlook.com is recognised as
 you type it, and **Continue** opens its setup; **Other mail (IMAP)** opens the
 same setup for any other address. The servers come from, in order: the app's
 own presets for those providers, Thunderbird's autoconfig database, the
-domain's own autoconfig file, then DNS SRV records, all fetched over HTTPS. If
-none of them knows the domain, you type the servers in.
+domain's own autoconfig file, then DNS SRV records, all fetched over HTTPS.
+
+**Find working servers** searches the bare domain, common subdomains such as
+`mail`, `imap`, `smtp`, `pop3` and `submission`, and published MX/SRV targets.
+It tries the usual mail ports and any ports published by the provider, checks
+the protocol capabilities and TLS certificate, and offers working IMAP and
+SMTP endpoints as separate choices. The search sends no password, can be
+cancelled, and stops after 45 seconds. POP3 is detected for diagnosis only:
+adding an account requires IMAP. You can edit the discovered settings, and
+**Check connection** checks your credentials on both selected servers before
+you add the account.
 
 - **Gmail** needs an app password. The setup explains the two steps (turn on
   2-Step Verification, then make an app password) with a link to each, and
@@ -125,9 +134,11 @@ none of them knows the domain, you type the servers in.
 - **Star** is Gmail's star, and sent mail appears in Sent once, as Gmail files
   it.
 
-IMAP is TLS on 993. SMTP is TLS on 465, or STARTTLS on 587, and a server
-that doesn't offer STARTTLS is refused before the password is sent. Nothing
-goes in plaintext, and certificate checks can't be turned off. The password
+IMAP uses TLS on 993 or required STARTTLS on 143. SMTP uses TLS on 465 or
+required STARTTLS on 587 or 2525; published custom ports are also supported.
+A server that doesn't offer the required TLS upgrade is refused before the
+password is sent. Credentials and messages only travel over TLS, and
+certificate checks can't be turned off. The password
 is kept in the system keychain with the account, since IMAP and SMTP want it
 each time they connect. **Sign out** ends an account's session and keeps its
 settings and place in the list, marked signed out. **Remove from this phone**

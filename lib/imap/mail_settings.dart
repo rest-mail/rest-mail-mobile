@@ -1,5 +1,7 @@
 import 'oauth.dart';
 
+enum ImapSecurity { tls, starttls }
+
 /// How the app sends over SMTP. There is deliberately no plaintext choice:
 /// a server that offers neither is refused.
 enum SmtpSecurity {
@@ -14,12 +16,13 @@ enum SmtpSecurity {
       port == 587 ? SmtpSecurity.starttls : SmtpSecurity.tls;
 }
 
-/// Where an IMAP account's mail is read from and sent through. IMAP is
-/// always TLS from the first byte; there is no STARTTLS or plaintext IMAP.
+/// Where an IMAP account's mail is read from and sent through. Both
+/// protocols require TLS, either immediately or through STARTTLS.
 class MailServerSettings {
   const MailServerSettings({
     required this.imapHost,
     this.imapPort = 993,
+    this.imapSecurity = ImapSecurity.tls,
     required this.smtpHost,
     this.smtpPort = 465,
     this.smtpSecurity = SmtpSecurity.tls,
@@ -31,6 +34,11 @@ class MailServerSettings {
     if (raw is! Map<String, dynamic>) return null;
     final imapHost = raw['imap_host'], smtpHost = raw['smtp_host'];
     final imapPort = raw['imap_port'], smtpPort = raw['smtp_port'];
+    final imapSecurity = raw['imap_security'] == null
+        ? ImapSecurity.tls
+        : ImapSecurity.values
+              .where((s) => s.name == raw['imap_security'])
+              .firstOrNull;
     final security = SmtpSecurity.values
         .where((s) => s.name == raw['smtp_security'])
         .firstOrNull;
@@ -38,12 +46,14 @@ class MailServerSettings {
         smtpHost is! String ||
         imapPort is! int ||
         smtpPort is! int ||
-        security == null) {
+        security == null ||
+        imapSecurity == null) {
       return null;
     }
     return MailServerSettings(
       imapHost: imapHost,
       imapPort: imapPort,
+      imapSecurity: imapSecurity,
       smtpHost: smtpHost,
       smtpPort: smtpPort,
       smtpSecurity: security,
@@ -54,6 +64,7 @@ class MailServerSettings {
 
   final String imapHost;
   final int imapPort;
+  final ImapSecurity imapSecurity;
   final String smtpHost;
   final int smtpPort;
   final SmtpSecurity smtpSecurity;
@@ -71,6 +82,7 @@ class MailServerSettings {
   MailServerSettings copyWith({String? username}) => MailServerSettings(
     imapHost: imapHost,
     imapPort: imapPort,
+    imapSecurity: imapSecurity,
     smtpHost: smtpHost,
     smtpPort: smtpPort,
     smtpSecurity: smtpSecurity,
@@ -81,6 +93,7 @@ class MailServerSettings {
   Map<String, Object> toJson() => {
     'imap_host': imapHost,
     'imap_port': imapPort,
+    'imap_security': imapSecurity.name,
     'smtp_host': smtpHost,
     'smtp_port': smtpPort,
     'smtp_security': smtpSecurity.name,
@@ -93,6 +106,7 @@ class MailServerSettings {
       other is MailServerSettings &&
       other.imapHost == imapHost &&
       other.imapPort == imapPort &&
+      other.imapSecurity == imapSecurity &&
       other.smtpHost == smtpHost &&
       other.smtpPort == smtpPort &&
       other.smtpSecurity == smtpSecurity &&
@@ -103,6 +117,7 @@ class MailServerSettings {
   int get hashCode => Object.hash(
     imapHost,
     imapPort,
+    imapSecurity,
     smtpHost,
     smtpPort,
     smtpSecurity,

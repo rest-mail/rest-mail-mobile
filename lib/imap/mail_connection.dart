@@ -274,7 +274,8 @@ class ImapConnection {
     final host = settings.imapHost;
     final client = _Imap();
     try {
-      final socket = await openSocket(host, settings.imapPort, tls: true);
+      final tls = settings.imapSecurity == ImapSecurity.tls;
+      final socket = await openSocket(host, settings.imapPort, tls: tls);
       // The socket's answers are parsed in this zone. enough_mail prints
       // every FETCH item it doesn't know (Gmail's, here) with the whole
       // answer, subject and addresses included, to the device log.
@@ -284,7 +285,7 @@ class ImapConnection {
           connectionInformation: ConnectionInfo(
             host,
             settings.imapPort,
-            isSecure: true,
+            isSecure: tls,
           ),
         ),
         zoneSpecification: ZoneSpecification(
@@ -296,6 +297,21 @@ class ImapConnection {
         ),
       );
       await client.greeted.future.timeout(_greetingTimeout);
+      if (!tls) {
+        await client.capability().timeout(_greetingTimeout);
+        if (!client.serverInfo.supportsStartTls) {
+          throw LocalizedApiException(
+            0,
+            'no_tls',
+            UiText('imap.starttlsRequired', {
+              'host': host,
+              'port': '${settings.imapPort}',
+            }),
+          );
+        }
+        await client.startTls().timeout(_greetingTimeout);
+        await client.capability().timeout(_greetingTimeout);
+      }
       final user = settings.usernameFor(address);
       try {
         if (accessToken == null) {

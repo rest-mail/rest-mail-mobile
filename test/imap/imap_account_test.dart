@@ -151,6 +151,26 @@ void main() {
     expect(store.values, isEmpty);
   });
 
+  test(
+    'checking connection verifies both servers without adding the account',
+    () async {
+      final state = newState();
+      await state.start();
+
+      await state.verifyImapSettings(
+        address: 'ada@gmail.com',
+        password: 'abcdabcdabcdabcd',
+        settings: _settings,
+        provider: MailProviders.gmail,
+      );
+
+      expect(state.accounts, isEmpty);
+      expect(state.phase, AppPhase.signedOut);
+      expect(store.values, isEmpty);
+      expect(smtp.commands.where((c) => c.startsWith('AUTH')), hasLength(1));
+    },
+  );
+
   test('signing out of the IMAP account forgets its password and keeps it '
       'signed out beside the REST Mail account', () async {
     final state = newState();

@@ -5,6 +5,7 @@ import 'package:http/testing.dart';
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/ui/imap_account_screen.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
 Future<AppState> _german(WidgetTester tester, http.Client client) async {
@@ -84,6 +85,16 @@ void main() {
     expect(
       find.text('Bestätigung in zwei Schritten einschalten'),
       findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('APP-PASSWORT'),
+      150,
+      scrollable: find
+          .descendant(
+            of: find.byType(ImapAccountScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     expect(find.text('APP-PASSWORT'), findsOneWidget);
   });

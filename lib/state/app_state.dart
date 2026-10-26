@@ -420,6 +420,30 @@ class AppState extends ChangeNotifier {
     await _add(account);
   }
 
+  /// Checks the IMAP and SMTP settings and credentials without keeping or
+  /// adding the account. Used by the account setup screen before the user
+  /// chooses to add it.
+  Future<void> verifyImapSettings({
+    required String address,
+    required String password,
+    required MailServerSettings settings,
+    MailProvider? provider,
+  }) async {
+    final saved = _SavedImap(
+      address: address.trim(),
+      displayName: '',
+      password: password,
+      settings: settings,
+      provider: provider?.id,
+    );
+    final account = _openImap(saved);
+    try {
+      await account.backend.verify();
+    } finally {
+      account.close();
+    }
+  }
+
   /// Adds an account by signing in with Microsoft or Google ([kind]) in
   /// the system browser, rather than with a password, or renews it if it is
   /// already here, and puts it on screen. [address] is a hint: the account
