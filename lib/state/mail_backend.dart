@@ -216,8 +216,19 @@ abstract interface class MailBackend {
   });
 }
 
+/// A backend that forwards the stored original, including its attachments.
+/// Backends without this capability keep their existing composed forward.
+abstract interface class OriginalForwardBackend {
+  Future<ForwardResult> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String bodyText = '',
+  });
+}
+
 /// A rest-mail server, over its REST API.
-class RestBackend implements MailBackend {
+class RestBackend implements MailBackend, OriginalForwardBackend {
   RestBackend(this.client);
 
   final RestmailClient client;
@@ -330,6 +341,14 @@ class RestBackend implements MailBackend {
 
   @override
   Future<Message> send(OutgoingMessage message) => client.send(message);
+
+  @override
+  Future<ForwardResult> forwardMessage(
+    int id, {
+    required String from,
+    required List<String> to,
+    String bodyText = '',
+  }) => client.forwardMessage(id, from: from, to: to, bodyText: bodyText);
 
   @override
   bool get canScheduleSend => true;

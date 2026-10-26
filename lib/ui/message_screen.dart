@@ -7,12 +7,14 @@ import '../l10n/voice.dart';
 import '../state/app_scope.dart';
 import '../state/interface_prefs.dart';
 import '../state/mailbox_state.dart';
+import '../state/mail_backend.dart';
 import '../theme/packs.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
 import '../util/format.dart';
 import 'attachments.dart';
 import 'compose_sheet.dart';
+import 'original_forward_sheet.dart';
 import 'invitations.dart';
 import 'labels_sheet.dart';
 import 'mail_actions.dart';
@@ -361,6 +363,27 @@ class _MessageScreenState extends State<MessageScreen> {
       showToast(
         context,
         trArgs(context, 'message.blocked', {'sender': sender}),
+      );
+    }
+  }
+
+  void _forward(Message original) {
+    final backend = _mailbox.backend;
+    if (backend case final OriginalForwardBackend forwarder) {
+      unawaited(
+        openOriginalForward(
+          context,
+          mailbox: _mailbox,
+          backend: forwarder,
+          original: original,
+        ),
+      );
+    } else {
+      _compose(
+        forwardSeed(
+          original,
+          languageCode: Localizations.localeOf(context).languageCode,
+        ),
       );
     }
   }
@@ -764,14 +787,7 @@ class _MessageScreenState extends State<MessageScreen> {
                             ? RmOutlineIconButton(
                                 icon: Icons.arrow_forward_rounded,
                                 tooltip: tr(context, 'message.forward'),
-                                onPressed: () => _compose(
-                                  forwardSeed(
-                                    m,
-                                    languageCode: Localizations.localeOf(
-                                      context,
-                                    ).languageCode,
-                                  ),
-                                ),
+                                onPressed: () => _forward(m),
                               )
                             : RmOutlineButton(
                                 label: v.actions == ActionStyle.keyed
@@ -781,14 +797,7 @@ class _MessageScreenState extends State<MessageScreen> {
                                 radius: 11,
                                 fontSize: 14.5,
                                 color: c.ink,
-                                onPressed: () => _compose(
-                                  forwardSeed(
-                                    m,
-                                    languageCode: Localizations.localeOf(
-                                      context,
-                                    ).languageCode,
-                                  ),
-                                ),
+                                onPressed: () => _forward(m),
                               ),
                       ],
                     ),

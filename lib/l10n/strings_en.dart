@@ -467,6 +467,9 @@ const Map<String, Map<String, String>> stringsEn = {
     'compose.keepDraft': 'Keep this as a draft?',
     'compose.saveDraftChanges': 'Save changes to the draft?',
     'compose.draftNote': 'A saved draft waits in Drafts for you to finish.',
+    'compose.discardForward': 'Discard this forward?',
+    'compose.forwardDiscarded':
+        'Forward discarded by the server’s mail policy.',
     'compose.discard': 'Discard',
     'compose.keepEditing': 'Keep editing',
     'compose.saveDraft': 'Save draft',
