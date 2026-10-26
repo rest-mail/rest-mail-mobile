@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import '../l10n/catalog.dart';
 import '../l10n/localized_error.dart';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:restmail_api/restmail_api.dart';
 
 import '../imap/imap_backend.dart';
@@ -212,6 +215,15 @@ class AppState extends ChangeNotifier {
 
   static String _accountKey(String key) => 'account:$key';
 
+  /// The custom icon's file name in the app's documents, kept per account
+  /// key. The image itself never reaches the server.
+  static String _iconKey(String key) => 'icon:$key';
+  static const _iconFolder = 'account_icons';
+
+  /// The icon file each account key points at, for the session. Loaded in
+  /// [start] and kept in step by [setAccountIcon].
+  final _iconFiles = <String, String>{};
+
   AppPhase phase = AppPhase.starting;
   AppSettings settings = const AppSettings();
 
@@ -269,6 +281,7 @@ class AppState extends ChangeNotifier {
     settings = AppSettings.decode(await _read(_settingsKey));
     final (saved, currentKey, dropped) = await _readSaved();
     accounts = [for (final s in saved) _open(s)];
+    await _loadIcons();
     if (accounts.isEmpty) {
       phase = AppPhase.signedOut;
     } else {
@@ -642,6 +655,91 @@ class AppState extends ChangeNotifier {
     await store.write(_settingsKey, next.encode());
   }
 
+  /// The custom icon [account] has, as a file name in the app's documents.
+  /// Null when it shows the REST Mail mark.
+  String? iconFileNameOf(SignedInAccount account) => _iconFiles[account.key];
+
+  /// [account]'s custom icon, when it has one and the file is still there.
+  Future<File?> iconFileOf(SignedInAccount account) async {
+    final name = _iconFiles[account.key];
+    if (name == null) return null;
+    try {
+      final file = File('${(await _iconDirectory()).path}/$name');
+      return await file.exists() ? file : null;
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  /// Replaces [account]'s icon with [picked], or goes back to the default
+  /// when [picked] is null. False when the image couldn't be saved.
+  Future<bool> setAccountIcon(SignedInAccount account, File? picked) async {
+    final key = account.key;
+    final previous = _iconFiles[key];
+    try {
+      if (picked == null) {
+        _iconFiles.remove(key);
+        await store.delete(_iconKey(key));
+        await _deleteIconFile(previous);
+        notifyListeners();
+        return true;
+      }
+      // A fresh name per upload, so a replacement never serves the previous
+      // image from Flutter's file cache.
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final name =
+          '${sha256.convert(utf8.encode('$key:$stamp'))}.${_iconExtension(picked.path)}';
+      final target = File('${(await _iconDirectory()).path}/$name');
+      await picked.copy(target.path);
+      _iconFiles[key] = name;
+      await store.write(_iconKey(key), name);
+      if (previous != null && previous != name) {
+        await _deleteIconFile(previous);
+      }
+      notifyListeners();
+      return true;
+    } on FileSystemException {
+      return false;
+    }
+  }
+
+  Future<void> _loadIcons() async {
+    for (final account in accounts) {
+      try {
+        final name = await store.read(_iconKey(account.key));
+        if (name != null && name.isNotEmpty) _iconFiles[account.key] = name;
+      } on Object {
+        // No custom icon: the REST Mail mark shows.
+      }
+    }
+  }
+
+  Future<Directory> _iconDirectory() async {
+    final directory = Directory(
+      '${(await getApplicationDocumentsDirectory()).path}/$_iconFolder',
+    );
+    if (!await directory.exists()) await directory.create(recursive: true);
+    return directory;
+  }
+
+  Future<void> _deleteIconFile(String? name) async {
+    if (name == null) return;
+    try {
+      final file = File('${(await _iconDirectory()).path}/$name');
+      if (await file.exists()) await file.delete();
+    } on FileSystemException {
+      // The file stays as an orphan; nothing points at it any more.
+    }
+  }
+
+  static String _iconExtension(String path) {
+    final name = path.split(RegExp(r'[/\\]')).last;
+    final dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length - 1) return 'png';
+    final extension = name.substring(dot + 1).toLowerCase();
+    return RegExp(r'^[a-z0-9]{1,5}$').hasMatch(extension) ? extension : 'png';
+  }
+
   SignedInAccount _open(_Saved saved) => switch (saved) {
     _SavedSession() => _openRest(saved),
     _SavedImap() => _openImap(saved),
@@ -891,6 +989,11 @@ class AppState extends ChangeNotifier {
       if (accounts.any((kept) => kept.key == account.key)) return;
       await store.delete(_accountKey(account.key));
     });
+    if (!accounts.any((kept) => kept.key == account.key)) {
+      final icon = _iconFiles.remove(account.key);
+      await store.delete(_iconKey(account.key));
+      await _deleteIconFile(icon);
+    }
     await push.forget(account);
     await _writeIndex();
   }

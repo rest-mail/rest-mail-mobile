@@ -17,6 +17,8 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>rest-mail uses the camera only to scan the setup QR code a new server prints.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>rest-mail uses your photos only when you choose a custom icon for an account.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleLocalizations</key>

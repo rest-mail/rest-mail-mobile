@@ -326,8 +326,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
     return ListenableBuilder(
       listenable: current,
       builder: (context, _) {
+        final app = AppScope.of(context);
         final m = current;
-        final account = AppScope.of(context).current;
+        final account = app.current;
         final signedOut = account?.signedOut != null;
         _topOnSwitch(m);
         return Scaffold(
@@ -335,7 +336,13 @@ class _MailboxScreenState extends State<MailboxScreen> {
             bottom: false,
             child: Column(
               children: [
-                _Header(mailbox: m, account: account),
+                _Header(
+                  mailbox: m,
+                  account: account,
+                  iconFileName: account == null
+                      ? null
+                      : app.iconFileNameOf(account),
+                ),
                 if (account != null && !signedOut) _searchBar(context),
                 Expanded(
                   child: account != null && signedOut
@@ -446,12 +453,19 @@ class _MailboxScreenState extends State<MailboxScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.mailbox, required this.account});
+  const _Header({
+    required this.mailbox,
+    required this.account,
+    this.iconFileName,
+  });
 
   final MailboxState mailbox;
 
   /// The account on screen, whose mail [mailbox] is.
   final SignedInAccount? account;
+
+  /// The account's custom icon, or null for the REST Mail mark.
+  final String? iconFileName;
 
   @override
   Widget build(BuildContext context) {
@@ -487,7 +501,11 @@ class _Header extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
                   child: Row(
                     children: [
-                      const LogoMark(size: 40),
+                      AccountIcon(
+                        fileName: iconFileName,
+                        fallback: const LogoMark(size: 40),
+                        size: 40,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(

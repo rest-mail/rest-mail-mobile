@@ -83,6 +83,9 @@ dependencies:
   # dart-lang, BSD-3. SHA-256 for the PKCE challenge.
   crypto: ^3.0.7
   flutter_svg: ^2.3.0
+  # The Flutter team, BSD-3. Picks an account's custom icon from the photo
+  # library. The icon stays on the phone; the server has no avatar endpoint.
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
