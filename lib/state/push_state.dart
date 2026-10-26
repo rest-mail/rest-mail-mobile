@@ -9,6 +9,7 @@ import 'package:restmail_api/restmail_api.dart';
 import '../push/push_service.dart';
 import '../l10n/catalog.dart';
 import 'app_state.dart';
+import 'mailbox_state.dart';
 import 'settings.dart';
 
 /// Where new mail notifications stand for one REST Mail account.
@@ -66,16 +67,23 @@ class PushSignal {
   };
 }
 
-/// New mail notifications for the REST Mail accounts on this phone.
+/// New mail notifications and the app-icon badge for the accounts on this
+/// phone.
 ///
-/// Each account's session registers this phone's push token with its server
-/// (`POST /api/v1/devices`), once the user has turned notifications on and
-/// iOS allows them. A push then says only that there is mail; the app
-/// fetches it over the API, posts a notification for each new message, and
-/// sets the badge to the unread mail in the inboxes it watches.
+/// Each REST Mail account's session registers this phone's push token with
+/// its server (`POST /api/v1/devices`), once the user has turned
+/// notifications on and iOS allows them. A push then says only that there is
+/// mail; the app fetches it over the API and posts a notification for each
+/// new message.
 ///
-/// With no token (a build without the push entitlement, or not iOS) or no
-/// server that can push, nothing here shows or asks anything.
+/// The badge sums the unread mail in every signed-in account's inbox, REST
+/// Mail or IMAP, regardless of which account or folder is on screen. It is
+/// reconciled on launch and resume, follows the inbox on screen as messages
+/// arrive or are read, and drops an account as soon as it is removed or
+/// signed out.
+///
+/// With no push token or no server that can push, new-mail notifications are
+/// not offered; the badge still works where the platform allows it.
 class PushNotifications extends ChangeNotifier {
   PushNotifications(this._app, this.service);
 
@@ -98,15 +106,23 @@ class PushNotifications extends ChangeNotifier {
   final _saved = <String, _Registration>{};
   final _loaded = <String>{};
   Future<void>? _syncing;
+  Future<void>? _starting;
+  Future<void>? _reconciling;
   bool _again = false;
   bool _disposed = false;
 
-  /// Some account has been registered, this launch or before, so the badge
-  /// may show a count this app set. Until then the badge is left alone.
-  bool _badged = false;
+  MailboxState? _watched;
+  Set<int>? _watchedIds;
+  Set<String>? _watchedAccounts;
+  Timer? _reconcileTimer;
+
+  /// Each inbox's unread count as last seen, keyed by account key and
+  /// mailbox id. Summed for the app-icon badge.
+  final _unread = <String, int>{};
   int? _badge;
 
   static String _storeKey(String accountKey) => 'push:$accountKey';
+  static const _badgeKey = 'badge:counts';
 
   /// The REST Mail accounts signed in. An IMAP account's mail doesn't come
   /// from REST Mail, and a signed-out one has no session to register.
@@ -143,15 +159,25 @@ class PushNotifications extends ChangeNotifier {
     _ => PushStatus.unsupported,
   };
 
+  /// The first call does the work; later calls wait on the same start.
+  Future<void> start() => _starting ??= _start();
+
   /// Takes the pushes and taps the platform held while the app started,
-  /// then brings the registrations up to date.
-  Future<void> start() async {
+  /// then brings the registrations and the badge up to date.
+  Future<void> _start() async {
     if (service.platform == null) return;
     service
       ..onPush = handlePush
       ..onOpen = _open;
+    await _loadBadgeCounts();
+    permission = await service.permission();
     await service.listen();
+    _watchedAccounts = _app.accounts.map((a) => a.key).toSet();
+    _app.addListener(_appChanged);
+    _watchCurrentMailbox();
     await sync();
+    await _updateBadge();
+    unawaited(reconcileBadge());
   }
 
   /// Brings each account's registration in line with the user's choice and
@@ -294,6 +320,8 @@ class PushNotifications extends ChangeNotifier {
   Future<void> forget(SignedInAccount account) async {
     _status.remove(account.key);
     await _drop(account.key);
+    _dropBadge(account.key);
+    await _saveBadgeCounts();
     if (_disposed) return;
     await _updateBadge();
     _notify();
@@ -304,10 +332,13 @@ class PushNotifications extends ChangeNotifier {
     if (onScreen == foreground) return;
     foreground = onScreen;
     if (onScreen) {
-      // Notifications may have been turned on or off in iOS's Settings.
+      // Notifications may have been turned on or off in iOS's Settings. Put
+      // the badge back too: the launcher may have cleared it while away.
+      _badge = null;
       unawaited(sync());
+      unawaited(reconcileBadge());
     } else {
-      unawaited(_badgeFromScreen());
+      unawaited(_badgeFromMailbox());
     }
   }
 
@@ -349,7 +380,7 @@ class PushNotifications extends ChangeNotifier {
     try {
       mailboxes = await backend.accounts();
     } on ApiException {
-      _takeServerCount(saved, signal);
+      _takeServerCount(account, saved, signal);
       await _save(account.key, saved);
       return false;
     }
@@ -358,9 +389,11 @@ class PushNotifications extends ChangeNotifier {
     for (final mailbox in named.isNotEmpty ? named : mailboxes) {
       try {
         final folders = await backend.folders(mailbox.id);
-        saved.unread[mailbox.id] = folders
+        final unread = folders
             .where((f) => f.name == StandardFolder.inbox)
             .fold(0, (sum, f) => sum + f.unread);
+        saved.unread[mailbox.id] = unread;
+        _unread['${account.key}#${mailbox.id}'] = unread;
         final page = await backend.messages(mailbox.id, StandardFolder.inbox);
         final last = saved.seen[mailbox.id];
         final fresh = [
@@ -381,7 +414,9 @@ class PushNotifications extends ChangeNotifier {
         if (_onScreen(account, mailbox)) continue;
         await _post(account, mailbox, fresh);
       } on ApiException {
-        if (signal?.account == mailbox.id) _takeServerCount(saved, signal);
+        if (signal?.account == mailbox.id) {
+          _takeServerCount(account, saved, signal);
+        }
       }
     }
     await _save(account.key, saved);
@@ -394,9 +429,16 @@ class PushNotifications extends ChangeNotifier {
   }
 
   /// The push's own unread count, for a mailbox the app couldn't fetch.
-  void _takeServerCount(_Registration saved, PushSignal? signal) {
-    final account = signal?.account, unread = signal?.unread;
-    if (account != null && unread != null) saved.unread[account] = unread;
+  void _takeServerCount(
+    RestAccount account,
+    _Registration saved,
+    PushSignal? signal,
+  ) {
+    final mailboxId = signal?.account, unread = signal?.unread;
+    if (mailboxId != null && unread != null) {
+      saved.unread[mailboxId] = unread;
+      _unread['${account.key}#$mailboxId'] = unread;
+    }
   }
 
   bool _onScreen(RestAccount account, Account mailbox) =>
@@ -466,37 +508,167 @@ class PushNotifications extends ChangeNotifier {
 
   // ── The badge ─────────────────────────────────────────────────────────
 
-  /// The unread mail in the inboxes of every registered account, as last
-  /// fetched.
+  /// Applies the cached total, or zero when the user has badges off.
   Future<void> _updateBadge() async {
-    if (service.platform == null || _token == null || !_badged) return;
+    await _setBadge(_unreadTotal);
+  }
+
+  Future<void> _setBadge(int total) async {
+    if (service.platform == null || _disposed) return;
+    final value = enabled ? total : 0;
+    if (value == _badge) return;
+    _badge = value;
+    await service.setBadge(value);
+  }
+
+  /// The sum of every signed-in account's inboxes.
+  int get _unreadTotal {
     var total = 0;
-    if (enabled) {
-      for (final account in _accounts) {
-        for (final n in (await _load(account))?.unread.values ?? <int>[]) {
-          total += n;
+    for (final account in _app.accounts) {
+      if (account.signedOut != null) continue;
+      final prefix = '${account.key}#';
+      for (final entry in _unread.entries) {
+        if (entry.key.startsWith(prefix)) total += entry.value;
+      }
+    }
+    return total;
+  }
+
+  /// Fetches every signed-in account's inbox counts and rebuilds the
+  /// aggregate. A mailbox that cannot be reached keeps its last count; an
+  /// account or mailbox that is gone is dropped.
+  Future<void> reconcileBadge() =>
+      _reconciling ??= _reconcile().whenComplete(() => _reconciling = null);
+
+  Future<void> _reconcile() async {
+    if (service.platform == null || _disposed) return;
+    final next = <String, int>{};
+    for (final account in _app.accounts) {
+      if (account.signedOut != null) continue;
+      final backend = account.backend;
+      List<Account> mailboxes;
+      try {
+        mailboxes = await backend.accounts();
+      } on ApiException {
+        final prefix = '${account.key}#';
+        for (final entry in _unread.entries) {
+          if (entry.key.startsWith(prefix)) next[entry.key] = entry.value;
+        }
+        continue;
+      }
+      for (final mailbox in mailboxes) {
+        final key = '${account.key}#${mailbox.id}';
+        try {
+          final folders = await backend.folders(mailbox.id);
+          next[key] = folders
+              .where((f) => f.name == StandardFolder.inbox)
+              .fold(0, (sum, f) => sum + f.unread);
+        } on ApiException {
+          if (_unread[key] case final old?) next[key] = old;
         }
       }
     }
-    if (total == _badge) return;
-    _badge = total;
-    await service.setBadge(total);
+    _unread
+      ..clear()
+      ..addAll(next);
+    await _saveBadgeCounts();
+    await _updateBadge();
   }
 
-  /// Takes the inbox count on screen as the latest, as the app leaves the
-  /// screen: mail read in the app comes off the badge.
-  Future<void> _badgeFromScreen() async {
-    final account = _app.current, mailbox = _app.mailbox;
-    final id = mailbox?.account?.id;
-    if (account is! RestAccount || mailbox == null || id == null) return;
-    final saved = await _load(account);
+  /// Takes the inbox on screen as the latest, so a new message or a read
+  /// one reaches the badge without another request.
+  Future<void> _badgeFromMailbox() async {
+    if (_disposed) return;
+    final account = _app.current;
+    final mailbox = _app.mailbox;
+    final serverAccount = mailbox?.account;
+    if (account == null || mailbox == null || serverAccount == null) return;
+    if (account.signedOut != null) {
+      _dropBadge(account.key);
+      await _saveBadgeCounts();
+      await _updateBadge();
+      return;
+    }
     final inbox = mailbox.folders
         .where((f) => f.name == StandardFolder.inbox)
         .firstOrNull;
-    if (saved == null || inbox == null) return;
-    saved.unread[id] = inbox.unread;
-    await _save(account.key, saved);
+    if (inbox == null) return;
+    final key = '${account.key}#${serverAccount.id}';
+    if (_unread[key] == inbox.unread) return;
+    _unread[key] = inbox.unread;
+    await _saveBadgeCounts();
     await _updateBadge();
+  }
+
+  void _dropBadge(String accountKey) {
+    final prefix = '$accountKey#';
+    _unread.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
+  Future<void> _loadBadgeCounts() async {
+    try {
+      final raw = await _app.store.read(_badgeKey);
+      if (raw == null) return;
+      final json = jsonDecode(raw);
+      if (json is! Map) return;
+      _unread
+        ..clear()
+        ..addEntries([
+          for (final entry in json.entries)
+            if (int.tryParse('${entry.value}') case final value?)
+              MapEntry('${entry.key}', value),
+        ]);
+    } on Object {
+      // Start empty; reconcile fetches the counts.
+    }
+  }
+
+  Future<void> _saveBadgeCounts() async {
+    if (service.platform == null) return;
+    try {
+      await _app.store.write(_badgeKey, jsonEncode(_unread));
+    } on Object {
+      // The badge still shows for this launch.
+    }
+  }
+
+  void _appChanged() {
+    if (_disposed) return;
+    final keys = _app.accounts.map((a) => a.key).toSet();
+    if (!setEquals(keys, _watchedAccounts)) {
+      _watchedAccounts = keys;
+      _scheduleReconcile();
+    }
+    _watchCurrentMailbox();
+    unawaited(_updateBadge());
+  }
+
+  void _watchCurrentMailbox() {
+    final next = _app.mailbox;
+    if (identical(next, _watched)) return;
+    _watched?.removeListener(_mailboxChanged);
+    _watched = next;
+    _watchedIds = null;
+    next?.addListener(_mailboxChanged);
+    if (next != null) unawaited(_badgeFromMailbox());
+  }
+
+  void _mailboxChanged() {
+    if (_disposed) return;
+    final ids = _watched?.accounts.map((a) => a.id).toSet();
+    if (ids != null && !setEquals(ids, _watchedIds)) {
+      _watchedIds = ids;
+      _scheduleReconcile();
+    }
+    unawaited(_badgeFromMailbox());
+  }
+
+  void _scheduleReconcile() {
+    _reconcileTimer?.cancel();
+    _reconcileTimer = Timer(const Duration(seconds: 2), () {
+      _reconcileTimer = null;
+      unawaited(reconcileBadge());
+    });
   }
 
   // ── Kept on the phone ─────────────────────────────────────────────────
@@ -508,10 +680,7 @@ class PushNotifications extends ChangeNotifier {
         final saved = _Registration.decode(
           await _app.store.read(_storeKey(key)),
         );
-        if (saved != null) {
-          _saved[key] = saved;
-          _badged = true;
-        }
+        if (saved != null) _saved[key] = saved;
       } on Object {
         // Unreadable: registers afresh.
       }
@@ -522,7 +691,6 @@ class PushNotifications extends ChangeNotifier {
   Future<void> _save(String key, _Registration saved) async {
     _saved[key] = saved;
     _loaded.add(key);
-    _badged = true;
     await _app.store.write(_storeKey(key), saved.encode());
   }
 
@@ -550,6 +718,10 @@ class PushNotifications extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _reconcileTimer?.cancel();
+    _app.removeListener(_appChanged);
+    _watched?.removeListener(_mailboxChanged);
+    _watched = null;
     service
       ..onPush = null
       ..onOpen = null;

@@ -559,6 +559,7 @@ class AppState extends ChangeNotifier {
     }
     await _writeIndex();
     unawaited(push.sync());
+    unawaited(push.reconcileBadge());
   }
 
   /// Puts [account] on screen, at [folder].

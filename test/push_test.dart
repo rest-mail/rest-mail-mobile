@@ -40,6 +40,7 @@ void main() {
       pushService: push,
     );
     await state.start();
+    await state.push.start();
   }
 
   Future<void> signIn(String email) async {
@@ -49,6 +50,7 @@ void main() {
       password: FakeAccounts.password,
     );
     await state.push.sync();
+    await state.push.reconcileBadge();
   }
 
   SignedInAccount accountOf(String email) =>
@@ -192,7 +194,9 @@ void main() {
     expect(devicesRequests(), ['GET /api/v1/devices']);
     expect(push.prompts, 0);
     expect(push.shown, isEmpty);
-    expect(push.badges, isEmpty);
+    // No notifications asked for, so the badge stays clear even though the
+    // inbox has mail the app could count.
+    expect(push.badges.last, 0);
   });
 
   test(
@@ -233,6 +237,56 @@ void main() {
     expect(state.push.permission, NotificationPermission.denied);
     expect(state.push.shouldOffer, isFalse);
     expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+  });
+
+  group('the badge', () {
+    test('sums every inbox across accounts, follows reads, and drops a '
+        'signed-out account', () async {
+      await start();
+      await signIn(FakeAccounts.email);
+      await signIn(FakeAccounts.otherEmail);
+      await state.push.enable();
+      await state.push.reconcileBadge();
+
+      final both =
+          unreadIn(FakeAccounts.email) + unreadIn(FakeAccounts.otherEmail);
+      expect(push.badges.last, both);
+
+      final read = fake
+          .messagesIn(FakeAccounts.email, 'INBOX')
+          .firstWhere((m) => !m.isRead);
+      read.isRead = true;
+      await state.push.reconcileBadge();
+      expect(push.badges.last, both - 1);
+
+      await state.signOut(accountOf(FakeAccounts.otherEmail));
+      await state.push.reconcileBadge();
+      expect(push.badges.last, unreadIn(FakeAccounts.email));
+
+      for (final message in fake.messagesIn(FakeAccounts.email, 'INBOX')) {
+        message.isRead = true;
+      }
+      await state.push.reconcileBadge();
+      expect(push.badges.last, 0);
+    });
+
+    test('follows the inbox on screen without waiting for a push', () async {
+      await start();
+      await signIn(FakeAccounts.email);
+      await state.push.enable();
+      await state.push.reconcileBadge();
+      final before = push.badges.last;
+
+      final read = fake
+          .messagesIn(FakeAccounts.email, 'INBOX')
+          .firstWhere((m) => !m.isRead);
+      read.isRead = true;
+      await state.mailbox!.refresh();
+      // The mailbox listener applies the new count asynchronously.
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(push.badges.last, before - 1);
+    });
   });
 
   group('a push', () {
