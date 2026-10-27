@@ -167,18 +167,20 @@ void main() {
     expect(state.push.statusOf(state.accounts.single), PushStatus.on);
   });
 
-  test('turning them off takes this phone off every server, and the badge '
-      'with it', () async {
-    await start();
-    await signIn(FakeAccounts.email);
-    await state.push.enable();
+  test(
+    'turning alerts off takes this phone off every server and keeps the badge',
+    () async {
+      await start();
+      await signIn(FakeAccounts.email);
+      await state.push.enable();
 
-    await state.push.disable();
+      await state.push.disable();
 
-    expect(fake.devicesOf(FakeAccounts.email), isEmpty);
-    expect(state.push.statusOf(state.accounts.single), PushStatus.off);
-    expect(push.badges.last, 0);
-  });
+      expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+      expect(state.push.statusOf(state.accounts.single), PushStatus.off);
+      expect(push.badges.last, unreadIn(FakeAccounts.email));
+    },
+  );
 
   test('a server without push: no offer, no prompt, nothing registered and '
       'nothing to remove at sign-out', () async {
@@ -194,8 +196,7 @@ void main() {
     expect(devicesRequests(), ['GET /api/v1/devices']);
     expect(push.prompts, 0);
     expect(push.shown, isEmpty);
-    // No notifications asked for, so the badge stays clear even though the
-    // inbox has mail the app could count.
+    // iOS permission has not been requested, so the badge stays clear.
     expect(push.badges.last, 0);
   });
 
@@ -261,6 +262,115 @@ void main() {
     expect(state.push.shouldOffer, isFalse);
     expect(fake.devicesOf(FakeAccounts.email), isEmpty);
   });
+
+  test('badge survives alerts off and no push token', () async {
+    push.deviceToken = null;
+    push.permissionState = NotificationPermission.granted;
+    await start(pushPlatforms: const {});
+    await signIn(FakeAccounts.email);
+    await signIn(FakeAccounts.otherEmail);
+
+    expect(state.push.enabled, isFalse);
+    expect(state.push.available, isFalse);
+    expect(push.prompts, 0);
+    expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+    expect(
+      push.badges.last,
+      unreadIn(FakeAccounts.email) + unreadIn(FakeAccounts.otherEmail),
+    );
+  });
+
+  test(
+    'the badge control requests permission without registering for push',
+    () async {
+      push.deviceToken = null;
+      await start(pushPlatforms: const {});
+      await signIn(FakeAccounts.email);
+      expect(push.badges.last, 0);
+
+      await state.push.setBadgeEnabled(true);
+
+      expect(push.prompts, 1);
+      expect(state.push.badgeEnabled, isTrue);
+      expect(state.settings.notifications, NotificationChoice.undecided);
+      expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+      expect(push.badges.last, unreadIn(FakeAccounts.email));
+      await state.push.setBadgeEnabled(false);
+      expect(state.settings.appIconBadge, isFalse);
+      expect(push.badges.last, 0);
+      await state.push.setBadgeEnabled(true);
+      expect(push.prompts, 1);
+      expect(push.badges.last, unreadIn(FakeAccounts.email));
+    },
+  );
+
+  test('local badge opt-out keeps new-mail registration enabled', () async {
+    await start();
+    await signIn(FakeAccounts.email);
+    await state.push.enable();
+    await state.push.setBadgeEnabled(false);
+    expect(state.push.enabled, isTrue);
+    expect(fake.devicesOf(FakeAccounts.email), hasLength(1));
+    expect(state.settings.appIconBadge, isFalse);
+    expect(push.badges.last, 0);
+    await state.push.sync();
+    await state.push.reconcileBadge();
+    expect(push.badges.last, 0);
+  });
+
+  test(
+    'actual badge permission can be denied while alerts remain enabled',
+    () async {
+      push.badgePermissionState = NotificationPermission.denied;
+      await start();
+      await signIn(FakeAccounts.email);
+      await state.push.enable();
+
+      expect(state.push.enabled, isTrue);
+      expect(state.push.badgeEnabled, isFalse);
+      expect(push.badges.last, 0);
+      expect(fake.devicesOf(FakeAccounts.email), hasLength(1));
+    },
+  );
+
+  test('denial is not reprompted; enabling badges in iOS Settings is refreshed without a token', () async {
+    push.deviceToken = null;
+    push.answer = false;
+    await start(pushPlatforms: const {});
+    await signIn(FakeAccounts.email);
+    await state.push.setBadgeEnabled(true);
+    await state.push.setBadgeEnabled(true);
+    expect(push.prompts, 1);
+    expect(push.badges.last, 0);
+    expect(state.settings.appIconBadge, isTrue);
+
+    push.permissionState = NotificationPermission.granted;
+    push.badgePermissionState = NotificationPermission.granted;
+    state.push.lifecycleChanged(onScreen: false);
+    state.push.lifecycleChanged(onScreen: true);
+    await state.push.sync();
+    await state.push.reconcileBadge();
+    expect(push.badges.last, unreadIn(FakeAccounts.email));
+
+    push.badgePermissionState = NotificationPermission.denied;
+    state.push.lifecycleChanged(onScreen: false);
+    state.push.lifecycleChanged(onScreen: true);
+    await state.push.sync();
+    expect(push.badges.last, 0);
+    expect(state.settings.notifications, NotificationChoice.undecided);
+  });
+
+  test(
+    'permission refresh works before any REST Mail account is added',
+    () async {
+      await start();
+      push.permissionState = NotificationPermission.granted;
+      await state.push.sync();
+      expect(state.push.badgeEnabled, isTrue);
+      expect(push.tokenRequests, 0);
+      expect(push.badges.last, 0);
+    },
+  );
 
   group('the badge', () {
     test('sums every inbox across accounts, follows reads, and drops a '

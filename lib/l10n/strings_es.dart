@@ -1650,6 +1650,10 @@ const Map<String, Map<String, String>> stringsEs = {
     'settings.restMailForMobileAppVersion': 'rest-mail para {appVersion} móvil',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: su servidor aún no envía notificaciones.',
+    'settings.appIconBadge': 'Correos sin leer en el icono de la app',
+    'settings.appIconBadgeDescription': 'Total de correos sin leer en todas las bandejas de entrada de las cuentas con sesión iniciada. Se actualiza cuando la app comprueba el correo.',
+    'settings.appIconBadgePermission': 'Activa esta opción para permitir notificaciones en este iPhone y mostrar el número de correos sin leer de todas las cuentas con sesión iniciada.',
+    'settings.badgesDisabledInPhoneSettings': 'Permite los globos para REST Mail en la Configuración del iPhone, en Notificaciones.',
     'settings.newMail': 'Correo nuevo',
     'settings.turnedOffForRESTMailInThe': 'Desactivado para REST Mail en la Configuración del iPhone, en Notificaciones.',
     'settings.onlyASignalGoesThroughAppleThe': 'Solo pasa una señal por Apple. La app obtiene el correo directamente de tu servidor.',

@@ -1635,6 +1635,10 @@ const Map<String, Map<String, String>> stringsNe = {
         'मोबाइल {appVersion} को लागि rest-mail',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: यसको सर्भरले अझै सूचना पठाउँदैन।',
+    'settings.appIconBadge': 'एप आइकनमा नपढिएका इमेलको संख्या',
+    'settings.appIconBadgeDescription': 'साइन इन गरिएका सबै खाताका इनबक्समा नपढिएका इमेलको कुल संख्या। एपले इमेल जाँच गर्दा अद्यावधिक हुन्छ।',
+    'settings.appIconBadgePermission': 'यस iPhone मा सूचनाहरू अनुमति दिन र साइन इन गरिएका सबै इनबक्समा नपढिएका इमेलको संख्या देखाउन चालु गर्नुहोस्।',
+    'settings.badgesDisabledInPhoneSettings': 'iPhone को सेटिङमा Notifications अन्तर्गत REST Mail का लागि आइकन ब्याजहरू अनुमति दिनुहोस्।',
     'settings.newMail': 'नयाँ इमेल',
     'settings.turnedOffForRESTMailInThe': 'iPhone को सेटिङमा, Notifications अन्तर्गत REST Mail का लागि बन्द गरिएको।',
     'settings.onlyASignalGoesThroughAppleThe':

@@ -1631,6 +1631,10 @@ const Map<String, Map<String, String>> stringsHi = {
         'मोबाइल {appVersion} के लिए REST-मेल',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: इसका सर्वर अभी नोटिफिकेशन नहीं भेजता है।',
+    'settings.appIconBadge': 'ऐप आइकन पर अपठित मेल की संख्या',
+    'settings.appIconBadgeDescription': 'सभी साइन-इन किए गए खातों के इनबॉक्स में अपठित मेल की कुल संख्या। ऐप के मेल जाँचने पर अपडेट होती है।',
+    'settings.appIconBadgePermission': 'इस iPhone पर सूचनाओं की अनुमति देने और सभी साइन-इन किए गए इनबॉक्स में अपठित मेल की संख्या दिखाने के लिए चालू करें।',
+    'settings.badgesDisabledInPhoneSettings': 'iPhone की सेटिंग्स में सूचनाओं के अंतर्गत REST Mail के लिए बैज की अनुमति दें।',
     'settings.newMail': 'नया मेल',
     'settings.turnedOffForRESTMailInThe': 'iPhone की सेटिंग्स में REST मेल के लिए बंद किया गया, नोटिफिकेशन्स के अंतर्गत।',
     'settings.onlyASignalGoesThroughAppleThe': 'केवल एक सिग्नल Apple के माध्यम से जाता है। ऐप मेल खुद आपके सर्वर से लाता है।',

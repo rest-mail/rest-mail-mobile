@@ -1628,6 +1628,11 @@ const Map<String, Map<String, String>> stringsFa = {
         'rest-mail برای موبایل {appVersion}',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: سرور آن هنوز اطلاع‌رسانی نمی‌کند.',
+    'settings.appIconBadge': 'تعداد ایمیل‌های خوانده‌نشده روی نماد برنامه',
+    'settings.appIconBadgeDescription': 'مجموع ایمیل‌های خوانده‌نشده در صندوق ورودی همهٔ حساب‌های واردشده. با بررسی ایمیل‌ها توسط برنامه به‌روز می‌شود.',
+    'settings.appIconBadgePermission': 'برای مجاز کردن اعلان‌ها در این iPhone و نمایش تعداد ایمیل‌های خوانده‌نشده در صندوق ورودی همهٔ حساب‌های واردشده، روشن کنید.',
+    'settings.badgesDisabledInPhoneSettings':
+        'در تنظیمات iPhone، بخش اعلان‌ها، نشان‌های REST Mail را مجاز کنید.',
     'settings.newMail': 'ایمیل جدید',
     'settings.turnedOffForRESTMailInThe':
         'برای REST Mail در تنظیمات آیفون، در بخش اعلان‌ها خاموش است.',
