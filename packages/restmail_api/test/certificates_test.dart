@@ -42,55 +42,49 @@ Map<String, Object?> _metadata() => {
 };
 
 void main() {
-  test(
-    'exact certificate/key bytes, optional renewal and complete returned metadata',
-    () async {
-      final key = testCertificateKey.replaceAll('\n', '\r\n');
-      final client = _client((r) async {
-        expect(r.method, 'POST');
-        expect(r.url.path, '/api/v1/admin/certificates');
-        expect(jsonDecode(r.body), {
-          'domain_id': 42,
-          'cert_pem': testCertificatePem,
-          'key_pem': key,
-          'auto_renew': false,
-        });
-        return _json(_metadata(), status: 201);
+  test('exact certificate/key bytes, optional renewal and complete returned metadata', () async {
+    final key = testCertificateKey.replaceAll('\n', '\r\n');
+    final client = _client((r) async {
+      expect(r.method, 'POST');
+      expect(r.url.path, '/api/v1/admin/certificates');
+      expect(jsonDecode(r.body), {
+        'domain_id': 42,
+        'cert_pem': testCertificatePem,
+        'key_pem': key,
+        'auto_renew': false,
       });
-      addTearDown(client.close);
-      final cert = await client.uploadCertificate(
-        domainId: 42,
-        certPem: testCertificatePem,
-        keyPem: key,
-        autoRenew: false,
-      );
-      expect(cert.certPem, isEmpty);
-      expect(cert.autoRenew, isFalse);
-      expect(cert.domainDetails!.sendingPolicy, 'bulk');
-      expect(cert.domainDetails!.defaultQuotaBytes, 1000);
-      expect(cert.domainDetails!.dkimSelector, 'mail');
-      expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 10, 23, 6));
-      expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 10, 23, 6, 1));
-    },
-  );
+      return _json(_metadata(), status: 201);
+    });
+    addTearDown(client.close);
+    final cert = await client.uploadCertificate(
+      domainId: 42,
+      certPem: testCertificatePem,
+      keyPem: key,
+      autoRenew: false,
+    );
+    expect(cert.certPem, isEmpty);
+    expect(cert.autoRenew, isFalse);
+    expect(cert.domainDetails!.sendingPolicy, 'bulk');
+    expect(cert.domainDetails!.defaultQuotaBytes, 1000);
+    expect(cert.domainDetails!.dkimSelector, 'mail');
+    expect(cert.createdAt!.toUtc(), DateTime.utc(2026, 10, 23, 6));
+    expect(cert.updatedAt!.toUtc(), DateTime.utc(2026, 10, 23, 6, 1));
+  });
 
-  test(
-    'detail reads public PEM while preserving validity and full domain association',
-    () async {
-      final client = _client((r) async {
-        expect(r.method, 'GET');
-        expect(r.url.path, '/api/v1/admin/certificates/12');
-        return _json({..._metadata(), 'cert_pem': testCertificatePem});
-      });
-      addTearDown(client.close);
-      final cert = await client.certificate(12);
-      expect(cert.certPem, testCertificatePem);
-      expect(cert.issuer, testCertificateIssuer);
-      expect(cert.notBefore.toUtc(), testCertificateNotBefore);
-      expect(cert.notAfter.toUtc(), testCertificateNotAfter);
-      expect(cert.domain, 'fixture.restmail.test');
-    },
-  );
+  test('detail reads public PEM while preserving validity and full domain association', () async {
+    final client = _client((r) async {
+      expect(r.method, 'GET');
+      expect(r.url.path, '/api/v1/admin/certificates/12');
+      return _json({..._metadata(), 'cert_pem': testCertificatePem});
+    });
+    addTearDown(client.close);
+    final cert = await client.certificate(12);
+    expect(cert.certPem, testCertificatePem);
+    expect(cert.issuer, testCertificateIssuer);
+    expect(cert.notBefore.toUtc(), testCertificateNotBefore);
+    expect(cert.notAfter.toUtc(), testCertificateNotAfter);
+    expect(cert.domain, 'fixture.restmail.test');
+  });
 
   test(
     'list queries page precisely and parses nullable or omitted domain/PEM',

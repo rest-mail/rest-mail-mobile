@@ -155,70 +155,67 @@ void main() {
     },
   );
 
-  test(
-    'pipeline list sends every filter and retains full trace and structured stages',
-    () async {
-      final client = _client((r) async {
-        expect(r.url.path, '/api/v1/admin/pipelines/logs');
-        expect(r.url.queryParameters, {
-          'pipeline_id': '8',
-          'direction': 'inbound',
-          'action': 'defer',
-          'outcome': 'deferred',
-          'reason_code': 'greylist_defer',
-          'rfc_message_id': '<a+b@remote.test>',
-          'offset': '3',
-          'limit': '15',
-        });
-        return _json([
-          {
-            'id': 42,
-            'message_id': null,
-            'pipeline_id': 8,
-            'sampled': true,
-            'expires_at': '2026-10-24T00:00:00Z',
-            'duration_ms': 18,
-            'final_action': 'defer',
-            'stages': [
-              {
-                'filter_name': 'custom',
-                'filter_type': 'action',
-                'action': 'defer',
-                'duration_ms': 18,
-                'log': {
-                  'result': {'nested': true},
-                  'detail': [1, 2],
-                  'extra': {'count': 1.25},
-                },
-              },
-            ],
-          },
-        ]);
+  test('pipeline list sends every filter and retains full trace and structured stages', () async {
+    final client = _client((r) async {
+      expect(r.url.path, '/api/v1/admin/pipelines/logs');
+      expect(r.url.queryParameters, {
+        'pipeline_id': '8',
+        'direction': 'inbound',
+        'action': 'defer',
+        'outcome': 'deferred',
+        'reason_code': 'greylist_defer',
+        'rfc_message_id': '<a+b@remote.test>',
+        'offset': '3',
+        'limit': '15',
       });
-      addTearDown(client.close);
-      final trace = (await client.pipelineLog(
-        pipelineId: 8,
-        direction: 'inbound',
-        action: 'defer',
-        outcome: 'deferred',
-        reasonCode: 'greylist_defer',
-        rfcMessageId: '<a+b@remote.test>',
-        offset: 3,
-        limit: 15,
-      )).items.single;
-      expect(trace.pipelineId, 8);
-      expect(trace.sampled, isTrue);
-      expect(trace.messageId, isNull);
-      expect(trace.expiresAt!.toUtc(), DateTime.utc(2026, 10, 24));
-      expect(trace.durationMs, 18);
-      final step = trace.stages.single;
-      expect(step.durationMs, 18);
-      expect(step.filterType, 'action');
-      expect(step.log['extra'], {'count': 1.25});
-      expect(step.result, '{"nested":true}');
-      expect(step.detail, '[1,2]');
-    },
-  );
+      return _json([
+        {
+          'id': 42,
+          'message_id': null,
+          'pipeline_id': 8,
+          'sampled': true,
+          'expires_at': '2026-10-24T00:00:00Z',
+          'duration_ms': 18,
+          'final_action': 'defer',
+          'stages': [
+            {
+              'filter_name': 'custom',
+              'filter_type': 'action',
+              'action': 'defer',
+              'duration_ms': 18,
+              'log': {
+                'result': {'nested': true},
+                'detail': [1, 2],
+                'extra': {'count': 1.25},
+              },
+            },
+          ],
+        },
+      ]);
+    });
+    addTearDown(client.close);
+    final trace = (await client.pipelineLog(
+      pipelineId: 8,
+      direction: 'inbound',
+      action: 'defer',
+      outcome: 'deferred',
+      reasonCode: 'greylist_defer',
+      rfcMessageId: '<a+b@remote.test>',
+      offset: 3,
+      limit: 15,
+    )).items.single;
+    expect(trace.pipelineId, 8);
+    expect(trace.sampled, isTrue);
+    expect(trace.messageId, isNull);
+    expect(trace.expiresAt!.toUtc(), DateTime.utc(2026, 10, 24));
+    expect(trace.durationMs, 18);
+    final step = trace.stages.single;
+    expect(step.durationMs, 18);
+    expect(step.filterType, 'action');
+    expect(step.log['extra'], {'count': 1.25});
+    expect(step.result, '{"nested":true}');
+    expect(step.detail, '[1,2]');
+  });
 
   test(
     'audit sends all filters and cursor, parses credential attribution',
@@ -266,32 +263,29 @@ void main() {
     },
   );
 
-  test(
-    'anchored verification preserves supplied external proof and parses echoed anchor',
-    () async {
-      final hash = List.filled(64, 'A').join();
-      final client = _client((r) async {
-        expect(r.url.path, '/api/v1/admin/audit/verify');
-        expect(r.url.queryParameters, {'anchor': '42:$hash'});
-        return _json({
-          'ok': false,
-          'checked': 41,
-          'first_seq': 1,
-          'last_seq': 41,
-          'broken_at_seq': 42,
-          'reason': 'hash does not match the anchor',
-          'last_hash': 'last',
-          'anchor': {'seq': 42, 'hash': hash.toLowerCase()},
-        });
+  test('anchored verification preserves supplied external proof and parses echoed anchor', () async {
+    final hash = List.filled(64, 'A').join();
+    final client = _client((r) async {
+      expect(r.url.path, '/api/v1/admin/audit/verify');
+      expect(r.url.queryParameters, {'anchor': '42:$hash'});
+      return _json({
+        'ok': false,
+        'checked': 41,
+        'first_seq': 1,
+        'last_seq': 41,
+        'broken_at_seq': 42,
+        'reason': 'hash does not match the anchor',
+        'last_hash': 'last',
+        'anchor': {'seq': 42, 'hash': hash.toLowerCase()},
       });
-      addTearDown(client.close);
-      final result = await client.verifyAudit(anchor: '42:$hash');
-      expect(result.ok, isFalse);
-      expect(result.anchor!.value, '42:${hash.toLowerCase()}');
-      expect(result.brokenAtSeq, 42);
-      expect(result.lastHash, 'last');
-    },
-  );
+    });
+    addTearDown(client.close);
+    final result = await client.verifyAudit(anchor: '42:$hash');
+    expect(result.ok, isFalse);
+    expect(result.anchor!.value, '42:${hash.toLowerCase()}');
+    expect(result.brokenAtSeq, 42);
+    expect(result.lastHash, 'last');
+  });
 
   group('analytics windows', () {
     for (final (duration, expected) in [
@@ -326,50 +320,47 @@ void main() {
     });
   });
 
-  test(
-    'analytics retains fractional rollups, label and independent cumulative counters',
-    () {
-      final result = PipelineAnalytics.fromJson({
-        'window': {
-          'label': '90m',
-          'since': '2026-10-23T06:00:00Z',
-          'until': '2026-10-23T07:30:00Z',
-        },
-        'funnel': {
-          'received': [
-            {'transport': 'tls', 'count': 1.125},
-          ],
-          'auth_verdicts': [
-            {'mechanism': 'spf', 'result': 'pass', 'count': 2.25},
-          ],
-          'stage_decisions': [
-            {'filter': 'a', 'action': 'continue', 'count': 3.5},
-          ],
-          'terminal_outcomes': [
-            {'direction': 'inbound', 'outcome': 'delivered', 'count': 4.75},
-          ],
-          'top_reject_reasons': [
-            {'reason_code': 'other', 'count': 5.875},
-          ],
-        },
-        'live_totals': {
-          'received': [
-            {'transport': 'tls', 'count': 123.25},
-          ],
-          'auth_verdicts': null,
-        },
-      });
-      expect(result.windowLabel, '90m');
-      expect(result.received.single.count, 1.125);
-      expect(result.senderChecks.single.count, 2.25);
-      expect(result.decisions.single.count, 3.5);
-      expect(result.outcomes.single.count, 4.75);
-      expect(result.rejectReasons.single.count, 5.875);
-      expect(result.liveTotals!.received.single.count, 123.25);
-      expect(result.liveTotals!.senderChecks, isEmpty);
-      expect(PipelineAnalytics.fromJson({}).liveTotals, isNull);
-    },
-  );
+  test('analytics retains fractional rollups, label and independent cumulative counters', () {
+    final result = PipelineAnalytics.fromJson({
+      'window': {
+        'label': '90m',
+        'since': '2026-10-23T06:00:00Z',
+        'until': '2026-10-23T07:30:00Z',
+      },
+      'funnel': {
+        'received': [
+          {'transport': 'tls', 'count': 1.125},
+        ],
+        'auth_verdicts': [
+          {'mechanism': 'spf', 'result': 'pass', 'count': 2.25},
+        ],
+        'stage_decisions': [
+          {'filter': 'a', 'action': 'continue', 'count': 3.5},
+        ],
+        'terminal_outcomes': [
+          {'direction': 'inbound', 'outcome': 'delivered', 'count': 4.75},
+        ],
+        'top_reject_reasons': [
+          {'reason_code': 'other', 'count': 5.875},
+        ],
+      },
+      'live_totals': {
+        'received': [
+          {'transport': 'tls', 'count': 123.25},
+        ],
+        'auth_verdicts': null,
+      },
+    });
+    expect(result.windowLabel, '90m');
+    expect(result.received.single.count, 1.125);
+    expect(result.senderChecks.single.count, 2.25);
+    expect(result.decisions.single.count, 3.5);
+    expect(result.outcomes.single.count, 4.75);
+    expect(result.rejectReasons.single.count, 5.875);
+    expect(result.liveTotals!.received.single.count, 123.25);
+    expect(result.liveTotals!.senderChecks, isEmpty);
+    expect(PipelineAnalytics.fromJson({}).liveTotals, isNull);
+  });
 
   test('omitted filters are absent, including unanchored proof', () async {
     final client = _client((r) async {
