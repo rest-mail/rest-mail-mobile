@@ -526,7 +526,9 @@ class RestmailClient {
     final response = await generatedValue(
       _domainApi.listDomains(offset: offset, limit: limit),
     );
-    if (response is! wire.ListDomainsResponse200) throw _unexpectedWireStatus();
+    if (response is! wire.ListDomainsResponse200) {
+      throw _unexpectedWireStatus();
+    }
     final body = response.body.body;
     final total = switch (body.pagination) {
       wire.$RawListDomainPaginationOneOfModelPagination(:final value) =>
@@ -544,7 +546,9 @@ class RestmailClient {
   /// Fresh detail. Needs `domains:read` on this domain.
   Future<AdminDomain> domain(int id) async {
     final response = await generatedValue(_domainApi.getDomain(id: id));
-    if (response is! wire.GetDomainResponse200) throw _unexpectedWireStatus();
+    if (response is! wire.GetDomainResponse200) {
+      throw _unexpectedWireStatus();
+    }
     return AdminDomain.fromWire(response.body.body.data);
   }
 
@@ -572,7 +576,7 @@ class RestmailClient {
               : _domainChoice(
                   'sending_policy',
                   sendingPolicy,
-                  wire.$RawCreateDomainRequestSendingPolicyModel.fromJson,
+                  wire.CreateDomainRequestSendingPolicyModel.fromJson,
                 ),
           dmarcPolicy: dmarcPolicy == null
               ? null
@@ -584,8 +588,9 @@ class RestmailClient {
         ),
       ),
     );
-    if (response is! wire.CreateDomainResponse201)
+    if (response is! wire.CreateDomainResponse201) {
       throw _unexpectedWireStatus();
+    }
     return AdminDomain.fromWire(response.body.body.data);
   }
 
@@ -621,16 +626,18 @@ class RestmailClient {
         ),
       ),
     );
-    if (response is! wire.UpdateDomainResponse200)
+    if (response is! wire.UpdateDomainResponse200) {
       throw _unexpectedWireStatus();
+    }
     return AdminDomain.fromWire(response.body.body.data);
   }
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
     final response = await generatedValue(_domainApi.deleteDomain(id: id));
-    if (response is! wire.DeleteDomainResponse204)
+    if (response is! wire.DeleteDomainResponse204) {
       throw _unexpectedWireStatus();
+    }
   }
 
   T _domainChoice<T>(String field, String value, T Function(Object?) decode) {
@@ -665,8 +672,9 @@ class RestmailClient {
         limit: limit,
       ),
     );
-    if (response is! wire.ListMailboxesResponse200)
+    if (response is! wire.ListMailboxesResponse200) {
       throw _unexpectedWireStatus();
+    }
     final body = response.body.body;
     final total = switch (body.pagination) {
       wire.$RawListMailboxPaginationOneOfModelPagination(:final value) =>
@@ -684,7 +692,9 @@ class RestmailClient {
   /// Fresh detail. Needs `mailboxes:read` on this mailbox.
   Future<AdminMailbox> adminMailbox(int id) async {
     final response = await generatedValue(_mailboxApi.getMailbox(id: id));
-    if (response is! wire.GetMailboxResponse200) throw _unexpectedWireStatus();
+    if (response is! wire.GetMailboxResponse200) {
+      throw _unexpectedWireStatus();
+    }
     return AdminMailbox.fromWire(response.body.body.data);
   }
 
@@ -708,8 +718,9 @@ class RestmailClient {
         ),
       ),
     );
-    if (response is! wire.UpdateMailboxResponse200)
+    if (response is! wire.UpdateMailboxResponse200) {
       throw _unexpectedWireStatus();
+    }
     return AdminMailbox.fromWire(response.body.body.data);
   }
 
@@ -718,15 +729,17 @@ class RestmailClient {
     final response = await generatedValue(
       _mailboxApi.endMailboxSessions(id: id),
     );
-    if (response is! wire.EndMailboxSessionsResponse204)
+    if (response is! wire.EndMailboxSessionsResponse204) {
       throw _unexpectedWireStatus();
+    }
   }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
     final response = await generatedValue(_mailboxApi.deleteMailbox(id: id));
-    if (response is! wire.DeleteMailboxResponse204)
+    if (response is! wire.DeleteMailboxResponse204) {
       throw _unexpectedWireStatus();
+    }
   }
 
   /// Needs `mailboxes:read`.
@@ -1502,8 +1515,9 @@ class RestmailClient {
     final response = await generatedValue(
       _domainApi.domainDnsCheckOperation(id: domainId),
     );
-    if (response is! wire.DomainDnsCheckOperationResponse200)
+    if (response is! wire.DomainDnsCheckOperationResponse200) {
       throw _unexpectedWireStatus();
+    }
     return DnsCheck.fromWire(response.body.body.data);
   }
 

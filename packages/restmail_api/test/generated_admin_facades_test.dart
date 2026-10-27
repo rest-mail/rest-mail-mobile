@@ -69,8 +69,9 @@ void main() {
       final client = _client((request) async {
         requests.add(request);
         expect(request.headers['Authorization'], 'Bearer access');
-        if (request.method == 'DELETE')
+        if (request.method == 'DELETE') {
           return http.Response('', 204, headers: contractSecurityHeaders);
+        }
         if (request.url.path.endsWith('/dns')) {
           return _json({
             'data': {
@@ -159,13 +160,15 @@ void main() {
     final requests = <http.Request>[];
     final client = _client((request) async {
       requests.add(request);
-      if (request.method == 'DELETE')
+      if (request.method == 'DELETE') {
         return http.Response('', 204, headers: contractSecurityHeaders);
-      if (request.url.path.endsWith('/mailboxes'))
+      }
+      if (request.url.path.endsWith('/mailboxes')) {
         return _json({
           'data': [_box],
           'pagination': {'total': 20, 'has_more': true},
         });
+      }
       return _json({'data': _box});
     });
     addTearDown(client.close);
