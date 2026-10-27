@@ -6,6 +6,8 @@ import 'package:http/testing.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/http_contract.dart';
+
 final _server = Uri.parse('https://mail.example.test');
 
 const _user = {
@@ -26,7 +28,11 @@ http.Response _json(
 }) => http.Response.bytes(
   utf8.encode(jsonEncode(body)),
   status,
-  headers: {'content-type': 'application/json', ...headers},
+  headers: {
+    'content-type': 'application/json',
+    ...contractSecurityHeaders,
+    ...headers,
+  },
 );
 
 /// What a native sign-in or refresh answers: the pair in the body.
@@ -1300,6 +1306,8 @@ void main() {
                 'active': true,
                 'default_quota_bytes': 1073741824,
                 'dkim_selector': 'mail',
+                'sending_policy': '',
+                'dmarc_policy': 'none',
                 'created_at': '2026-10-01T00:00:00Z',
                 'updated_at': '2026-10-01T00:00:00Z',
               },
@@ -1333,11 +1341,20 @@ void main() {
         'default_quota_bytes': 524288000,
         'sending_policy': 'bulk',
         'dmarc_policy': 'quarantine',
+        'dkim_selector': 'mail',
+        'created_at': '2026-10-27T07:00:00Z',
+        'updated_at': '2026-10-27T07:00:00Z',
       };
       const mailbox = {
         'id': 9,
         'domain_id': 4,
         'address': 'ada@new.test',
+        'local_part': 'ada',
+        'last_login_at': null,
+        'password_change_required': false,
+        'two_factor_required': false,
+        'created_at': '2026-10-27T07:00:00Z',
+        'updated_at': '2026-10-27T07:00:00Z',
         'display_name': 'Ada',
         'active': true,
         'quota_bytes': 2097152,
@@ -1352,13 +1369,13 @@ void main() {
           httpClient: MockClient((request) async {
             sent.add(request);
             if (request.url.path.endsWith('/sessions')) {
-              return http.Response('', 204);
+              return http.Response('', 204, headers: contractSecurityHeaders);
             }
             return _json({
               'data': request.url.path.contains('/mailboxes/')
                   ? mailbox
                   : domain,
-            });
+            }, status: request.method == 'POST' ? 201 : 200);
           }),
         );
       });

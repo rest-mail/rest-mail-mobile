@@ -1,0 +1,128 @@
+{
+  "server_document": "api_contract/openapi.json",
+  "generator_lock": "tool/rest_api/contract.lock.json",
+  "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
+  "operations": [
+    {
+      "operationId": "listDomains",
+      "facade": "domains",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "getDomain",
+      "facade": "domain",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "createDomain",
+      "facade": "createDomain",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "updateDomain",
+      "facade": "updateDomain",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "deleteDomain",
+      "facade": "deleteDomain",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "domainDnsCheckOperation",
+      "facade": "dnsCheck",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "listMailboxes",
+      "facade": "mailboxes",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "getMailbox",
+      "facade": "adminMailbox",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "updateMailbox",
+      "facade": "updateMailbox",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "endMailboxSessions",
+      "facade": "endMailboxSessions",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    },
+    {
+      "operationId": "deleteMailbox",
+      "facade": "deleteMailbox",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping in admin_models.dart",
+      "tests": [
+        "generated_admin_facades_test.dart",
+        "resource_details_test.dart",
+        "client_test.dart"
+      ]
+    }
+  ]
+}

@@ -5,6 +5,8 @@ import 'package:http/testing.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/http_contract.dart';
+
 const _domain = {
   'id': 4,
   'name': 'example.test',
@@ -13,6 +15,7 @@ const _domain = {
   'default_quota_bytes': 1073741824,
   'dkim_selector': 'mail',
   'sending_policy': 'bulk',
+  'dmarc_policy': 'none',
   'created_at': '2026-10-20T09:00:00+01:00',
   'updated_at': '2026-10-21T09:00:00Z',
 };
@@ -54,7 +57,7 @@ const _alias = {
 http.Response _json(Object body, {int status = 200}) => http.Response.bytes(
   utf8.encode(jsonEncode(body)),
   status,
-  headers: {'content-type': 'application/json'},
+  headers: {'content-type': 'application/json', ...contractSecurityHeaders},
 );
 
 RestmailClient _client(Future<http.Response> Function(http.Request) respond) =>

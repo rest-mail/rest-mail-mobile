@@ -56,8 +56,14 @@ do not move the event stream onto it.
 ## Remaining migration
 
 Generating a package and adding a transport is not the complete client migration.
-Existing `RestmailClient` endpoint methods and UI DTOs still encode/decode by
-hand. Migrate coherent API groups to generated request/response types with
+The domain and mailbox facade batch migrates the eleven operations listed in
+`migrated_operations.json`, including DNS and ending sessions. Existing screens
+reach generated operations through their unchanged facade methods. Generated
+code validates status, headers and wire fields; typed projections preserve the
+current display model, timestamp handling, quotas and setup flags.
+
+Other `RestmailClient` endpoint groups still encode/decode by hand. Continue
+migrating coherent API groups to generated request/response types with
 contract-shaped fake data and widget coverage. Preserve required fields and
 header semantics rather than weakening the generated document to fit old mocks.
 The integration tests in `generated_client_test.dart` exercise generated domain
