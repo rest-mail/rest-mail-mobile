@@ -219,7 +219,7 @@ void main() {
       httpClient: MockClient((request) async {
         if (request.url.path.endsWith('/auth/refresh')) return _rotated();
         sent.add(request);
-        return _json({'data': []}, sent.length == 1 ? 401 : 200);
+        return _json({'data': <Object>[]}, sent.length == 1 ? 401 : 200);
       }),
     );
     addTearDown(client.close);
