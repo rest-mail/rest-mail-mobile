@@ -9,6 +9,7 @@ class FakePushService implements PushService {
     this.deviceToken = _token,
     this.answer = true,
     this.permissionState = NotificationPermission.undetermined,
+    this.badgePermissionState,
   });
 
   static const _token =
@@ -22,6 +23,10 @@ class FakePushService implements PushService {
 
   /// What the user has let the app do so far.
   NotificationPermission permissionState;
+
+  /// Null follows authorization; set explicitly to model badges disabled
+  /// while alerts remain authorized.
+  NotificationPermission? badgePermissionState;
 
   /// How many times iOS's prompt came up.
   var prompts = 0;
@@ -51,6 +56,10 @@ class FakePushService implements PushService {
 
   @override
   Future<NotificationPermission> permission() async => permissionState;
+
+  @override
+  Future<NotificationPermission> badgePermission() async =>
+      badgePermissionState ?? permissionState;
 
   @override
   Future<bool> requestPermission() async {

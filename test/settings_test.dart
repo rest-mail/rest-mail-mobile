@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:restmail/state/settings.dart';
 
 void main() {
+  test('badge defaults migrate old preferences and persist independently of alerts', () {
+    expect(const AppSettings().appIconBadge, isTrue);
+    final old = AppSettings.decode('{"notifications":"off"}');
+    expect(old.appIconBadge, isTrue);
+    final disabled = AppSettings.decode(
+      old.copyWith(appIconBadge: false).encode(),
+    );
+    expect(disabled.appIconBadge, isFalse);
+    expect(disabled.notifications, NotificationChoice.off);
+    final enabled = disabled.copyWith(appIconBadge: true);
+    expect(AppSettings.decode(enabled.encode()).appIconBadge, isTrue);
+    expect(enabled.notifications, NotificationChoice.off);
+  });
+
   test('the mail check interval defaults to a minute and round-trips', () {
     const defaults = AppSettings();
     expect(defaults.mailCheckInterval, const Duration(minutes: 1));

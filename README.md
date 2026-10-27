@@ -296,15 +296,22 @@ searches. Recent searches are kept only until the app closes.
 - **Signature** edits the signature, with a preview and the **Append on
   replies** switch.
 - **Appearance** is **System**, **Light** or **Dark**.
-- **Notifications** turns new mail notifications on and off. It is there
-  only on an iPhone, and only once the server of a signed-in account can
-  send them; the first time, after sign-in, the app explains them and asks
-  before iOS does. The phone is registered with each REST Mail session's
-  server, and taken off it at sign-out. A push says which account has mail
-  and nothing else: the app fetches it over the API, notifies of each new
-  message, leaving out the inbox on screen, and sets the badge to the
-  unread mail in those inboxes. Gmail and other IMAP accounts get no
-  notifications, and the section says so.
+- **Notifications** on iPhone always offers **Unread count on app icon**,
+  even without a push token or a REST Mail server that sends notifications.
+  Turning it on requests iOS notification permission. The badge sums the
+  unread mail in every signed-in REST Mail and IMAP inbox, updating when
+  the app checks mail and when messages are read or accounts removed. Its
+  preference is stored on the phone, independently of new-mail alerts.
+  If iOS has disabled badges, enable them in the iPhone's notification
+  settings; returning to the app refreshes that permission.
+- **New mail** is also offered when a signed-in REST Mail server can push.
+  After sign-in the app explains alerts and asks before iOS does. The phone
+  registers with each REST Mail session's server and unregisters at sign-out.
+  Turning these alerts off keeps the unread badge enabled. A push names the
+  account with mail; the app fetches the mail over the API and notifies of
+  each new message, leaving out the inbox on screen. Gmail and other IMAP
+  accounts do not receive these server signals. Their credentials remain on
+  the phone, and a badge cannot keep checking them while iOS suspends the app.
 
 Settings are stored only on the device.
 

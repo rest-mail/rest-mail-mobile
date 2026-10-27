@@ -142,6 +142,16 @@ final class PushChannel: NSObject, UNUserNotificationCenterDelegate {
         }
         DispatchQueue.main.async { result(status) }
       }
+    case "badgePermission":
+      center.getNotificationSettings { settings in
+        let status: String
+        if settings.authorizationStatus == .notDetermined {
+          status = "undetermined"
+        } else {
+          status = settings.badgeSetting == .enabled ? "granted" : "denied"
+        }
+        DispatchQueue.main.async { result(status) }
+      }
     case "requestPermission":
       center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
         DispatchQueue.main.async { result(granted) }
