@@ -55,5 +55,9 @@ void main() {
       }
     },
     skip: skipLive,
+    // First-install setup consumes a TOTP code, then waits for a fresh
+    // 30-second period before signing in again. Leave time for that required
+    // wait plus password-hash checks; individual HTTP requests stay bounded.
+    timeout: const Timeout(Duration(seconds: 90)),
   );
 }

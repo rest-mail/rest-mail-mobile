@@ -6,6 +6,8 @@ import 'package:http/testing.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/http_contract.dart';
+
 final _server = Uri.parse('https://mail.example.test');
 
 const _user = {
@@ -26,7 +28,11 @@ http.Response _json(
 }) => http.Response.bytes(
   utf8.encode(jsonEncode(body)),
   status,
-  headers: {'content-type': 'application/json', ...headers},
+  headers: {
+    'content-type': 'application/json',
+    ...contractSecurityHeaders,
+    ...headers,
+  },
 );
 
 /// What a native sign-in or refresh answers: the pair in the body.
@@ -1300,6 +1306,8 @@ void main() {
                 'active': true,
                 'default_quota_bytes': 1073741824,
                 'dkim_selector': 'mail',
+                'sending_policy': '',
+                'dmarc_policy': 'none',
                 'created_at': '2026-10-01T00:00:00Z',
                 'updated_at': '2026-10-01T00:00:00Z',
               },
@@ -1333,11 +1341,20 @@ void main() {
         'default_quota_bytes': 524288000,
         'sending_policy': 'bulk',
         'dmarc_policy': 'quarantine',
+        'dkim_selector': 'mail',
+        'created_at': '2026-10-27T07:00:00Z',
+        'updated_at': '2026-10-27T07:00:00Z',
       };
       const mailbox = {
         'id': 9,
         'domain_id': 4,
         'address': 'ada@new.test',
+        'local_part': 'ada',
+        'last_login_at': null,
+        'password_change_required': false,
+        'two_factor_required': false,
+        'created_at': '2026-10-27T07:00:00Z',
+        'updated_at': '2026-10-27T07:00:00Z',
         'display_name': 'Ada',
         'active': true,
         'quota_bytes': 2097152,
@@ -1352,13 +1369,13 @@ void main() {
           httpClient: MockClient((request) async {
             sent.add(request);
             if (request.url.path.endsWith('/sessions')) {
-              return http.Response('', 204);
+              return http.Response('', 204, headers: contractSecurityHeaders);
             }
             return _json({
               'data': request.url.path.contains('/mailboxes/')
                   ? mailbox
                   : domain,
-            });
+            }, status: request.method == 'POST' ? 201 : 200);
           }),
         );
       });
@@ -1381,6 +1398,7 @@ void main() {
           'name': 'new.test',
           'server_type': 'traditional',
           'default_quota_bytes': 524288000,
+          'dmarc_policy': null,
           'sending_policy': 'bulk',
         });
         expect(created.id, 4);
@@ -1390,31 +1408,53 @@ void main() {
         expect(created.sendingPolicy, 'bulk');
       });
 
-      test('createDomain leaves out what was not given', () async {
-        await client.createDomain('new.test');
+      test(
+        'createDomain uses declared nullable defaults for absent choices',
+        () async {
+          await client.createDomain('new.test');
 
-        expect(body(sent.single), {
-          'name': 'new.test',
-          'server_type': 'restmail',
-        });
-      });
+          expect(body(sent.single), {
+            'name': 'new.test',
+            'server_type': 'restmail',
+            'default_quota_bytes': null,
+            'dmarc_policy': null,
+          });
+        },
+      );
 
-      test('updateDomain sends only what changes; an empty policy clears '
-          'it', () async {
-        await client.updateDomain(4, defaultQuotaBytes: 1048576);
-        await client.updateDomain(4, sendingPolicy: '');
-        final updated = await client.updateDomain(4, active: true);
+      test(
+        'updateDomain sends null for unchanged fields; empty clears the policy',
+        () async {
+          await client.updateDomain(4, defaultQuotaBytes: 1048576);
+          await client.updateDomain(4, sendingPolicy: '');
+          final updated = await client.updateDomain(4, active: true);
 
-        expect(sent.map((r) => r.method), everyElement('PATCH'));
-        expect(
-          sent.map((r) => r.url.path),
-          everyElement('/api/v1/admin/domains/4'),
-        );
-        expect(body(sent[0]), {'default_quota_bytes': 1048576});
-        expect(body(sent[1]), {'sending_policy': ''});
-        expect(body(sent[2]), {'active': true});
-        expect(updated.sendingPolicy, 'bulk');
-      });
+          expect(sent.map((r) => r.method), everyElement('PATCH'));
+          expect(
+            sent.map((r) => r.url.path),
+            everyElement('/api/v1/admin/domains/4'),
+          );
+          expect(body(sent[0]), {
+            'active': null,
+            'default_quota_bytes': 1048576,
+            'sending_policy': null,
+            'dmarc_policy': null,
+          });
+          expect(body(sent[1]), {
+            'active': null,
+            'default_quota_bytes': null,
+            'sending_policy': '',
+            'dmarc_policy': null,
+          });
+          expect(body(sent[2]), {
+            'active': true,
+            'default_quota_bytes': null,
+            'sending_policy': null,
+            'dmarc_policy': null,
+          });
+          expect(updated.sendingPolicy, 'bulk');
+        },
+      );
 
       test('the DMARC policy is sent when given, and read back', () async {
         await client.createDomain('new.test', dmarcPolicy: 'none');
@@ -1424,8 +1464,14 @@ void main() {
           'name': 'new.test',
           'server_type': 'restmail',
           'dmarc_policy': 'none',
+          'default_quota_bytes': null,
         });
-        expect(body(sent[1]), {'dmarc_policy': 'reject'});
+        expect(body(sent[1]), {
+          'active': null,
+          'default_quota_bytes': null,
+          'sending_policy': null,
+          'dmarc_policy': 'reject',
+        });
         expect(updated.dmarcPolicy, 'quarantine');
       });
 
@@ -1441,15 +1487,23 @@ void main() {
         expect(read.sendingPolicy, '');
       });
 
-      test('updateMailbox sends a new quota alone', () async {
-        final updated = await client.updateMailbox(9, quotaBytes: 2097152);
+      test(
+        'updateMailbox sends quota with null for unchanged fields',
+        () async {
+          final updated = await client.updateMailbox(9, quotaBytes: 2097152);
 
-        expect(sent.single.method, 'PATCH');
-        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
-        expect(body(sent.single), {'quota_bytes': 2097152});
-        expect(updated.quotaBytes, 2097152);
-        expect(updated.address, 'ada@new.test');
-      });
+          expect(sent.single.method, 'PATCH');
+          expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
+          expect(body(sent.single), {
+            'active': null,
+            'display_name': null,
+            'password': null,
+            'quota_bytes': 2097152,
+          });
+          expect(updated.quotaBytes, 2097152);
+          expect(updated.address, 'ada@new.test');
+        },
+      );
 
       test('endMailboxSessions deletes the mailbox sessions', () async {
         await client.endMailboxSessions(9);

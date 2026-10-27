@@ -173,8 +173,8 @@ jobs:
         env:
           GREENMAIL_HOST: 127.0.0.1
 
-  # The API client against a real REST Mail server: the image main publishes,
-  # fresh, with Postgres (tool/ci/live_server.sh). The tests sign in as a
+  # The API client against the immutable server image pinned beside its generated
+  # contract, fresh with Postgres (tool/ci/live_server.sh). The tests sign in as a
   # fresh install's admin does, then call the admin API through the client,
   # so a request the server refuses or an answer the client cannot read fails
   # here, not in someone's hands.

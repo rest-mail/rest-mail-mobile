@@ -3,7 +3,9 @@
 The owner decision in server #895/mobile #116 is Tonik, pinned exactly, with
 committed generated code and a regeneration gate. `contract.lock.json` records
 the server revision/version/document checksum, generator archive checksum,
-Dart version, backend and output directory. The generator's complete dependency
+Dart version, backend and output directory. The same lock pins the immutable
+server image used by the real-server integration fixture; its OCI revision label
+must match the contract revision before tests start. The generator's complete dependency
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The first committed document is the exact JSON served by production 0.28.0,
@@ -56,8 +58,20 @@ do not move the event stream onto it.
 ## Remaining migration
 
 Generating a package and adding a transport is not the complete client migration.
-Existing `RestmailClient` endpoint methods and UI DTOs still encode/decode by
-hand. Migrate coherent API groups to generated request/response types with
+The domain and mailbox facade batch migrates the eleven operations listed in
+`migrated_operations.json`, including DNS and ending sessions. Existing screens
+reach generated operations through their unchanged facade methods. Generated
+code validates status, headers and wire fields; typed projections preserve the
+current display model, timestamp handling, quotas and setup flags.
+
+Nullable request fields follow the generated document: Tonik may serialize an
+unspecified nullable field as explicit `null`. The domain/mailbox Go handlers
+treat these pointer fields as unchanged (or the creation default), while empty
+strings, `false` and zero retain their distinct meanings. Exact-body tests assert
+that generated payload, and fake behavioral tests verify unrelated state is kept.
+
+Other `RestmailClient` endpoint groups still encode/decode by hand. Continue
+migrating coherent API groups to generated request/response types with
 contract-shaped fake data and widget coverage. Preserve required fields and
 header semantics rather than weakening the generated document to fit old mocks.
 The integration tests in `generated_client_test.dart` exercise generated domain

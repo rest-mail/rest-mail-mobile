@@ -514,89 +514,191 @@ class RestmailClient {
     }
   }
 
-  /// Needs `domains:read`.
-  Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
+  late final _domainApi = wire.AdminDomainsApi(generatedSession);
+  late final _mailboxApi = wire.AdminMailboxesApi(generatedSession);
+
+  /// Needs `domains:read`. The generated operation owns path/query encoding
+  /// and response validation; the existing UI receives its display projection.
+  Future<OffsetPage<AdminDomain>> domains({
+    int offset = 0,
+    int limit = 100,
+  }) async {
+    final response = await generatedValue(
+      _domainApi.listDomains(offset: offset, limit: limit),
+    );
+    if (response is! wire.ListDomainsResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    final total = switch (body.pagination) {
+      wire.$RawListDomainPaginationOneOfModelPagination(:final value) =>
+        value.total,
+      _ => null,
+    };
+    final items = body.data.map(AdminDomain.fromWire).toList();
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
 
   /// Fresh detail. Needs `domains:read` on this domain.
-  Future<AdminDomain> domain(int id) async => AdminDomain.fromJson(
-    _data(await _authed('GET', ['admin', 'domains', '$id'])),
-  );
+  Future<AdminDomain> domain(int id) async {
+    final response = await generatedValue(_domainApi.getDomain(id: id));
+    if (response is! wire.GetDomainResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
-  /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
-  /// or `traditional`. A new domain is never live: going live is
-  /// [updateDomain] with `active`. Throws [ApiException] with code
-  /// `already_exists` when it is there already. Needs `domains:write`.
+  /// Creates an inactive domain. Needs `domains:write`. The String facade
+  /// keeps existing forms compatible; generated enum codecs validate choices.
   Future<AdminDomain> createDomain(
     String name, {
     String serverType = 'restmail',
     int? defaultQuotaBytes,
     String? sendingPolicy,
     String? dmarcPolicy,
-  }) async => AdminDomain.fromJson(
-    _data(
-      await _authed(
-        'POST',
-        ['admin', 'domains'],
-        body: {
-          'name': name,
-          'server_type': serverType,
-          'default_quota_bytes': ?defaultQuotaBytes,
-          'sending_policy': ?sendingPolicy,
-          'dmarc_policy': ?dmarcPolicy,
-        },
+  }) async {
+    final response = await generatedValue(
+      _domainApi.createDomain(
+        body: wire.CreateDomainRequest(
+          name: name,
+          serverType: _domainChoice(
+            'server_type',
+            serverType,
+            wire.$RawCreateDomainRequestServerTypeModel.fromJson,
+          ),
+          defaultQuotaBytes: defaultQuotaBytes,
+          sendingPolicy: sendingPolicy == null
+              ? null
+              : _domainChoice(
+                  'sending_policy',
+                  sendingPolicy,
+                  wire.CreateDomainRequestSendingPolicyModel.fromJson,
+                ),
+          dmarcPolicy: dmarcPolicy == null
+              ? null
+              : _domainChoice(
+                  'dmarc_policy',
+                  dmarcPolicy,
+                  wire.$RawCreateDomainRequestDmarcPolicyModel.fromJson,
+                ),
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.CreateDomainResponse201) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
-  /// Changes what is given: whether the domain's mail is on, the quota new
-  /// mailboxes get, its sending policy (empty clears it) and the DMARC policy
-  /// its record asks for. Needs `domains:write`.
+  /// Changes only supplied fields; an empty sending policy clears the rule.
+  /// Needs `domains:write`.
   Future<AdminDomain> updateDomain(
     int id, {
     bool? active,
     int? defaultQuotaBytes,
     String? sendingPolicy,
     String? dmarcPolicy,
-  }) async => AdminDomain.fromJson(
-    _data(
-      await _authed(
-        'PATCH',
-        ['admin', 'domains', '$id'],
-        body: {
-          'active': ?active,
-          'default_quota_bytes': ?defaultQuotaBytes,
-          'sending_policy': ?sendingPolicy,
-          'dmarc_policy': ?dmarcPolicy,
-        },
+  }) async {
+    final response = await generatedValue(
+      _domainApi.updateDomain(
+        id: id,
+        body: wire.UpdateDomainBody(
+          active: active,
+          defaultQuotaBytes: defaultQuotaBytes,
+          sendingPolicy: sendingPolicy == null
+              ? null
+              : _domainChoice(
+                  'sending_policy',
+                  sendingPolicy,
+                  wire.$RawUpdateDomainBodySendingPolicyModel.fromJson,
+                ),
+          dmarcPolicy: dmarcPolicy == null
+              ? null
+              : _domainChoice(
+                  'dmarc_policy',
+                  dmarcPolicy,
+                  wire.$RawUpdateDomainBodyDmarcPolicyModel.fromJson,
+                ),
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.UpdateDomainResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
-    await _authed('DELETE', ['admin', 'domains', '$id']);
+    final response = await generatedValue(_domainApi.deleteDomain(id: id));
+    if (response is! wire.DeleteDomainResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
+
+  T _domainChoice<T>(String field, String value, T Function(Object?) decode) {
+    try {
+      return decode(value);
+    } on tonik.DecodingException {
+      throw ApiException(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {field: 'Choose a supported value'},
+      );
+    }
+  }
+
+  ApiException _unexpectedWireStatus() => const ApiException(
+    0,
+    'bad_response',
+    'The server sent an unexpected response',
+  );
 
   /// Needs `mailboxes:read`.
   Future<OffsetPage<AdminMailbox>> mailboxes({
     int? domainId,
     int offset = 0,
     int limit = 100,
-  }) => _offsetPage(
-    ['admin', 'mailboxes'],
-    AdminMailbox.fromJson,
-    offset,
-    limit,
-    {'domain_id': ?domainId?.toString()},
-  );
+  }) async {
+    final response = await generatedValue(
+      _mailboxApi.listMailboxes(
+        domainId: domainId,
+        offset: offset,
+        limit: limit,
+      ),
+    );
+    if (response is! wire.ListMailboxesResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    final total = switch (body.pagination) {
+      wire.$RawListMailboxPaginationOneOfModelPagination(:final value) =>
+        value.total,
+      _ => null,
+    };
+    final items = body.data.map(AdminMailbox.fromWire).toList();
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
 
   /// Fresh detail. Needs `mailboxes:read` on this mailbox.
-  Future<AdminMailbox> adminMailbox(int id) async => AdminMailbox.fromJson(
-    _data(await _authed('GET', ['admin', 'mailboxes', '$id'])),
-  );
+  Future<AdminMailbox> adminMailbox(int id) async {
+    final response = await generatedValue(_mailboxApi.getMailbox(id: id));
+    if (response is! wire.GetMailboxResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminMailbox.fromWire(response.body.body.data);
+  }
 
-  /// Changes what is given; a new [password] ends the mailbox's sessions.
+  /// Changes supplied fields. A new password ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
     int id, {
@@ -604,31 +706,40 @@ class RestmailClient {
     String? password,
     bool? active,
     int? quotaBytes,
-  }) async => AdminMailbox.fromJson(
-    _data(
-      await _authed(
-        'PATCH',
-        ['admin', 'mailboxes', '$id'],
-        body: {
-          'display_name': ?displayName,
-          'password': ?password,
-          'active': ?active,
-          'quota_bytes': ?quotaBytes,
-        },
+  }) async {
+    final response = await generatedValue(
+      _mailboxApi.updateMailbox(
+        id: id,
+        body: wire.UpdateMailboxRequest(
+          displayName: displayName,
+          password: password,
+          active: active,
+          quotaBytes: quotaBytes,
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.UpdateMailboxResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminMailbox.fromWire(response.body.body.data);
+  }
 
-  /// Signs the mailbox out everywhere: its refresh tokens are revoked and
-  /// every access token it holds is refused. Passwords and app passwords
-  /// stay. Needs `mailboxes:write`.
+  /// Revokes this mailbox's sessions. Needs `mailboxes:write`.
   Future<void> endMailboxSessions(int id) async {
-    await _authed('DELETE', ['admin', 'mailboxes', '$id', 'sessions']);
+    final response = await generatedValue(
+      _mailboxApi.endMailboxSessions(id: id),
+    );
+    if (response is! wire.EndMailboxSessionsResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
-    await _authed('DELETE', ['admin', 'mailboxes', '$id']);
+    final response = await generatedValue(_mailboxApi.deleteMailbox(id: id));
+    if (response is! wire.DeleteMailboxResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
 
   /// Needs `mailboxes:read`.
@@ -1400,9 +1511,15 @@ class RestmailClient {
 
   /// Has the server look up [domainId]'s DNS records: MX, SPF, DMARC, DKIM,
   /// MTA-STS and TLS-RPT. Needs `domains:read`.
-  Future<DnsCheck> dnsCheck(int domainId) async => DnsCheck.fromJson(
-    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
-  );
+  Future<DnsCheck> dnsCheck(int domainId) async {
+    final response = await generatedValue(
+      _domainApi.domainDnsCheckOperation(id: domainId),
+    );
+    if (response is! wire.DomainDnsCheckOperationResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return DnsCheck.fromWire(response.body.body.data);
+  }
 
   // ── Roles, grants and escalation ─────────────────────────────────────
   //
