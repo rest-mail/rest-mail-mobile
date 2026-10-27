@@ -131,24 +131,18 @@ void main() {
     });
   }
 
-  test(
-    'explicit empty filter selects all pages, missing selection cannot be constructed',
-    () {
-      expect(const QueueSelection.filter(QueueFilter()).toJson(), {
-        'filter': <String, String>{},
-      });
-      expect(() => QueueSelection.ids([]), throwsArgumentError);
-      expect(
-        () => QueueSelection.ids(List.filled(1001, 1)),
-        throwsArgumentError,
-      );
-      expect(() => QueueSelection.ids([0]), throwsArgumentError);
-      final ids = [1];
-      final selection = QueueSelection.ids(ids);
-      ids.add(2);
-      expect(selection.ids, [1]);
-    },
-  );
+  test('explicit empty filter selects all pages, missing selection cannot be constructed', () {
+    expect(const QueueSelection.filter(QueueFilter()).toJson(), {
+      'filter': <String, String>{},
+    });
+    expect(() => QueueSelection.ids([]), throwsArgumentError);
+    expect(() => QueueSelection.ids(List.filled(1001, 1)), throwsArgumentError);
+    expect(() => QueueSelection.ids([0]), throwsArgumentError);
+    final ids = [1];
+    final selection = QueueSelection.ids(ids);
+    ids.add(2);
+    expect(selection.ids, [1]);
+  });
 
   test(
     'bulk 403 keeps the session, malformed result is bad_response',
@@ -184,46 +178,43 @@ void main() {
     },
   );
 
-  test(
-    'queue detail retains every response field, including failure and body type',
-    () async {
-      late http.Request sent;
-      final client = RestmailClient(
-        server: _server,
-        tokens: _tokens(),
-        httpClient: MockClient((request) async {
-          sent = request;
-          return _json({
-            'data': {
-              'id': 9,
-              'message_id': 3,
-              'sender': 'a@local.test',
-              'recipient': 'b@remote.test',
-              'domain': 'remote.test',
-              'body_type': '8BITMIME',
-              'failure_category': 'mailbox_full',
-              'status': 'deferred',
-              'attempts': 2,
-              'max_retries': 30,
-              'last_error': 'Mailbox full',
-              'last_error_code': 452,
-              'created_at': '2026-10-22T12:00:00Z',
-              'last_attempt': '2026-10-22T12:01:00Z',
-              'next_attempt': '2026-10-22T12:05:00Z',
-              'expires_at': '2026-10-27T12:00:00Z',
-            },
-          });
-        }),
-      );
-      final entry = await client.queueEntry(9);
-      expect(sent.url.path, '/api/v1/admin/queue/9');
-      expect(entry.bodyType, '8BITMIME');
-      expect(entry.failureCategory, 'mailbox_full');
-      expect(entry.messageId, 3);
-      expect(entry.lastErrorCode, 452);
-      expect(entry.lastAttempt, isNotNull);
-      expect(entry.nextAttempt, isNotNull);
-      expect(entry.expiresAt, isNotNull);
-    },
-  );
+  test('queue detail retains every response field, including failure and body type', () async {
+    late http.Request sent;
+    final client = RestmailClient(
+      server: _server,
+      tokens: _tokens(),
+      httpClient: MockClient((request) async {
+        sent = request;
+        return _json({
+          'data': {
+            'id': 9,
+            'message_id': 3,
+            'sender': 'a@local.test',
+            'recipient': 'b@remote.test',
+            'domain': 'remote.test',
+            'body_type': '8BITMIME',
+            'failure_category': 'mailbox_full',
+            'status': 'deferred',
+            'attempts': 2,
+            'max_retries': 30,
+            'last_error': 'Mailbox full',
+            'last_error_code': 452,
+            'created_at': '2026-10-22T12:00:00Z',
+            'last_attempt': '2026-10-22T12:01:00Z',
+            'next_attempt': '2026-10-22T12:05:00Z',
+            'expires_at': '2026-10-27T12:00:00Z',
+          },
+        });
+      }),
+    );
+    final entry = await client.queueEntry(9);
+    expect(sent.url.path, '/api/v1/admin/queue/9');
+    expect(entry.bodyType, '8BITMIME');
+    expect(entry.failureCategory, 'mailbox_full');
+    expect(entry.messageId, 3);
+    expect(entry.lastErrorCode, 452);
+    expect(entry.lastAttempt, isNotNull);
+    expect(entry.nextAttempt, isNotNull);
+    expect(entry.expiresAt, isNotNull);
+  });
 }

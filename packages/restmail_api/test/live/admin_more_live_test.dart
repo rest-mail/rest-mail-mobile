@@ -242,9 +242,8 @@ void main() {
           refused(409, 'not_active'),
         );
 
-        final mailbox = (await client().mailboxes(
-          domainId: domain.id,
-        )).items.singleWhere((m) => m.address == 'ana@three.live.test');
+        final mailbox = (await client().mailboxes(domainId: domain.id)).items
+            .singleWhere((m) => m.address == 'ana@three.live.test');
         await client().deleteMailbox(mailbox.id);
       },
     );

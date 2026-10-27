@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:restmail_generated/restmail_generated.dart' as wire;
+
 /// One page of an admin list, which pages by offset rather than by cursor.
 class OffsetPage<T> {
   const OffsetPage(this.items, {required this.offset, required this.total});
@@ -215,6 +217,20 @@ class AdminDomain {
     updatedAt: _time(json['updated_at']),
   );
 
+  /// UI projection of the generated, already validated wire model.
+  factory AdminDomain.fromWire(wire.Domain value) => AdminDomain(
+    id: value.id,
+    name: value.name,
+    serverType: value.serverType.toJson(),
+    active: value.active,
+    defaultQuotaBytes: value.defaultQuotaBytes,
+    dkimSelector: value.dkimSelector,
+    sendingPolicy: value.sendingPolicy.toJson(),
+    dmarcPolicy: value.dmarcPolicy.toJson(),
+    createdAt: _wireTime(value.createdAt),
+    updatedAt: _wireTime(value.updatedAt),
+  );
+
   /// The server types a domain can be created with.
   static const serverTypes = ['restmail', 'traditional'];
 
@@ -266,6 +282,15 @@ class AdminQuotaUsage {
         messageCount: _int(json['message_count'] ?? 0),
         updatedAt: _time(json['updated_at']),
       );
+
+  factory AdminQuotaUsage.fromWire(wire.QuotaUsage value) => AdminQuotaUsage(
+    mailboxId: value.mailboxId,
+    subjectBytes: value.subjectBytes,
+    bodyBytes: value.bodyBytes,
+    attachmentBytes: value.attachmentBytes,
+    messageCount: value.messageCount,
+    updatedAt: _wireTime(value.updatedAt),
+  );
 
   final int mailboxId;
   final int subjectBytes;
@@ -322,6 +347,33 @@ class AdminMailbox {
     lastPasswordChange: _time(json['last_password_change']),
     createdAt: _time(json['created_at']),
     updatedAt: _time(json['updated_at']),
+  );
+
+  factory AdminMailbox.fromWire(wire.Mailbox value) => AdminMailbox(
+    id: value.id,
+    domainId: value.domainId,
+    address: value.address,
+    displayName: value.displayName,
+    active: value.active,
+    quotaBytes: value.quotaBytes,
+    quotaUsedBytes: value.quotaUsedBytes,
+    lastLoginAt: _wireTime(value.lastLoginAt),
+    localPart: value.localPart,
+    domain: switch (value.domain) {
+      wire.$RawMailboxDomainOneOfModelDomain(:final value) =>
+        AdminDomain.fromWire(value),
+      _ => null,
+    },
+    quotaUsage: switch (value.quotaUsage) {
+      wire.$RawMailboxQuotaUsageOneOfModelQuotaUsage(:final value) =>
+        AdminQuotaUsage.fromWire(value),
+      _ => null,
+    },
+    passwordChangeRequired: value.passwordChangeRequired,
+    twoFactorRequired: value.twoFactorRequired,
+    lastPasswordChange: _wireTime(value.lastPasswordChange),
+    createdAt: _wireTime(value.createdAt),
+    updatedAt: _wireTime(value.updatedAt),
   );
 
   final int id;
@@ -1380,14 +1432,13 @@ class MtaStsPolicy {
     required this.domainId,
     required this.mode,
     required this.mxHosts,
-    required Duration maxAge,
-    int? maxAgeSeconds,
+    required this._maxAge,
+    this._maxAgeSeconds,
     required this.active,
     this.createdAt,
     this.updatedAt,
     this.domain,
-  }) : _maxAge = maxAge,
-       _maxAgeSeconds = maxAgeSeconds;
+  });
 
   factory MtaStsPolicy.fromJson(Map<String, dynamic> json) => MtaStsPolicy(
     id: _int(json['id'] ?? 0),
@@ -1456,6 +1507,14 @@ class DnsRecordCheck {
     message: json['message'] as String? ?? '',
   );
 
+  factory DnsRecordCheck.fromWire(wire.DnsRecordCheck value) => DnsRecordCheck(
+    type: value.$type,
+    name: value.name,
+    status: value.status.toJson(),
+    value: value.value ?? '',
+    message: value.message ?? '',
+  );
+
   /// `MX`, `SPF`, `DMARC`, `DKIM`, `MTA-STS` or `TLS-RPT`.
   final String type;
 
@@ -1491,12 +1550,21 @@ class DnsCheck {
     ],
   );
 
+  factory DnsCheck.fromWire(wire.DomainDnsCheck value) => DnsCheck(
+    domain: value.domain,
+    summary: value.summary,
+    records: value.records.map(DnsRecordCheck.fromWire).toList(),
+  );
+
   final String domain;
 
   /// The server's own line: `4/6 records verified`.
   final String summary;
   final List<DnsRecordCheck> records;
 }
+
+DateTime? _wireTime(DateTime? value) =>
+    value == null || value.year < 1971 ? null : value.toLocal();
 
 int _int(Object? value) => (value as num).toInt();
 

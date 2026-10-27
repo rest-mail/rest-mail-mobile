@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "server": {
+    "repository": "rest-mail/rest-mail-server",
+    "version": "0.28.0",
+    "revision": "2bac2b0f06291effd4ba0c9cc036548f6b24a0bd",
+    "document": "api_contract/openapi.json",
+    "sha256": "d2dc735025d730e70b2f108e3b974dadff148375814c7028a2d5ad64a6f16b0c",
+    "source": "https://mail.rest-mail.com/api/docs/openapi.json",
+    "image": "ghcr.io/rest-mail/api@sha256:68a1cb197e4fd9db487f96e1cd38046d7a16effdcbd8645a167ef90cbe638959"
+  },
+  "generator": {
+    "package": "tonik",
+    "version": "0.10.0",
+    "archive_sha256": "b734419b6e29c9c43e9cd8a5d29c1ff3bee8c2fd86856aca3d715c0c26a1e669",
+    "backend": "http",
+    "dart_version": "3.13.1",
+    "toolchain_lock": "tool/rest_api/pubspec.lock"
+  },
+  "output": {
+    "package": "restmail_generated",
+    "directory": "packages/restmail_generated"
+  }
+}

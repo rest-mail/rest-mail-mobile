@@ -120,6 +120,9 @@ void main() {
       expect(find.text(FakeAccounts.adminEmail), findsNothing);
       await tap(tester, FakeAccounts.email);
       expect(find.text('Domain'), findsNothing);
+      // A schema-invalid association would leave an error view here rather
+      // than the editable detail. Keep this assertion before the tap helper.
+      expect(find.text('Name'), findsOneWidget);
       await tap(tester, 'Name');
       await tester.enterText(find.byType(TextField), 'Scoped name');
       await tester.pump();
@@ -355,9 +358,19 @@ class _ScopedClient extends http.BaseClient {
       };
     }
     if (mailboxOnly &&
-        body['data'] is Map<String, dynamic> &&
-        path.contains('/admin/mailboxes/')) {
-      (body['data'] as Map<String, dynamic>)['domain'] = {'id': 0, 'name': ''};
+        !globalDomainRead &&
+        (path == '/api/v1/admin/mailboxes' ||
+            path.startsWith('/api/v1/admin/mailboxes/'))) {
+      // The server's mailboxOf omits an unreadable association. A partial
+      // zero-domain object is not a Domain under the generated contract.
+      final data = body['data'];
+      if (data is Map<String, dynamic>) {
+        data.remove('domain');
+      } else if (data is List<dynamic>) {
+        for (final row in data.cast<Map<String, dynamic>>()) {
+          row.remove('domain');
+        }
+      }
     }
     return http.StreamedResponse(
       Stream.value(utf8.encode(jsonEncode(body))),

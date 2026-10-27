@@ -6695,6 +6695,17 @@ class _Reply implements Exception {
   final http.StreamedResponse response;
 }
 
+// The fake models the default configured server's security-header middleware.
+// Generated response decoders require the same declared headers as production.
+const _securityHeaders = {
+  'content-security-policy':
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  'referrer-policy': 'no-referrer',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+};
+
 http.StreamedResponse _json(
   Object body, {
   int status = 200,
@@ -6702,11 +6713,15 @@ http.StreamedResponse _json(
 }) => http.StreamedResponse(
   Stream.value(utf8.encode(jsonEncode(body))),
   status,
-  headers: {'content-type': 'application/json', ...headers},
+  headers: {
+    'content-type': 'application/json',
+    ..._securityHeaders,
+    ...headers,
+  },
 );
 
 http.StreamedResponse _noContent() =>
-    http.StreamedResponse(const Stream.empty(), 204);
+    http.StreamedResponse(const Stream.empty(), 204, headers: _securityHeaders);
 
 /// Answers with rest-mail's error envelope.
 Never _fail(

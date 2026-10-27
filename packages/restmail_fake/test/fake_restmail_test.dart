@@ -716,6 +716,37 @@ void main() {
       );
     });
 
+    test(
+      'generated nullable defaults preserve unrelated domain and mailbox state',
+      () async {
+        final fake = FakeRestmail();
+        final client = await admin(fake);
+        final domain = await client.createDomain(
+          'nullable.test',
+          serverType: 'traditional',
+          defaultQuotaBytes: 4096,
+          dmarcPolicy: 'quarantine',
+        );
+        final changed = await client.updateDomain(
+          domain.id,
+          sendingPolicy: 'bulk',
+        );
+        expect(changed.sendingPolicy, 'bulk');
+        expect(changed.defaultQuotaBytes, 4096);
+        expect(changed.dmarcPolicy, 'quarantine');
+        expect(changed.serverType, 'traditional');
+        expect(changed.active, domain.active);
+
+        final box = (await client.mailboxes()).items.first;
+        final resized = await client.updateMailbox(box.id, quotaBytes: 123456);
+        expect(resized.quotaBytes, 123456);
+        expect(resized.displayName, box.displayName);
+        expect(resized.active, box.active);
+        expect(resized.passwordChangeRequired, box.passwordChangeRequired);
+        expect(resized.twoFactorRequired, box.twoFactorRequired);
+      },
+    );
+
     test('the stats behind the overview need domains:read', () async {
       final fake = FakeRestmail();
       await (await admin(fake)).stats();

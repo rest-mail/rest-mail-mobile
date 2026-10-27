@@ -5,6 +5,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:restmail_generated/restmail_generated.dart' as wire;
+import 'package:tonik_util/tonik_util.dart' as tonik;
 
 import 'admin_models.dart';
 import 'calendar.dart';
@@ -14,6 +16,7 @@ import 'events.dart';
 import 'filter_models.dart';
 import 'forward.dart';
 import 'grants_models.dart';
+import 'generated_transport.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -49,12 +52,11 @@ class RestmailClient {
   RestmailClient({
     required this.server,
     http.Client? httpClient,
-    SessionTokens? tokens,
+    this._tokens,
     this.onTokensChanged,
     this.userAgent = 'restmail-mobile',
     this.timeout = const Duration(seconds: 30),
-  }) : _http = httpClient ?? http.Client(),
-       _tokens = tokens;
+  }) : _http = httpClient ?? http.Client();
 
   /// The server's base URL, as [parseServerUrl] returns it.
   final Uri server;
@@ -83,6 +85,68 @@ class RestmailClient {
   static const _downloadTimeout = Duration(minutes: 5);
 
   SessionTokens? get tokens => _tokens;
+
+  /// Generated authenticated operations share this account's current session,
+  /// refresh coalescing, TLS client and token persistence callbacks. API groups
+  /// and models are exported by `package:restmail_api/generated.dart`.
+  /// Streaming events continue through [events], rather than this buffered path.
+  late final wire.CustomServer generatedSession = wire.CustomServer(
+    baseUrl: server.toString(),
+    serverConfig: tonik.ServerConfig<http.Client>.client(
+      GeneratedTransport(
+        (request) => _sendGenerated(request, authenticated: true),
+      ),
+    ),
+  );
+
+  /// Public discovery operations never acquire a session or send its bearer.
+  /// Keep login, logout and refresh on this account's existing methods so their
+  /// responses update the persisted session instead of becoming detached tokens.
+  late final wire.CustomServer generatedPublic = wire.CustomServer(
+    baseUrl: server.toString(),
+    serverConfig: tonik.ServerConfig<http.Client>.client(
+      GeneratedTransport(
+        (request) => _sendGenerated(request, authenticated: false),
+      ),
+    ),
+  );
+
+  /// Preserve the app's established exceptions while using generated decoding.
+  /// Raw generated results remain available to callers that inspect the typed
+  /// status union themselves. A refused request never logs out a valid session.
+  Future<T> generatedValue<T>(
+    Future<tonik.TonikResult<T, http.Response>> call,
+  ) async {
+    final result = await call;
+    switch (result) {
+      case tonik.TonikSuccess<T, http.Response>():
+        _throwIfError(result.response);
+        return result.value;
+      case tonik.TonikError<T, http.Response>():
+        final response = result.response;
+        if (response != null) {
+          _throwIfError(response);
+          throw _unreadable(response);
+        }
+        final error = result.error;
+        if (error is ApiException) throw error;
+        if (error is TimeoutException) {
+          throw const ApiException(
+            0,
+            'timeout',
+            'The server took too long to answer',
+          );
+        }
+        if (error is http.RequestAbortedException) {
+          throw const ApiException(0, 'cancelled', 'The request was cancelled');
+        }
+        throw const ApiException(
+          0,
+          'bad_request',
+          'The generated request could not be sent',
+        );
+    }
+  }
 
   /// Asks whether this is a rest-mail server that is up. Needs no session.
   /// Throws [ApiException] when the answer is no, or not rest-mail's.
@@ -450,89 +514,191 @@ class RestmailClient {
     }
   }
 
-  /// Needs `domains:read`.
-  Future<OffsetPage<AdminDomain>> domains({int offset = 0, int limit = 100}) =>
-      _offsetPage(['admin', 'domains'], AdminDomain.fromJson, offset, limit);
+  late final _domainApi = wire.AdminDomainsApi(generatedSession);
+  late final _mailboxApi = wire.AdminMailboxesApi(generatedSession);
+
+  /// Needs `domains:read`. The generated operation owns path/query encoding
+  /// and response validation; the existing UI receives its display projection.
+  Future<OffsetPage<AdminDomain>> domains({
+    int offset = 0,
+    int limit = 100,
+  }) async {
+    final response = await generatedValue(
+      _domainApi.listDomains(offset: offset, limit: limit),
+    );
+    if (response is! wire.ListDomainsResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    final total = switch (body.pagination) {
+      wire.$RawListDomainPaginationOneOfModelPagination(:final value) =>
+        value.total,
+      _ => null,
+    };
+    final items = body.data.map(AdminDomain.fromWire).toList();
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
 
   /// Fresh detail. Needs `domains:read` on this domain.
-  Future<AdminDomain> domain(int id) async => AdminDomain.fromJson(
-    _data(await _authed('GET', ['admin', 'domains', '$id'])),
-  );
+  Future<AdminDomain> domain(int id) async {
+    final response = await generatedValue(_domainApi.getDomain(id: id));
+    if (response is! wire.GetDomainResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
-  /// Creates a domain; [serverType] is `restmail` (the server keeps the mail)
-  /// or `traditional`. A new domain is never live: going live is
-  /// [updateDomain] with `active`. Throws [ApiException] with code
-  /// `already_exists` when it is there already. Needs `domains:write`.
+  /// Creates an inactive domain. Needs `domains:write`. The String facade
+  /// keeps existing forms compatible; generated enum codecs validate choices.
   Future<AdminDomain> createDomain(
     String name, {
     String serverType = 'restmail',
     int? defaultQuotaBytes,
     String? sendingPolicy,
     String? dmarcPolicy,
-  }) async => AdminDomain.fromJson(
-    _data(
-      await _authed(
-        'POST',
-        ['admin', 'domains'],
-        body: {
-          'name': name,
-          'server_type': serverType,
-          'default_quota_bytes': ?defaultQuotaBytes,
-          'sending_policy': ?sendingPolicy,
-          'dmarc_policy': ?dmarcPolicy,
-        },
+  }) async {
+    final response = await generatedValue(
+      _domainApi.createDomain(
+        body: wire.CreateDomainRequest(
+          name: name,
+          serverType: _domainChoice(
+            'server_type',
+            serverType,
+            wire.$RawCreateDomainRequestServerTypeModel.fromJson,
+          ),
+          defaultQuotaBytes: defaultQuotaBytes,
+          sendingPolicy: sendingPolicy == null
+              ? null
+              : _domainChoice(
+                  'sending_policy',
+                  sendingPolicy,
+                  wire.CreateDomainRequestSendingPolicyModel.fromJson,
+                ),
+          dmarcPolicy: dmarcPolicy == null
+              ? null
+              : _domainChoice(
+                  'dmarc_policy',
+                  dmarcPolicy,
+                  wire.$RawCreateDomainRequestDmarcPolicyModel.fromJson,
+                ),
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.CreateDomainResponse201) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
-  /// Changes what is given: whether the domain's mail is on, the quota new
-  /// mailboxes get, its sending policy (empty clears it) and the DMARC policy
-  /// its record asks for. Needs `domains:write`.
+  /// Changes only supplied fields; an empty sending policy clears the rule.
+  /// Needs `domains:write`.
   Future<AdminDomain> updateDomain(
     int id, {
     bool? active,
     int? defaultQuotaBytes,
     String? sendingPolicy,
     String? dmarcPolicy,
-  }) async => AdminDomain.fromJson(
-    _data(
-      await _authed(
-        'PATCH',
-        ['admin', 'domains', '$id'],
-        body: {
-          'active': ?active,
-          'default_quota_bytes': ?defaultQuotaBytes,
-          'sending_policy': ?sendingPolicy,
-          'dmarc_policy': ?dmarcPolicy,
-        },
+  }) async {
+    final response = await generatedValue(
+      _domainApi.updateDomain(
+        id: id,
+        body: wire.UpdateDomainBody(
+          active: active,
+          defaultQuotaBytes: defaultQuotaBytes,
+          sendingPolicy: sendingPolicy == null
+              ? null
+              : _domainChoice(
+                  'sending_policy',
+                  sendingPolicy,
+                  wire.$RawUpdateDomainBodySendingPolicyModel.fromJson,
+                ),
+          dmarcPolicy: dmarcPolicy == null
+              ? null
+              : _domainChoice(
+                  'dmarc_policy',
+                  dmarcPolicy,
+                  wire.$RawUpdateDomainBodyDmarcPolicyModel.fromJson,
+                ),
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.UpdateDomainResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminDomain.fromWire(response.body.body.data);
+  }
 
   /// Needs `domains:delete`.
   Future<void> deleteDomain(int id) async {
-    await _authed('DELETE', ['admin', 'domains', '$id']);
+    final response = await generatedValue(_domainApi.deleteDomain(id: id));
+    if (response is! wire.DeleteDomainResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
+
+  T _domainChoice<T>(String field, String value, T Function(Object?) decode) {
+    try {
+      return decode(value);
+    } on tonik.DecodingException {
+      throw ApiException(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: {field: 'Choose a supported value'},
+      );
+    }
+  }
+
+  ApiException _unexpectedWireStatus() => const ApiException(
+    0,
+    'bad_response',
+    'The server sent an unexpected response',
+  );
 
   /// Needs `mailboxes:read`.
   Future<OffsetPage<AdminMailbox>> mailboxes({
     int? domainId,
     int offset = 0,
     int limit = 100,
-  }) => _offsetPage(
-    ['admin', 'mailboxes'],
-    AdminMailbox.fromJson,
-    offset,
-    limit,
-    {'domain_id': ?domainId?.toString()},
-  );
+  }) async {
+    final response = await generatedValue(
+      _mailboxApi.listMailboxes(
+        domainId: domainId,
+        offset: offset,
+        limit: limit,
+      ),
+    );
+    if (response is! wire.ListMailboxesResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    final total = switch (body.pagination) {
+      wire.$RawListMailboxPaginationOneOfModelPagination(:final value) =>
+        value.total,
+      _ => null,
+    };
+    final items = body.data.map(AdminMailbox.fromWire).toList();
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
 
   /// Fresh detail. Needs `mailboxes:read` on this mailbox.
-  Future<AdminMailbox> adminMailbox(int id) async => AdminMailbox.fromJson(
-    _data(await _authed('GET', ['admin', 'mailboxes', '$id'])),
-  );
+  Future<AdminMailbox> adminMailbox(int id) async {
+    final response = await generatedValue(_mailboxApi.getMailbox(id: id));
+    if (response is! wire.GetMailboxResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminMailbox.fromWire(response.body.body.data);
+  }
 
-  /// Changes what is given; a new [password] ends the mailbox's sessions.
+  /// Changes supplied fields. A new password ends the mailbox's sessions.
   /// Needs `mailboxes:write`.
   Future<AdminMailbox> updateMailbox(
     int id, {
@@ -540,31 +706,40 @@ class RestmailClient {
     String? password,
     bool? active,
     int? quotaBytes,
-  }) async => AdminMailbox.fromJson(
-    _data(
-      await _authed(
-        'PATCH',
-        ['admin', 'mailboxes', '$id'],
-        body: {
-          'display_name': ?displayName,
-          'password': ?password,
-          'active': ?active,
-          'quota_bytes': ?quotaBytes,
-        },
+  }) async {
+    final response = await generatedValue(
+      _mailboxApi.updateMailbox(
+        id: id,
+        body: wire.UpdateMailboxRequest(
+          displayName: displayName,
+          password: password,
+          active: active,
+          quotaBytes: quotaBytes,
+        ),
       ),
-    ),
-  );
+    );
+    if (response is! wire.UpdateMailboxResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return AdminMailbox.fromWire(response.body.body.data);
+  }
 
-  /// Signs the mailbox out everywhere: its refresh tokens are revoked and
-  /// every access token it holds is refused. Passwords and app passwords
-  /// stay. Needs `mailboxes:write`.
+  /// Revokes this mailbox's sessions. Needs `mailboxes:write`.
   Future<void> endMailboxSessions(int id) async {
-    await _authed('DELETE', ['admin', 'mailboxes', '$id', 'sessions']);
+    final response = await generatedValue(
+      _mailboxApi.endMailboxSessions(id: id),
+    );
+    if (response is! wire.EndMailboxSessionsResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.
   Future<void> deleteMailbox(int id) async {
-    await _authed('DELETE', ['admin', 'mailboxes', '$id']);
+    final response = await generatedValue(_mailboxApi.deleteMailbox(id: id));
+    if (response is! wire.DeleteMailboxResponse204) {
+      throw _unexpectedWireStatus();
+    }
   }
 
   /// Needs `mailboxes:read`.
@@ -1336,9 +1511,15 @@ class RestmailClient {
 
   /// Has the server look up [domainId]'s DNS records: MX, SPF, DMARC, DKIM,
   /// MTA-STS and TLS-RPT. Needs `domains:read`.
-  Future<DnsCheck> dnsCheck(int domainId) async => DnsCheck.fromJson(
-    _data(await _authed('GET', ['admin', 'domains', '$domainId', 'dns'])),
-  );
+  Future<DnsCheck> dnsCheck(int domainId) async {
+    final response = await generatedValue(
+      _domainApi.domainDnsCheckOperation(id: domainId),
+    );
+    if (response is! wire.DomainDnsCheckOperationResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return DnsCheck.fromWire(response.body.body.data);
+  }
 
   // ── Roles, grants and escalation ─────────────────────────────────────
   //
@@ -2402,6 +2583,14 @@ class RestmailClient {
       headers: {'Authorization': 'Bearer ${tokens.accessToken}'},
     );
 
+    final response = await _sessionResponse(attempt);
+    _throwIfError(response);
+    return response;
+  }
+
+  Future<http.Response> _sessionResponse(
+    Future<http.Response> Function(SessionTokens) attempt,
+  ) async {
     final sentWith = await _currentTokens();
     var response = await attempt(sentWith);
     if (response.statusCode == 401) {
@@ -2413,7 +2602,6 @@ class RestmailClient {
           : await refresh();
       response = await attempt(renewed);
     }
-    _throwIfError(response);
     return response;
   }
 
@@ -2432,6 +2620,60 @@ class RestmailClient {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    return _exchange(request, limit);
+  }
+
+  Future<http.Response> _sendGenerated(
+    http.BaseRequest request, {
+    required bool authenticated,
+  }) async {
+    // A generated/custom operation cannot send account credentials to another
+    // host or outside the configured reverse-proxy base path.
+    final basePath = server.path.endsWith('/')
+        ? server.path
+        : '${server.path}/';
+    if (request.url.origin != server.origin ||
+        !request.url.path.startsWith(basePath)) {
+      throw const ApiException(
+        0,
+        'bad_request',
+        'Request is outside this account server',
+      );
+    }
+    final body = await request.finalize().toBytes().timeout(timeout);
+    Future<http.Response> attempt(SessionTokens? tokens) {
+      final http.Request copy = request is http.Abortable
+          ? http.AbortableRequest(
+              request.method,
+              request.url,
+              abortTrigger: request.abortTrigger,
+            )
+          : http.Request(request.method, request.url);
+      copy
+        ..followRedirects = request.followRedirects
+        ..maxRedirects = request.maxRedirects
+        ..persistentConnection = request.persistentConnection
+        ..headers.addAll({
+          ..._headers(),
+          ...request.headers,
+          'User-Agent': userAgent,
+        })
+        ..bodyBytes = body;
+      // The session adapter owns Authorization; the public adapter strips it.
+      copy.headers.remove('authorization');
+      if (tokens != null) {
+        copy.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
+      }
+      return _exchange(copy, timeout);
+    }
+
+    return authenticated ? _sessionResponse(attempt) : attempt(null);
+  }
+
+  Future<http.Response> _exchange(
+    http.BaseRequest request,
+    Duration limit,
+  ) async {
     try {
       final streamed = await _http.send(request).timeout(limit);
       return await http.Response.fromStream(streamed).timeout(limit);
@@ -2447,6 +2689,8 @@ class RestmailClient {
         'tls_error',
         "The server's certificate is not trusted: ${error.message}",
       );
+    } on http.RequestAbortedException {
+      rethrow;
     } on http.ClientException catch (error) {
       throw ApiException(0, 'network_error', error.message);
     }

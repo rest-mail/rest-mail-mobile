@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      bootstrap_generated_client:
+        description: Resolve the pinned generator lock and produce the generated package artifact
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,6 +24,42 @@ env:
   FLUTTER_VERSION: "3.47.1"
 
 jobs:
+  generated-client:
+    name: Generated REST client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Regenerate from the locked server contract
+        env:
+          BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap_generated_client }}
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tool/rest_api -p 'test_*.py'
+          if [ "$BOOTSTRAP" = true ]; then
+            python3 tool/rest_api/generate.py --write --bootstrap-toolchain
+          else
+            python3 tool/rest_api/generate.py --check
+          fi
+      - name: Analyze the generated package
+        working-directory: packages/restmail_generated
+        run: |
+          dart pub get
+          dart analyze --fatal-infos
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: generated-rest-client
+          path: |
+            packages/restmail_generated/lib
+            packages/restmail_generated/pubspec.yaml
+            packages/restmail_generated/analysis_options.yaml
+            tool/rest_api/pubspec.lock
+          retention-days: 7
   api-client:
     name: API client
     runs-on: ubuntu-latest
@@ -132,8 +173,8 @@ jobs:
         env:
           GREENMAIL_HOST: 127.0.0.1
 
-  # The API client against a real REST Mail server: the image main publishes,
-  # fresh, with Postgres (tool/ci/live_server.sh). The tests sign in as a
+  # The API client against the immutable server image pinned beside its generated
+  # contract, fresh with Postgres (tool/ci/live_server.sh). The tests sign in as a
   # fresh install's admin does, then call the admin API through the client,
   # so a request the server refuses or an answer the client cannot read fails
   # here, not in someone's hands.
@@ -215,13 +256,14 @@ jobs:
   # above did, so adding or renaming a job never strands a required check.
   ci:
     name: CI
-    needs: [api-client, fake-server, app, imap, live-server, android, ios]
+    needs: [generated-client, api-client, fake-server, app, imap, live-server, android, ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verdict
         env:
           RESULTS: |
+            generated-client=${{ needs.generated-client.result }}
             api-client=${{ needs.api-client.result }}
             fake-server=${{ needs.fake-server.result }}
             app=${{ needs.app.result }}
