@@ -564,7 +564,7 @@ class RestmailClient {
           serverType: _domainChoice(
             'server_type',
             serverType,
-            wire.CreateDomainRequestServerTypeModel.fromJson,
+            wire.$RawCreateDomainRequestServerTypeModel.fromJson,
           ),
           defaultQuotaBytes: defaultQuotaBytes,
           sendingPolicy: sendingPolicy == null
@@ -572,14 +572,14 @@ class RestmailClient {
               : _domainChoice(
                   'sending_policy',
                   sendingPolicy,
-                  wire.CreateDomainRequestSendingPolicyModel.fromJson,
+                  wire.$RawCreateDomainRequestSendingPolicyModel.fromJson,
                 ),
           dmarcPolicy: dmarcPolicy == null
               ? null
               : _domainChoice(
                   'dmarc_policy',
                   dmarcPolicy,
-                  wire.CreateDomainRequestDmarcPolicyModel.fromJson,
+                  wire.$RawCreateDomainRequestDmarcPolicyModel.fromJson,
                 ),
         ),
       ),
@@ -609,14 +609,14 @@ class RestmailClient {
               : _domainChoice(
                   'sending_policy',
                   sendingPolicy,
-                  wire.UpdateDomainBodySendingPolicyModel.fromJson,
+                  wire.$RawUpdateDomainBodySendingPolicyModel.fromJson,
                 ),
           dmarcPolicy: dmarcPolicy == null
               ? null
               : _domainChoice(
                   'dmarc_policy',
                   dmarcPolicy,
-                  wire.UpdateDomainBodyDmarcPolicyModel.fromJson,
+                  wire.$RawUpdateDomainBodyDmarcPolicyModel.fromJson,
                 ),
         ),
       ),
