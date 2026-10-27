@@ -6,7 +6,8 @@
     "revision": "2bac2b0f06291effd4ba0c9cc036548f6b24a0bd",
     "document": "api_contract/openapi.json",
     "sha256": "d2dc735025d730e70b2f108e3b974dadff148375814c7028a2d5ad64a6f16b0c",
-    "source": "https://mail.rest-mail.com/api/docs/openapi.json"
+    "source": "https://mail.rest-mail.com/api/docs/openapi.json",
+    "image": "ghcr.io/rest-mail/api@sha256:68a1cb197e4fd9db487f96e1cd38046d7a16effdcbd8645a167ef90cbe638959"
   },
   "generator": {
     "package": "tonik",
