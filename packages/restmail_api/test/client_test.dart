@@ -1398,6 +1398,7 @@ void main() {
           'name': 'new.test',
           'server_type': 'traditional',
           'default_quota_bytes': 524288000,
+          'dmarc_policy': null,
           'sending_policy': 'bulk',
         });
         expect(created.id, 4);
@@ -1407,31 +1408,53 @@ void main() {
         expect(created.sendingPolicy, 'bulk');
       });
 
-      test('createDomain leaves out what was not given', () async {
-        await client.createDomain('new.test');
+      test(
+        'createDomain uses declared nullable defaults for absent choices',
+        () async {
+          await client.createDomain('new.test');
 
-        expect(body(sent.single), {
-          'name': 'new.test',
-          'server_type': 'restmail',
-        });
-      });
+          expect(body(sent.single), {
+            'name': 'new.test',
+            'server_type': 'restmail',
+            'default_quota_bytes': null,
+            'dmarc_policy': null,
+          });
+        },
+      );
 
-      test('updateDomain sends only what changes; an empty policy clears '
-          'it', () async {
-        await client.updateDomain(4, defaultQuotaBytes: 1048576);
-        await client.updateDomain(4, sendingPolicy: '');
-        final updated = await client.updateDomain(4, active: true);
+      test(
+        'updateDomain sends null for unchanged fields; empty clears the policy',
+        () async {
+          await client.updateDomain(4, defaultQuotaBytes: 1048576);
+          await client.updateDomain(4, sendingPolicy: '');
+          final updated = await client.updateDomain(4, active: true);
 
-        expect(sent.map((r) => r.method), everyElement('PATCH'));
-        expect(
-          sent.map((r) => r.url.path),
-          everyElement('/api/v1/admin/domains/4'),
-        );
-        expect(body(sent[0]), {'default_quota_bytes': 1048576});
-        expect(body(sent[1]), {'sending_policy': ''});
-        expect(body(sent[2]), {'active': true});
-        expect(updated.sendingPolicy, 'bulk');
-      });
+          expect(sent.map((r) => r.method), everyElement('PATCH'));
+          expect(
+            sent.map((r) => r.url.path),
+            everyElement('/api/v1/admin/domains/4'),
+          );
+          expect(body(sent[0]), {
+            'active': null,
+            'default_quota_bytes': 1048576,
+            'sending_policy': null,
+            'dmarc_policy': null,
+          });
+          expect(body(sent[1]), {
+            'active': null,
+            'default_quota_bytes': null,
+            'sending_policy': '',
+            'dmarc_policy': null,
+          });
+          expect(body(sent[2]), {
+            'active': true,
+            'default_quota_bytes': null,
+            'sending_policy': null,
+            'dmarc_policy': null,
+          });
+          expect(updated.sendingPolicy, 'bulk');
+        },
+      );
 
       test('the DMARC policy is sent when given, and read back', () async {
         await client.createDomain('new.test', dmarcPolicy: 'none');
@@ -1441,8 +1464,14 @@ void main() {
           'name': 'new.test',
           'server_type': 'restmail',
           'dmarc_policy': 'none',
+          'default_quota_bytes': null,
         });
-        expect(body(sent[1]), {'dmarc_policy': 'reject'});
+        expect(body(sent[1]), {
+          'active': null,
+          'default_quota_bytes': null,
+          'sending_policy': null,
+          'dmarc_policy': 'reject',
+        });
         expect(updated.dmarcPolicy, 'quarantine');
       });
 
@@ -1458,15 +1487,23 @@ void main() {
         expect(read.sendingPolicy, '');
       });
 
-      test('updateMailbox sends a new quota alone', () async {
-        final updated = await client.updateMailbox(9, quotaBytes: 2097152);
+      test(
+        'updateMailbox sends quota with null for unchanged fields',
+        () async {
+          final updated = await client.updateMailbox(9, quotaBytes: 2097152);
 
-        expect(sent.single.method, 'PATCH');
-        expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
-        expect(body(sent.single), {'quota_bytes': 2097152});
-        expect(updated.quotaBytes, 2097152);
-        expect(updated.address, 'ada@new.test');
-      });
+          expect(sent.single.method, 'PATCH');
+          expect(sent.single.url.path, '/api/v1/admin/mailboxes/9');
+          expect(body(sent.single), {
+            'active': null,
+            'display_name': null,
+            'password': null,
+            'quota_bytes': 2097152,
+          });
+          expect(updated.quotaBytes, 2097152);
+          expect(updated.address, 'ada@new.test');
+        },
+      );
 
       test('endMailboxSessions deletes the mailbox sessions', () async {
         await client.endMailboxSessions(9);

@@ -62,6 +62,12 @@ reach generated operations through their unchanged facade methods. Generated
 code validates status, headers and wire fields; typed projections preserve the
 current display model, timestamp handling, quotas and setup flags.
 
+Nullable request fields follow the generated document: Tonik may serialize an
+unspecified nullable field as explicit `null`. The domain/mailbox Go handlers
+treat these pointer fields as unchanged (or the creation default), while empty
+strings, `false` and zero retain their distinct meanings. Exact-body tests assert
+that generated payload, and fake behavioral tests verify unrelated state is kept.
+
 Other `RestmailClient` endpoint groups still encode/decode by hand. Continue
 migrating coherent API groups to generated request/response types with
 contract-shaped fake data and widget coverage. Preserve required fields and

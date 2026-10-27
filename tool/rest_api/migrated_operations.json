@@ -59,7 +59,7 @@
       ]
     },
     {
-      "operationId": "domainDnsCheckOperation",
+      "operationId": "domainDNSCheck",
       "facade": "dnsCheck",
       "wire_responses": "generated typed DTOs",
       "ui_projection": "typed field mapping in admin_models.dart",
@@ -67,7 +67,8 @@
         "generated_admin_facades_test.dart",
         "resource_details_test.dart",
         "client_test.dart"
-      ]
+      ],
+      "generated_method": "domainDnsCheckOperation"
     },
     {
       "operationId": "listMailboxes",
