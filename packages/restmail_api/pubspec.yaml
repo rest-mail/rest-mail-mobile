@@ -4,12 +4,15 @@ version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.13.1
 
 dependencies:
   # dart-lang, BSD-3. On iOS and Android its default client is dart:io's
   # HttpClient, so TLS trust is whatever SecurityContext the app hands it.
   http: ^1.6.0
+  restmail_generated:
+    path: ../restmail_generated
+  tonik_util: 0.10.0
 
 dev_dependencies:
   # dart-lang, BSD-3. The live tests' authenticator codes (HMAC-SHA1); test

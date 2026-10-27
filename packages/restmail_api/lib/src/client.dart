@@ -5,6 +5,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:restmail_generated/restmail_generated.dart' as wire;
+import 'package:tonik_util/tonik_util.dart' as tonik;
 
 import 'admin_models.dart';
 import 'calendar.dart';
@@ -14,6 +16,7 @@ import 'events.dart';
 import 'filter_models.dart';
 import 'forward.dart';
 import 'grants_models.dart';
+import 'generated_transport.dart';
 import 'models.dart';
 import 'push.dart';
 import 'session.dart';
@@ -83,6 +86,68 @@ class RestmailClient {
   static const _downloadTimeout = Duration(minutes: 5);
 
   SessionTokens? get tokens => _tokens;
+
+  /// Generated authenticated operations share this account's current session,
+  /// refresh coalescing, TLS client and token persistence callbacks. API groups
+  /// and models are exported by `package:restmail_api/generated.dart`.
+  /// Streaming events continue through [events], rather than this buffered path.
+  late final wire.CustomServer generatedSession = wire.CustomServer(
+    baseUrl: server.toString(),
+    serverConfig: tonik.ServerConfig<http.Client>.client(
+      GeneratedTransport(
+        (request) => _sendGenerated(request, authenticated: true),
+      ),
+    ),
+  );
+
+  /// Public discovery operations never acquire a session or send its bearer.
+  /// Keep login, logout and refresh on this account's existing methods so their
+  /// responses update the persisted session instead of becoming detached tokens.
+  late final wire.CustomServer generatedPublic = wire.CustomServer(
+    baseUrl: server.toString(),
+    serverConfig: tonik.ServerConfig<http.Client>.client(
+      GeneratedTransport(
+        (request) => _sendGenerated(request, authenticated: false),
+      ),
+    ),
+  );
+
+  /// Preserve the app's established exceptions while using generated decoding.
+  /// Raw generated results remain available to callers that inspect the typed
+  /// status union themselves. A refused request never logs out a valid session.
+  Future<T> generatedValue<T>(
+    Future<tonik.TonikResult<T, http.Response>> call,
+  ) async {
+    final result = await call;
+    switch (result) {
+      case tonik.TonikSuccess<T, http.Response>():
+        _throwIfError(result.response);
+        return result.value;
+      case tonik.TonikError<T, http.Response>():
+        final response = result.response;
+        if (response != null) {
+          _throwIfError(response);
+          throw _unreadable(response);
+        }
+        final error = result.error;
+        if (error is ApiException) throw error;
+        if (error is TimeoutException) {
+          throw const ApiException(
+            0,
+            'timeout',
+            'The server took too long to answer',
+          );
+        }
+        if (error is http.RequestAbortedException) {
+          throw const ApiException(0, 'cancelled', 'The request was cancelled');
+        }
+        throw const ApiException(
+          0,
+          'bad_request',
+          'The generated request could not be sent',
+        );
+    }
+  }
 
   /// Asks whether this is a rest-mail server that is up. Needs no session.
   /// Throws [ApiException] when the answer is no, or not rest-mail's.
@@ -2402,6 +2467,14 @@ class RestmailClient {
       headers: {'Authorization': 'Bearer ${tokens.accessToken}'},
     );
 
+    final response = await _sessionResponse(attempt);
+    _throwIfError(response);
+    return response;
+  }
+
+  Future<http.Response> _sessionResponse(
+    Future<http.Response> Function(SessionTokens) attempt,
+  ) async {
     final sentWith = await _currentTokens();
     var response = await attempt(sentWith);
     if (response.statusCode == 401) {
@@ -2413,7 +2486,6 @@ class RestmailClient {
           : await refresh();
       response = await attempt(renewed);
     }
-    _throwIfError(response);
     return response;
   }
 
@@ -2432,6 +2504,59 @@ class RestmailClient {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    return _exchange(request, limit);
+  }
+
+  Future<http.Response> _sendGenerated(
+    http.BaseRequest request, {
+    required bool authenticated,
+  }) async {
+    // A generated/custom operation cannot send account credentials to another
+    // host or outside the configured reverse-proxy base path.
+    final basePath = server.path.endsWith('/')
+        ? server.path
+        : '${server.path}/';
+    if (request.url.origin != server.origin ||
+        !request.url.path.startsWith(basePath)) {
+      throw const ApiException(
+        0,
+        'bad_request',
+        'Request is outside this account server',
+      );
+    }
+    final body = await request.finalize().toBytes().timeout(timeout);
+    Future<http.Response> attempt(SessionTokens? tokens) {
+      final http.Request copy = request is http.Abortable
+          ? http.AbortableRequest(
+              request.method,
+              request.url,
+              abortTrigger: request.abortTrigger,
+            )
+          : http.Request(request.method, request.url);
+      copy
+        ..followRedirects = request.followRedirects
+        ..maxRedirects = request.maxRedirects
+        ..persistentConnection = request.persistentConnection
+        ..headers.addAll({
+          ..._headers(),
+          ...request.headers,
+          'User-Agent': userAgent,
+        })
+        ..bodyBytes = body;
+      // The session adapter owns Authorization; the public adapter strips it.
+      copy.headers.remove('authorization');
+      if (tokens != null)
+        copy.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
+      return _exchange(copy, timeout);
+    }
+
+    return authenticated ? _sessionResponse(attempt) : attempt(null);
+  }
+
+  Future<http.Response> _exchange(
+    http.BaseRequest request,
+    Duration limit,
+  ) async {
     try {
       final streamed = await _http.send(request).timeout(limit);
       return await http.Response.fromStream(streamed).timeout(limit);
@@ -2447,6 +2572,8 @@ class RestmailClient {
         'tls_error',
         "The server's certificate is not trusted: ${error.message}",
       );
+    } on http.RequestAbortedException {
+      rethrow;
     } on http.ClientException catch (error) {
       throw ApiException(0, 'network_error', error.message);
     }
