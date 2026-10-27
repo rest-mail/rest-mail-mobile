@@ -102,6 +102,7 @@ class PushNotifications extends ChangeNotifier {
   String? _token;
   bool _tokenAsked = false;
   NotificationPermission permission = NotificationPermission.undetermined;
+  NotificationPermission badgePermission = NotificationPermission.undetermined;
   final _status = <String, PushStatus>{};
   final _saved = <String, _Registration>{};
   final _loaded = <String>{};
@@ -146,6 +147,11 @@ class PushNotifications extends ChangeNotifier {
   bool get enabled =>
       _app.settings.notifications == NotificationChoice.on &&
       permission == NotificationPermission.granted;
+
+  /// Badges are local to the phone and need neither a token nor server push.
+  bool get badgeEnabled =>
+      _app.settings.appIconBadge &&
+      badgePermission == NotificationPermission.granted;
 
   /// Time to explain notifications and ask: they are there to have, and
   /// the user hasn't been asked.
@@ -198,6 +204,10 @@ class PushNotifications extends ChangeNotifier {
   }
 
   Future<void> _sync() async {
+    // Refresh permission even with IMAP only, no token or no push server.
+    permission = await service.permission();
+    badgePermission = await service.badgePermission();
+    await _updateBadge();
     final accounts = _accounts;
     if (accounts.isEmpty) return _notify();
     if (!_tokenAsked) {
@@ -206,7 +216,6 @@ class PushNotifications extends ChangeNotifier {
     }
     final token = _token;
     if (token == null) return _notify();
-    permission = await service.permission();
     final wanted = enabled;
     for (final account in accounts) {
       await _syncAccount(account, token, wanted: wanted);
@@ -286,6 +295,18 @@ class PushNotifications extends ChangeNotifier {
       _app.settings.copyWith(notifications: NotificationChoice.off),
     );
     await sync();
+  }
+
+  /// The badge control is available without server push. Asking here does
+  /// not enable new-mail alerts or register this phone with a server.
+  Future<void> setBadgeEnabled(bool on) async {
+    if (service.platform == null) return;
+    if (on) await service.requestPermission();
+    permission = await service.permission();
+    badgePermission = await service.badgePermission();
+    await _app.updateSettings(_app.settings.copyWith(appIconBadge: on));
+    await _updateBadge();
+    _notify();
   }
 
   /// "Not now": the app doesn't ask again. Settings can turn them on.
@@ -518,7 +539,7 @@ class PushNotifications extends ChangeNotifier {
 
   Future<void> _setBadge(int total) async {
     if (service.platform == null || _disposed) return;
-    final value = enabled ? total : 0;
+    final value = badgeEnabled ? total : 0;
     if (value == _badge) return;
     _badge = value;
     await service.setBadge(value);

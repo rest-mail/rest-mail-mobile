@@ -7,6 +7,7 @@ import 'package:restmail/app.dart';
 import 'package:restmail/imap/mail_settings.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/state/settings.dart';
 import 'package:restmail/ui/widgets/common.dart';
 import 'package:restmail_fake/restmail_fake.dart';
 
@@ -99,30 +100,43 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('a server without push: no prompt, and no Notifications in '
-      'Settings', (tester) async {
-    phone(tester);
-    fake = FakeRestmail(pushPlatforms: const {});
-    final push = FakePushService();
-    state = AppState(
-      store: MemoryKeyValueStore(),
-      httpClientFactory: () => fake.client,
-      pushService: push,
-    );
-    await state.start();
-    await tester.pumpWidget(RestmailApp(state: state));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'without server push, Settings still requests phone badge permission',
+    (tester) async {
+      phone(tester);
+      fake = FakeRestmail(pushPlatforms: const {});
+      final push = FakePushService();
+      state = AppState(
+        store: MemoryKeyValueStore(),
+        httpClientFactory: () => fake.client,
+        pushService: push,
+      );
+      await state.start();
+      await tester.pumpWidget(RestmailApp(state: state));
+      await tester.pumpAndSettle();
 
-    await _signIn(tester);
+      await _signIn(tester);
 
-    expect(find.text('Get notified of new mail?'), findsNothing);
-    await _openSettings(tester);
-    expect(find.text('NOTIFICATIONS'), findsNothing);
-    expect(find.text('THIS PHONE'), findsOneWidget);
-    expect(push.prompts, 0);
+      expect(find.text('Get notified of new mail?'), findsNothing);
+      await _openSettings(tester);
+      expect(find.text('NOTIFICATIONS'), findsOneWidget);
+      expect(find.text('THIS PHONE'), findsOneWidget);
+      expect(find.byKey(const Key('notifications-switch')), findsNothing);
+      final badgeSwitch = find.byKey(const Key('app-icon-badge-switch'));
+      expect(tester.widget<RmSwitch>(badgeSwitch).value, isFalse);
+      expect(push.prompts, 0);
+      await tester.ensureVisible(badgeSwitch);
+      await tester.tap(badgeSwitch);
+      await tester.pumpAndSettle();
+      expect(push.prompts, 1);
+      expect(tester.widget<RmSwitch>(badgeSwitch).value, isTrue);
+      expect(state.settings.notifications, NotificationChoice.undecided);
+      expect(fake.devicesOf(FakeAccounts.email), isEmpty);
+      expect(push.badges.last, greaterThan(0));
 
-    await finish(tester);
-  });
+      await finish(tester);
+    },
+  );
 
   testWidgets('with Gmail on the phone too, the offer and Settings say it '
       'gets no notifications', (tester) async {

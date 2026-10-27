@@ -67,6 +67,9 @@ abstract interface class PushService {
 
   Future<NotificationPermission> permission();
 
+  /// The actual badge setting, which can differ from alert authorization.
+  Future<NotificationPermission> badgePermission();
+
   /// Shows the system's prompt, the first time; after that it answers with
   /// what the user chose. True when notifications may be shown.
   Future<bool> requestPermission();
@@ -110,6 +113,10 @@ class NoPushService implements PushService {
 
   @override
   Future<NotificationPermission> permission() async =>
+      NotificationPermission.denied;
+
+  @override
+  Future<NotificationPermission> badgePermission() async =>
       NotificationPermission.denied;
 
   @override
@@ -181,6 +188,14 @@ class ApplePushService implements PushService {
   @override
   Future<NotificationPermission> permission() async =>
       switch (await _call<String>('permission')) {
+        'granted' => NotificationPermission.granted,
+        'undetermined' => NotificationPermission.undetermined,
+        _ => NotificationPermission.denied,
+      };
+
+  @override
+  Future<NotificationPermission> badgePermission() async =>
+      switch (await _call<String>('badgePermission')) {
         'granted' => NotificationPermission.granted,
         'undetermined' => NotificationPermission.undetermined,
         _ => NotificationPermission.denied,

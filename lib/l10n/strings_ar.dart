@@ -1623,6 +1623,11 @@ const Map<String, Map<String, String>> stringsAr = {
         'بريد REST للأجهزة المحمولة {appVersion}',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: خادمه لا يرسل الإشعارات بعد.',
+    'settings.appIconBadge': 'عدد الرسائل غير المقروءة على أيقونة التطبيق',
+    'settings.appIconBadgeDescription': 'إجمالي الرسائل غير المقروءة في صناديق الوارد لجميع الحسابات المسجّل دخولها. يُحدَّث عندما يتحقق التطبيق من البريد.',
+    'settings.appIconBadgePermission': 'فعّل للسماح بالإشعارات على هذا iPhone وعرض عدد الرسائل غير المقروءة في جميع صناديق الوارد للحسابات المسجّل دخولها.',
+    'settings.badgesDisabledInPhoneSettings':
+        'اسمح بالشارات لتطبيق REST Mail في إعدادات iPhone، ضمن الإشعارات.',
     'settings.newMail': 'بريد جديد',
     'settings.turnedOffForRESTMailInThe':
         'تم إيقافه لبريد REST في إعدادات iPhone، تحت الإشعارات.',

@@ -1643,6 +1643,10 @@ const Map<String, Map<String, String>> stringsDe = {
     'settings.restMailForMobileAppVersion': 'REST-Mail für mobile {appVersion}',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: Sein Server sendet noch keine Benachrichtigungen.',
+    'settings.appIconBadge': 'Anzahl ungelesener E-Mails am App-Symbol',
+    'settings.appIconBadgeDescription': 'Gesamtzahl ungelesener E-Mails in allen angemeldeten Posteingängen. Wird aktualisiert, wenn die App E-Mails abruft.',
+    'settings.appIconBadgePermission': 'Aktivieren, um Benachrichtigungen auf diesem iPhone zu erlauben und die Anzahl ungelesener E-Mails in allen angemeldeten Posteingängen anzuzeigen.',
+    'settings.badgesDisabledInPhoneSettings': 'Aktiviere Kennzeichen für REST Mail in den iPhone-Einstellungen unter Mitteilungen.',
     'settings.newMail': 'Neue E-Mail',
     'settings.turnedOffForRESTMailInThe': 'Für REST Mail auf dem iPhone in den Einstellungen unter Benachrichtigungen deaktiviert.',
     'settings.onlyASignalGoesThroughAppleThe': 'Nur ein Signal geht über Apple. Die App holt die E-Mail selbst vom Server.',

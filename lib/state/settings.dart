@@ -23,6 +23,7 @@ class AppSettings {
     this.signature = '',
     this.signReplies = false,
     this.notifications = NotificationChoice.undecided,
+    this.appIconBadge = true,
     this.interface = const InterfacePrefs(),
     this.languageCode = 'system',
     this.lastSeenVersion = '',
@@ -46,6 +47,7 @@ class AppSettings {
         notifications:
             NotificationChoice.values.asNameMap()[json['notifications']] ??
             NotificationChoice.undecided,
+        appIconBadge: json['app_icon_badge'] as bool? ?? true,
         interface: InterfacePrefs.decode(json['interface']),
         languageCode: json['language'] as String? ?? 'system',
         lastSeenVersion: json['last_seen_version'] as String? ?? '',
@@ -72,6 +74,10 @@ class AppSettings {
   /// New mail notifications, for the REST Mail accounts whose server can
   /// send them.
   final NotificationChoice notifications;
+
+  /// Show the total inbox unread count when the phone permits badges.
+  /// Independent of new-mail alerts and server push support.
+  final bool appIconBadge;
 
   /// Which optional components are on, and the options inside them.
   final InterfacePrefs interface;
@@ -105,6 +111,7 @@ class AppSettings {
     'signature': signature,
     'sign_replies': signReplies,
     'notifications': notifications.name,
+    'app_icon_badge': appIconBadge,
     'interface': interface.toJson(),
     'language': languageCode,
     'last_seen_version': lastSeenVersion,
@@ -118,6 +125,7 @@ class AppSettings {
     String? signature,
     bool? signReplies,
     NotificationChoice? notifications,
+    bool? appIconBadge,
     InterfacePrefs? interface,
     String? languageCode,
     String? lastSeenVersion,
@@ -129,6 +137,7 @@ class AppSettings {
     signature: signature ?? this.signature,
     signReplies: signReplies ?? this.signReplies,
     notifications: notifications ?? this.notifications,
+    appIconBadge: appIconBadge ?? this.appIconBadge,
     interface: interface ?? this.interface,
     languageCode: languageCode ?? this.languageCode,
     lastSeenVersion: lastSeenVersion ?? this.lastSeenVersion,

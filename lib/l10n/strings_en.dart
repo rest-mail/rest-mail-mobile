@@ -1649,6 +1649,10 @@ const Map<String, Map<String, String>> stringsEn = {
     'settings.restMailForMobileAppVersion': 'rest-mail for mobile {appVersion}',
     'settings.addressItsServerDoesnTSendNotifications':
         '{address}: its server doesn\'t send notifications yet.',
+    'settings.appIconBadge': 'Unread count on app icon',
+    'settings.appIconBadgeDescription': 'Total unread mail across all signed-in inboxes. Updates when the app checks mail.',
+    'settings.appIconBadgePermission': 'Turn on to allow notifications on this iPhone and show the unread count across all signed-in inboxes.',
+    'settings.badgesDisabledInPhoneSettings': 'Allow badges for REST Mail in the iPhone settings, under Notifications.',
     'settings.newMail': 'New mail',
     'settings.turnedOffForRESTMailInThe': 'Turned off for REST Mail in the iPhone\'s Settings, under Notifications.',
     'settings.onlyASignalGoesThroughAppleThe': 'Only a signal goes through Apple. The app fetches the mail from your server itself.',

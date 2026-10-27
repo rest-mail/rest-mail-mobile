@@ -852,8 +852,7 @@ class MailCheckScreen extends StatelessWidget {
   }
 }
 
-/// New mail notifications, once this phone can have them and a server can
-/// send them; until then, not a word.
+/// Phone-local unread badges, plus new-mail alerts when a server can push.
 class _NotificationsSection extends StatelessWidget {
   const _NotificationsSection({required this.app});
 
@@ -865,7 +864,7 @@ class _NotificationsSection extends StatelessWidget {
     builder: (context, _) {
       final c = context.rm;
       final push = app.push;
-      if (!push.available) return const SizedBox.shrink();
+      if (push.service.platform == null) return const SizedBox.shrink();
       final notes = [
         for (final account in app.accounts)
           if (account is RestAccount &&
@@ -886,21 +885,40 @@ class _NotificationsSection extends StatelessWidget {
           RmGroup(
             children: [
               RmRow(
-                label: tr(context, 'settings.newMail'),
-                subtitle: push.permission == NotificationPermission.denied
-                    ? tr(context, 'settings.turnedOffForRESTMailInThe')
-                    : tr(context, 'settings.onlyASignalGoesThroughAppleThe'),
+                label: tr(context, 'settings.appIconBadge'),
+                subtitle: tr(
+                  context,
+                  push.badgePermission == NotificationPermission.denied
+                      ? 'settings.badgesDisabledInPhoneSettings'
+                      : push.badgePermission ==
+                            NotificationPermission.undetermined
+                      ? 'settings.appIconBadgePermission'
+                      : 'settings.appIconBadgeDescription',
+                ),
                 trailing: RmSwitch(
-                  key: const Key('notifications-switch'),
-                  label: tr(context, 'settings.newMailNotifications'),
-                  value: push.enabled,
-                  onChanged: (on) =>
-                      unawaited(on ? push.enable() : push.disable()),
+                  key: const Key('app-icon-badge-switch'),
+                  label: tr(context, 'settings.appIconBadge'),
+                  value: push.badgeEnabled,
+                  onChanged: (on) => unawaited(push.setBadgeEnabled(on)),
                 ),
               ),
+              if (push.available)
+                RmRow(
+                  label: tr(context, 'settings.newMail'),
+                  subtitle: push.permission == NotificationPermission.denied
+                      ? tr(context, 'settings.turnedOffForRESTMailInThe')
+                      : tr(context, 'settings.onlyASignalGoesThroughAppleThe'),
+                  trailing: RmSwitch(
+                    key: const Key('notifications-switch'),
+                    label: tr(context, 'settings.newMailNotifications'),
+                    value: push.enabled,
+                    onChanged: (on) =>
+                        unawaited(on ? push.enable() : push.disable()),
+                  ),
+                ),
             ],
           ),
-          for (final note in notes)
+          for (final note in push.available ? notes : <String>[])
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
               child: Text(note, style: rmText(12, color: c.ink3, height: 1.4)),
