@@ -52,7 +52,7 @@ class RestmailClient {
   RestmailClient({
     required this.server,
     http.Client? httpClient,
-    SessionTokens? this._tokens,
+    this._tokens,
     this.onTokensChanged,
     this.userAgent = 'restmail-mobile',
     this.timeout = const Duration(seconds: 30),
