@@ -52,12 +52,11 @@ class RestmailClient {
   RestmailClient({
     required this.server,
     http.Client? httpClient,
-    SessionTokens? tokens,
+    SessionTokens? this._tokens,
     this.onTokensChanged,
     this.userAgent = 'restmail-mobile',
     this.timeout = const Duration(seconds: 30),
-  }) : _http = httpClient ?? http.Client(),
-       _tokens = tokens;
+  }) : _http = httpClient ?? http.Client();
 
   /// The server's base URL, as [parseServerUrl] returns it.
   final Uri server;
@@ -2648,8 +2647,9 @@ class RestmailClient {
         ..bodyBytes = body;
       // The session adapter owns Authorization; the public adapter strips it.
       copy.headers.remove('authorization');
-      if (tokens != null)
+      if (tokens != null) {
         copy.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
+      }
       return _exchange(copy, timeout);
     }
 
