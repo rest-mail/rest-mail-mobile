@@ -207,66 +207,63 @@ void main() {
     );
   });
 
-  test(
-    'privilege changes during refresh retain new scopes and rotated credentials',
-    () async {
-      final rotating = Completer<http.Response>();
-      final client = RestmailClient(
-        server: Uri.parse('https://a.test'),
-        tokens: SessionTokens(
-          accessToken: 'old-access',
-          refreshToken: 'old-refresh',
-          accessExpiresAt: DateTime.now().add(const Duration(minutes: 5)),
-        ),
-        httpClient: MockClient((r) async {
-          if (r.url.path.endsWith('/auth/refresh')) return rotating.future;
-          return http.Response(
-            jsonEncode({
-              'data': {
-                'grant': {
-                  'id': 1,
-                  'holder': {'kind': 'account', 'id': 1},
-                  'role': 'admin',
-                  'role_id': 2,
-                  'scope': 'domain:a.test',
-                  'mode': 'eligible',
-                  'granted_by': {'kind': 'account', 'id': 1},
-                  'granted_at': '2026-10-23T00:00:00Z',
-                  'activation': {
-                    'id': 2,
-                    'activated_at': DateTime.now().toUtc().toIso8601String(),
-                    'expires_at': DateTime.now()
-                        .add(const Duration(minutes: 1))
-                        .toUtc()
-                        .toIso8601String(),
-                    'reason': 'Routine administration',
-                    'seconds_left': 60,
-                  },
+  test('privilege changes during refresh retain new scopes and rotated credentials', () async {
+    final rotating = Completer<http.Response>();
+    final client = RestmailClient(
+      server: Uri.parse('https://a.test'),
+      tokens: SessionTokens(
+        accessToken: 'old-access',
+        refreshToken: 'old-refresh',
+        accessExpiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      ),
+      httpClient: MockClient((r) async {
+        if (r.url.path.endsWith('/auth/refresh')) return rotating.future;
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'grant': {
+                'id': 1,
+                'holder': {'kind': 'account', 'id': 1},
+                'role': 'admin',
+                'role_id': 2,
+                'scope': 'domain:a.test',
+                'mode': 'eligible',
+                'granted_by': {'kind': 'account', 'id': 1},
+                'granted_at': '2026-10-23T00:00:00Z',
+                'activation': {
+                  'id': 2,
+                  'activated_at': DateTime.now().toUtc().toIso8601String(),
+                  'expires_at': DateTime.now()
+                      .add(const Duration(minutes: 1))
+                      .toUtc()
+                      .toIso8601String(),
+                  'reason': 'Routine administration',
+                  'seconds_left': 60,
                 },
-                'capabilities': <String>[],
-                'scoped_capabilities': _scoped,
               },
-            }),
-            201,
-            headers: {'content-type': 'application/json'},
-          );
-        }),
-      );
-      addTearDown(client.close);
-      final pending = client.refresh();
-      await Future<void>.delayed(Duration.zero);
-      await client.activateGrant(
-        1,
-        reason: 'Routine administration',
-        totpCode: '123456',
-      );
-      expect(client.tokens!.capabilities.scoped, hasLength(3));
-      rotating.complete(
-        _response('rotated-access', 'rotated-refresh', scoped: []),
-      );
-      await pending;
-      expect(client.tokens!.refreshToken, 'rotated-refresh');
-      expect(client.tokens!.capabilities.scoped, hasLength(3));
-    },
-  );
+              'capabilities': <String>[],
+              'scoped_capabilities': _scoped,
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    addTearDown(client.close);
+    final pending = client.refresh();
+    await Future<void>.delayed(Duration.zero);
+    await client.activateGrant(
+      1,
+      reason: 'Routine administration',
+      totpCode: '123456',
+    );
+    expect(client.tokens!.capabilities.scoped, hasLength(3));
+    rotating.complete(
+      _response('rotated-access', 'rotated-refresh', scoped: []),
+    );
+    await pending;
+    expect(client.tokens!.refreshToken, 'rotated-refresh');
+    expect(client.tokens!.capabilities.scoped, hasLength(3));
+  });
 }

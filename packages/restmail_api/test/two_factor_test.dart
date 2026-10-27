@@ -210,26 +210,29 @@ void main() {
     });
   }
 
-  test('empty proof is an object and server field errors are retained', () async {
-    final client = _client((r) async {
-      expect(jsonDecode(r.body), <String, Object?>{});
-      return http.Response(
-        '{"error":{"code":"validation_failed","message":"Required","details":{"fields":{"totp_code":"required unless recovery_code is sent"}}}}',
-        422,
-      );
-    });
-    addTearDown(client.close);
-    await expectLater(
-      client.disableTwoFactor(totpCode: '', recoveryCode: ''),
-      throwsA(
-        isA<ApiException>().having(
-          (e) => e.fields['totp_code'],
-          'field',
-          'required unless recovery_code is sent',
+  test(
+    'empty proof is an object and server field errors are retained',
+    () async {
+      final client = _client((r) async {
+        expect(jsonDecode(r.body), <String, Object?>{});
+        return http.Response(
+          '{"error":{"code":"validation_failed","message":"Required","details":{"fields":{"totp_code":"required unless recovery_code is sent"}}}}',
+          422,
+        );
+      });
+      addTearDown(client.close);
+      await expectLater(
+        client.disableTwoFactor(totpCode: '', recoveryCode: ''),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.fields['totp_code'],
+            'field',
+            'required unless recovery_code is sent',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   test(
     'disable clears the rotated pair after a normal preflight refresh',

@@ -103,8 +103,7 @@ void main() {
               'data': {'expires_in': 900, 'user': _user},
             },
             headers: {
-              'set-cookie':
-                  'restmail_access=a; Path=/, restmail_refresh=r; Path=/api/v1/auth',
+              'set-cookie': 'restmail_access=a; Path=/, restmail_refresh=r; Path=/api/v1/auth',
             },
           ),
         ),
@@ -1214,8 +1213,7 @@ void main() {
               'message': 'Request body failed validation',
               'details': {
                 'fields': {
-                  'rotation_interval_days':
-                      'Must be an integer between 0 and 3650 days; 0 disables rotation',
+                  'rotation_interval_days': 'Must be an integer between 0 and 3650 days; 0 disables rotation',
                 },
               },
             },

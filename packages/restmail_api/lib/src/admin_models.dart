@@ -1380,14 +1380,13 @@ class MtaStsPolicy {
     required this.domainId,
     required this.mode,
     required this.mxHosts,
-    required Duration maxAge,
-    int? maxAgeSeconds,
+    required this._maxAge,
+    this._maxAgeSeconds,
     required this.active,
     this.createdAt,
     this.updatedAt,
     this.domain,
-  }) : _maxAge = maxAge,
-       _maxAgeSeconds = maxAgeSeconds;
+  });
 
   factory MtaStsPolicy.fromJson(Map<String, dynamic> json) => MtaStsPolicy(
     id: _int(json['id'] ?? 0),

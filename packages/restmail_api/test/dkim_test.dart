@@ -20,37 +20,31 @@ http.Response _json(Object? body) =>
     http.Response(jsonEncode({'data': body}), 200);
 
 void main() {
-  test(
-    'key install preserves exact PEM bytes, metadata and fractional age',
-    () async {
-      const pem =
-          '-----BEGIN PRIVATE KEY-----\r\npublic-test-fixture\r\n-----END PRIVATE KEY-----\r\n';
-      final client = _client((r) async {
-        expect(r.method, 'PUT');
-        expect(r.url.path, '/api/v1/admin/dkim/42');
-        expect(jsonDecode(r.body), {
-          'selector': 'mail2026',
-          'private_key': pem,
-        });
-        return _json({
-          'domain_id': 42,
-          'domain': 'example.test',
-          'selector': 'mail2026',
-          'has_key': true,
-          'created_at': '2026-10-23T06:00:00Z',
-          'age_seconds': 25.125,
-        });
+  test('key install preserves exact PEM bytes, metadata and fractional age', () async {
+    const pem =
+        '-----BEGIN PRIVATE KEY-----\r\npublic-test-fixture\r\n-----END PRIVATE KEY-----\r\n';
+    final client = _client((r) async {
+      expect(r.method, 'PUT');
+      expect(r.url.path, '/api/v1/admin/dkim/42');
+      expect(jsonDecode(r.body), {'selector': 'mail2026', 'private_key': pem});
+      return _json({
+        'domain_id': 42,
+        'domain': 'example.test',
+        'selector': 'mail2026',
+        'has_key': true,
+        'created_at': '2026-10-23T06:00:00Z',
+        'age_seconds': 25.125,
       });
-      addTearDown(client.close);
-      final key = await client.setDkimKey(
-        42,
-        selector: 'mail2026',
-        privateKey: pem,
-      );
-      expect(key.createdAt!.toUtc(), DateTime.utc(2026, 10, 23, 6));
-      expect(key.ageSeconds, 25.125);
-    },
-  );
+    });
+    addTearDown(client.close);
+    final key = await client.setDkimKey(
+      42,
+      selector: 'mail2026',
+      privateKey: pem,
+    );
+    expect(key.createdAt!.toUtc(), DateTime.utc(2026, 10, 23, 6));
+    expect(key.ageSeconds, 25.125);
+  });
 
   test('legacy age and empty monitoring list are parsed', () async {
     var calls = 0;

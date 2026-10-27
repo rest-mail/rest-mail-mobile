@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:restmail_api/restmail_api.dart';
@@ -133,29 +134,23 @@ void main() {
     });
     expect(ban.expiresAt, isNull);
   });
-  test(
-    'typed duration retains seconds and microseconds rather than truncating to minutes',
-    () async {
-      await client.createBan(
-        ip: '192.0.2.1',
-        createdBy: 'admin',
-        duration: const Duration(seconds: 30, microseconds: 12),
-      );
-      expect(
-        (jsonDecode(sent.body) as Map<String, dynamic>)['duration'],
-        '30000012us',
-      );
-      await client.createBan(
-        ip: '192.0.2.1',
-        createdBy: 'admin',
-        duration: const Duration(hours: 1),
-      );
-      expect(
-        (jsonDecode(sent.body) as Map<String, dynamic>)['duration'],
-        '60m',
-      );
-    },
-  );
+  test('typed duration retains seconds and microseconds rather than truncating to minutes', () async {
+    await client.createBan(
+      ip: '192.0.2.1',
+      createdBy: 'admin',
+      duration: const Duration(seconds: 30, microseconds: 12),
+    );
+    expect(
+      (jsonDecode(sent.body) as Map<String, dynamic>)['duration'],
+      '30000012us',
+    );
+    await client.createBan(
+      ip: '192.0.2.1',
+      createdBy: 'admin',
+      duration: const Duration(hours: 1),
+    );
+    expect((jsonDecode(sent.body) as Map<String, dynamic>)['duration'], '60m');
+  });
   test('ambiguous durations are refused before sending', () async {
     await expectLater(
       client.createBan(
