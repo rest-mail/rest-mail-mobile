@@ -14,6 +14,7 @@ import '../util/compose_seed.dart';
 import '../util/format.dart';
 import 'attachments.dart';
 import 'compose_sheet.dart';
+import 'contact_reply_time.dart';
 import 'original_forward_sheet.dart';
 import 'invitations.dart';
 import 'labels_sheet.dart';
@@ -618,6 +619,17 @@ class _MessageScreenState extends State<MessageScreen> {
                                   family: family,
                                 ),
                               ),
+                              if (_mailbox.backend.hasContacts &&
+                                  _mailbox.account != null &&
+                                  m.sender.trim().isNotEmpty)
+                                SenderReplyTime(
+                                  key: ValueKey(
+                                    '${_mailbox.account!.id}:${m.sender}',
+                                  ),
+                                  backend: _mailbox.backend,
+                                  accountId: _mailbox.account!.id,
+                                  email: m.sender.trim(),
+                                ),
                               if (showTrust && !showReceipt)
                                 RmTrustLine(headers: m.headers),
                             ],

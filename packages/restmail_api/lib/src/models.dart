@@ -847,6 +847,7 @@ class Contact {
     required this.source,
     required this.createdAt,
     required this.updatedAt,
+    this.usualReplySeconds,
   });
 
   factory Contact.fromJson(Map<String, dynamic> json) => Contact(
@@ -860,6 +861,7 @@ class Contact {
     source: json['source'] as String? ?? '',
     createdAt: _time(json['created_at']),
     updatedAt: _time(json['updated_at']),
+    usualReplySeconds: (json['usual_reply_seconds'] as num?)?.toInt(),
   );
 
   final int id;
@@ -875,6 +877,10 @@ class Contact {
   final String source;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// The median first-reply delay from this account's own mail, or null while
+  /// the account's setting is off or there are too few matched replies.
+  final int? usualReplySeconds;
 }
 
 /// Filters for a mailbox search. Every field is optional; the server ANDs

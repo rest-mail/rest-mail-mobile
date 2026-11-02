@@ -155,6 +155,27 @@ const Map<String, Map<String, String>> stringsDe = {
     'quarantine.loading': 'Wird geladen…',
     'quarantine.more': 'Mehr anzeigen',
     'mailboxes.contacts': 'Kontakte',
+    'contacts.replyTimeUnderMinute':
+        'Antwortet normalerweise in weniger als einer Minute',
+    'contacts.replyTimeMinute': 'Antwortet normalerweise in etwa 1 Minute',
+    'contacts.replyTimeMinutes':
+        'Antwortet normalerweise in etwa {count} Minuten',
+    'contacts.replyTimeHour': 'Antwortet normalerweise in etwa 1 Stunde',
+    'contacts.replyTimeHours':
+        'Antwortet normalerweise in etwa {count} Stunden',
+    'contacts.replyTimeDay': 'Antwortet normalerweise in etwa 1 Tag',
+    'contacts.replyTimeDays': 'Antwortet normalerweise in etwa {count} Tagen',
+    'contacts.replyTimeNote': 'Lokale Schätzung aus mindestens drei Antworten im Verlauf dieses Kontos; kein Signal des Kontakts.',
+    'contacts.replyTimeSetting': 'Antwortzeiten von Kontakten',
+    'contacts.replyTimeToggle':
+        'Übliche Antwortzeiten neben Kontakten anzeigen',
+    'contacts.replyTimeHelp': 'Standardmäßig aus. Schätzungen verwenden nur die gesendeten E-Mails dieses Kontos und zugeordnete Antworten; mindestens drei Antworten sind nötig. Dies ist kein Signal des Kontakts. Nichts verlässt den Server; es wird kein Tracking hinzugefügt.',
+    'contacts.replyTimeLoading': 'Einstellung wird geladen…',
+    'contacts.replyTimeSaving': 'Wird gespeichert…',
+    'contacts.replyTimeLoadFailed':
+        'Die Einstellung für Antwortzeiten konnte nicht geladen werden.',
+    'contacts.replyTimeSaveFailed':
+        'Die Einstellung für Antwortzeiten konnte nicht gespeichert werden.',
     'contacts.add': 'Hinzufügen',
     'contacts.search': 'Adressen durchsuchen',
     'contacts.all': 'Alle',

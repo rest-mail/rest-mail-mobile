@@ -20,6 +20,7 @@ import '../util/format.dart';
 import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
+import 'contact_reply_time.dart';
 import 'mail_rules_screen.dart';
 import 'api_keys_screen.dart';
 import 'two_factor_screen.dart';
@@ -508,6 +509,14 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                    if (m.backend.hasContacts && m.account != null) ...[
+                      const SizedBox(height: 22),
+                      ContactReplyTimeSettings(
+                        key: ValueKey(m.account!.id),
+                        backend: m.backend,
+                        accountId: m.account!.id,
                       ),
                     ],
                     const SizedBox(height: 22),

@@ -516,6 +516,7 @@ class RestmailClient {
 
   late final _domainApi = wire.AdminDomainsApi(generatedSession);
   late final _mailboxApi = wire.AdminMailboxesApi(generatedSession);
+  late final _contactsApi = wire.ContactsApi(generatedSession);
 
   /// Needs `domains:read`. The generated operation owns path/query encoding
   /// and response validation; the existing UI receives its display projection.
@@ -1888,6 +1889,33 @@ class RestmailClient {
   //
   // An account's contacts: reading them needs mail:read on it, changing
   // them mail:write, and the server answers 403 forbidden otherwise.
+
+  /// Whether the account shows contact reply-time estimates. Off by default,
+  /// and needs `mail:read` on the account.
+  Future<bool> contactReplyTimeEnabled(int accountId) async {
+    final response = await generatedValue(
+      _contactsApi.getContactReplyTimeSetting(id: accountId),
+    );
+    if (response is! wire.GetContactReplyTimeSettingResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return response.body.body.data.enabled;
+  }
+
+  /// Turns the account's contact reply-time estimates on or off, and returns
+  /// what the server saved. Needs `mail:write` on the account.
+  Future<bool> setContactReplyTimeEnabled(int accountId, bool enabled) async {
+    final response = await generatedValue(
+      _contactsApi.setContactReplyTimeSetting(
+        id: accountId,
+        body: wire.ContactReplyTimeSetting(enabled: enabled),
+      ),
+    );
+    if (response is! wire.SetContactReplyTimeSettingResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return response.body.body.data.enabled;
+  }
 
   /// One page of the account's contacts, by address. [search] keeps those
   /// whose address contains it; [trustLevel] those trusted that far.

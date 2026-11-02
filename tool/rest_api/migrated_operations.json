@@ -124,6 +124,26 @@
         "resource_details_test.dart",
         "client_test.dart"
       ]
+    },
+    {
+      "operationId": "getContactReplyTimeSetting",
+      "facade": "contactReplyTimeEnabled",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "the enabled boolean",
+      "tests": [
+        "contacts_test.dart",
+        "contact_reply_time_flow_test.dart"
+      ]
+    },
+    {
+      "operationId": "setContactReplyTimeSetting",
+      "facade": "setContactReplyTimeEnabled",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "the enabled boolean",
+      "tests": [
+        "contacts_test.dart",
+        "contact_reply_time_flow_test.dart"
+      ]
     }
   ]
 }
