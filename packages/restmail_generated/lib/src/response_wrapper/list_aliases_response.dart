@@ -15,10 +15,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_aliases_get413_resp
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_admin_aliases_get422_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_aliases_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_aliases_get429_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_aliases_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_aliases_get500_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/api_v1_admin_aliases_get503_response.dart'
+    as _i10;
 
 sealed class ListAliasesResponse {
   const ListAliasesResponse();
@@ -105,10 +107,26 @@ class ListAliasesResponse422 extends ListAliasesResponse {
 }
 
 @_i1.immutable
+class ListAliasesResponse429 extends ListAliasesResponse {
+  const ListAliasesResponse429({required this.body});
+
+  final _i8.ApiV1AdminAliasesGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListAliasesResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListAliasesResponse500 extends ListAliasesResponse {
   const ListAliasesResponse500({required this.body});
 
-  final _i8.ApiV1AdminAliasesGet500Response body;
+  final _i9.ApiV1AdminAliasesGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -124,7 +142,7 @@ class ListAliasesResponse500 extends ListAliasesResponse {
 class ListAliasesResponse503 extends ListAliasesResponse {
   const ListAliasesResponse503({required this.body});
 
-  final _i9.ApiV1AdminAliasesGet503Response body;
+  final _i10.ApiV1AdminAliasesGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

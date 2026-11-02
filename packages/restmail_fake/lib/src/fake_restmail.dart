@@ -162,6 +162,11 @@ class FakeRestmail {
   final _quarantine = <int, Map<String, Object?>>{};
   // An account's contacts: id -> row, with the mailbox id under "mailbox_id".
   final _contacts = <int, Map<String, Object?>>{};
+
+  // The accounts that opted in to reply-time estimates, off by default, and
+  // the estimate each contact would have: contact id -> seconds.
+  final _contactReplyTimeOn = <int>{};
+  final _contactReplySeconds = <int, int>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
   var _nextScheduledId = 1;
@@ -775,6 +780,10 @@ class FakeRestmail {
         ['api', 'v1', 'accounts', final id, 'quarantine', final mid],
       ) =>
         _deleteQuarantined(_own(session, id), mid),
+      ('GET', ['api', 'v1', 'accounts', final id, 'contact-reply-time']) =>
+        _getContactReplyTime(session, id),
+      ('PUT', ['api', 'v1', 'accounts', final id, 'contact-reply-time']) =>
+        _setContactReplyTime(session, id, _object(bytes)),
       ('GET', ['api', 'v1', 'accounts', final id, 'contacts']) => _listContacts(
         session,
         id,
@@ -1527,6 +1536,26 @@ class FakeRestmail {
     return _newContact(box, email, name, trustLevel, source)['id']! as int;
   }
 
+  /// Gives the contact [email] of [address]'s mailbox an estimate, as enough
+  /// matched replies in that mailbox would. The server only answers it while
+  /// the mailbox has the setting on.
+  void setContactReplySeconds(String address, String email, int seconds) {
+    final box = _mailboxes.values.firstWhere(
+      (b) => b.address == address.toLowerCase(),
+    );
+    final row = _contactAt(box, email);
+    if (row == null) throw StateError('No contact $email at $address');
+    _contactReplySeconds[row['id']! as int] = seconds;
+  }
+
+  /// Whether the mailbox at [address] has reply-time estimates on.
+  bool contactReplyTimeEnabled(String address) {
+    final box = _mailboxes.values.firstWhere(
+      (b) => b.address == address.toLowerCase(),
+    );
+    return _contactReplyTimeOn.contains(box.id);
+  }
+
   /// The contacts of the mailbox at [address], as the server keeps them.
   List<Map<String, Object?>> contactsOf(String address) => [
     for (final row in _contacts.values)
@@ -1576,6 +1605,49 @@ class FakeRestmail {
     return row;
   }
 
+  http.StreamedResponse _getContactReplyTime(_Session session, String id) {
+    final box = _contactAccount(session, _pathId(id));
+    return _json({
+      'data': {'enabled': _contactReplyTimeOn.contains(box.id)},
+    });
+  }
+
+  http.StreamedResponse _setContactReplyTime(
+    _Session session,
+    String id,
+    Map<String, dynamic> body,
+  ) {
+    final accountId = _pathId(id);
+    final problems = _undeclared(body, const {'enabled'});
+    if (!body.containsKey('enabled')) problems['enabled'] = 'required';
+    _typed<bool>(body, 'enabled', 'a boolean', problems, nullable: false);
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _contactAccount(session, accountId);
+    final enabled = body['enabled']! as bool;
+    if (enabled) {
+      _contactReplyTimeOn.add(box.id);
+    } else {
+      _contactReplyTimeOn.remove(box.id);
+    }
+    return _json({
+      'data': {'enabled': enabled},
+    });
+  }
+
+  /// A contact as a list or suggestion answers it: with its estimate only
+  /// while the account has the setting on, and only when it has one.
+  Map<String, Object?> _contactWithReplyTime(
+    FakeMailbox box,
+    Map<String, Object?> row,
+  ) {
+    final seconds = _contactReplySeconds[row['id']];
+    return {
+      ...row,
+      if (_contactReplyTimeOn.contains(box.id) && seconds != null)
+        'usual_reply_seconds': seconds,
+    };
+  }
+
   http.StreamedResponse _listContacts(
     _Session session,
     String id,
@@ -1601,7 +1673,7 @@ class FakeRestmail {
             (row['email']! as String).contains(search))
           row,
     ]..sort((a, b) => (a['email']! as String).compareTo(b['email']! as String));
-    return _listPage(rows, query, (row) => {...row});
+    return _listPage(rows, query, (row) => _contactWithReplyTime(box, row));
   }
 
   http.StreamedResponse _createContact(
@@ -1802,7 +1874,7 @@ class FakeRestmail {
         });
     return _json({
       'data': [
-        for (final row in rows.take(10)) {...row},
+        for (final row in rows.take(10)) _contactWithReplyTime(box, row),
       ],
     });
   }

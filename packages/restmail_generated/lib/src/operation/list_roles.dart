@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_roles_get403_respon
     as _i10;
 import 'package:restmail_generated/src/response/api_v1_admin_roles_get413_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_admin_roles_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_roles_get429_response.dart'
     as _i12;
-import 'package:restmail_generated/src/response/api_v1_admin_roles_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_roles_get500_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/api_v1_admin_roles_get503_response.dart'
+    as _i14;
 import 'package:restmail_generated/src/response_wrapper/list_roles_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -165,11 +167,39 @@ final class ListRoles extends _i1.HttpOperation<_i2.ListRolesResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
+        return _i2.ListRolesResponse429(
+          body: _i12.ApiV1AdminRolesGet429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.ListRolesResponse500(
-          body: _i12.ApiV1AdminRolesGet500Response(
+          body: _i13.ApiV1AdminRolesGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -195,7 +225,7 @@ final class ListRoles extends _i1.HttpOperation<_i2.ListRolesResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.ListRolesResponse503(
-          body: _i13.ApiV1AdminRolesGet503Response(
+          body: _i14.ApiV1AdminRolesGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

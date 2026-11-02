@@ -167,12 +167,16 @@ class RmRow extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.danger = false,
+    this.footer,
   });
 
   final String label;
   final String? subtitle;
   final String? value;
   final Widget? trailing;
+
+  /// Under the subtitle, for what plain text cannot hold.
+  final Widget? footer;
   final VoidCallback? onTap;
   final bool danger;
 
@@ -208,6 +212,7 @@ class RmRow extends StatelessWidget {
                         style: rmText(12.5, color: c.ink3, height: 1.35),
                       ),
                     ),
+                  ?footer,
                 ],
               ),
             ),
@@ -244,43 +249,50 @@ class RmSwitch extends StatelessWidget {
   });
 
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null while it cannot be changed: it dims and ignores taps.
+  final ValueChanged<bool>? onChanged;
   final String? label;
 
   @override
   Widget build(BuildContext context) {
     final c = context.rm;
     const motion = Duration(milliseconds: 160);
+    final onChanged = this.onChanged;
     return Semantics(
       toggled: value,
+      enabled: onChanged != null,
       label: label,
       child: GestureDetector(
-        onTap: () => onChanged(!value),
-        child: AnimatedContainer(
-          duration: motion,
-          width: 46,
-          height: 28,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: value ? c.accent : c.line,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: AnimatedAlign(
+        onTap: onChanged == null ? null : () => onChanged(!value),
+        child: Opacity(
+          opacity: onChanged == null ? 0.5 : 1,
+          child: AnimatedContainer(
             duration: motion,
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    blurRadius: 3,
-                    offset: Offset(0, 1),
-                  ),
-                ],
+            width: 46,
+            height: 28,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: value ? c.accent : c.line,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: AnimatedAlign(
+              duration: motion,
+              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x40000000),
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

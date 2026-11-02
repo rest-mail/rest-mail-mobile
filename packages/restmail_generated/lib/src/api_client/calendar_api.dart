@@ -41,238 +41,9 @@ class CalendarApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password" — An actual HTTP Basic app password reads its own account:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant" — A domain-scoped mail-read grant reaches this account:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty" — An accessible account without rows returns an empty array:
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — Versions are grouped by UID, retaining the latest fields and counting older versions:
   /// The production route loads current grants and maps fixed SQL rows through the real handler. Controlled rows prove wiring and response grouping, not PostgreSQL filtering, ordering or persistence. Existing cancellation aggregation is preserved: an older CANCEL marks the group, a CANCELLED latest status also marks it, and an absent message ID is omitted.
   ///
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read" — A real API key and its holder both permit this mailbox read:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "message_id": 77,
-  ///       "method": "REQUEST",
-  ///       "sequence": 3,
-  ///       "status": "CONFIRMED",
-  ///       "summary": "Latest café",
-  ///       "uid": "event-a",
-  ///       "versions": 3
-  ///     },
-  ///     {
-  ///       "is_cancelled": true,
-  ///       "method": "REQUEST",
-  ///       "sequence": 1,
-  ///       "status": "CANCELLED",
-  ///       "summary": "Cancelled",
-  ///       "uid": "event-b",
-  ///       "versions": 1
-  ///     },
-  ///     {
-  ///       "is_cancelled": false,
-  ///       "message_id": 88,
-  ///       "method": "REQUEST",
-  ///       "sequence": 0,
-  ///       "status": "TENTATIVE",
-  ///       "summary": "Tentative",
-  ///       "uid": "event-c",
-  ///       "versions": 1
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
   /// ```json
   /// {
   ///   "data": [
@@ -321,8 +92,8 @@ class CalendarApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other" — An app password cannot read a linked account:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
+  /// **Example** "write_only" — A mail-write grant alone does not permit a read:
+  /// A caller that can see the account is told this action is what it lacks.
   ///
   /// ```json
   /// {
@@ -333,84 +104,15 @@ class CalendarApi {
   /// }
   /// ```
   ///
-  /// **Example** "inaccessible" — An inaccessible account and a missing one have the same refusal:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing" — A valid key cannot exceed its holder's current grants:
-  /// The production verifier accepts the scoped key, but the actual grant loader supplies only mail:write for its holder on this account. The old key permission cannot supply the missing mail:read capability.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only" — A valid API key with only mail-write permission cannot read:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "key_wrong_scope" — A valid API key scoped to another mailbox is refused:
   /// Unknown and inaccessible accounts remain indistinguishable to the caller.
   ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing" — A missing account retains the existing privacy refusal:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required" — A session still in setup cannot use account reads:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only" — A mail-write grant alone does not permit a read:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -429,21 +131,6 @@ class CalendarApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format" — The domain ID cannot bind to an integer:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -473,36 +160,6 @@ class CalendarApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "content_unavailable" — A dependency fault is an internal error, not an empty result or a permission decision:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable" — A dependency fault is an internal error, not an empty result or a permission decision:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable" — A dependency fault is an internal error, not an empty result or a permission decision:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable" — A dependency fault is an internal error, not an empty result or a permission decision:
   /// ```json
   /// {
@@ -539,6 +196,219 @@ class CalendarApi {
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Request body (application/json):
+  /// **Example** "accepted" — The reply is sent to the organizer:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "foreign_sender" — The caller cannot send as that address:
+  /// ```json
+  /// {
+  ///   "from": "someone@other.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "missing" — No such message:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "response": "ACCEPTED"
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "accepted" — The reply is sent to the organizer:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "response": "ACCEPTED",
+  ///     "status": "sent"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "foreign_sender" — The caller cannot send as that address:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "You are not authorized to send from this address"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such message:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
   _i4.Future<_i5.TonikResult<_i8.RespondToCalendarResponse, _i7.Response>>
   respondToCalendar({
     required _i9.CalendarReplyBody body,

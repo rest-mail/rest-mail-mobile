@@ -13,10 +13,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get403_
     as _i5;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get413_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get429_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get500_response.dart'
     as _i8;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_stats_get503_response.dart'
+    as _i9;
 
 sealed class GetQueueStatsResponse {
   const GetQueueStatsResponse();
@@ -87,10 +89,26 @@ class GetQueueStatsResponse413 extends GetQueueStatsResponse {
 }
 
 @_i1.immutable
+class GetQueueStatsResponse429 extends GetQueueStatsResponse {
+  const GetQueueStatsResponse429({required this.body});
+
+  final _i7.ApiV1AdminQueueStatsGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetQueueStatsResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetQueueStatsResponse500 extends GetQueueStatsResponse {
   const GetQueueStatsResponse500({required this.body});
 
-  final _i7.ApiV1AdminQueueStatsGet500Response body;
+  final _i8.ApiV1AdminQueueStatsGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -106,7 +124,7 @@ class GetQueueStatsResponse500 extends GetQueueStatsResponse {
 class GetQueueStatsResponse503 extends GetQueueStatsResponse {
   const GetQueueStatsResponse503({required this.body});
 
-  final _i8.ApiV1AdminQueueStatsGet503Response body;
+  final _i9.ApiV1AdminQueueStatsGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

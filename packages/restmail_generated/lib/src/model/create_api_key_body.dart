@@ -15,9 +15,9 @@ class CreateApiKeyBody extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
   const CreateApiKeyBody({
     required this.name,
+    required this.password,
+    required this.permissions,
     this.expiresAt,
-    this.password,
-    this.permissions,
   });
 
   factory CreateApiKeyBody.fromSimple(
@@ -36,14 +36,12 @@ class CreateApiKeyBody extends _i1.ObjectParameterEncodable
         context: r'CreateApiKeyBody.expires_at',
       ),
       name: _$map[r'name'].decodeJsonString(context: r'CreateApiKeyBody.name'),
-      password: _$map[r'password'].decodeJsonNullableString(
+      password: _$map[r'password'].decodeJsonString(
         context: r'CreateApiKeyBody.password',
       ),
       permissions: _$map[r'permissions']
-          .decodeJsonNullableList<_i3.Object?>(
-            context: r'CreateApiKeyBody.permissions',
-          )
-          ?.map(_i4.ApiKeyPermission.fromJson)
+          .decodeJsonList<_i3.Object?>(context: r'CreateApiKeyBody.permissions')
+          .map(_i4.ApiKeyPermission.fromJson)
           .toList(),
     );
   }
@@ -61,17 +59,16 @@ class CreateApiKeyBody extends _i1.ObjectParameterEncodable
 
   final _i3.String name;
 
-  final _i3.String? password;
+  final _i3.String password;
 
-  final _i3.List<_i4.ApiKeyPermission>? permissions;
+  final _i3.List<_i4.ApiKeyPermission> permissions;
 
   @_i3.override
   _i3.Object? toJson() => {
     r'expires_at': expiresAt?.toTimeZonedIso8601String(),
     r'name': name,
-    if (password != null) r'password': password,
-    if (permissions != null)
-      r'permissions': permissions?.map((e) => e.toJson()).toList(),
+    r'password': password,
+    r'permissions': permissions.map((e) => e.toJson()).toList(),
   };
 
   $$CreateApiKeyBodyCopyWith<CreateApiKeyBody> get copyWith =>
@@ -133,8 +130,8 @@ abstract class $$CreateApiKeyBodyCopyWith<$Res> {
   });
   _i3.DateTime? get expiresAt;
   _i3.String get name;
-  _i3.String? get password;
-  _i3.List<_i4.ApiKeyPermission>? get permissions;
+  _i3.String get password;
+  _i3.List<_i4.ApiKeyPermission> get permissions;
 }
 
 class _CreateApiKeyBodyCopyWith<$Res>
@@ -152,10 +149,10 @@ class _CreateApiKeyBodyCopyWith<$Res>
   _i3.String get name => _value.name;
 
   @_i3.override
-  _i3.String? get password => _value.password;
+  _i3.String get password => _value.password;
 
   @_i3.override
-  _i3.List<_i4.ApiKeyPermission>? get permissions => _value.permissions;
+  _i3.List<_i4.ApiKeyPermission> get permissions => _value.permissions;
 
   @_i3.override
   $Res call({
@@ -171,10 +168,10 @@ class _CreateApiKeyBodyCopyWith<$Res>
       name: _i3.identical(name, _sentinel) ? this.name : (name as _i3.String),
       password: _i3.identical(password, _sentinel)
           ? this.password
-          : (password as _i3.String?),
+          : (password as _i3.String),
       permissions: _i3.identical(permissions, _sentinel)
           ? this.permissions
-          : (permissions as _i3.List<_i4.ApiKeyPermission>?),
+          : (permissions as _i3.List<_i4.ApiKeyPermission>),
     ) as $Res);
   }
 }

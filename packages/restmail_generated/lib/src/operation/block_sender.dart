@@ -10,7 +10,7 @@ import 'package:restmail_generated/src/model/block_sender_body.dart' as _i6;
 import 'package:restmail_generated/src/model/data_contact.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i11;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i16;
+    as _i17;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post200_response.dart'
     as _i9;
@@ -22,16 +22,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_bloc
     as _i13;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post403_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post404_response.dart'
     as _i15;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post413_response.dart'
+    as _i16;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post422_response.dart'
-    as _i17;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post429_response.dart'
     as _i18;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post429_response.dart'
     as _i19;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post500_response.dart'
     as _i20;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post503_response.dart'
+    as _i21;
 import 'package:restmail_generated/src/response_wrapper/block_sender_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -212,11 +214,37 @@ final class BlockSender extends _i1.HttpOperation<_i2.BlockSenderResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i11.ErrorResponse.fromJson(_$json);
+        return _i2.BlockSenderResponse404(
+          body: _i15.ApiV1AccountsIdContactsBlockPost404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.BlockSenderResponse413(
-          body: _i15.ApiV1AccountsIdContactsBlockPost413Response(
+          body: _i16.ApiV1AccountsIdContactsBlockPost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -240,9 +268,9 @@ final class BlockSender extends _i1.HttpOperation<_i2.BlockSenderResponse> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i16.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i17.ValidationErrorResponse.fromJson(_$json);
         return _i2.BlockSenderResponse422(
-          body: _i17.ApiV1AccountsIdContactsBlockPost422Response(
+          body: _i18.ApiV1AccountsIdContactsBlockPost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -268,7 +296,7 @@ final class BlockSender extends _i1.HttpOperation<_i2.BlockSenderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.BlockSenderResponse429(
-          body: _i18.ApiV1AccountsIdContactsBlockPost429Response(
+          body: _i19.ApiV1AccountsIdContactsBlockPost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -296,7 +324,7 @@ final class BlockSender extends _i1.HttpOperation<_i2.BlockSenderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.BlockSenderResponse500(
-          body: _i19.ApiV1AccountsIdContactsBlockPost500Response(
+          body: _i20.ApiV1AccountsIdContactsBlockPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -322,7 +350,7 @@ final class BlockSender extends _i1.HttpOperation<_i2.BlockSenderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.BlockSenderResponse503(
-          body: _i20.ApiV1AccountsIdContactsBlockPost503Response(
+          body: _i21.ApiV1AccountsIdContactsBlockPost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

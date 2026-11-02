@@ -19,10 +19,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_retry_post503_response.dart'
+    as _i12;
 
 sealed class RetryQueueEntryResponse {
   const RetryQueueEntryResponse();
@@ -141,10 +143,26 @@ class RetryQueueEntryResponse422 extends RetryQueueEntryResponse {
 }
 
 @_i1.immutable
+class RetryQueueEntryResponse429 extends RetryQueueEntryResponse {
+  const RetryQueueEntryResponse429({required this.body});
+
+  final _i10.ApiV1AdminQueueIdRetryPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is RetryQueueEntryResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class RetryQueueEntryResponse500 extends RetryQueueEntryResponse {
   const RetryQueueEntryResponse500({required this.body});
 
-  final _i10.ApiV1AdminQueueIdRetryPost500Response body;
+  final _i11.ApiV1AdminQueueIdRetryPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class RetryQueueEntryResponse500 extends RetryQueueEntryResponse {
 class RetryQueueEntryResponse503 extends RetryQueueEntryResponse {
   const RetryQueueEntryResponse503({required this.body});
 
-  final _i11.ApiV1AdminQueueIdRetryPost503Response body;
+  final _i12.ApiV1AdminQueueIdRetryPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

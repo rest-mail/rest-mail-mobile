@@ -1191,6 +1191,17 @@ class ImapBackend implements MailBackend {
   bool get hasContacts => false;
 
   @override
+  Future<bool> contactReplyTimeEnabled(int accountId) async => false;
+
+  @override
+  Future<bool> setContactReplyTimeEnabled(int accountId, bool enabled) =>
+      throw LocalizedApiException(
+        400,
+        'not_supported',
+        UiText('client.imapHasNoContacts'),
+      );
+
+  @override
   Future<OffsetPage<Contact>> contacts(
     int accountId, {
     String? search,

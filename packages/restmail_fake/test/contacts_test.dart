@@ -263,4 +263,86 @@ void main() {
       expect(missing.statusCode, 404);
     },
   );
+
+  group('reply time', () {
+    const ada = 'ada@example.test', bob = 'bob@example.test';
+    setUp(() {
+      fake
+        ..addContact(FakeAccounts.adminEmail, ada, name: 'Ada')
+        ..addContact(FakeAccounts.adminEmail, bob, name: 'Bob')
+        ..setContactReplySeconds(FakeAccounts.adminEmail, ada, 7200);
+    });
+
+    test('is off by default, and no estimate is answered while off', () async {
+      expect(await client.contactReplyTimeEnabled(account), isFalse);
+      final page = await client.contacts(account);
+      expect(page.items.map((c) => c.usualReplySeconds), [null, null]);
+      final found = await client.suggestContacts(account, ada);
+      expect(found.single.usualReplySeconds, isNull);
+      final raw = await send('GET', '$account/contacts');
+      expect(raw.body, isNot(contains('usual_reply_seconds')));
+    });
+
+    test('opting in stays on, answers only what is known, and opting out '
+        'hides it again', () async {
+      expect(await client.setContactReplyTimeEnabled(account, true), isTrue);
+      expect(await client.contactReplyTimeEnabled(account), isTrue);
+      expect(fake.contactReplyTimeEnabled(FakeAccounts.adminEmail), isTrue);
+
+      final page = await client.contacts(account);
+      final seconds = {
+        for (final c in page.items) c.email: c.usualReplySeconds,
+      };
+      expect(seconds, {ada: 7200, bob: null});
+      final raw = jsonDecode((await send('GET', '$account/contacts')).body);
+      final rows = (raw as Map)['data'] as List;
+      expect(
+        rows.where((r) => (r as Map).containsKey('usual_reply_seconds')).length,
+        1,
+      );
+      final found = await client.suggestContacts(account, ada);
+      expect(found.single.usualReplySeconds, 7200);
+
+      expect(await client.setContactReplyTimeEnabled(account, false), isFalse);
+      expect(
+        (await client.suggestContacts(account, ada)).single.usualReplySeconds,
+        isNull,
+      );
+    });
+
+    test('a write answers no estimate, as the server does', () async {
+      await client.setContactReplyTimeEnabled(account, true);
+      final id = (await client.contacts(
+        account,
+      )).items.firstWhere((c) => c.email == ada).id;
+      final changed = await client.updateContact(account, id, name: 'Ada L');
+      expect(changed.usualReplySeconds, isNull);
+    });
+
+    test('the body must be exactly the choice', () async {
+      for (final (body, field) in const [
+        (<String, Object?>{}, 'enabled'),
+        (<String, Object?>{'enabled': 'yes'}, 'enabled'),
+        (<String, Object?>{'enabled': null}, 'enabled'),
+        (<String, Object?>{'enabled': true, 'extra': 1}, 'extra'),
+      ]) {
+        final response = await send('PUT', '$account/contact-reply-time', body);
+        expect(response.statusCode, 422, reason: '$body');
+        expect(response.body, contains(field), reason: '$body');
+      }
+      expect(await client.contactReplyTimeEnabled(account), isFalse);
+    });
+
+    test('another account is refused', () async {
+      const other = 2147483647;
+      await expectLater(
+        client.contactReplyTimeEnabled(other),
+        _refused(403, 'forbidden'),
+      );
+      await expectLater(
+        client.setContactReplyTimeEnabled(other, true),
+        _refused(403, 'forbidden'),
+      );
+    });
+  });
 }

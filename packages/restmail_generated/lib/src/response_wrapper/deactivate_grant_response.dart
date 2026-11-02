@@ -19,10 +19,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivat
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post503_response.dart'
+    as _i12;
 
 sealed class DeactivateGrantResponse {
   const DeactivateGrantResponse();
@@ -141,10 +143,26 @@ class DeactivateGrantResponse422 extends DeactivateGrantResponse {
 }
 
 @_i1.immutable
+class DeactivateGrantResponse429 extends DeactivateGrantResponse {
+  const DeactivateGrantResponse429({required this.body});
+
+  final _i10.ApiV1AdminGrantsIdDeactivatePost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeactivateGrantResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeactivateGrantResponse500 extends DeactivateGrantResponse {
   const DeactivateGrantResponse500({required this.body});
 
-  final _i10.ApiV1AdminGrantsIdDeactivatePost500Response body;
+  final _i11.ApiV1AdminGrantsIdDeactivatePost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class DeactivateGrantResponse500 extends DeactivateGrantResponse {
 class DeactivateGrantResponse503 extends DeactivateGrantResponse {
   const DeactivateGrantResponse503({required this.body});
 
-  final _i11.ApiV1AdminGrantsIdDeactivatePost503Response body;
+  final _i12.ApiV1AdminGrantsIdDeactivatePost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

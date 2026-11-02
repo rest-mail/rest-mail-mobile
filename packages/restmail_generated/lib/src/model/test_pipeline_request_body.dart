@@ -13,7 +13,10 @@ import 'package:tonik_util/tonik_util.dart' as _i1;
 @_i2.immutable
 class TestPipelineRequestBody extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const TestPipelineRequestBody({required this.email, this.pipelineId});
+  const TestPipelineRequestBody({
+    required this.email,
+    required this.pipelineId,
+  });
 
   factory TestPipelineRequestBody.fromSimple(
     _i3.String? value, {
@@ -32,7 +35,7 @@ class TestPipelineRequestBody extends _i1.ObjectParameterEncodable
           : _i4.TestPipelineRequestBodyEmailOneOfModel.fromJson(
               _$map[r'email'],
             ),
-      pipelineId: _$map[r'pipeline_id'].decodeJsonNullableInt(
+      pipelineId: _$map[r'pipeline_id'].decodeJsonInt(
         context: r'TestPipelineRequestBody.pipeline_id',
       ),
     );
@@ -49,12 +52,12 @@ class TestPipelineRequestBody extends _i1.ObjectParameterEncodable
 
   final _i4.TestPipelineRequestBodyEmailOneOfModel email;
 
-  final _i3.int? pipelineId;
+  final _i3.int pipelineId;
 
   @_i3.override
   _i3.Object? toJson() => {
     r'email': email?.toJson(),
-    if (pipelineId != null) r'pipeline_id': pipelineId,
+    r'pipeline_id': pipelineId,
   };
 
   $$TestPipelineRequestBodyCopyWith<TestPipelineRequestBody> get copyWith =>
@@ -104,7 +107,7 @@ abstract class $$TestPipelineRequestBodyCopyWith<$Res> {
     _i3.int? pipelineId,
   });
   _i4.TestPipelineRequestBodyEmailOneOfModel get email;
-  _i3.int? get pipelineId;
+  _i3.int get pipelineId;
 }
 
 class _TestPipelineRequestBodyCopyWith<$Res>
@@ -119,7 +122,7 @@ class _TestPipelineRequestBodyCopyWith<$Res>
   _i4.TestPipelineRequestBodyEmailOneOfModel get email => _value.email;
 
   @_i3.override
-  _i3.int? get pipelineId => _value.pipelineId;
+  _i3.int get pipelineId => _value.pipelineId;
 
   @_i3.override
   $Res call({
@@ -132,7 +135,7 @@ class _TestPipelineRequestBodyCopyWith<$Res>
           : (email as _i4.TestPipelineRequestBodyEmailOneOfModel),
       pipelineId: _i3.identical(pipelineId, _sentinel)
           ? this.pipelineId
-          : (pipelineId as _i3.int?),
+          : (pipelineId as _i3.int),
     ) as $Res);
   }
 }

@@ -21,10 +21,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlis
     as _i9;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_allowlist_post503_response.dart'
+    as _i13;
 
 sealed class AddToAllowlistResponse {
   const AddToAllowlistResponse();
@@ -159,10 +161,26 @@ class AddToAllowlistResponse422 extends AddToAllowlistResponse {
 }
 
 @_i1.immutable
+class AddToAllowlistResponse429 extends AddToAllowlistResponse {
+  const AddToAllowlistResponse429({required this.body});
+
+  final _i11.ApiV1AdminDomainsIdAllowlistPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is AddToAllowlistResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class AddToAllowlistResponse500 extends AddToAllowlistResponse {
   const AddToAllowlistResponse500({required this.body});
 
-  final _i11.ApiV1AdminDomainsIdAllowlistPost500Response body;
+  final _i12.ApiV1AdminDomainsIdAllowlistPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class AddToAllowlistResponse500 extends AddToAllowlistResponse {
 class AddToAllowlistResponse503 extends AddToAllowlistResponse {
   const AddToAllowlistResponse503({required this.body});
 
-  final _i12.ApiV1AdminDomainsIdAllowlistPost503Response body;
+  final _i13.ApiV1AdminDomainsIdAllowlistPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

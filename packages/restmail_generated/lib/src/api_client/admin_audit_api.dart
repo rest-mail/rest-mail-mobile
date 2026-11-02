@@ -65,6 +65,16 @@ class AdminAuditApi {
   /// ```
   ///
   /// Response 403 (application/json):
+  /// **Example** "recent_two_factor_required" — A stale second-factor sign-in must authenticate again:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "recent_two_factor_required",
+  ///     "message": "Sign in again with two-factor authentication: a recent second factor is required"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "setup_required" — The account has not completed setup:
   /// The signed session is current but still requires initial account setup. The production SetupDone middleware refuses the request before reading data.
   ///
@@ -73,6 +83,16 @@ class AdminAuditApi {
   ///   "error": {
   ///     "code": "setup_required",
   ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "two_factor_required",
+  ///     "message": "This action needs a session signed in with two-factor authentication: sign in again with your code"
   ///   }
   /// }
   /// ```
@@ -104,6 +124,19 @@ class AdminAuditApi {
   ///       }
   ///     },
   ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
@@ -166,145 +199,6 @@ class AdminAuditApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Response 200 (application/json):
-  /// **Example** "anchor_blank":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "anchor_mismatch":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "anchor": {
-  ///       "hash": "0000000000000000000000000000000000000000000000000000000000000000",
-  ///       "seq": 2
-  ///     },
-  ///     "broken_at_seq": 2,
-  ///     "checked": 1,
-  ///     "first_seq": 1,
-  ///     "last_hash": "a80f07a19f2e0addd466cc2ee548e74d7335ef434b5c77652c28fde2e8383f53",
-  ///     "last_seq": 1,
-  ///     "ok": false,
-  ///     "reason": "hash does not match the anchor: the log was rewritten up to here"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "anchor_missing":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "anchor": {
-  ///       "hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///       "seq": 3
-  ///     },
-  ///     "broken_at_seq": 3,
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": false,
-  ///     "reason": "the log ends at seq 2, before the anchor at seq 3"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "anchor_uppercase":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "anchor": {
-  ///       "hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///       "seq": 2
-  ///     },
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "anchor_valid":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "anchor": {
-  ///       "hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///       "seq": 2
-  ///     },
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "audit_capability":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "broken":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "broken_at_seq": 2,
-  ///     "checked": 1,
-  ///     "first_seq": 1,
-  ///     "last_hash": "a80f07a19f2e0addd466cc2ee548e74d7335ef434b5c77652c28fde2e8383f53",
-  ///     "last_seq": 1,
-  ///     "ok": false,
-  ///     "reason": "hash does not match the entry's contents"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "checked": 2,
-  ///     "first_seq": 1,
-  ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
-  ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "checked": 0,
-  ///     "first_seq": 0,
-  ///     "last_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-  ///     "last_seq": 0,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// The real bounded database audit verifier walks fixed, production-hashed entries. Complete pairs expose valid/empty/broken/gapped/truncated chains and anchored matches/mismatches/missing anchors. Controlled rows prove verifier and response wiring, not PostgreSQL traversal or audit append persistence.
   ///
@@ -315,35 +209,6 @@ class AdminAuditApi {
   ///     "first_seq": 1,
   ///     "last_hash": "52bcb3083c3f488bdc23d26f1fd7ca9e546465aa60e25235d999609d8d82005c",
   ///     "last_seq": 2,
-  ///     "ok": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "gap":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "broken_at_seq": 3,
-  ///     "checked": 1,
-  ///     "first_seq": 1,
-  ///     "last_hash": "a80f07a19f2e0addd466cc2ee548e74d7335ef434b5c77652c28fde2e8383f53",
-  ///     "last_seq": 1,
-  ///     "ok": false,
-  ///     "reason": "expected seq 2, found 3"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "truncated":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "checked": 2,
-  ///     "first_seq": 5,
-  ///     "last_hash": "3ca65e929281aac68198b5f812775657ad3c146ea3325c72932cd649f9ffb289",
-  ///     "last_seq": 6,
-  ///     "note": "the log starts at seq 5; the check starts from that entry's prev_hash",
   ///     "ok": true
   ///   }
   /// }
@@ -371,22 +236,22 @@ class AdminAuditApi {
   /// }
   /// ```
   ///
-  /// **Example** "setup_required":
+  /// **Example** "recent_two_factor_required" — A stale second-factor sign-in must authenticate again:
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///     "code": "recent_two_factor_required",
+  ///     "message": "Sign in again with two-factor authentication: a recent second factor is required"
   ///   }
   /// }
   /// ```
   ///
-  /// **Example** "wrong_capability":
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
+  ///     "code": "two_factor_required",
+  ///     "message": "This action needs a session signed in with two-factor authentication: sign in again with your code"
   ///   }
   /// }
   /// ```
@@ -418,6 +283,19 @@ class AdminAuditApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error":
   /// ```json
@@ -430,16 +308,6 @@ class AdminAuditApi {
   /// ```
   ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {

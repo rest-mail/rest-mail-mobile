@@ -120,6 +120,19 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The list dependency fails:
   /// Session and permission checks pass, but the list dependency fails. The production handler and error writer produce this refusal without exposing dependency details.
@@ -166,55 +179,10 @@ class AdminAliasesApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Request body (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// []
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "created":
-  /// ```json
-  /// {
-  ///   "destination_address": "admin@restmail.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "csrf_mismatch":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "destination_case":
-  /// ```json
-  /// {
-  ///   "destination_address": "Remote@Destination.TEST",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "destination_display":
-  /// ```json
-  /// {
-  ///   "destination_address": "Team <外部Café@例え.JP>",
   ///   "source_address": "sales@restmail.test"
   /// }
   /// ```
@@ -224,22 +192,6 @@ class AdminAliasesApi {
   /// {
   ///   "destination_address": "new@destination.test",
   ///   "source_address": "sales@missing.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_read":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_unavailable":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@db-failure.test"
   /// }
   /// ```
   ///
@@ -261,54 +213,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
   ///
@@ -316,23 +220,7 @@ class AdminAliasesApi {
   /// {
   /// ```
   ///
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test",
@@ -358,30 +246,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "source_display":
-  /// ```json
-  /// {
-  ///   "destination_address": "Remote@Destination.TEST",
-  ///   "source_address": "Sales Team <SALES@RESTMAIL.TEST>"
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_domain":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_idna":
-  /// ```json
-  /// {
-  ///   "destination_address": "Remote@Destination.TEST",
-  ///   "source_address": "Café@BÜCHER.example"
-  /// }
-  /// ```
-  ///
   /// **Example** "source_invalid":
   /// This request matches the published string type but is refused by runtime address validation. Preserve the exact 422 answer without marking this schema-valid request invalid.
   ///
@@ -392,30 +256,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "source_missing":
-  /// ```json
-  /// {
-  ///   "destination_address": "admin@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_wrong_type":
-  /// ```json
-  /// {
-  ///   "destination_address": "admin@restmail.test",
-  ///   "source_address": 5
-  /// }
-  /// ```
-  ///
   /// **Example** "unauthenticated":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test",
@@ -431,85 +272,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test",
-  ///   "source_address": "sales@restmail.test"
-  /// }
-  /// ```
-  ///
   /// Response 201 (application/json):
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "created":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "admin@restmail.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "destination_case":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "Remote@Destination.TEST",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "destination_display":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "Team <外部Café@例え.JP>",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_read":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Production registration, JWT/scoped-key checks, current holder grants and CSRF precede mutation. The source domain is the authority boundary; mailbox and destination-domain grants cannot configure an alias. Loaded domain fields additionally require domains:read; creation has no loaded association. Controlled SQL proves wiring, not PostgreSQL uniqueness/durability or mail routing.
   ///
@@ -526,87 +289,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_display":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "Remote@Destination.TEST",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_idna":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "Remote@Destination.TEST",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "café@xn--bcher-kva.example"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Invalid request body"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
   ///
@@ -637,86 +320,6 @@ class AdminAliasesApi {
   ///   "error": {
   ///     "code": "csrf_failed",
   ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
   ///   }
   /// }
   /// ```
@@ -774,36 +377,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "source_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "source_address": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_wrong_type":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "source_address": "must be a string"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 429 (application/json):
   /// **Example** "rate_limited":
   /// ```json
@@ -816,16 +389,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "domain_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "write_unavailable":
   /// ```json
   /// {
@@ -837,16 +400,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -870,50 +423,6 @@ class AdminAliasesApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Response 200 (application/json):
-  /// **Example** "domain_redacted" — Mailbox-read permission does not expose domain administration:
-  /// The session holds mailboxes:read on example.com but no domains:read capability. The alias remains readable and its domain association is omitted instead of emitting an invalid zero record.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "destination_address": "owned@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "support@example.com"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope" — A grant on the source domain permits this lookup:
-  /// The production permission query resolves example.com and evaluates the session grants. Domain data is included only when domains:read also permits it.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "destination_address": "owned@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "example.com",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "support@example.com"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — Read the full public resource:
   /// The global capability permits this lookup. Stored fields are mapped by the production handler; the private DKIM key has no public field.
   ///
@@ -942,32 +451,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "inactive" — Inactive resources remain readable to administrators:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": false,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "destination_address": "owned@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "example.com",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 2,
-  ///     "source_address": "quiet@example.com"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 401 (application/json):
   /// **Example** "unauthenticated":
   /// ```json
@@ -982,30 +465,6 @@ class AdminAliasesApi {
   /// Response 403 (application/json):
   /// **Example** "destination_mailbox_scope" — An individual destination mailbox grant cannot administer aliases:
   /// Alias configuration belongs to the source domain. Holding mailboxes:read for this individual destination mailbox does not grant domain administration.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "outside_domain" — A grant on another domain cannot read this resource:
-  /// The real scope query resolves example.com; a grant restricted to other.test does not reach it.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_mailbox_scope" — An individual source mailbox grant cannot administer aliases:
-  /// Alias configuration belongs to the source domain. Holding mailboxes:read for this individual source mailbox does not grant domain administration.
   ///
   /// ```json
   /// {
@@ -1041,21 +500,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format" — The domain ID cannot bind to an integer:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1071,19 +515,20 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "domain_unavailable" — The alias exists but the domain preload fails:
-  /// The real GORM preload fails. Returning a partially loaded alias or a false404 would conceal the dependency error.
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
   ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to get alias"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "internal_error" — A database fault is not a missing resource:
   /// The production lookup encounters a controlled database error. The error writer returns a sanitized response without the dependency detail.
   ///
@@ -1097,16 +542,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// The database-backed current-session lookup fails. The production session-cache builder and stale-session middleware produce this refusal.
   ///
@@ -1152,46 +587,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "other_capability":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
   /// **Example** "missing":
   /// ```json
@@ -1215,21 +610,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1245,17 +625,20 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "internal_error":
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to delete alias"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -1266,37 +649,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "scoped_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -1320,44 +673,7 @@ class AdminAliasesApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Request body (application/json):
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "csrf_mismatch":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "destination_invalid":
-  /// This request matches the published string type but is refused by runtime address validation. Preserve the exact 422 answer without marking this schema-valid request invalid.
-  ///
-  /// ```json
-  /// {
-  ///   "destination_address": "not-an-email"
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_preload_unavailable":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_read":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test"
@@ -1373,22 +689,6 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "inactive":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
-  ///
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
@@ -1398,52 +698,10 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
   ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
   /// }
   /// ```
   ///
@@ -1461,46 +719,10 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "null_fields":
-  /// ```json
-  /// {
-  ///   "active": null,
-  ///   "destination_address": null
-  /// }
-  /// ```
-  ///
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "reload_missing":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "reload_unavailable":
-  /// ```json
-  /// {
-  ///   "active": false
   /// }
   /// ```
   ///
@@ -1513,28 +735,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_domain":
   /// ```json
   /// {
   ///   "destination_address": "new@destination.test"
@@ -1548,92 +749,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {}
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "active": false
-  /// }
-  /// ```
-  ///
-  /// **Example** "updated":
-  /// ```json
-  /// {
-  ///   "destination_address": "admin@restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "destination_address": "new@destination.test"
-  /// }
-  /// ```
-  ///
   /// Response 200 (application/json):
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-01-01T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "restmail.test",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-01-01T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_read":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-01-01T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "restmail.test",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-01-01T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Production registration, JWT/scoped-key checks, current holder grants and CSRF precede mutation. The source domain is the authority boundary; mailbox and destination-domain grants cannot configure an alias. Loaded domain fields additionally require domains:read; creation has no loaded association. Controlled SQL proves wiring, not PostgreSQL uniqueness/durability or mail routing.
   ///
@@ -1655,140 +771,6 @@ class AdminAliasesApi {
   ///       "server_type": "traditional",
   ///       "updated_at": "2026-01-01T00:00:00Z"
   ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inactive":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": false,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "old@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-01-01T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "restmail.test",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-01-01T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "null_fields":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "old@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-01-01T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "restmail.test",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-01-01T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "old@destination.test",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-01-01T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "reject",
-  ///       "id": 1,
-  ///       "name": "restmail.test",
-  ///       "sending_policy": "bulk",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-01-01T00:00:00Z"
-  ///     },
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "updated":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "admin@restmail.test",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "source_address": "sales@restmail.test"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "destination_address": "new@destination.test",
   ///     "domain_id": 1,
   ///     "id": 1,
   ///     "source_address": "sales@restmail.test"
@@ -1831,108 +813,8 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
   /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Alias not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "reload_missing":
   /// ```json
   /// {
   ///   "error": {
@@ -1956,40 +838,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "destination_invalid":
-  /// This request matches the published string type but is refused by runtime address validation. Preserve the exact 422 answer without marking this schema-valid request invalid.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "destination_address": "must be a valid email address"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
@@ -2019,16 +867,6 @@ class AdminAliasesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "domain_preload_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -2039,47 +877,7 @@ class AdminAliasesApi {
   /// }
   /// ```
   ///
-  /// **Example** "reload_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to update alias"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {

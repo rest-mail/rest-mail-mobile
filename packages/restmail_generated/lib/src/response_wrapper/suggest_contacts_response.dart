@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_sugg
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_suggest_get503_response.dart'
+    as _i11;
 
 sealed class SuggestContactsResponse {
   const SuggestContactsResponse();
@@ -75,10 +77,26 @@ class SuggestContactsResponse403 extends SuggestContactsResponse {
 }
 
 @_i1.immutable
+class SuggestContactsResponse404 extends SuggestContactsResponse {
+  const SuggestContactsResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdContactsSuggestGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is SuggestContactsResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class SuggestContactsResponse413 extends SuggestContactsResponse {
   const SuggestContactsResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdContactsSuggestGet413Response body;
+  final _i7.ApiV1AccountsIdContactsSuggestGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class SuggestContactsResponse413 extends SuggestContactsResponse {
 class SuggestContactsResponse422 extends SuggestContactsResponse {
   const SuggestContactsResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdContactsSuggestGet422Response body;
+  final _i8.ApiV1AccountsIdContactsSuggestGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class SuggestContactsResponse422 extends SuggestContactsResponse {
 class SuggestContactsResponse429 extends SuggestContactsResponse {
   const SuggestContactsResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdContactsSuggestGet429Response body;
+  final _i9.ApiV1AccountsIdContactsSuggestGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class SuggestContactsResponse429 extends SuggestContactsResponse {
 class SuggestContactsResponse500 extends SuggestContactsResponse {
   const SuggestContactsResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdContactsSuggestGet500Response body;
+  final _i10.ApiV1AccountsIdContactsSuggestGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class SuggestContactsResponse500 extends SuggestContactsResponse {
 class SuggestContactsResponse503 extends SuggestContactsResponse {
   const SuggestContactsResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdContactsSuggestGet503Response body;
+  final _i11.ApiV1AccountsIdContactsSuggestGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

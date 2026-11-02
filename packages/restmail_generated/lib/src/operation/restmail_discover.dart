@@ -9,20 +9,18 @@ import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/error_response.dart' as _i9;
 import 'package:restmail_generated/src/model/restmail_discovery.dart' as _i7;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i12;
+    as _i11;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/well_known_restmail_get200_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/well_known_restmail_get400_response.dart'
-    as _i10;
 import 'package:restmail_generated/src/response/well_known_restmail_get404_response.dart'
-    as _i11;
+    as _i10;
 import 'package:restmail_generated/src/response/well_known_restmail_get422_response.dart'
-    as _i13;
+    as _i12;
 import 'package:restmail_generated/src/response/well_known_restmail_get500_response.dart'
-    as _i14;
+    as _i13;
 import 'package:restmail_generated/src/response/well_known_restmail_get503_response.dart'
-    as _i15;
+    as _i14;
 import 'package:restmail_generated/src/response_wrapper/restmail_discover_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -112,37 +110,11 @@ final class RestmailDiscover
             )).decodeSimpleNullableString(context: r'Cache-Control'),
           ),
         );
-      case (400, r'application/json'):
-        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i9.ErrorResponse.fromJson(_$json);
-        return _i2.RestmailDiscoverResponse400(
-          body: _i10.WellKnownRestmailGet400Response(
-            body: _$body,
-            contentSecurityPolicy:
-                (response.headersSplitValues[r'content-security-policy']?.join(
-                  ',',
-                )).decodeSimpleString(context: r'Content-Security-Policy'),
-            referrerPolicy:
-                (response.headersSplitValues[r'referrer-policy']?.join(','))
-                    .decodeSimpleString(context: r'Referrer-Policy'),
-            strictTransportSecurity:
-                (response.headersSplitValues[r'strict-transport-security']
-                        ?.join(','))
-                    .decodeSimpleString(context: r'Strict-Transport-Security'),
-            xContentTypeOptions:
-                (response.headersSplitValues[r'x-content-type-options']?.join(
-                  ',',
-                )).decodeSimpleString(context: r'X-Content-Type-Options'),
-            xFrameOptions:
-                (response.headersSplitValues[r'x-frame-options']?.join(','))
-                    .decodeSimpleString(context: r'X-Frame-Options'),
-          ),
-        );
       case (404, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.RestmailDiscoverResponse404(
-          body: _i11.WellKnownRestmailGet404Response(
+          body: _i10.WellKnownRestmailGet404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -166,9 +138,9 @@ final class RestmailDiscover
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i11.ValidationErrorResponse.fromJson(_$json);
         return _i2.RestmailDiscoverResponse422(
-          body: _i13.WellKnownRestmailGet422Response(
+          body: _i12.WellKnownRestmailGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -194,7 +166,7 @@ final class RestmailDiscover
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.RestmailDiscoverResponse500(
-          body: _i14.WellKnownRestmailGet500Response(
+          body: _i13.WellKnownRestmailGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -220,7 +192,7 @@ final class RestmailDiscover
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.RestmailDiscoverResponse503(
-          body: _i15.WellKnownRestmailGet503Response(
+          body: _i14.WellKnownRestmailGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

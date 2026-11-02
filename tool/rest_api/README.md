@@ -8,11 +8,19 @@ server image used by the real-server integration fixture; its OCI revision label
 must match the contract revision before tests start. The generator's complete dependency
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
-The first committed document is the exact JSON served by production 0.28.0,
-revision `2bac2b0f06291effd4ba0c9cc036548f6b24a0bd`: 171 operations, including
-82 production admin operations. A future server pin change must update the
-complete document and checksum, then regenerate; new operations are not held to
-the old fixed 81-operation manifest.
+The committed document is the exact JSON served by the `main` image of server
+revision `33715381613489b64f08fa1337ef0c7a63c1541e`, which carries the contact
+reply-time route: 191 operations. No release holds that revision yet, so
+`info.version` and the lock's version read `main`, and the revision and image
+digest name it. A future server pin change must update the complete document
+and checksum, then regenerate; new operations are not held to the old fixed
+81-operation manifest.
+
+The server registers its push device routes only with APNs configured, and
+describes only what it registers. Capture the document from the locked image
+with all of `RESTMAIL_APNS_KEY_FILE` (a throwaway P-256 key will do),
+`RESTMAIL_APNS_KEY_ID` and `RESTMAIL_APNS_TEAM_ID` set, as production has them,
+or the three push operations disappear from the generated client.
 
 On the pinned Dart SDK:
 
@@ -58,8 +66,9 @@ do not move the event stream onto it.
 ## Remaining migration
 
 Generating a package and adding a transport is not the complete client migration.
-The domain and mailbox facade batch migrates the eleven operations listed in
-`migrated_operations.json`, including DNS and ending sessions. Existing screens
+The domain and mailbox facade batch, and the contact reply-time setting, migrate
+the operations listed in `migrated_operations.json`, including DNS and ending
+sessions. Existing screens
 reach generated operations through their unchanged facade methods. Generated
 code validates status, headers and wire fields; typed projections preserve the
 current display model, timestamp handling, quotas and setup flags.

@@ -5,6 +5,7 @@
 import 'dart:core' as _i2;
 
 import 'package:meta/meta.dart' as _i1;
+import 'package:restmail_generated/src/model/error_response.dart' as _i3;
 
 @_i1.immutable
 class AutodiscoverAutodiscoverXmlPost400Response {
@@ -27,7 +28,7 @@ class AutodiscoverAutodiscoverXmlPost400Response {
 
   final _i2.String xFrameOptions;
 
-  final _i2.String body;
+  final _i3.ErrorResponse body;
 
   @_i2.override
   _i2.bool operator ==(_i2.Object other) {
@@ -70,14 +71,14 @@ abstract class $$AutodiscoverAutodiscoverXmlPost400ResponseCopyWith<$Res> {
     _i2.String? strictTransportSecurity,
     _i2.String? xContentTypeOptions,
     _i2.String? xFrameOptions,
-    _i2.String? body,
+    _i3.ErrorResponse? body,
   });
   _i2.String get contentSecurityPolicy;
   _i2.String get referrerPolicy;
   _i2.String get strictTransportSecurity;
   _i2.String get xContentTypeOptions;
   _i2.String get xFrameOptions;
-  _i2.String get body;
+  _i3.ErrorResponse get body;
 }
 
 class _AutodiscoverAutodiscoverXmlPost400ResponseCopyWith<$Res>
@@ -104,7 +105,7 @@ class _AutodiscoverAutodiscoverXmlPost400ResponseCopyWith<$Res>
   _i2.String get xFrameOptions => _value.xFrameOptions;
 
   @_i2.override
-  _i2.String get body => _value.body;
+  _i3.ErrorResponse get body => _value.body;
 
   @_i2.override
   $Res call({
@@ -131,7 +132,9 @@ class _AutodiscoverAutodiscoverXmlPost400ResponseCopyWith<$Res>
       xFrameOptions: _i2.identical(xFrameOptions, _sentinel)
           ? this.xFrameOptions
           : (xFrameOptions as _i2.String),
-      body: _i2.identical(body, _sentinel) ? this.body : (body as _i2.String),
+      body: _i2.identical(body, _sentinel)
+          ? this.body
+          : (body as _i3.ErrorResponse),
     ) as $Res);
   }
 }

@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_del
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_delete503_response.dart'
+    as _i11;
 
 sealed class DeleteCertificateResponse {
   const DeleteCertificateResponse();
@@ -123,10 +125,26 @@ class DeleteCertificateResponse422 extends DeleteCertificateResponse {
 }
 
 @_i1.immutable
+class DeleteCertificateResponse429 extends DeleteCertificateResponse {
+  const DeleteCertificateResponse429({required this.body});
+
+  final _i9.ApiV1AdminCertificatesIdDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeleteCertificateResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeleteCertificateResponse500 extends DeleteCertificateResponse {
   const DeleteCertificateResponse500({required this.body});
 
-  final _i9.ApiV1AdminCertificatesIdDelete500Response body;
+  final _i10.ApiV1AdminCertificatesIdDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DeleteCertificateResponse500 extends DeleteCertificateResponse {
 class DeleteCertificateResponse503 extends DeleteCertificateResponse {
   const DeleteCertificateResponse503({required this.body});
 
-  final _i10.ApiV1AdminCertificatesIdDelete503Response body;
+  final _i11.ApiV1AdminCertificatesIdDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

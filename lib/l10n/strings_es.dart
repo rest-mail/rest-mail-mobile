@@ -155,6 +155,26 @@ const Map<String, Map<String, String>> stringsEs = {
     'quarantine.loading': 'Cargando…',
     'quarantine.more': 'Mostrar más',
     'mailboxes.contacts': 'Contactos',
+    'contacts.replyTimeUnderMinute': 'Suele responder en menos de un minuto',
+    'contacts.replyTimeMinute': 'Suele responder en aproximadamente 1 minuto',
+    'contacts.replyTimeMinutes':
+        'Suele responder en aproximadamente {count} minutos',
+    'contacts.replyTimeHour': 'Suele responder en aproximadamente 1 hora',
+    'contacts.replyTimeHours':
+        'Suele responder en aproximadamente {count} horas',
+    'contacts.replyTimeDay': 'Suele responder en aproximadamente 1 día',
+    'contacts.replyTimeDays': 'Suele responder en aproximadamente {count} días',
+    'contacts.replyTimeNote': 'Estimación local basada en al menos tres respuestas del historial de esta cuenta; no es una señal del contacto.',
+    'contacts.replyTimeSetting': 'Tiempos de respuesta de los contactos',
+    'contacts.replyTimeToggle':
+        'Mostrar los tiempos de respuesta habituales junto a los contactos',
+    'contacts.replyTimeHelp': 'Desactivado de forma predeterminada. Las estimaciones solo usan el correo enviado de esta cuenta y las respuestas asociadas, y necesitan al menos tres respuestas. No es una señal del contacto. Nada sale del servidor; no se añade ningún rastreo.',
+    'contacts.replyTimeLoading': 'Cargando el ajuste…',
+    'contacts.replyTimeSaving': 'Guardando…',
+    'contacts.replyTimeLoadFailed':
+        'No se pudo cargar el ajuste de tiempos de respuesta.',
+    'contacts.replyTimeSaveFailed':
+        'No se pudo guardar el ajuste de tiempos de respuesta.',
     'contacts.add': 'Añadir',
     'contacts.search': 'Buscar direcciones',
     'contacts.all': 'Todos',

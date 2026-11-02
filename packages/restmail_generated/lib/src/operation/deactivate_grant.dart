@@ -25,10 +25,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivat
     as _i13;
 import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post422_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post429_response.dart'
     as _i16;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post500_response.dart'
     as _i17;
+import 'package:restmail_generated/src/response/api_v1_admin_grants_id_deactivate_post503_response.dart'
+    as _i18;
 import 'package:restmail_generated/src/response_wrapper/deactivate_grant_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -260,11 +262,39 @@ final class DeactivateGrant
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
+        return _i2.DeactivateGrantResponse429(
+          body: _i16.ApiV1AdminGrantsIdDeactivatePost429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.DeactivateGrantResponse500(
-          body: _i16.ApiV1AdminGrantsIdDeactivatePost500Response(
+          body: _i17.ApiV1AdminGrantsIdDeactivatePost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -290,7 +320,7 @@ final class DeactivateGrant
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.DeactivateGrantResponse503(
-          body: _i17.ApiV1AdminGrantsIdDeactivatePost503Response(
+          body: _i18.ApiV1AdminGrantsIdDeactivatePost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

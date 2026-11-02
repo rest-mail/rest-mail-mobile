@@ -5,6 +5,8 @@ import 'package:http/testing.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/http_contract.dart';
+
 const _contact = <String, dynamic>{
   'id': 9,
   'mailbox_id': 3,
@@ -39,7 +41,10 @@ void main() {
         return http.Response.bytes(
           utf8.encode(jsonEncode(reply)),
           status,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            'content-type': 'application/json',
+            ...contractSecurityHeaders,
+          },
         );
       }),
     );
@@ -81,6 +86,95 @@ void main() {
 
     await client.contacts(3);
     expect(sent.url.queryParameters, {'limit': '50', 'offset': '0'});
+  });
+
+  group('reply time', () {
+    test(
+      'a contact reads its estimate, and null when it is left out',
+      () async {
+        reply = {
+          'data': [
+            {..._contact, 'usual_reply_seconds': 7200},
+            _contact,
+            {..._contact, 'usual_reply_seconds': null},
+          ],
+          'pagination': {'has_more': false, 'total': 3},
+        };
+        final page = await client.contacts(3);
+        expect(page.items.map((c) => c.usualReplySeconds), [7200, null, null]);
+
+        reply = {
+          'data': [
+            {..._contact, 'usual_reply_seconds': 60},
+          ],
+        };
+        final found = await client.suggestContacts(3, 'ada');
+        expect(found.single.usualReplySeconds, 60);
+      },
+    );
+
+    test('reading the setting asks the account and reads its answer', () async {
+      reply = {
+        'data': {'enabled': true},
+      };
+      expect(await client.contactReplyTimeEnabled(3), isTrue);
+      expect(sent.method, 'GET');
+      expect(sent.url.path, '/api/v1/accounts/3/contact-reply-time');
+      expect(sent.headers['authorization'], 'Bearer access');
+
+      reply = {
+        'data': {'enabled': false},
+      };
+      expect(await client.contactReplyTimeEnabled(3), isFalse);
+    });
+
+    test('changing the setting sends only the choice, and returns what the '
+        'server saved', () async {
+      reply = {
+        'data': {'enabled': true},
+      };
+      expect(await client.setContactReplyTimeEnabled(3, true), isTrue);
+      expect(sent.method, 'PUT');
+      expect(sent.url.path, '/api/v1/accounts/3/contact-reply-time');
+      expect(body(), {'enabled': true});
+
+      reply = {
+        'data': {'enabled': false},
+      };
+      expect(await client.setContactReplyTimeEnabled(3, false), isFalse);
+      expect(body(), {'enabled': false});
+    });
+
+    test('a refusal keeps the session and says why', () async {
+      reply = {
+        'error': {'code': 'forbidden', 'message': 'Access denied'},
+      };
+      status = 403;
+      await expectLater(
+        client.contactReplyTimeEnabled(3),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 403)
+              .having((e) => e.code, 'code', 'forbidden'),
+        ),
+      );
+      await expectLater(
+        client.setContactReplyTimeEnabled(3, true),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+      );
+      expect(calls, 2);
+      expect(client.tokens, isNotNull);
+    });
+
+    test('an answer that is not the setting is not read as off', () async {
+      reply = {'data': <String, Object>{}};
+      await expectLater(
+        client.contactReplyTimeEnabled(3),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'bad_response'),
+        ),
+      );
+    });
   });
 
   test('a new contact sends only what is given', () async {

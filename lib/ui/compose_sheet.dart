@@ -11,6 +11,7 @@ import '../state/mail_backend.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/compose_seed.dart';
+import 'contact_reply_time.dart';
 import 'widgets/common.dart';
 
 /// Opens the compose sheet over the current screen, signed per the settings.
@@ -719,6 +720,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                       hint: tr(context, 'compose.recipient'),
                       enabled: !_counting,
                       suggest: _suggest,
+                      accountId: widget.mailbox.account?.id,
                     ),
                   ),
                   if (_showCc) ...[
@@ -729,6 +731,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                         hint: '',
                         enabled: !_counting,
                         suggest: _suggest,
+                        accountId: widget.mailbox.account?.id,
                       ),
                     ),
                     _FieldRow(
@@ -738,6 +741,7 @@ class _ComposeSheetState extends State<ComposeSheet>
                         hint: '',
                         enabled: !_counting,
                         suggest: _suggest,
+                        accountId: widget.mailbox.account?.id,
                       ),
                     ),
                   ],
@@ -969,6 +973,7 @@ class _AddressField extends StatefulWidget {
     this.focusNode,
     this.enabled = true,
     this.suggest,
+    this.accountId,
   });
 
   final TextEditingController controller;
@@ -980,12 +985,17 @@ class _AddressField extends StatefulWidget {
   /// server keeps none.
   final Future<List<Contact>> Function(String query)? suggest;
 
+  /// The account [suggest] asks. A reply-time estimate shows only beside
+  /// suggestions that came from it.
+  final int? accountId;
+
   @override
   State<_AddressField> createState() => _AddressFieldState();
 }
 
 class _AddressFieldState extends State<_AddressField> {
   List<Contact> _suggestions = const [];
+  int? _suggestionsAccountId;
   Timer? _debounce;
 
   /// Each question's number: an answer to an older one is dropped.
@@ -1014,6 +1024,7 @@ class _AddressFieldState extends State<_AddressField> {
     }
     _debounce = Timer(const Duration(milliseconds: 250), () async {
       final asked = ++_asked;
+      final accountId = widget.accountId;
       List<Contact> found;
       try {
         found = await suggest(typing);
@@ -1026,12 +1037,13 @@ class _AddressFieldState extends State<_AddressField> {
         for (final address in parseAddresses(widget.controller.text).valid)
           address.toLowerCase(),
       };
-      setState(
-        () => _suggestions = [
+      setState(() {
+        _suggestionsAccountId = accountId;
+        _suggestions = [
           for (final contact in found)
             if (!present.contains(contact.email.toLowerCase())) contact,
-        ].take(5).toList(),
-      );
+        ].take(5).toList();
+      });
     });
   }
 
@@ -1095,11 +1107,22 @@ class _AddressFieldState extends State<_AddressField> {
                       border: Border.all(color: c.line),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      contact.name.trim().isEmpty
-                          ? contact.email
-                          : '${contact.name.trim()} · ${contact.email}',
-                      style: rmText(12.5, color: c.ink2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          contact.name.trim().isEmpty
+                              ? contact.email
+                              : '${contact.name.trim()} · ${contact.email}',
+                          style: rmText(12.5, color: c.ink2),
+                        ),
+                        ContactReplyTime(
+                          seconds: _suggestionsAccountId == widget.accountId
+                              ? contact.usualReplySeconds
+                              : null,
+                        ),
+                      ],
                     ),
                   ),
                 ),

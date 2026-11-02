@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_threa
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get503_response.dart'
+    as _i11;
 
 sealed class GetThreadResponse {
   const GetThreadResponse();
@@ -75,10 +77,26 @@ class GetThreadResponse403 extends GetThreadResponse {
 }
 
 @_i1.immutable
+class GetThreadResponse404 extends GetThreadResponse {
+  const GetThreadResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdThreadsThreadIdGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetThreadResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetThreadResponse413 extends GetThreadResponse {
   const GetThreadResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdThreadsThreadIdGet413Response body;
+  final _i7.ApiV1AccountsIdThreadsThreadIdGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class GetThreadResponse413 extends GetThreadResponse {
 class GetThreadResponse422 extends GetThreadResponse {
   const GetThreadResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdThreadsThreadIdGet422Response body;
+  final _i8.ApiV1AccountsIdThreadsThreadIdGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class GetThreadResponse422 extends GetThreadResponse {
 class GetThreadResponse429 extends GetThreadResponse {
   const GetThreadResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdThreadsThreadIdGet429Response body;
+  final _i9.ApiV1AccountsIdThreadsThreadIdGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class GetThreadResponse429 extends GetThreadResponse {
 class GetThreadResponse500 extends GetThreadResponse {
   const GetThreadResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdThreadsThreadIdGet500Response body;
+  final _i10.ApiV1AccountsIdThreadsThreadIdGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetThreadResponse500 extends GetThreadResponse {
 class GetThreadResponse503 extends GetThreadResponse {
   const GetThreadResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdThreadsThreadIdGet503Response body;
+  final _i11.ApiV1AccountsIdThreadsThreadIdGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

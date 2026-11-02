@@ -13,10 +13,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics
     as _i5;
 import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get413_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get429_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get500_response.dart'
     as _i8;
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_analytics_get503_response.dart'
+    as _i9;
 
 sealed class GetPipelineAnalyticsResponse {
   const GetPipelineAnalyticsResponse();
@@ -87,10 +89,26 @@ class GetPipelineAnalyticsResponse413 extends GetPipelineAnalyticsResponse {
 }
 
 @_i1.immutable
+class GetPipelineAnalyticsResponse429 extends GetPipelineAnalyticsResponse {
+  const GetPipelineAnalyticsResponse429({required this.body});
+
+  final _i7.ApiV1AdminPipelinesAnalyticsGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetPipelineAnalyticsResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetPipelineAnalyticsResponse500 extends GetPipelineAnalyticsResponse {
   const GetPipelineAnalyticsResponse500({required this.body});
 
-  final _i7.ApiV1AdminPipelinesAnalyticsGet500Response body;
+  final _i8.ApiV1AdminPipelinesAnalyticsGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -106,7 +124,7 @@ class GetPipelineAnalyticsResponse500 extends GetPipelineAnalyticsResponse {
 class GetPipelineAnalyticsResponse503 extends GetPipelineAnalyticsResponse {
   const GetPipelineAnalyticsResponse503({required this.body});
 
-  final _i8.ApiV1AdminPipelinesAnalyticsGet503Response body;
+  final _i9.ApiV1AdminPipelinesAnalyticsGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

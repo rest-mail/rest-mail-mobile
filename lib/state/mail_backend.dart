@@ -147,6 +147,13 @@ abstract interface class MailBackend {
   /// trust or refuse mail by (REST Mail).
   bool get hasContacts;
 
+  /// Whether [accountId] shows contact reply-time estimates.
+  Future<bool> contactReplyTimeEnabled(int accountId);
+
+  /// Turns [accountId]'s reply-time estimates on or off, and returns what was
+  /// saved.
+  Future<bool> setContactReplyTimeEnabled(int accountId, bool enabled);
+
   /// One page of [accountId]'s contacts, by address.
   Future<OffsetPage<Contact>> contacts(
     int accountId, {
@@ -453,6 +460,14 @@ class RestBackend implements MailBackend, OriginalForwardBackend {
   @override
   Future<List<Contact>> suggestContacts(int accountId, String query) =>
       client.suggestContacts(accountId, query);
+
+  @override
+  Future<bool> contactReplyTimeEnabled(int accountId) =>
+      client.contactReplyTimeEnabled(accountId);
+
+  @override
+  Future<bool> setContactReplyTimeEnabled(int accountId, bool enabled) =>
+      client.setContactReplyTimeEnabled(accountId, enabled);
 
   @override
   Future<Message> saveDraft(OutgoingMessage draft) => client.saveDraft(draft);

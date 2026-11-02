@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete413_
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_delete503_response.dart'
+    as _i11;
 
 sealed class DeleteQueueEntryResponse {
   const DeleteQueueEntryResponse();
@@ -123,10 +125,26 @@ class DeleteQueueEntryResponse422 extends DeleteQueueEntryResponse {
 }
 
 @_i1.immutable
+class DeleteQueueEntryResponse429 extends DeleteQueueEntryResponse {
+  const DeleteQueueEntryResponse429({required this.body});
+
+  final _i9.ApiV1AdminQueueIdDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeleteQueueEntryResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeleteQueueEntryResponse500 extends DeleteQueueEntryResponse {
   const DeleteQueueEntryResponse500({required this.body});
 
-  final _i9.ApiV1AdminQueueIdDelete500Response body;
+  final _i10.ApiV1AdminQueueIdDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DeleteQueueEntryResponse500 extends DeleteQueueEntryResponse {
 class DeleteQueueEntryResponse503 extends DeleteQueueEntryResponse {
   const DeleteQueueEntryResponse503({required this.body});
 
-  final _i10.ApiV1AdminQueueIdDelete503Response body;
+  final _i11.ApiV1AdminQueueIdDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

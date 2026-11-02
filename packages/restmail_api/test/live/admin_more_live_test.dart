@@ -228,12 +228,16 @@ void main() {
         expect(grant.holder.id, account.id);
         expect(grant.scope, 'domain:three.live.test');
         expect(grant.mode, GrantMode.active);
+        // Beside this, a new account holds the receiver grant on its own
+        // mailbox, which the server gave it.
         final holder = GrantHolder.account(account.id);
-        expect((await client().grants(holder: holder)).items.map((g) => g.id), [
-          grant.id,
-        ]);
+        Future<Iterable<int>> scoped() async =>
+            (await client().grants(holder: holder)).items
+                .where((g) => g.scope == 'domain:three.live.test')
+                .map((g) => g.id);
+        expect(await scoped(), [grant.id]);
         await client().deleteGrant(grant.id);
-        expect((await client().grants(holder: holder)).items, isEmpty);
+        expect(await scoped(), isEmpty);
 
         final off = await client().deactivateGrant(superadmin.id);
         expect(off.grant.activation, isNull);

@@ -13,18 +13,20 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post4
     as _i5;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post403_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post409_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post404_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post409_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post413_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post503_response.dart'
+    as _i13;
 
 sealed class CreateFolderResponse {
   const CreateFolderResponse();
@@ -95,10 +97,26 @@ class CreateFolderResponse403 extends CreateFolderResponse {
 }
 
 @_i1.immutable
+class CreateFolderResponse404 extends CreateFolderResponse {
+  const CreateFolderResponse404({required this.body});
+
+  final _i7.ApiV1AccountsIdFoldersPost404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is CreateFolderResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class CreateFolderResponse409 extends CreateFolderResponse {
   const CreateFolderResponse409({required this.body});
 
-  final _i7.ApiV1AccountsIdFoldersPost409Response body;
+  final _i8.ApiV1AccountsIdFoldersPost409Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -114,7 +132,7 @@ class CreateFolderResponse409 extends CreateFolderResponse {
 class CreateFolderResponse413 extends CreateFolderResponse {
   const CreateFolderResponse413({required this.body});
 
-  final _i8.ApiV1AccountsIdFoldersPost413Response body;
+  final _i9.ApiV1AccountsIdFoldersPost413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -130,7 +148,7 @@ class CreateFolderResponse413 extends CreateFolderResponse {
 class CreateFolderResponse422 extends CreateFolderResponse {
   const CreateFolderResponse422({required this.body});
 
-  final _i9.ApiV1AccountsIdFoldersPost422Response body;
+  final _i10.ApiV1AccountsIdFoldersPost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -146,7 +164,7 @@ class CreateFolderResponse422 extends CreateFolderResponse {
 class CreateFolderResponse429 extends CreateFolderResponse {
   const CreateFolderResponse429({required this.body});
 
-  final _i10.ApiV1AccountsIdFoldersPost429Response body;
+  final _i11.ApiV1AccountsIdFoldersPost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -162,7 +180,7 @@ class CreateFolderResponse429 extends CreateFolderResponse {
 class CreateFolderResponse500 extends CreateFolderResponse {
   const CreateFolderResponse500({required this.body});
 
-  final _i11.ApiV1AccountsIdFoldersPost500Response body;
+  final _i12.ApiV1AccountsIdFoldersPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class CreateFolderResponse500 extends CreateFolderResponse {
 class CreateFolderResponse503 extends CreateFolderResponse {
   const CreateFolderResponse503({required this.body});
 
-  final _i12.ApiV1AccountsIdFoldersPost503Response body;
+  final _i13.ApiV1AccountsIdFoldersPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

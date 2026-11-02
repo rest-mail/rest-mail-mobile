@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppress
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_suppressions_sid_delete503_response.dart'
+    as _i11;
 
 sealed class ClearSuppressionResponse {
   const ClearSuppressionResponse();
@@ -123,10 +125,26 @@ class ClearSuppressionResponse422 extends ClearSuppressionResponse {
 }
 
 @_i1.immutable
+class ClearSuppressionResponse429 extends ClearSuppressionResponse {
+  const ClearSuppressionResponse429({required this.body});
+
+  final _i9.ApiV1AdminDomainsIdSuppressionsSidDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ClearSuppressionResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ClearSuppressionResponse500 extends ClearSuppressionResponse {
   const ClearSuppressionResponse500({required this.body});
 
-  final _i9.ApiV1AdminDomainsIdSuppressionsSidDelete500Response body;
+  final _i10.ApiV1AdminDomainsIdSuppressionsSidDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class ClearSuppressionResponse500 extends ClearSuppressionResponse {
 class ClearSuppressionResponse503 extends ClearSuppressionResponse {
   const ClearSuppressionResponse503({required this.body});
 
-  final _i10.ApiV1AdminDomainsIdSuppressionsSidDelete503Response body;
+  final _i11.ApiV1AdminDomainsIdSuppressionsSidDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

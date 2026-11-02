@@ -7,7 +7,7 @@ import 'dart:core' as _i3;
 import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/error_response.dart' as _i7;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i10;
+    as _i11;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get200_response.dart'
     as _i6;
@@ -15,12 +15,14 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get401
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get403_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get404_response.dart'
+    as _i10;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get422_response.dart'
-    as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get500_response.dart'
     as _i12;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get500_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_events_get503_response.dart'
+    as _i14;
 import 'package:restmail_generated/src/response_wrapper/account_events_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -147,11 +149,37 @@ final class AccountEvents extends _i1.HttpOperation<_i2.AccountEventsResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        return _i2.AccountEventsResponse404(
+          body: _i10.ApiV1AccountsIdEventsGet404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i10.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i11.ValidationErrorResponse.fromJson(_$json);
         return _i2.AccountEventsResponse422(
-          body: _i11.ApiV1AccountsIdEventsGet422Response(
+          body: _i12.ApiV1AccountsIdEventsGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -177,7 +205,7 @@ final class AccountEvents extends _i1.HttpOperation<_i2.AccountEventsResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.AccountEventsResponse500(
-          body: _i12.ApiV1AccountsIdEventsGet500Response(
+          body: _i13.ApiV1AccountsIdEventsGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -203,7 +231,7 @@ final class AccountEvents extends _i1.HttpOperation<_i2.AccountEventsResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.AccountEventsResponse503(
-          body: _i13.ApiV1AccountsIdEventsGet503Response(
+          body: _i14.ApiV1AccountsIdEventsGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

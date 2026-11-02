@@ -43,6 +43,7 @@ class PushApi {
   final _i4.RemovePushDevice _removePushDevice;
 
   /// List push services and this session's devices
+  /// List lookup follows request cancellation; dependency failures return 500.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -132,13 +133,28 @@ class PushApi {
       _listPushDevices(cancellation: cancellation);
 
   /// Register a push device for this session
+  /// Session lookup and the registration transaction follow request cancellation; dependency failures return 500.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
   ///
   /// Request body (application/json):
-  /// **Example** "app_id_mismatch":
+  /// **Example** "already_registered" — This session already registered the token:
+  /// The same registration again answers the session's existing device, unchanged, with 200; nothing new is stored.
+  ///
+  /// ```json
+  /// {
+  ///   "app_id": "com.antimatterstudios.restmail",
+  ///   "environment": "production",
+  ///   "platform": "apns",
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
+  /// }
+  /// ```
+  ///
+  /// **Example** "app_id_mismatch" — The registration names another app:
+  /// The body fits the schema; the handler refuses an app id other than the APNs topic this server is configured with.
+  ///
   /// ```json
   /// {
   ///   "app_id": "com.example.other",
@@ -148,27 +164,9 @@ class PushApi {
   /// }
   /// ```
   ///
-  /// **Example** "environment_invalid":
-  /// ```json
-  /// {
-  ///   "app_id": "com.antimatterstudios.restmail",
-  ///   "environment": "staging",
-  ///   "platform": "apns",
-  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
-  /// }
-  /// ```
+  /// **Example** "internal_error" — The session lookup fails:
+  /// Session and setup checks pass, but reading whether the session is still alive fails. Nothing is stored.
   ///
-  /// **Example** "platform_unsupported":
-  /// ```json
-  /// {
-  ///   "app_id": "com.antimatterstudios.restmail",
-  ///   "environment": "production",
-  ///   "platform": "fcm",
-  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
-  /// }
-  /// ```
-  ///
-  /// **Example** "registered":
   /// ```json
   /// {
   ///   "app_id": "com.antimatterstudios.restmail",
@@ -178,18 +176,69 @@ class PushApi {
   /// }
   /// ```
   ///
-  /// **Example** "token_invalid":
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "registered" — A new device for this session:
   /// ```json
   /// {
   ///   "app_id": "com.antimatterstudios.restmail",
   ///   "environment": "production",
   ///   "platform": "apns",
-  ///   "token": "not-an-apns-token"
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "app_id": "com.antimatterstudios.restmail",
+  ///   "environment": "production",
+  ///   "platform": "apns",
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "app_id": "com.antimatterstudios.restmail",
+  ///   "environment": "production",
+  ///   "platform": "apns",
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
+  /// }
+  /// ```
+  ///
+  /// **Example** "setup_required" — The account has not completed setup:
+  /// The session is current but its account still has to finish setting up. The SetupDone middleware refuses the request before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "app_id": "com.antimatterstudios.restmail",
+  ///   "environment": "production",
+  ///   "platform": "apns",
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "app_id": "com.antimatterstudios.restmail",
+  ///   "environment": "production",
+  ///   "platform": "apns",
+  ///   "token": "5c1d7e0f3a9b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f2a3b5c7d9e1f3a4b6c8d"
   /// }
   /// ```
   ///
   /// Response 200 (application/json):
-  /// **Example** "already_registered":
+  /// **Example** "already_registered" — This session already registered the token:
+  /// The same registration again answers the session's existing device, unchanged, with 200; nothing new is stored.
+  ///
   /// ```json
   /// {
   ///   "data": {
@@ -202,7 +251,7 @@ class PushApi {
   /// ```
   ///
   /// Response 201 (application/json):
-  /// **Example** "registered":
+  /// **Example** "registered" — A new device for this session:
   /// ```json
   /// {
   ///   "data": {
@@ -214,8 +263,58 @@ class PushApi {
   /// }
   /// ```
   ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "setup_required" — The account has not completed setup:
+  /// The session is current but its account still has to finish setting up. The SetupDone middleware refuses the request before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "setup_required",
+  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 422 (application/json):
-  /// **Example** "app_id_mismatch":
+  /// **Example** "app_id_mismatch" — The registration names another app:
+  /// The body fits the schema; the handler refuses an app id other than the APNs topic this server is configured with.
+  ///
   /// ```json
   /// {
   ///   "error": {
@@ -230,47 +329,26 @@ class PushApi {
   /// }
   /// ```
   ///
-  /// **Example** "environment_invalid":
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — The session lookup fails:
+  /// Session and setup checks pass, but reading whether the session is still alive fails. Nothing is stored.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "environment": "must be \"production\" or \"sandbox\""
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
+  ///     "code": "internal_error",
+  ///     "message": "Failed to register the device"
   ///   }
   /// }
   /// ```
   ///
-  /// **Example** "platform_unsupported":
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "platform": "not configured on this server"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "token_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "token": "not an APNs device token: 64 or more lowercase hex digits"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
   ///   }
   /// }
   /// ```
@@ -281,42 +359,13 @@ class PushApi {
   }) async => _registerPushDevice(body: body, cancellation: cancellation);
 
   /// Remove a push device registered by this session
+  /// Removal follows request cancellation; dependency failures return 500 and absent devices retain 404.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
   ///
   /// Response 401 (application/json):
-  /// **Example** "api_key":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unauthorized",
-  ///     "message": "Invalid or expired token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unauthorized",
-  ///     "message": "Invalid authorization header format"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_token":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unauthorized",
-  ///     "message": "Invalid or expired token"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "unauthenticated":
   /// ```json
   /// {
@@ -338,100 +387,8 @@ class PushApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "foreign_session":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_id":
-  /// Device IDs remain string parameters with handler-level 404 for unparseable IDs; this is not a schema-validation 422. Zero, negative and uint32-overflow strings preserve the same refusal.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "negative_id":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "other_account":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "other_session":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "overflow_id":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Device not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "zero_id":
   /// ```json
   /// {
   ///   "error": {

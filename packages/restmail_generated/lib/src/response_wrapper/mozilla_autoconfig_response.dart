@@ -7,9 +7,9 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/mail_config_v11_xml_get200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/mail_config_v11_xml_get400_response.dart'
-    as _i4;
 import 'package:restmail_generated/src/response/mail_config_v11_xml_get404_response.dart'
+    as _i4;
+import 'package:restmail_generated/src/response/mail_config_v11_xml_get422_response.dart'
     as _i5;
 import 'package:restmail_generated/src/response/mail_config_v11_xml_get500_response.dart'
     as _i6;
@@ -37,15 +37,15 @@ class MozillaAutoconfigResponse200 extends MozillaAutoconfigResponse {
 }
 
 @_i1.immutable
-class MozillaAutoconfigResponse400 extends MozillaAutoconfigResponse {
-  const MozillaAutoconfigResponse400({required this.body});
+class MozillaAutoconfigResponse404 extends MozillaAutoconfigResponse {
+  const MozillaAutoconfigResponse404({required this.body});
 
-  final _i4.MailConfigV11XmlGet400Response body;
+  final _i4.MailConfigV11XmlGet404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    return other is MozillaAutoconfigResponse400 && other.body == this.body;
+    return other is MozillaAutoconfigResponse404 && other.body == this.body;
   }
 
   @_i3.override
@@ -53,15 +53,15 @@ class MozillaAutoconfigResponse400 extends MozillaAutoconfigResponse {
 }
 
 @_i1.immutable
-class MozillaAutoconfigResponse404 extends MozillaAutoconfigResponse {
-  const MozillaAutoconfigResponse404({required this.body});
+class MozillaAutoconfigResponse422 extends MozillaAutoconfigResponse {
+  const MozillaAutoconfigResponse422({required this.body});
 
-  final _i5.MailConfigV11XmlGet404Response body;
+  final _i5.MailConfigV11XmlGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    return other is MozillaAutoconfigResponse404 && other.body == this.body;
+    return other is MozillaAutoconfigResponse422 && other.body == this.body;
   }
 
   @_i3.override

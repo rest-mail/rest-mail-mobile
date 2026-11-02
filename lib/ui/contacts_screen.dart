@@ -7,6 +7,7 @@ import '../l10n/voice.dart';
 import '../state/mailbox_state.dart';
 import '../theme/tokens.dart';
 import '../util/format.dart';
+import 'contact_reply_time.dart';
 import 'widgets/common.dart';
 
 /// How far a contact is trusted, in the current language.
@@ -295,6 +296,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       ? trustLevelLabel(context, contact.trustLevel)
                       : '${contact.email} · '
                             '${trustLevelLabel(context, contact.trustLevel)}',
+                  footer: ContactReplyTime(seconds: contact.usualReplySeconds),
                   danger: contact.trustLevel == TrustLevel.blocked,
                   onTap: () => unawaited(_open(contact)),
                 ),
@@ -460,6 +462,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       contact.email,
                       style: rmText(16, color: c.ink, weight: FontWeight.w600),
                     ),
+                  ContactReplyTime(seconds: contact?.usualReplySeconds),
                   const SizedBox(height: 22),
                   SectionLabel(tr(context, 'contacts.name')),
                   const SizedBox(height: 8),

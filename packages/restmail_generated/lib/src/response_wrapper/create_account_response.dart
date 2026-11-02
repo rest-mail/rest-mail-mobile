@@ -19,10 +19,12 @@ import 'package:restmail_generated/src/response/api_v1_accounts_post413_response
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_accounts_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_accounts_post503_response.dart'
+    as _i12;
 
 sealed class CreateAccountResponse {
   const CreateAccountResponse();
@@ -141,10 +143,26 @@ class CreateAccountResponse422 extends CreateAccountResponse {
 }
 
 @_i1.immutable
+class CreateAccountResponse429 extends CreateAccountResponse {
+  const CreateAccountResponse429({required this.body});
+
+  final _i10.ApiV1AccountsPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is CreateAccountResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class CreateAccountResponse500 extends CreateAccountResponse {
   const CreateAccountResponse500({required this.body});
 
-  final _i10.ApiV1AccountsPost500Response body;
+  final _i11.ApiV1AccountsPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class CreateAccountResponse500 extends CreateAccountResponse {
 class CreateAccountResponse503 extends CreateAccountResponse {
   const CreateAccountResponse503({required this.body});
 
-  final _i11.ApiV1AccountsPost503Response body;
+  final _i12.ApiV1AccountsPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get4
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_get503_response.dart'
+    as _i11;
 
 sealed class ListContactsResponse {
   const ListContactsResponse();
@@ -75,10 +77,26 @@ class ListContactsResponse403 extends ListContactsResponse {
 }
 
 @_i1.immutable
+class ListContactsResponse404 extends ListContactsResponse {
+  const ListContactsResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdContactsGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListContactsResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListContactsResponse413 extends ListContactsResponse {
   const ListContactsResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdContactsGet413Response body;
+  final _i7.ApiV1AccountsIdContactsGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class ListContactsResponse413 extends ListContactsResponse {
 class ListContactsResponse422 extends ListContactsResponse {
   const ListContactsResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdContactsGet422Response body;
+  final _i8.ApiV1AccountsIdContactsGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class ListContactsResponse422 extends ListContactsResponse {
 class ListContactsResponse429 extends ListContactsResponse {
   const ListContactsResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdContactsGet429Response body;
+  final _i9.ApiV1AccountsIdContactsGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class ListContactsResponse429 extends ListContactsResponse {
 class ListContactsResponse500 extends ListContactsResponse {
   const ListContactsResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdContactsGet500Response body;
+  final _i10.ApiV1AccountsIdContactsGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class ListContactsResponse500 extends ListContactsResponse {
 class ListContactsResponse503 extends ListContactsResponse {
   const ListContactsResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdContactsGet503Response body;
+  final _i11.ApiV1AccountsIdContactsGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

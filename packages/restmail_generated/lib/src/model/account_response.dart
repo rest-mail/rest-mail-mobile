@@ -16,6 +16,7 @@ class AccountResponse extends _i1.ObjectParameterEncodable
     required this.displayName,
     required this.id,
     required this.isPrimary,
+    this.ownerId,
   });
 
   factory AccountResponse.fromSimple(
@@ -25,7 +26,13 @@ class AccountResponse extends _i1.ObjectParameterEncodable
     final _$values = value.decodeObject(
       explode: explode,
       explodeSeparator: ',',
-      expectedKeys: {r'address', r'display_name', r'id', r'is_primary'},
+      expectedKeys: {
+        r'address',
+        r'display_name',
+        r'id',
+        r'is_primary',
+        r'owner_id',
+      },
       listKeys: {},
       context: r'AccountResponse',
     );
@@ -39,6 +46,9 @@ class AccountResponse extends _i1.ObjectParameterEncodable
       id: _$values[r'id'].decodeSimpleInt(context: r'AccountResponse.id'),
       isPrimary: _$values[r'is_primary'].decodeSimpleBool(
         context: r'AccountResponse.is_primary',
+      ),
+      ownerId: _$values[r'owner_id'].decodeSimpleNullableInt(
+        context: r'AccountResponse.owner_id',
       ),
     );
   }
@@ -56,6 +66,9 @@ class AccountResponse extends _i1.ObjectParameterEncodable
       isPrimary: _$map[r'is_primary'].decodeJsonBool(
         context: r'AccountResponse.is_primary',
       ),
+      ownerId: _$map[r'owner_id'].decodeJsonNullableInt(
+        context: r'AccountResponse.owner_id',
+      ),
     );
   }
 
@@ -66,7 +79,13 @@ class AccountResponse extends _i1.ObjectParameterEncodable
     final _$values = value.decodeObject(
       explode: explode,
       explodeSeparator: '&',
-      expectedKeys: {r'address', r'display_name', r'id', r'is_primary'},
+      expectedKeys: {
+        r'address',
+        r'display_name',
+        r'id',
+        r'is_primary',
+        r'owner_id',
+      },
       listKeys: {},
       context: r'AccountResponse',
     );
@@ -81,6 +100,9 @@ class AccountResponse extends _i1.ObjectParameterEncodable
       isPrimary: _$values[r'is_primary'].decodeFormBool(
         context: r'AccountResponse.is_primary',
       ),
+      ownerId: _$values[r'owner_id'].decodeFormNullableInt(
+        context: r'AccountResponse.owner_id',
+      ),
     );
   }
 
@@ -92,12 +114,15 @@ class AccountResponse extends _i1.ObjectParameterEncodable
 
   final _i3.bool isPrimary;
 
+  final _i3.int? ownerId;
+
   @_i3.override
   _i3.Object? toJson() => {
     r'address': address,
     r'display_name': displayName,
     r'id': id,
     r'is_primary': isPrimary,
+    r'owner_id': ownerId,
   };
 
   $$AccountResponseCopyWith<AccountResponse> get copyWith =>
@@ -110,12 +135,13 @@ class AccountResponse extends _i1.ObjectParameterEncodable
         other.address == this.address &&
         other.displayName == this.displayName &&
         other.id == this.id &&
-        other.isPrimary == this.isPrimary;
+        other.isPrimary == this.isPrimary &&
+        other.ownerId == this.ownerId;
   }
 
   @_i3.override
   _i3.int get hashCode {
-    return _i3.Object.hashAll([address, displayName, id, isPrimary]);
+    return _i3.Object.hashAll([address, displayName, id, isPrimary, ownerId]);
   }
 
   _i1.EncodingShape get currentEncodingShape => _i1.EncodingShape.complex;
@@ -129,6 +155,9 @@ class AccountResponse extends _i1.ObjectParameterEncodable
     _$result[r'display_name'] = _i1.PropertyValue.scalar(displayName);
     _$result[r'id'] = _i1.PropertyValue.scalar(id.toString());
     _$result[r'is_primary'] = _i1.PropertyValue.scalar(isPrimary.toString());
+    if (ownerId != null) {
+      _$result[r'owner_id'] = _i1.PropertyValue.scalar(ownerId!.toString());
+    }
     return _$result;
   }
 
@@ -154,11 +183,13 @@ abstract class $$AccountResponseCopyWith<$Res> {
     _i3.String? displayName,
     _i3.int? id,
     _i3.bool? isPrimary,
+    _i3.int? ownerId,
   });
   _i3.String get address;
   _i3.String get displayName;
   _i3.int get id;
   _i3.bool get isPrimary;
+  _i3.int? get ownerId;
 }
 
 class _AccountResponseCopyWith<$Res>
@@ -182,11 +213,15 @@ class _AccountResponseCopyWith<$Res>
   _i3.bool get isPrimary => _value.isPrimary;
 
   @_i3.override
+  _i3.int? get ownerId => _value.ownerId;
+
+  @_i3.override
   $Res call({
     _i3.Object? address = _sentinel,
     _i3.Object? displayName = _sentinel,
     _i3.Object? id = _sentinel,
     _i3.Object? isPrimary = _sentinel,
+    _i3.Object? ownerId = _sentinel,
   }) {
     return (AccountResponse(
       address: _i3.identical(address, _sentinel)
@@ -199,6 +234,9 @@ class _AccountResponseCopyWith<$Res>
       isPrimary: _i3.identical(isPrimary, _sentinel)
           ? this.isPrimary
           : (isPrimary as _i3.bool),
+      ownerId: _i3.identical(ownerId, _sentinel)
+          ? this.ownerId
+          : (ownerId as _i3.int?),
     ) as $Res);
   }
 }

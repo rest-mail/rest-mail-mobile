@@ -13,7 +13,11 @@ import 'package:tonik_util/tonik_util.dart' as _i1;
 @_i2.immutable
 class TestFilterRequestBody extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const TestFilterRequestBody({this.config, this.email, this.filterName});
+  const TestFilterRequestBody({
+    required this.config,
+    required this.email,
+    required this.filterName,
+  });
 
   factory TestFilterRequestBody.fromSimple(
     _i3.String? value, {
@@ -31,7 +35,7 @@ class TestFilterRequestBody extends _i1.ObjectParameterEncodable
       email: _$map[r'email'] == null
           ? null
           : _i4.TestFilterRequestBodyEmailOneOfModel.fromJson(_$map[r'email']),
-      filterName: _$map[r'filter_name'].decodeJsonNullableString(
+      filterName: _$map[r'filter_name'].decodeJsonString(
         context: r'TestFilterRequestBody.filter_name',
       ),
     );
@@ -48,19 +52,18 @@ class TestFilterRequestBody extends _i1.ObjectParameterEncodable
 
   final _i3.Object? config;
 
-  final _i4.TestFilterRequestBodyEmailOneOfModel? email;
+  final _i4.TestFilterRequestBodyEmailOneOfModel email;
 
-  final _i3.String? filterName;
+  final _i3.String filterName;
 
   @_i3.override
   _i3.Object? toJson() => {
-    if (config != null)
-      r'config': _i1.encodeUnknownJson(
-        config,
-        context: r'TestFilterRequestBody.config',
-      ),
-    if (email != null) r'email': email?.toJson(),
-    if (filterName != null) r'filter_name': filterName,
+    r'config': _i1.encodeUnknownJson(
+      config,
+      context: r'TestFilterRequestBody.config',
+    ),
+    r'email': email?.toJson(),
+    r'filter_name': filterName,
   };
 
   $$TestFilterRequestBodyCopyWith<TestFilterRequestBody> get copyWith =>
@@ -112,8 +115,8 @@ abstract class $$TestFilterRequestBodyCopyWith<$Res> {
     _i3.String? filterName,
   });
   _i3.Object? get config;
-  _i4.TestFilterRequestBodyEmailOneOfModel? get email;
-  _i3.String? get filterName;
+  _i4.TestFilterRequestBodyEmailOneOfModel get email;
+  _i3.String get filterName;
 }
 
 class _TestFilterRequestBodyCopyWith<$Res>
@@ -128,10 +131,10 @@ class _TestFilterRequestBodyCopyWith<$Res>
   _i3.Object? get config => _value.config;
 
   @_i3.override
-  _i4.TestFilterRequestBodyEmailOneOfModel? get email => _value.email;
+  _i4.TestFilterRequestBodyEmailOneOfModel get email => _value.email;
 
   @_i3.override
-  _i3.String? get filterName => _value.filterName;
+  _i3.String get filterName => _value.filterName;
 
   @_i3.override
   $Res call({
@@ -143,10 +146,10 @@ class _TestFilterRequestBodyCopyWith<$Res>
       config: _i3.identical(config, _sentinel) ? this.config : config,
       email: _i3.identical(email, _sentinel)
           ? this.email
-          : (email as _i4.TestFilterRequestBodyEmailOneOfModel?),
+          : (email as _i4.TestFilterRequestBodyEmailOneOfModel),
       filterName: _i3.identical(filterName, _sentinel)
           ? this.filterName
-          : (filterName as _i3.String?),
+          : (filterName as _i3.String),
     ) as $Res);
   }
 }

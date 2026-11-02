@@ -6,20 +6,24 @@ import 'dart:convert' as _i6;
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
-import 'package:restmail_generated/src/model/error_response.dart' as _i10;
+import 'package:restmail_generated/src/model/error_response.dart' as _i8;
+import 'package:restmail_generated/src/model/validation_error_response.dart'
+    as _i12;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post200_response.dart'
     as _i7;
 import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post400_response.dart'
-    as _i8;
-import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post404_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post404_response.dart'
+    as _i10;
 import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post413_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post500_response.dart'
-    as _i12;
-import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post503_response.dart'
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post422_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post500_response.dart'
+    as _i14;
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post503_response.dart'
+    as _i15;
 import 'package:restmail_generated/src/response_wrapper/microsoft_autodiscover_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -79,7 +83,7 @@ final class MicrosoftAutodiscover
   _i3.Map<_i3.String, _i3.String> _options({_i4.TonikFile? body}) {
     final _$contentType = body == null ? null : r'application/xml';
     final _$headers = <_i3.String, _i3.String>{};
-    _$headers['Accept'] = r'application/xml,text/plain,application/json';
+    _$headers['Accept'] = r'application/xml,application/json,text/plain';
     if (_$contentType != null) {
       _$headers[r'Content-Type'] = _$contentType;
     }
@@ -116,13 +120,11 @@ final class MicrosoftAutodiscover
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
-      case (400, r'text/plain'):
-        final _$body = _i4.decodeResponseText(
-          response.bodyBytes,
-          contentType: response.headers['content-type'],
-        );
+      case (400, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.MicrosoftAutodiscoverResponse400(
-          body: _i8.AutodiscoverAutodiscoverXmlPost400Response(
+          body: _i9.AutodiscoverAutodiscoverXmlPost400Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -150,7 +152,7 @@ final class MicrosoftAutodiscover
           contentType: response.headers['content-type'],
         );
         return _i2.MicrosoftAutodiscoverResponse404(
-          body: _i9.AutodiscoverAutodiscoverXmlPost404Response(
+          body: _i10.AutodiscoverAutodiscoverXmlPost404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -174,7 +176,7 @@ final class MicrosoftAutodiscover
         );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.MicrosoftAutodiscoverResponse413(
           body: _i11.AutodiscoverAutodiscoverXmlPost413Response(
             body: _$body,
@@ -198,11 +200,37 @@ final class MicrosoftAutodiscover
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (422, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i12.ValidationErrorResponse.fromJson(_$json);
+        return _i2.MicrosoftAutodiscoverResponse422(
+          body: _i13.AutodiscoverAutodiscoverXmlPost422Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.MicrosoftAutodiscoverResponse500(
-          body: _i12.AutodiscoverAutodiscoverXmlPost500Response(
+          body: _i14.AutodiscoverAutodiscoverXmlPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -230,7 +258,7 @@ final class MicrosoftAutodiscover
           contentType: response.headers['content-type'],
         );
         return _i2.MicrosoftAutodiscoverResponse503(
-          body: _i13.AutodiscoverAutodiscoverXmlPost503Response(
+          body: _i15.AutodiscoverAutodiscoverXmlPost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

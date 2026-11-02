@@ -15,10 +15,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_get413_respon
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_get422_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_get429_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_get500_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_get503_response.dart'
+    as _i10;
 
 sealed class ListQueueResponse {
   const ListQueueResponse();
@@ -105,10 +107,26 @@ class ListQueueResponse422 extends ListQueueResponse {
 }
 
 @_i1.immutable
+class ListQueueResponse429 extends ListQueueResponse {
+  const ListQueueResponse429({required this.body});
+
+  final _i8.ApiV1AdminQueueGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListQueueResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListQueueResponse500 extends ListQueueResponse {
   const ListQueueResponse500({required this.body});
 
-  final _i8.ApiV1AdminQueueGet500Response body;
+  final _i9.ApiV1AdminQueueGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -124,7 +142,7 @@ class ListQueueResponse500 extends ListQueueResponse {
 class ListQueueResponse503 extends ListQueueResponse {
   const ListQueueResponse503({required this.body});
 
-  final _i9.ApiV1AdminQueueGet503Response body;
+  final _i10.ApiV1AdminQueueGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

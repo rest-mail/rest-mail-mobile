@@ -28,10 +28,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_
     as _i16;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put422_response.dart'
     as _i18;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put429_response.dart'
     as _i19;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put500_response.dart'
     as _i20;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put503_response.dart'
+    as _i21;
 import 'package:restmail_generated/src/response_wrapper/set_mta_sts_policy_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -291,11 +293,39 @@ final class SetMtaStsPolicy
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i11.ErrorResponse.fromJson(_$json);
+        return _i2.SetMtaStsPolicyResponse429(
+          body: _i19.ApiV1AdminDomainsIdMtaStsPut429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.SetMtaStsPolicyResponse500(
-          body: _i19.ApiV1AdminDomainsIdMtaStsPut500Response(
+          body: _i20.ApiV1AdminDomainsIdMtaStsPut500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -321,7 +351,7 @@ final class SetMtaStsPolicy
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.SetMtaStsPolicyResponse503(
-          body: _i20.ApiV1AdminDomainsIdMtaStsPut503Response(
+          body: _i21.ApiV1AdminDomainsIdMtaStsPut503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

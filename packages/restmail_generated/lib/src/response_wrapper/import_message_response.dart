@@ -21,10 +21,12 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_impo
     as _i9;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_messages_import_post503_response.dart'
+    as _i13;
 
 sealed class ImportMessageResponse {
   const ImportMessageResponse();
@@ -159,10 +161,26 @@ class ImportMessageResponse422 extends ImportMessageResponse {
 }
 
 @_i1.immutable
+class ImportMessageResponse429 extends ImportMessageResponse {
+  const ImportMessageResponse429({required this.body});
+
+  final _i11.ApiV1AccountsIdMessagesImportPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ImportMessageResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ImportMessageResponse500 extends ImportMessageResponse {
   const ImportMessageResponse500({required this.body});
 
-  final _i11.ApiV1AccountsIdMessagesImportPost500Response body;
+  final _i12.ApiV1AccountsIdMessagesImportPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class ImportMessageResponse500 extends ImportMessageResponse {
 class ImportMessageResponse503 extends ImportMessageResponse {
   const ImportMessageResponse503({required this.body});
 
-  final _i12.ApiV1AccountsIdMessagesImportPost503Response body;
+  final _i13.ApiV1AccountsIdMessagesImportPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

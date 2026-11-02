@@ -2,95 +2,122 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i13;
+import 'dart:core' as _i16;
 
-import 'package:http/http.dart' as _i16;
-import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i19;
-import 'package:restmail_generated/src/model/forward_body.dart' as _i29;
-import 'package:restmail_generated/src/model/send_message_request.dart' as _i23;
-import 'package:restmail_generated/src/model/update_message_body.dart' as _i27;
+import 'package:http/http.dart' as _i19;
+import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i25;
+import 'package:restmail_generated/src/model/forward_body.dart' as _i36;
+import 'package:restmail_generated/src/model/import_message_body.dart' as _i22;
+import 'package:restmail_generated/src/model/send_message_request.dart' as _i30;
+import 'package:restmail_generated/src/model/update_message_body.dart' as _i34;
 import 'package:restmail_generated/src/operation/cancel_scheduled_message.dart'
-    as _i6;
-import 'package:restmail_generated/src/operation/delete_message.dart' as _i9;
-import 'package:restmail_generated/src/operation/deliver_message.dart' as _i4;
-import 'package:restmail_generated/src/operation/forward_message.dart' as _i11;
-import 'package:restmail_generated/src/operation/get_message.dart' as _i8;
-import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i12;
-import 'package:restmail_generated/src/operation/get_thread.dart' as _i3;
+    as _i8;
+import 'package:restmail_generated/src/operation/delete_message.dart' as _i12;
+import 'package:restmail_generated/src/operation/deliver_message.dart' as _i6;
+import 'package:restmail_generated/src/operation/forward_message.dart' as _i14;
+import 'package:restmail_generated/src/operation/get_message.dart' as _i11;
+import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i15;
+import 'package:restmail_generated/src/operation/get_thread.dart' as _i5;
+import 'package:restmail_generated/src/operation/import_message.dart' as _i4;
+import 'package:restmail_generated/src/operation/list_held_messages.dart'
+    as _i3;
 import 'package:restmail_generated/src/operation/list_messages.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_scheduled_messages.dart'
-    as _i5;
-import 'package:restmail_generated/src/operation/send_message.dart' as _i7;
-import 'package:restmail_generated/src/operation/update_message.dart' as _i10;
+    as _i7;
+import 'package:restmail_generated/src/operation/release_held_message.dart'
+    as _i9;
+import 'package:restmail_generated/src/operation/send_message.dart' as _i10;
+import 'package:restmail_generated/src/operation/update_message.dart' as _i13;
 import 'package:restmail_generated/src/response_wrapper/cancel_scheduled_message_response.dart'
-    as _i21;
+    as _i27;
 import 'package:restmail_generated/src/response_wrapper/delete_message_response.dart'
-    as _i25;
+    as _i32;
 import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
-    as _i18;
-import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
-    as _i28;
-import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
     as _i24;
+import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
+    as _i35;
+import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
+    as _i31;
 import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
-    as _i30;
+    as _i37;
 import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
-    as _i17;
-import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
-    as _i15;
-import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
+    as _i21;
+import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
     as _i20;
-import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
-    as _i22;
-import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
+import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
+    as _i18;
+import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
     as _i26;
+import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
+    as _i28;
+import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
+    as _i29;
+import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
+    as _i33;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i14;
+import 'package:tonik_util/tonik_util.dart' as _i17;
 
 class MessagesApi {
   MessagesApi(_i1.Server server)
     : _listMessages = _i2.ListMessages(server.baseUrl, () => server.client),
-      _getThread = _i3.GetThread(server.baseUrl, () => server.client),
-      _deliverMessage = _i4.DeliverMessage(server.baseUrl, () => server.client),
-      _listScheduledMessages = _i5.ListScheduledMessages(
+      _listHeldMessages = _i3.ListHeldMessages(
         server.baseUrl,
         () => server.client,
       ),
-      _cancelScheduledMessage = _i6.CancelScheduledMessage(
+      _importMessage = _i4.ImportMessage(server.baseUrl, () => server.client),
+      _getThread = _i5.GetThread(server.baseUrl, () => server.client),
+      _deliverMessage = _i6.DeliverMessage(server.baseUrl, () => server.client),
+      _listScheduledMessages = _i7.ListScheduledMessages(
         server.baseUrl,
         () => server.client,
       ),
-      _sendMessage = _i7.SendMessage(server.baseUrl, () => server.client),
-      _getMessage = _i8.GetMessage(server.baseUrl, () => server.client),
-      _deleteMessage = _i9.DeleteMessage(server.baseUrl, () => server.client),
-      _updateMessage = _i10.UpdateMessage(server.baseUrl, () => server.client),
-      _forwardMessage = _i11.ForwardMessage(
+      _cancelScheduledMessage = _i8.CancelScheduledMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _getRawMessage = _i12.GetRawMessage(server.baseUrl, () => server.client);
+      _releaseHeldMessage = _i9.ReleaseHeldMessage(
+        server.baseUrl,
+        () => server.client,
+      ),
+      _sendMessage = _i10.SendMessage(server.baseUrl, () => server.client),
+      _getMessage = _i11.GetMessage(server.baseUrl, () => server.client),
+      _deleteMessage = _i12.DeleteMessage(server.baseUrl, () => server.client),
+      _updateMessage = _i13.UpdateMessage(server.baseUrl, () => server.client),
+      _forwardMessage = _i14.ForwardMessage(
+        server.baseUrl,
+        () => server.client,
+      ),
+      _getRawMessage = _i15.GetRawMessage(server.baseUrl, () => server.client);
 
   final _i2.ListMessages _listMessages;
 
-  final _i3.GetThread _getThread;
+  final _i3.ListHeldMessages _listHeldMessages;
 
-  final _i4.DeliverMessage _deliverMessage;
+  final _i4.ImportMessage _importMessage;
 
-  final _i5.ListScheduledMessages _listScheduledMessages;
+  final _i5.GetThread _getThread;
 
-  final _i6.CancelScheduledMessage _cancelScheduledMessage;
+  final _i6.DeliverMessage _deliverMessage;
 
-  final _i7.SendMessage _sendMessage;
+  final _i7.ListScheduledMessages _listScheduledMessages;
 
-  final _i8.GetMessage _getMessage;
+  final _i8.CancelScheduledMessage _cancelScheduledMessage;
 
-  final _i9.DeleteMessage _deleteMessage;
+  final _i9.ReleaseHeldMessage _releaseHeldMessage;
 
-  final _i10.UpdateMessage _updateMessage;
+  final _i10.SendMessage _sendMessage;
 
-  final _i11.ForwardMessage _forwardMessage;
+  final _i11.GetMessage _getMessage;
 
-  final _i12.GetRawMessage _getRawMessage;
+  final _i12.DeleteMessage _deleteMessage;
+
+  final _i13.UpdateMessage _updateMessage;
+
+  final _i14.ForwardMessage _forwardMessage;
+
+  final _i15.GetRawMessage _getRawMessage;
 
   /// List messages in a folder
   ///
@@ -101,784 +128,6 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "blank_cursor":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "default_limit":
-  /// An out-of-range limit retains the documented default of 50.
-  ///
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty":
-  /// ```json
-  /// {
-  ///   "data": [],
-  ///   "pagination": {
-  ///     "has_more": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "encoded_folder" — Escaped hierarchy delimiters and UTF-8 reach the real folder lookup:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "Projects/2026 café",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "Projects/2026 café",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "Projects/2026 café",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "first_page":
-  /// The next cursor carries both date and ID. The older rows have IDs above the newest row, so an ID-only cut would skip them.
-  ///
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "cursor": "eyJyZWNlaXZlZF9hdCI6IjIwMjYtMTAtMjBUMDI6MDA6MDBaIiwiaWQiOjUxfQ==",
-  ///     "has_more": true,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — A folder page is newest first, with the ID breaking equal-date ties:
   /// Production routes load real credential/holder ceilings and map fixed message rows. Complete results cover public message fields, JSON recipients/headers/calendar data, TLS true/false/unknown, null dates and body omissions; raw source and unloaded mailbox metadata are omitted. Controlled SQL proves wiring, not PostgreSQL filtering or ordering.
   ///
@@ -895,6 +144,7 @@ class MessagesApi {
   ///       ],
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": "2026-10-20T00:00:00Z",
+  ///       "downgraded_size": 0,
   ///       "folder": "INBOX",
   ///       "has_attachments": true,
   ///       "headers": {
@@ -937,6 +187,7 @@ class MessagesApi {
   ///     {
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
+  ///       "downgraded_size": 0,
   ///       "folder": "INBOX",
   ///       "has_attachments": false,
   ///       "id": 53,
@@ -965,6 +216,7 @@ class MessagesApi {
   ///       "body_text": "Plain delivery",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
+  ///       "downgraded_size": 0,
   ///       "folder": "INBOX",
   ///       "has_attachments": false,
   ///       "id": 52,
@@ -994,799 +246,6 @@ class MessagesApi {
   ///   "pagination": {
   ///     "has_more": false,
   ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_cursor":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "last_page":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "max_limit":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "next_page":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "cursor": "eyJyZWNlaXZlZF9hdCI6IjIwMjYtMTAtMjBUMDE6MDA6MDBaIiwiaWQiOjUzfQ==",
-  ///     "has_more": true,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "partial_cursor":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ],
-  ///   "pagination": {
-  ///     "has_more": false,
-  ///     "total": 3
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unknown_folder":
-  /// ```json
-  /// {
-  ///   "data": [],
-  ///   "pagination": {
-  ///     "has_more": false
   ///   }
   /// }
   /// ```
@@ -1803,82 +262,23 @@ class MessagesApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "write_only":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "forbidden",
   ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "key_wrong_scope":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -1895,21 +295,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1921,21 +306,6 @@ class MessagesApi {
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_limit":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "limit": "must be an integer"
-  ///       }
-  ///     },
-  ///     "message": "Query parameters failed validation"
   ///   }
   /// }
   /// ```
@@ -1952,16 +322,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "content_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to list messages"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "count_unavailable" — A failed total-count query is not a successful page:
   /// ```json
   /// {
@@ -1972,36 +332,6 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "target_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
   /// **Example** "session_unavailable":
   /// ```json
@@ -2012,13 +342,13 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i15.ListMessagesResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i18.ListMessagesResponse, _i19.Response>>
   listMessages({
-    required _i13.int id,
-    required _i13.String folder,
-    _i13.int? limit,
-    _i13.String? cursor,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    required _i16.String folder,
+    _i16.int? limit,
+    _i16.String? cursor,
+    _i17.TonikCancellation? cancellation,
   }) async => _listMessages(
     id: id,
     folder: folder,
@@ -2027,816 +357,14 @@ class MessagesApi {
     cancellation: cancellation,
   );
 
-  /// Get all messages in a thread
+  /// List an account's retained send-limit holds
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
-  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
-  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty":
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
-  /// **Example** "found" — A thread is read at its escaped identity in chronological order:
-  /// Production routes load real credential/holder ceilings and map fixed message rows. Complete results cover public message fields, JSON recipients/headers/calendar data, TLS true/false/unknown, null dates and body omissions; raw source and unloaded mailbox metadata are omitted. Controlled SQL proves wiring, not PostgreSQL filtering or ordering.
-  ///
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 1,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "body_text": "Plain delivery",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 52,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": true,
-  ///       "is_flagged": false,
-  ///       "is_read": true,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-52@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "received_tls": false,
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": null,
-  ///       "folder": "INBOX",
-  ///       "has_attachments": false,
-  ///       "id": 53,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": false,
-  ///       "is_read": false,
-  ///       "is_starred": false,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-53@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T01:00:00Z",
-  ///       "recipients_cc": [],
-  ///       "recipients_to": [],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "body_html": "<p>Hello café</p>",
-  ///       "body_text": "Hello café",
-  ///       "calendar_events": [
-  ///         {
-  ///           "uid": "event-1"
-  ///         }
-  ///       ],
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "date_header": "2026-10-20T00:00:00Z",
-  ///       "folder": "INBOX",
-  ///       "has_attachments": true,
-  ///       "headers": {
-  ///         "Subject": [
-  ///           "Hello café"
-  ///         ],
-  ///         "X-Trace": [
-  ///           "a",
-  ///           "b"
-  ///         ]
-  ///       },
-  ///       "id": 51,
-  ///       "in_reply_to": "<parent@example.net>",
-  ///       "is_deleted": false,
-  ///       "is_draft": false,
-  ///       "is_dsn": false,
-  ///       "is_flagged": true,
-  ///       "is_read": false,
-  ///       "is_starred": true,
-  ///       "mailbox_id": 10,
-  ///       "message_id": "<message-51@example.net>",
-  ///       "raw_size": 128,
-  ///       "received_at": "2026-10-20T02:00:00Z",
-  ///       "received_tls": true,
-  ///       "recipients_cc": [
-  ///         "copy@example.net"
-  ///       ],
-  ///       "recipients_to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "references": "<parent@example.net>",
-  ///       "sender": "sender@example.net",
-  ///       "sender_name": "Sender café",
-  ///       "size_bytes": 80,
-  ///       "subject": "Subject café",
-  ///       "thread_id": "thread/2026@example.net",
-  ///       "tls_version": "TLS1.3",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "unknown_thread" — An unknown thread on an accessible account is an empty list:
+  /// **Example** "none_held" — An account with nothing held:
   /// ```json
   /// {
   ///   "data": []
@@ -2855,67 +383,7 @@ class MessagesApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
+  /// **Example** "setup_required" — A session still in setup cannot use this route:
   /// ```json
   /// {
   ///   "error": {
@@ -2925,12 +393,313 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "write_only":
+  /// Response 404 (application/json):
+  /// **Example** "missing":
+  /// No account exists at the ID; an account the caller cannot read answers the same.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i20.ListHeldMessagesResponse, _i19.Response>>
+  listHeldMessages({
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
+  }) async => _listHeldMessages(id: id, cancellation: cancellation);
+
+  /// Store a message the account already has
+  /// Stores original message octets, folder, supported system flags and required internal_date without delivery rules or push notifications. Requires mail:import on the destination, which every account holds on its own mailbox. A message whose Message-ID and exact octets are already in that account and folder is skipped without changing its flags or date; the same Message-ID with different octets is stored as another message. Messages without Message-ID use a deterministic SHA-256 import identity; the raw source remains unchanged. Every attempt is audited; successful imports and skips also receive a transactional messages.import audit entry. The decoded message is bounded by SMTP_MAX_MESSAGE_SIZE (10 MiB by default); the general API body limit may be stricter. Deleted-state and keyword flags are unsupported and refused rather than hidden or discarded.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Request body (application/json):
+  /// **Example** "api_key_ceiling":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "audit_failure":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_array":
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "created":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "mailbox_full":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "missing":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "unavailable":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Seen",
+  ///     "\\Answered",
+  ///     "\\Flagged",
+  ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "created":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "folder": "Archive",
+  ///     "id": 41,
+  ///     "imported": true,
+  ///     "message_id": "<history@example.test>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "api_key_ceiling":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "message": "Insufficient permissions"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "mailbox_not_found",
+  ///     "message": "Destination account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "mailbox_full":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "mailbox_full",
+  ///     "message": "The destination account has insufficient quota"
   ///   }
   /// }
   /// ```
@@ -2947,14 +716,29 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
+  /// **Example** "body_array":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "validation_failed",
   ///     "details": {
   ///       "fields": {
-  ///         "id": "must be a non-negative integer"
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
@@ -2962,6 +746,219 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "audit_failure":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i21.ImportMessageResponse, _i19.Response>>
+  importMessage({
+    required _i22.ImportMessageBody body,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
+  }) async => _importMessage(body: body, id: id, cancellation: cancellation);
+
+  /// Get all messages in a thread
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "found" — A thread is read at its escaped identity in chronological order:
+  /// Production routes load real credential/holder ceilings and map fixed message rows. Complete results cover public message fields, JSON recipients/headers/calendar data, TLS true/false/unknown, null dates and body omissions; raw source and unloaded mailbox metadata are omitted. Controlled SQL proves wiring, not PostgreSQL filtering or ordering.
+  ///
+  /// ```json
+  /// {
+  ///   "data": [
+  ///     {
+  ///       "body_text": "Plain delivery",
+  ///       "created_at": "2026-10-20T00:00:00Z",
+  ///       "date_header": null,
+  ///       "downgraded_size": 0,
+  ///       "folder": "INBOX",
+  ///       "has_attachments": false,
+  ///       "id": 52,
+  ///       "in_reply_to": "<parent@example.net>",
+  ///       "is_deleted": false,
+  ///       "is_draft": false,
+  ///       "is_dsn": true,
+  ///       "is_flagged": false,
+  ///       "is_read": true,
+  ///       "is_starred": false,
+  ///       "mailbox_id": 1,
+  ///       "message_id": "<message-52@example.net>",
+  ///       "raw_size": 128,
+  ///       "received_at": "2026-10-20T01:00:00Z",
+  ///       "received_tls": false,
+  ///       "recipients_cc": [],
+  ///       "recipients_to": [],
+  ///       "references": "<parent@example.net>",
+  ///       "sender": "sender@example.net",
+  ///       "sender_name": "Sender café",
+  ///       "size_bytes": 80,
+  ///       "subject": "Subject café",
+  ///       "thread_id": "thread/2026@example.net",
+  ///       "updated_at": "2026-10-20T00:00:00Z"
+  ///     },
+  ///     {
+  ///       "created_at": "2026-10-20T00:00:00Z",
+  ///       "date_header": null,
+  ///       "downgraded_size": 0,
+  ///       "folder": "INBOX",
+  ///       "has_attachments": false,
+  ///       "id": 53,
+  ///       "in_reply_to": "<parent@example.net>",
+  ///       "is_deleted": false,
+  ///       "is_draft": false,
+  ///       "is_dsn": false,
+  ///       "is_flagged": false,
+  ///       "is_read": false,
+  ///       "is_starred": false,
+  ///       "mailbox_id": 1,
+  ///       "message_id": "<message-53@example.net>",
+  ///       "raw_size": 128,
+  ///       "received_at": "2026-10-20T01:00:00Z",
+  ///       "recipients_cc": [],
+  ///       "recipients_to": [],
+  ///       "references": "<parent@example.net>",
+  ///       "sender": "sender@example.net",
+  ///       "sender_name": "Sender café",
+  ///       "size_bytes": 80,
+  ///       "subject": "Subject café",
+  ///       "thread_id": "thread/2026@example.net",
+  ///       "updated_at": "2026-10-20T00:00:00Z"
+  ///     },
+  ///     {
+  ///       "body_html": "<p>Hello café</p>",
+  ///       "body_text": "Hello café",
+  ///       "calendar_events": [
+  ///         {
+  ///           "uid": "event-1"
+  ///         }
+  ///       ],
+  ///       "created_at": "2026-10-20T00:00:00Z",
+  ///       "date_header": "2026-10-20T00:00:00Z",
+  ///       "downgraded_size": 0,
+  ///       "folder": "INBOX",
+  ///       "has_attachments": true,
+  ///       "headers": {
+  ///         "Subject": [
+  ///           "Hello café"
+  ///         ],
+  ///         "X-Trace": [
+  ///           "a",
+  ///           "b"
+  ///         ]
+  ///       },
+  ///       "id": 51,
+  ///       "in_reply_to": "<parent@example.net>",
+  ///       "is_deleted": false,
+  ///       "is_draft": false,
+  ///       "is_dsn": false,
+  ///       "is_flagged": true,
+  ///       "is_read": false,
+  ///       "is_starred": true,
+  ///       "mailbox_id": 1,
+  ///       "message_id": "<message-51@example.net>",
+  ///       "raw_size": 128,
+  ///       "received_at": "2026-10-20T02:00:00Z",
+  ///       "received_tls": true,
+  ///       "recipients_cc": [
+  ///         "copy@example.net"
+  ///       ],
+  ///       "recipients_to": [
+  ///         "recipient@example.net"
+  ///       ],
+  ///       "references": "<parent@example.net>",
+  ///       "sender": "sender@example.net",
+  ///       "sender_name": "Sender café",
+  ///       "size_bytes": 80,
+  ///       "subject": "Subject café",
+  ///       "thread_id": "thread/2026@example.net",
+  ///       "tls_version": "TLS1.3",
+  ///       "updated_at": "2026-10-20T00:00:00Z"
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "write_only":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "key_wrong_scope":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -2989,36 +986,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "content_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to retrieve thread"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {
@@ -3039,24 +1006,258 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i17.GetThreadResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i23.GetThreadResponse, _i19.Response>>
   getThread({
-    required _i13.int id,
-    required _i13.String threadId,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    required _i16.String threadId,
+    _i17.TonikCancellation? cancellation,
   }) async =>
       _getThread(id: id, threadId: threadId, cancellation: cancellation);
 
   /// Deliver a message into a mailbox (protocol gateways)
-  /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota.
-  _i13.Future<_i14.TonikResult<_i18.DeliverMessageResponse, _i16.Response>>
+  /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota. A missing mailbox is 404; a failed mailbox lookup is 500, never a missing recipient.
+  ///
+  /// Request body (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "deferred" — The pipeline defers the message:
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "delivered" — Delivered into the mailbox:
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Subject"
+  /// }
+  /// ```
+  ///
+  /// **Example** "folder_invalid" — The folder name is refused:
+  /// A name the folder rule refuses is 422 on folder, behind the gateway's own check.
+  ///
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "folder": " Archive",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Subject"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json" — The body is not JSON:
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "no_mailbox" — No mailbox has that address:
+  /// ```json
+  /// {
+  ///   "address": "nobody@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "processed" — The inbound pipeline quarantines or discards it:
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rejected" — The pipeline rejects the message:
+  /// ```json
+  /// {
+  ///   "address": "admin@restmail.test",
+  ///   "body_text": "Hello",
+  ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "processed" — The inbound pipeline quarantines or discards it:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "status": "processed"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 201 (application/json):
+  /// **Example** "delivered" — Delivered into the mailbox:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": "2026-10-20T00:00:00Z",
+  ///     "downgraded_size": 137,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": false,
+  ///     "id": 1,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": false,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject",
+  ///     "thread_id": "",
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json" — The body is not JSON:
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "no_mailbox" — No mailbox has that address:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "mailbox_not_found",
+  ///     "message": "Mailbox not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "folder_invalid" — The folder name is refused:
+  /// A name the folder rule refuses is 422 on folder, behind the gateway's own check.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "folder": "must not begin or end with a space"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 451 (application/json):
+  /// **Example** "deferred" — The pipeline defers the message:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "deferred",
+  ///     "message": "Try again later"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to look up mailbox"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 550 (application/json):
+  /// **Example** "rejected" — The pipeline rejects the message:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rejected",
+  ///     "message": "Message rejected by policy"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i24.DeliverMessageResponse, _i19.Response>>
   deliverMessage({
-    required _i19.DeliverMessageBody body,
-    _i14.TonikCancellation? cancellation,
+    required _i25.DeliverMessageBody body,
+    _i17.TonikCancellation? cancellation,
   }) async => _deliverMessage(body: body, cancellation: cancellation);
 
   /// List the messages waiting to be sent
-  /// The account's waiting sends from the addresses the session may send as (mail:send); the others are left out.
+  /// The account's waiting sends that the session may send using their stored mode (mail:send, mail:send_as or mail:send_on_behalf); the others are left out.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -3065,84 +1266,6 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password" — A real app password sees waiting sends only from its own mailbox:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "user@example.com",
-  ///       "id": 51,
-  ///       "scheduled_at": "2026-10-27T00:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session" — A current cookie session sees the same permitted sends:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "user@example.com",
-  ///       "id": 51,
-  ///       "scheduled_at": "2026-10-27T00:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 2,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 52,
-  ///       "last_error": "Delivery deferred",
-  ///       "scheduled_at": "2026-10-27T01:00:00Z",
-  ///       "status": "sending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 53,
-  ///       "scheduled_at": "2026-10-27T02:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty_scheduled" — An account with no waiting sends has an empty array:
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — Waiting sends are filtered by current send-as permission, retaining soonest-first order:
   /// The real query restricts the owner and pending/sending states. A fourth row from an unpermitted sender is hidden. The complete public mapping retains attempts and optional last error, normalizes absent recipients to [], and excludes the private replay request. Fixed SQL rows prove wiring, not PostgreSQL filtering/ordering, scheduler delivery or persistence.
   ///
@@ -3188,133 +1311,6 @@ class MessagesApi {
   ///       "status": "pending",
   ///       "subject": "Send café",
   ///       "to": [],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read" — Read permission cannot substitute for send-as permission:
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_send" — A real API key may list sends only from its permitted sender mailbox:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 2,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 52,
-  ///       "last_error": "Delivery deferred",
-  ///       "scheduled_at": "2026-10-27T01:00:00Z",
-  ///       "status": "sending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 53,
-  ///       "scheduled_at": "2026-10-27T02:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_send_domain" — A domain send scope still requires the holder to permit each sender:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "user@example.com",
-  ///       "id": 51,
-  ///       "scheduled_at": "2026-10-27T00:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 2,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 52,
-  ///       "last_error": "Delivery deferred",
-  ///       "scheduled_at": "2026-10-27T01:00:00Z",
-  ///       "status": "sending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "linked@example.com",
-  ///       "id": 53,
-  ///       "scheduled_at": "2026-10-27T02:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [],
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_send_holder_missing" — An API key cannot restore send-as permission absent from its holder:
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only" — Write permission cannot substitute for send-as permission:
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only" — Implicit ownership permits the primary sender without linked grants:
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "account_id": 10,
-  ///       "attempts": 0,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "from": "user@example.com",
-  ///       "id": 51,
-  ///       "scheduled_at": "2026-10-27T00:00:00Z",
-  ///       "status": "pending",
-  ///       "subject": "Send café",
-  ///       "to": [
-  ///         "recipient@example.net"
-  ///       ],
   ///       "updated_at": "2026-10-20T00:00:00Z"
   ///     }
   ///   ]
@@ -3380,36 +1376,6 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "list_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to list scheduled messages"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to list scheduled messages"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "sender_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to list scheduled messages"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// The database-backed current-session lookup fails. The production session-cache builder and stale-session middleware produce this refusal.
@@ -3422,14 +1388,14 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<
-    _i14.TonikResult<_i20.ListScheduledMessagesResponse, _i16.Response>
+  _i16.Future<
+    _i17.TonikResult<_i26.ListScheduledMessagesResponse, _i19.Response>
   >
-  listScheduledMessages({_i14.TonikCancellation? cancellation}) async =>
+  listScheduledMessages({_i17.TonikCancellation? cancellation}) async =>
       _listScheduledMessages(cancellation: cancellation);
 
   /// Cancel a scheduled message
-  /// A waiting send from an address the session may not send as (mail:send) is not found, as the list leaves it out.
+  /// A waiting send the session may not send using its stored mode is not found, as the list leaves it out. Lookup, authorization and cancellation update follow request cancellation.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -3459,148 +1425,8 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "concurrent":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "foreign_owner":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_send_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_send_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "sending":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "sent":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No scheduled message with that ID is waiting"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "error": {
@@ -3622,21 +1448,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -3664,47 +1475,7 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to cancel the scheduled message"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to cancel the scheduled message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to cancel the scheduled message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "sender_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to cancel the scheduled message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_unavailable":
   /// ```json
   /// {
   ///   "error": {
@@ -3724,16 +1495,167 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<
-    _i14.TonikResult<_i21.CancelScheduledMessageResponse, _i16.Response>
+  _i16.Future<
+    _i17.TonikResult<_i27.CancelScheduledMessageResponse, _i19.Response>
   >
   cancelScheduledMessage({
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
   }) async => _cancelScheduledMessage(id: id, cancellation: cancellation);
 
+  /// Release held mail with a two-factor session
+  /// Requires a two-factor person session, mailbox:manage on the submitting account and mail:send on the sender. Releases one retained message, bypassing account budgets for this deliberate send while still charging them. Domain/server budgets, live sender permissions and outbound policies remain enforced. Returns the retained record: 200 after release, or 202 if budgets or policies defer and keep the same hold. Concurrent releases cannot send twice. The real releasing actor/session and original submitting account are audited.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "released" — A person with a second factor sends the held message:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "account_id": 1,
+  ///     "attempts": 0,
+  ///     "created_at": "2026-10-31T00:10:00Z",
+  ///     "from": "chris@example.test",
+  ///     "id": 3,
+  ///     "scheduled_at": "2026-10-31T01:00:00Z",
+  ///     "sent_message_id": 9,
+  ///     "status": "sent",
+  ///     "subject": "Quarterly report",
+  ///     "to": [
+  ///       "bob@example.org"
+  ///     ],
+  ///     "updated_at": "2026-10-31T00:10:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 202 (application/json):
+  /// **Example** "still_held" — The domain's budget is spent too, so the message stays held:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "account_id": 1,
+  ///     "attempts": 0,
+  ///     "created_at": "2026-10-31T00:10:00Z",
+  ///     "from": "chris@example.test",
+  ///     "id": 3,
+  ///     "last_error": "domain:1: messages_per_hour",
+  ///     "scheduled_at": "2026-10-31T01:00:00Z",
+  ///     "status": "held",
+  ///     "subject": "Quarterly report",
+  ///     "to": [
+  ///       "bob@example.org"
+  ///     ],
+  ///     "updated_at": "2026-10-31T00:10:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "without_two_factor" — A session without a second factor cannot release held mail:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "two_factor_required",
+  ///     "message": "Sign in as a person with two-factor authentication"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing":
+  /// Nothing is retained at the ID; mail of an account the caller cannot manage answers the same.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "No scheduled message with that ID is waiting"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "not_held" — The scheduled message is not held by a send limit:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_held",
+  ///     "message": "The message is not held"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i28.ReleaseHeldMessageResponse, _i19.Response>>
+  releaseHeldMessage({
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
+  }) async => _releaseHeldMessage(id: id, cancellation: cancellation);
+
   /// Send a message
-  /// Sent at once (201), or with scheduled_at stored and sent then (202); the outbound pipeline may discard it (200). The sender is an address the session may send as (mail:send).
+  /// Sent at once (201), or with scheduled_at stored and sent then (202); the outbound pipeline may discard it (200). Sending from your own mailbox requires mail:send. From another mailbox requires mail:send_as on that mailbox. Set on_behalf to true to require mail:send_on_behalf instead: From stays the represented mailbox and RFC 5322 Sender is the authenticated account's own address. Read access grants neither mode. Both modes audit the real account, credential and represented mailbox.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -3742,10 +1664,169 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Request body (application/json):
+  /// **Example** "discarded" — The outbound pipeline discards it:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "foreign_sender" — The caller cannot send as that address:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "someone@other.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
   /// **Example** "from_missing":
   /// ```json
   /// {
   ///   "body_text": "Sent through the REST API.",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test",
+  ///     "someone@imap.restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "admin@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test",
+  ///     "someone@imap.restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "admin@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test",
+  ///     "someone@imap.restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "read_only_send_as" — Delegated read only send as:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "shared@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "read_only_send_on_behalf" — Delegated read only send on behalf:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "shared@restmail.test",
+  ///   "on_behalf": true,
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "admin@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test",
+  ///     "someone@imap.restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled" — Held to send at scheduled_at:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "scheduled_at": "2026-10-27T00:00:00Z",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "send_as" — Delegated send as:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "shared@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "send_on_behalf" — Delegated send on behalf:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "shared@restmail.test",
+  ///   "on_behalf": true,
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "admin@restmail.test",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test",
+  ///     "someone@imap.restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "body_text": "Sent through the REST API.",
+  ///   "from": "admin@restmail.test",
   ///   "subject": "Hello",
   ///   "to": [
   ///     "admin@restmail.test",
@@ -3783,7 +1864,91 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// Response 200 (application/json):
+  /// **Example** "discarded" — The outbound pipeline discards it:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "status": "discarded"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 201 (application/json):
+  /// **Example** "send_as" — Delegated send as:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_text": "Sent through the REST API.",
+  ///     "created_at": "2026-10-21T12:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 297,
+  ///     "folder": "Sent",
+  ///     "has_attachments": false,
+  ///     "id": 1,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": true,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 2,
+  ///     "message_id": "<00000000-0000-4000-8000-000000000001@restmail.test>",
+  ///     "raw_size": 297,
+  ///     "received_at": "2026-10-21T12:00:00Z",
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.net"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "shared@restmail.test",
+  ///     "sender_name": "",
+  ///     "size_bytes": 31,
+  ///     "subject": "Hello",
+  ///     "thread_id": "<00000000-0000-4000-8000-000000000001@restmail.test>",
+  ///     "updated_at": "2026-10-21T12:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "send_on_behalf" — Delegated send on behalf:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_text": "Sent through the REST API.",
+  ///     "created_at": "2026-10-21T12:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 297,
+  ///     "folder": "Sent",
+  ///     "has_attachments": false,
+  ///     "id": 1,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": true,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 2,
+  ///     "message_id": "<00000000-0000-4000-8000-000000000001@restmail.test>",
+  ///     "raw_size": 297,
+  ///     "received_at": "2026-10-21T12:00:00Z",
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.net"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "shared@restmail.test",
+  ///     "sender_name": "",
+  ///     "size_bytes": 31,
+  ///     "subject": "Hello",
+  ///     "thread_id": "<00000000-0000-4000-8000-000000000001@restmail.test>",
+  ///     "updated_at": "2026-10-21T12:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "valid":
   /// ```json
   /// {
@@ -3791,6 +1956,7 @@ class MessagesApi {
   ///     "body_text": "Sent through the REST API.",
   ///     "created_at": "2026-10-21T12:00:00Z",
   ///     "date_header": null,
+  ///     "downgraded_size": 297,
   ///     "folder": "Sent",
   ///     "has_attachments": false,
   ///     "id": 1,
@@ -3821,18 +1987,109 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// Response 202 (application/json):
+  /// **Example** "scheduled" — Held to send at scheduled_at:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "account_id": 1,
+  ///     "attempts": 0,
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "from": "admin@restmail.test",
+  ///     "id": 51,
+  ///     "scheduled_at": "2026-10-27T00:00:00Z",
+  ///     "status": "pending",
+  ///     "subject": "Hello",
+  ///     "to": [
+  ///       "recipient@example.net"
+  ///     ],
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 400 (application/json):
-  /// **Example** "from_missing":
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "bad_request",
-  ///     "message": "from is required"
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "foreign_sender" — The caller cannot send as that address:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "You are not authorized to send from this address"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "read_only_send_as" — Delegated read only send as:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "You are not authorized to send from this address"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "read_only_send_on_behalf" — Delegated read only send on behalf:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "You are not authorized to send from this address"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
   ///   }
   /// }
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "from_missing":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "from": "from is required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "unsubscribe_not_allowed":
   /// ```json
   /// {
@@ -3842,10 +2099,43 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i22.SendMessageResponse, _i16.Response>>
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to check the sender"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i29.SendMessageResponse, _i19.Response>>
   sendMessage({
-    required _i23.SendMessageRequest body,
-    _i14.TonikCancellation? cancellation,
+    required _i30.SendMessageRequest body,
+    _i17.TonikCancellation? cancellation,
   }) async => _sendMessage(body: body, cancellation: cancellation);
 
   /// Get a message by ID
@@ -3857,188 +2147,6 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 10,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 10,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 1,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "deleted_message":
-  /// A message already marked deleted remains retrievable by ID for existing Trash and protocol flows; collection filtering is separate.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 7,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": true,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 1,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// The production message lookup, credential verification and current holder ceilings are used. Controlled SQL proves wiring, not PostgreSQL semantics or audit persistence. JSON omits raw source and unloaded mailboxes; the source route preserves every octet, repeated headers, CRLF, UTF-8 and a leading dot.
   ///
@@ -4049,6 +2157,7 @@ class MessagesApi {
   ///     "body_text": "Hello café",
   ///     "created_at": "2026-10-20T00:00:00Z",
   ///     "date_header": null,
+  ///     "downgraded_size": 0,
   ///     "folder": "INBOX",
   ///     "has_attachments": true,
   ///     "headers": {
@@ -4068,233 +2177,6 @@ class MessagesApi {
   ///     "mailbox_id": 1,
   ///     "message_id": "<message@example.net>",
   ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 1,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 1,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "minimal_source":
-  /// A retained CRLF-only source is returned exactly; only an empty stored source is unavailable.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 6,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 2,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 10,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 10,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 137,
-  ///     "received_at": "2026-10-20T00:00:00Z",
-  ///     "received_tls": true,
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "recipient@example.com"
-  ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.net",
-  ///     "sender_name": "Sender café",
-  ///     "size_bytes": 80,
-  ///     "subject": "Subject café",
-  ///     "thread_id": "",
-  ///     "tls_version": "TLS1.3",
-  ///     "updated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_missing":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "body_html": "<p>Hello café</p>",
-  ///     "body_text": "Hello café",
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "date_header": null,
-  ///     "folder": "INBOX",
-  ///     "has_attachments": true,
-  ///     "headers": {
-  ///       "X-Trace": [
-  ///         "one",
-  ///         "two"
-  ///       ]
-  ///     },
-  ///     "id": 2,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": false,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 2,
-  ///     "message_id": "<message@example.net>",
-  ///     "raw_size": 0,
   ///     "received_at": "2026-10-20T00:00:00Z",
   ///     "received_tls": true,
   ///     "recipients_cc": [],
@@ -4325,66 +2207,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "write_only":
   /// ```json
   /// {
@@ -4396,6 +2218,16 @@ class MessagesApi {
   /// ```
   ///
   /// Response 404 (application/json):
+  /// **Example** "key_wrong_scope":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "missing":
   /// ```json
   /// {
@@ -4418,21 +2250,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -4460,36 +2277,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {
@@ -4510,10 +2297,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i24.GetMessageResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i31.GetMessageResponse, _i19.Response>>
   getMessage({
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
   }) async => _getMessage(id: id, cancellation: cancellation);
 
   /// Delete a message
@@ -4536,46 +2323,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "csrf_mismatch":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
   /// ```json
   /// {
@@ -4586,37 +2333,17 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "key_wrong_scope":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
   ///   }
   /// }
   /// ```
   ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// Response 404 (application/json):
   /// **Example** "missing":
   /// ```json
   /// {
@@ -4641,21 +2368,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -4683,102 +2395,12 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "attachment_sum_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "delete_failed",
-  ///     "message": "Failed to delete message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "attachments_delete_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "delete_failed",
-  ///     "message": "Failed to delete message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "message_delete_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "delete_failed",
-  ///     "message": "Failed to delete message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "move_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "delete_failed",
-  ///     "message": "Failed to delete message"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "quota_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "delete_failed",
-  ///     "message": "Failed to delete message"
   ///   }
   /// }
   /// ```
@@ -4793,11 +2415,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i25.DeleteMessageResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i32.DeleteMessageResponse, _i19.Response>>
   deleteMessage({
-    required _i13.int id,
-    _i13.String? permanent,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    _i16.String? permanent,
+    _i17.TonikCancellation? cancellation,
   }) async =>
       _deleteMessage(id: id, permanent: permanent, cancellation: cancellation);
 
@@ -4810,22 +2432,267 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Request body (application/json):
-  /// **Example** "example" — The operation's example:
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "flags_set" — The message is marked read and flagged:
+  /// The answer is the message as stored, read back in the change's own transaction; flags left out of the body keep their value.
+  ///
   /// ```json
   /// {
   ///   "is_flagged": true,
   ///   "is_read": true
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i26.UpdateMessageResponse, _i16.Response>>
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "is_flagged": true,
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "missing" — No such message:
+  /// ```json
+  /// {
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "is_flagged": true,
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "read_only" — The caller does not reach the message's mailbox:
+  /// ```json
+  /// {
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "is_flagged": true,
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "is_flagged": true,
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "is_flagged": true,
+  ///   "is_read": true
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "flags_set" — The message is marked read and flagged:
+  /// The answer is the message as stored, read back in the change's own transaction; flags left out of the body keep their value.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "calendar_events": [],
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": "2026-10-20T00:00:00Z",
+  ///     "downgraded_size": 137,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": false,
+  ///     "headers": {
+  ///       "Subject": [
+  ///         "Subject"
+  ///       ]
+  ///     },
+  ///     "id": 1,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": true,
+  ///     "is_read": true,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject",
+  ///     "thread_id": "",
+  ///     "updated_at": "2026-10-21T09:30:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "read_only" — The caller does not reach the message's mailbox:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such message:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i16.Future<_i17.TonikResult<_i33.UpdateMessageResponse, _i19.Response>>
   updateMessage({
-    required _i27.UpdateMessageBody body,
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i34.UpdateMessageBody body,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
   }) async => _updateMessage(body: body, id: id, cancellation: cancellation);
 
   /// Forward a message
-  /// The message (mail:read) is forwarded through the normal sender authorization, rate limit and outbound policy, with Fwd: and the note above its original header. Stored attachments, including empty and inline parts, are re-attached; the Sent copy owns independent attachment objects. The final signed MIME message is bounded by SMTP_MAX_MESSAGE_SIZE, and sender quota includes the copied parts. Sent, attachment references, quota and recipient work commit together. Unavailable or changed source objects fail the forward instead of dropping parts.
+  /// The message (mail:read) is forwarded through the normal sender authorization, rate limit and outbound policy, with Fwd: and the note above its original header. Stored attachments, including empty and inline parts, are re-attached; the Sent copy owns independent attachment objects. The final signed MIME message is bounded by SMTP_MAX_MESSAGE_SIZE, and sender quota includes the copied parts. Sent, attachment references, quota and recipient work commit together. Unavailable or changed source objects fail the forward instead of dropping parts. Sending from your own mailbox requires mail:send. From another mailbox requires mail:send_as on that mailbox. Set on_behalf to true to require mail:send_on_behalf instead: From stays the represented mailbox and RFC 5322 Sender is the authenticated account's own address. Read access grants neither mode. Both modes audit the real account, credential and represented mailbox.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -4845,13 +2712,17 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "checksum_mismatch":
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "discarded" — The outbound pipeline discards it:
   /// ```json
   /// {
-  ///   "body_text": "please review",
-  ///   "from": "sender@example.test",
+  ///   "from": "admin@restmail.test",
   ///   "to": [
-  ///     "target@remote.test"
+  ///     "recipient@example.net"
   ///   ]
   /// }
   /// ```
@@ -4867,6 +2738,17 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "held" — Held by a spent send limit until a person releases it:
+  /// ```json
+  /// {
+  ///   "body_text": "See below.",
+  ///   "from": "chris@example.test",
+  ///   "to": [
+  ///     "bob@example.org"
+  ///   ]
+  /// }
+  /// ```
+  ///
   /// **Example** "mailbox_full":
   /// ```json
   /// {
@@ -4876,6 +2758,13 @@ class MessagesApi {
   ///     "target@remote.test"
   ///   ]
   /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
   /// ```
   ///
   /// **Example** "mime_too_large":
@@ -4889,13 +2778,12 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "missing_object":
+  /// **Example** "missing" — No such message:
   /// ```json
   /// {
-  ///   "body_text": "please review",
-  ///   "from": "sender@example.test",
+  ///   "from": "admin@restmail.test",
   ///   "to": [
-  ///     "target@remote.test"
+  ///     "recipient@example.net"
   ///   ]
   /// }
   /// ```
@@ -4911,7 +2799,7 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "queue_write_failed":
+  /// **Example** "rate_limited" — The limit is already spent:
   /// ```json
   /// {
   ///   "body_text": "please review",
@@ -4922,18 +2810,7 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "quota_write_failed":
-  /// ```json
-  /// {
-  ///   "body_text": "please review",
-  ///   "from": "sender@example.test",
-  ///   "to": [
-  ///     "target@remote.test"
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_unavailable":
+  /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "body_text": "please review",
@@ -4955,51 +2832,47 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "with_attachments":
-  /// ```json
-  /// {
-  ///   "body_text": "please review",
-  ///   "from": "sender@example.test",
-  ///   "to": [
-  ///     "target@remote.test"
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// Response 201 (application/json):
-  /// **Example** "with_attachments":
+  /// Response 200 (application/json):
+  /// **Example** "discarded" — The outbound pipeline discards it:
   /// ```json
   /// {
   ///   "data": {
-  ///     "body_html": "<p>please review</p>\n<p>---------- Forwarded message ----------<br>\nFrom: old@example.test<br>\nSubject: receipt</p>\n<p>original<img src=\"cid:original-image\"></p>",
-  ///     "body_text": "please review\n\n---------- Forwarded message ----------\nFrom: old@example.test\nSubject: receipt\n\noriginal receipt",
-  ///     "created_at": "2030-01-02T03:04:05Z",
-  ///     "date_header": null,
-  ///     "folder": "Sent",
-  ///     "has_attachments": true,
-  ///     "id": 41,
-  ///     "in_reply_to": "",
-  ///     "is_deleted": false,
-  ///     "is_draft": false,
-  ///     "is_dsn": false,
-  ///     "is_flagged": false,
-  ///     "is_read": true,
-  ///     "is_starred": false,
-  ///     "mailbox_id": 1,
-  ///     "message_id": "<00000000-0000-4000-8000-000000000001@example.test>",
-  ///     "raw_size": 1714,
-  ///     "received_at": "2030-01-02T03:04:05Z",
-  ///     "recipients_cc": [],
-  ///     "recipients_to": [
-  ///       "target@remote.test"
+  ///     "status": "discarded"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 202 (application/json):
+  /// **Example** "held" — Held by a spent send limit until a person releases it:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "account_id": 1,
+  ///     "attempts": 0,
+  ///     "created_at": "2026-10-31T00:10:00Z",
+  ///     "from": "chris@example.test",
+  ///     "id": 3,
+  ///     "last_error": "account:1: messages_per_hour",
+  ///     "scheduled_at": "2026-10-31T01:00:00Z",
+  ///     "status": "held",
+  ///     "subject": "Fwd: Quarterly report",
+  ///     "to": [
+  ///       "bob@example.org"
   ///     ],
-  ///     "references": "",
-  ///     "sender": "sender@example.test",
-  ///     "sender_name": "",
-  ///     "size_bytes": 285,
-  ///     "subject": "Fwd: receipt",
-  ///     "thread_id": "<00000000-0000-4000-8000-000000000001@example.test>",
-  ///     "updated_at": "2030-01-02T03:04:05Z"
+  ///     "updated_at": "2026-10-31T00:10:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
   ///   }
   /// }
   /// ```
@@ -5010,18 +2883,28 @@ class MessagesApi {
   /// {
   ///   "error": {
   ///     "code": "unauthorized",
-  ///     "message": "Invalid or expired token"
+  ///     "message": "Missing authorization header"
   ///   }
   /// }
   /// ```
   ///
-  /// Response 403 (application/json):
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such message:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "not_authorized":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
   ///   }
   /// }
   /// ```
@@ -5038,12 +2921,38 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "mailbox_full":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "mailbox_full",
   ///     "message": "The sender account has insufficient quota"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
@@ -5059,60 +2968,21 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "checksum_mismatch":
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "attachment_unavailable",
-  ///     "message": "Could not read an original attachment"
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
   ///   }
   /// }
   /// ```
-  ///
-  /// **Example** "missing_object":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "attachment_unavailable",
-  ///     "message": "Could not read an original attachment"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "queue_write_failed":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "quota_write_failed":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "attachment_unavailable",
-  ///     "message": "Could not read an original attachment"
-  ///   }
-  /// }
-  /// ```
-  _i13.Future<_i14.TonikResult<_i28.ForwardMessageResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i35.ForwardMessageResponse, _i19.Response>>
   forwardMessage({
-    required _i29.ForwardBody body,
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i36.ForwardBody body,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
   }) async => _forwardMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get the raw RFC 2822 message source
@@ -5125,110 +2995,9 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (message/rfc822):
-  /// **Example** "app_password":
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "deleted_message":
-  /// A message already marked deleted remains retrievable by ID for existing Trash and protocol flows; collection filtering is separate.
-  ///
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
   /// **Example** "found":
   /// The production message lookup, credential verification and current holder ceilings are used. Controlled SQL proves wiring, not PostgreSQL semantics or audit persistence. JSON omits raw source and unloaded mailboxes; the source route preserves every octet, repeated headers, CRLF, UTF-8 and a leading dot.
   ///
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```
-  /// From: sender@example.net
-  /// To: recipient@example.com
-  /// Subject: café
-  /// X-Trace: one
-  /// X-Trace: two
-  ///
-  /// Hello café
-  /// .No dot unstuffing here
-  ///
-  /// ```
-  ///
-  /// **Example** "minimal_source":
-  /// A retained CRLF-only source is returned exactly; only an empty stored source is unavailable.
-  ///
-  /// ```
-  ///
-  ///
-  /// ```
-  ///
-  /// **Example** "primary":
   /// ```
   /// From: sender@example.net
   /// To: recipient@example.com
@@ -5253,66 +3022,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "write_only":
   /// ```json
   /// {
@@ -5324,7 +3033,7 @@ class MessagesApi {
   /// ```
   ///
   /// Response 404 (application/json):
-  /// **Example** "missing":
+  /// **Example** "key_wrong_scope":
   /// ```json
   /// {
   ///   "error": {
@@ -5334,12 +3043,12 @@ class MessagesApi {
   /// }
   /// ```
   ///
-  /// **Example** "source_missing":
+  /// **Example** "missing":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Raw message not available"
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
   ///   }
   /// }
   /// ```
@@ -5356,21 +3065,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -5398,36 +3092,6 @@ class MessagesApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {
@@ -5448,9 +3112,9 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i30.GetRawMessageResponse, _i16.Response>>
+  _i16.Future<_i17.TonikResult<_i37.GetRawMessageResponse, _i19.Response>>
   getRawMessage({
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i16.int id,
+    _i17.TonikCancellation? cancellation,
   }) async => _getRawMessage(id: id, cancellation: cancellation);
 }

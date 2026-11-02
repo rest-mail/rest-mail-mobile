@@ -210,6 +210,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
@@ -272,21 +285,17 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_without_reason" — An omitted reason stays omitted in the response:
-  /// A domains:write grant for example.com permits creation. The real handler inserts the exact domain, list type, pattern and reason using GORM; its returned ID and timestamp are serialized.
-  ///
-  /// ```json
-  /// {
-  ///   "pattern": "@partner.example.com"
-  /// }
-  /// ```
-  ///
   /// **Example** "internal_error":
   /// ```json
   /// {
   ///   "pattern": "@partner.example.com",
   ///   "reason": "A trusted partner"
   /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// ```json
+  /// {}
   /// ```
   ///
   /// **Example** "missing":
@@ -314,6 +323,16 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "pattern": "@partner.example.com",
+  ///   "reason": "A trusted partner"
+  /// }
+  /// ```
+  ///
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// The published JSON body exceeds the eight-byte fixture cap; the production transport limiter refuses it before insertion.
   ///
@@ -324,28 +343,10 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "pattern": "saving@example.net",
-  ///   "reason": "A trusted partner"
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "pattern": "@partner.example.com",
-  ///   "reason": "A trusted partner"
-  /// }
-  /// ```
-  ///
-  /// **Example** "translated_conflict":
-  /// A wrapped GORM duplicate-key error follows the same409 mapping as a PostgreSQL23505.
-  ///
-  /// ```json
-  /// {
-  ///   "pattern": "translated@example.net",
   ///   "reason": "A trusted partner"
   /// }
   /// ```
@@ -375,23 +376,8 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_without_reason" — An omitted reason stays omitted in the response:
-  /// A domains:write grant for example.com permits creation. The real handler inserts the exact domain, list type, pattern and reason using GORM; its returned ID and timestamp are serialized.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "list_type": "allow",
-  ///     "pattern": "@partner.example.com"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
+  /// **Example** "malformed_json":
   /// ```json
   /// {
   ///   "error": {
@@ -449,18 +435,6 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "translated_conflict":
-  /// A wrapped GORM duplicate-key error follows the same409 mapping as a PostgreSQL23505.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "already_exists",
-  ///     "message": "Sender is already on the allowlist"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// The published JSON body exceeds the eight-byte fixture cap; the production transport limiter refuses it before insertion.
@@ -475,6 +449,21 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "body_array":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "pattern_missing":
   /// ```json
   /// {
@@ -490,6 +479,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error":
   /// ```json
@@ -497,16 +499,6 @@ class AdminDomainmailpolicyApi {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to create allowlist rule"
   ///   }
   /// }
   /// ```
@@ -570,26 +562,6 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "opposite_list" — An entry on the opposite list is not found:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Allowlist rule not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "other_domain" — An entry owned by another domain is not found:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Allowlist rule not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// A nine-byte transport body exceeds the eight-byte fixture cap. The production limiter refuses the request; the focused replay sends actual bytes.
@@ -619,17 +591,20 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "delete_unavailable" — Persistence fails while deleting the scoped entry:
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to delete allowlist rule"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
   /// {
@@ -730,6 +705,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
@@ -792,21 +780,17 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_without_reason" — An omitted reason stays omitted in the response:
-  /// A domains:write grant for example.com permits creation. The real handler inserts the exact domain, list type, pattern and reason using GORM; its returned ID and timestamp are serialized.
-  ///
-  /// ```json
-  /// {
-  ///   "pattern": "spam@spammer.example.com"
-  /// }
-  /// ```
-  ///
   /// **Example** "internal_error":
   /// ```json
   /// {
   ///   "pattern": "spam@spammer.example.com",
   ///   "reason": "Sends spam"
   /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// ```json
+  /// {}
   /// ```
   ///
   /// **Example** "missing":
@@ -834,6 +818,16 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "pattern": "spam@spammer.example.com",
+  ///   "reason": "Sends spam"
+  /// }
+  /// ```
+  ///
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// The published JSON body exceeds the eight-byte fixture cap; the production transport limiter refuses it before insertion.
   ///
@@ -844,28 +838,10 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "pattern": "saving@example.net",
-  ///   "reason": "Sends spam"
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "pattern": "spam@spammer.example.com",
-  ///   "reason": "Sends spam"
-  /// }
-  /// ```
-  ///
-  /// **Example** "translated_conflict":
-  /// A wrapped GORM duplicate-key error follows the same409 mapping as a PostgreSQL23505.
-  ///
-  /// ```json
-  /// {
-  ///   "pattern": "translated@example.net",
   ///   "reason": "Sends spam"
   /// }
   /// ```
@@ -895,23 +871,8 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_without_reason" — An omitted reason stays omitted in the response:
-  /// A domains:write grant for example.com permits creation. The real handler inserts the exact domain, list type, pattern and reason using GORM; its returned ID and timestamp are serialized.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "domain_id": 1,
-  ///     "id": 1,
-  ///     "list_type": "block",
-  ///     "pattern": "spam@spammer.example.com"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
+  /// **Example** "malformed_json":
   /// ```json
   /// {
   ///   "error": {
@@ -969,18 +930,6 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "translated_conflict":
-  /// A wrapped GORM duplicate-key error follows the same409 mapping as a PostgreSQL23505.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "already_exists",
-  ///     "message": "Sender is already on the blocklist"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// The published JSON body exceeds the eight-byte fixture cap; the production transport limiter refuses it before insertion.
@@ -995,6 +944,21 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "body_array":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "pattern_missing":
   /// ```json
   /// {
@@ -1010,6 +974,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error":
   /// ```json
@@ -1017,16 +994,6 @@ class AdminDomainmailpolicyApi {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to create blocklist rule"
   ///   }
   /// }
   /// ```
@@ -1090,26 +1057,6 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "opposite_list" — An entry on the opposite list is not found:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Blocklist rule not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "other_domain" — An entry owned by another domain is not found:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Blocklist rule not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// A nine-byte transport body exceeds the eight-byte fixture cap. The production limiter refuses the request; the focused replay sends actual bytes.
@@ -1139,17 +1086,20 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "delete_unavailable" — Persistence fails while deleting the scoped entry:
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to delete blocklist rule"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
   /// {
@@ -1243,16 +1193,6 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 404 (application/json):
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "policy_absent":
   /// ```json
   /// {
@@ -1292,20 +1232,23 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "internal_error" — The domain-policy query fails:
-  /// A dependency failure is preserved as a sanitized500, rather than mistaken for an absent domain or policy. The real handler and error writer execute against a controlled database fault.
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
   ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
-  /// **Example** "settings_unavailable" — The domain exists but its settings query fails:
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — The domain-policy query fails:
+  /// A dependency failure is preserved as a sanitized500, rather than mistaken for an absent domain or policy. The real handler and error writer execute against a controlled database fault.
+  ///
   /// ```json
   /// {
   ///   "error": {
@@ -1356,16 +1299,16 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_defaults" — Omitted fields use policy defaults:
-  /// ```json
-  /// {}
-  /// ```
-  ///
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
   /// {
   ///   "mode": "testing"
   /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// ```json
+  /// {}
   /// ```
   ///
   /// **Example** "max_age_negative":
@@ -1382,16 +1325,6 @@ class AdminDomainmailpolicyApi {
   /// ```json
   /// {
   ///   "mode": "testing"
-  /// }
-  /// ```
-  ///
-  /// **Example** "mode_invalid":
-  /// ```json
-  /// {
-  ///   "active": true,
-  ///   "max_age": 86400,
-  ///   "mode": "strict",
-  ///   "mx_hosts": "mail.example.org"
   /// }
   /// ```
   ///
@@ -1414,6 +1347,18 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "active": false,
+  ///   "max_age": 0,
+  ///   "mode": "enforce",
+  ///   "mx_hosts": "mail.direct.test"
+  /// }
+  /// ```
+  ///
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// The published JSON body exceeds the eight-byte test cap. The production body limiter refuses it before policy writes.
   ///
@@ -1423,21 +1368,7 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "mode": "testing"
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
-  /// ```json
-  /// {
-  ///   "mode": "testing"
-  /// }
-  /// ```
-  ///
-  /// **Example** "settings_unavailable":
   /// ```json
   /// {
   ///   "mode": "testing"
@@ -1509,36 +1440,8 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "created_defaults" — Omitted fields use policy defaults:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-25T00:00:00Z",
-  ///     "domain": {
-  ///       "active": true,
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "default_quota_bytes": 1073741824,
-  ///       "dkim_selector": "restmail",
-  ///       "dmarc_policy": "none",
-  ///       "id": 2,
-  ///       "name": "direct.test",
-  ///       "sending_policy": "",
-  ///       "server_type": "traditional",
-  ///       "updated_at": "2026-10-20T00:00:00Z"
-  ///     },
-  ///     "domain_id": 2,
-  ///     "id": 8,
-  ///     "max_age": 604800,
-  ///     "mode": "testing",
-  ///     "mx_hosts": "",
-  ///     "updated_at": "2026-10-25T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
+  /// **Example** "malformed_json":
   /// ```json
   /// {
   ///   "error": {
@@ -1597,6 +1500,21 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "body_array":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "max_age_negative":
   /// ```json
   /// {
@@ -1612,17 +1530,15 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "mode_invalid":
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "mode": "Must be one of: none, testing, enforce"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
@@ -1634,26 +1550,6 @@ class AdminDomainmailpolicyApi {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to save MTA-STS policy"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "settings_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to save MTA-STS policy"
   ///   }
   /// }
   /// ```
@@ -1748,6 +1644,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// A dependency failure is preserved as a sanitized500, rather than mistaken for an absent domain or policy. The real handler and error writer execute against a controlled database fault.
@@ -1787,17 +1696,6 @@ class AdminDomainmailpolicyApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Response 200 (application/json):
-  /// **Example** "direct" — No configured relay uses direct delivery:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 2,
-  ///     "password_set": false,
-  ///     "transport": "direct"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — The permitted domain policy operation succeeds:
   /// The session holds the required capability at domain:example.com. The real target lookup resolves domain1 and the handler maps stored settings or executes the policy deletion inside GORM transaction callbacks.
   ///
@@ -1881,6 +1779,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// A dependency failure is preserved as a sanitized500, rather than mistaken for an absent domain or policy. The real handler and error writer execute against a controlled database fault.
@@ -1890,16 +1801,6 @@ class AdminDomainmailpolicyApi {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "settings_unavailable" — The domain exists but its settings query fails:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to load the relay settings"
   ///   }
   /// }
   /// ```
@@ -1949,43 +1850,16 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "credentials_retained" — Omitting the password preserves the stored credential:
-  /// ```json
-  /// {
-  ///   "host": "smtp.example.net",
-  ///   "port": 587,
-  ///   "tls_mode": "starttls",
-  ///   "transport": "relay",
-  ///   "username": "apikey"
-  /// }
-  /// ```
-  ///
-  /// **Example** "direct" — Deliver straight to each recipient's MX:
-  /// ```json
-  /// {
-  ///   "transport": "direct"
-  /// }
-  /// ```
-  ///
-  /// **Example** "host_invalid":
-  /// The body satisfies its field schema. The handler refuses the credential relationship or bare-host rule with422.
-  ///
-  /// ```json
-  /// {
-  ///   "host": "smtp://smtp.example.net",
-  ///   "password": "relay-password",
-  ///   "port": 587,
-  ///   "tls_mode": "starttls",
-  ///   "transport": "relay",
-  ///   "username": "apikey"
-  /// }
-  /// ```
-  ///
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
   /// {
   ///   "transport": "direct"
   /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// ```json
+  /// {}
   /// ```
   ///
   /// **Example** "master_key_required" — A new relay credential requires the server master key:
@@ -2016,24 +1890,13 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "port_invalid":
-  /// ```json
-  /// {
-  ///   "host": "smtp.example.net",
-  ///   "password": "relay-password",
-  ///   "port": 65536,
-  ///   "tls_mode": "starttls",
-  ///   "transport": "relay",
-  ///   "username": "apikey"
-  /// }
-  /// ```
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
   ///
-  /// **Example** "port_wrong_type":
   /// ```json
   /// {
   ///   "host": "smtp.example.net",
-  ///   "password": "relay-password",
-  ///   "port": "587",
+  ///   "port": 587,
   ///   "tls_mode": "starttls",
   ///   "transport": "relay",
   ///   "username": "apikey"
@@ -2061,49 +1924,11 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "transport": "direct"
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "transport": "direct"
   /// }
-  /// ```
-  ///
-  /// **Example** "settings_unavailable":
-  /// ```json
-  /// {
-  ///   "transport": "direct"
-  /// }
-  /// ```
-  ///
-  /// **Example** "tls_mode_invalid":
-  /// ```json
-  /// {
-  ///   "host": "smtp.example.net",
-  ///   "password": "relay-password",
-  ///   "port": 587,
-  ///   "tls_mode": "none",
-  ///   "transport": "relay",
-  ///   "username": "apikey"
-  /// }
-  /// ```
-  ///
-  /// **Example** "transport_invalid":
-  /// ```json
-  /// {
-  ///   "transport": "smtp"
-  /// }
-  /// ```
-  ///
-  /// **Example** "transport_missing":
-  /// ```json
-  /// {}
   /// ```
   ///
   /// **Example** "unauthenticated" — No session credential was sent:
@@ -2114,32 +1939,6 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 200 (application/json):
-  /// **Example** "credentials_retained" — Omitting the password preserves the stored credential:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "host": "smtp.example.net",
-  ///     "password_set": true,
-  ///     "port": 587,
-  ///     "tls_mode": "starttls",
-  ///     "transport": "relay",
-  ///     "username": "apikey"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "direct" — Deliver straight to each recipient's MX:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "password_set": false,
-  ///     "transport": "direct"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "relay" — Send through an authenticated relay:
   /// ```json
   /// {
@@ -2156,7 +1955,7 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
+  /// **Example** "malformed_json":
   /// ```json
   /// {
   ///   "error": {
@@ -2226,6 +2025,21 @@ class AdminDomainmailpolicyApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "body_array":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "credentials_mismatch":
   /// The body satisfies its field schema. The handler refuses the credential relationship or bare-host rule with422.
   ///
@@ -2243,94 +2057,15 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "host_invalid":
-  /// The body satisfies its field schema. The handler refuses the credential relationship or bare-host rule with422.
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
   ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "host": "Must be a bare host name or IP address, with no scheme, port or path"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "port_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "port": "Must be between 1 and 65535"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "port_wrong_type":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "port": "must be an integer"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "tls_mode_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "tls_mode": "Must be one of: starttls, implicit"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "transport_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "transport": "Must be one of: direct, relay"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "transport_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "transport": "Must be one of: direct, relay"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
@@ -2342,26 +2077,6 @@ class AdminDomainmailpolicyApi {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "save_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to save the relay settings"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "settings_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to load the relay settings"
   ///   }
   /// }
   /// ```
@@ -2455,6 +2170,19 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
@@ -2526,16 +2254,6 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// **Example** "other_domain" — An entry owned by another domain is not found:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Suppression not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// A nine-byte transport body exceeds the eight-byte fixture cap. The production limiter refuses the request; the focused replay sends actual bytes.
@@ -2565,17 +2283,20 @@ class AdminDomainmailpolicyApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "delete_unavailable" — Persistence fails while deleting the scoped entry:
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to clear suppression"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "internal_error" — The domain-policy query fails:
   /// ```json
   /// {
@@ -2676,6 +2397,19 @@ class AdminDomainmailpolicyApi {
   ///       }
   ///     },
   ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```

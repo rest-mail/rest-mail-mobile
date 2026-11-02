@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_d
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_delete503_response.dart'
+    as _i11;
 
 sealed class DeleteCustomFilterResponse {
   const DeleteCustomFilterResponse();
@@ -123,10 +125,26 @@ class DeleteCustomFilterResponse422 extends DeleteCustomFilterResponse {
 }
 
 @_i1.immutable
+class DeleteCustomFilterResponse429 extends DeleteCustomFilterResponse {
+  const DeleteCustomFilterResponse429({required this.body});
+
+  final _i9.ApiV1AdminCustomFiltersIdDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeleteCustomFilterResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeleteCustomFilterResponse500 extends DeleteCustomFilterResponse {
   const DeleteCustomFilterResponse500({required this.body});
 
-  final _i9.ApiV1AdminCustomFiltersIdDelete500Response body;
+  final _i10.ApiV1AdminCustomFiltersIdDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DeleteCustomFilterResponse500 extends DeleteCustomFilterResponse {
 class DeleteCustomFilterResponse503 extends DeleteCustomFilterResponse {
   const DeleteCustomFilterResponse503({required this.body});
 
-  final _i10.ApiV1AdminCustomFiltersIdDelete503Response body;
+  final _i11.ApiV1AdminCustomFiltersIdDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

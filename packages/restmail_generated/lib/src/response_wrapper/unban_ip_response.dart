@@ -15,10 +15,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete40
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete429_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete500_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete503_response.dart'
+    as _i10;
 
 sealed class UnbanIpResponse {
   const UnbanIpResponse();
@@ -105,10 +107,26 @@ class UnbanIpResponse413 extends UnbanIpResponse {
 }
 
 @_i1.immutable
+class UnbanIpResponse429 extends UnbanIpResponse {
+  const UnbanIpResponse429({required this.body});
+
+  final _i8.ApiV1AdminBansIpIpDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is UnbanIpResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class UnbanIpResponse500 extends UnbanIpResponse {
   const UnbanIpResponse500({required this.body});
 
-  final _i8.ApiV1AdminBansIpIpDelete500Response body;
+  final _i9.ApiV1AdminBansIpIpDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -124,7 +142,7 @@ class UnbanIpResponse500 extends UnbanIpResponse {
 class UnbanIpResponse503 extends UnbanIpResponse {
   const UnbanIpResponse503({required this.body});
 
-  final _i9.ApiV1AdminBansIpIpDelete503Response body;
+  final _i10.ApiV1AdminBansIpIpDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

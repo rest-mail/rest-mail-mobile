@@ -12,10 +12,12 @@ import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post409_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post413_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post429_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post500_response.dart'
+    as _i12;
 import 'package:restmail_generated/src/response_wrapper/owner_challenge_operation_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -108,11 +110,37 @@ final class OwnerChallengeOperation
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (413, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
+        return _i2.OwnerChallengeOperationResponse413(
+          body: _i10.ApiV1AuthOwnerChallengePost413Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (429, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.OwnerChallengeOperationResponse429(
-          body: _i10.ApiV1AuthOwnerChallengePost429Response(
+          body: _i11.ApiV1AuthOwnerChallengePost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -140,7 +168,7 @@ final class OwnerChallengeOperation
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.OwnerChallengeOperationResponse500(
-          body: _i11.ApiV1AuthOwnerChallengePost500Response(
+          body: _i12.ApiV1AuthOwnerChallengePost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

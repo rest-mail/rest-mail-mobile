@@ -15,16 +15,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_bloc
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post403_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post404_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post413_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_block_post503_response.dart'
+    as _i13;
 
 sealed class BlockSenderResponse {
   const BlockSenderResponse();
@@ -111,10 +113,26 @@ class BlockSenderResponse403 extends BlockSenderResponse {
 }
 
 @_i1.immutable
+class BlockSenderResponse404 extends BlockSenderResponse {
+  const BlockSenderResponse404({required this.body});
+
+  final _i8.ApiV1AccountsIdContactsBlockPost404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is BlockSenderResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class BlockSenderResponse413 extends BlockSenderResponse {
   const BlockSenderResponse413({required this.body});
 
-  final _i8.ApiV1AccountsIdContactsBlockPost413Response body;
+  final _i9.ApiV1AccountsIdContactsBlockPost413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -130,7 +148,7 @@ class BlockSenderResponse413 extends BlockSenderResponse {
 class BlockSenderResponse422 extends BlockSenderResponse {
   const BlockSenderResponse422({required this.body});
 
-  final _i9.ApiV1AccountsIdContactsBlockPost422Response body;
+  final _i10.ApiV1AccountsIdContactsBlockPost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -146,7 +164,7 @@ class BlockSenderResponse422 extends BlockSenderResponse {
 class BlockSenderResponse429 extends BlockSenderResponse {
   const BlockSenderResponse429({required this.body});
 
-  final _i10.ApiV1AccountsIdContactsBlockPost429Response body;
+  final _i11.ApiV1AccountsIdContactsBlockPost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -162,7 +180,7 @@ class BlockSenderResponse429 extends BlockSenderResponse {
 class BlockSenderResponse500 extends BlockSenderResponse {
   const BlockSenderResponse500({required this.body});
 
-  final _i11.ApiV1AccountsIdContactsBlockPost500Response body;
+  final _i12.ApiV1AccountsIdContactsBlockPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class BlockSenderResponse500 extends BlockSenderResponse {
 class BlockSenderResponse503 extends BlockSenderResponse {
   const BlockSenderResponse503({required this.body});
 
-  final _i12.ApiV1AccountsIdContactsBlockPost503Response body;
+  final _i13.ApiV1AccountsIdContactsBlockPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

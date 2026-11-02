@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get4
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_get503_response.dart'
+    as _i11;
 
 sealed class GetVacationResponse {
   const GetVacationResponse();
@@ -75,10 +77,26 @@ class GetVacationResponse403 extends GetVacationResponse {
 }
 
 @_i1.immutable
+class GetVacationResponse404 extends GetVacationResponse {
+  const GetVacationResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdVacationGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetVacationResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetVacationResponse413 extends GetVacationResponse {
   const GetVacationResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdVacationGet413Response body;
+  final _i7.ApiV1AccountsIdVacationGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class GetVacationResponse413 extends GetVacationResponse {
 class GetVacationResponse422 extends GetVacationResponse {
   const GetVacationResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdVacationGet422Response body;
+  final _i8.ApiV1AccountsIdVacationGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class GetVacationResponse422 extends GetVacationResponse {
 class GetVacationResponse429 extends GetVacationResponse {
   const GetVacationResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdVacationGet429Response body;
+  final _i9.ApiV1AccountsIdVacationGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class GetVacationResponse429 extends GetVacationResponse {
 class GetVacationResponse500 extends GetVacationResponse {
   const GetVacationResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdVacationGet500Response body;
+  final _i10.ApiV1AccountsIdVacationGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetVacationResponse500 extends GetVacationResponse {
 class GetVacationResponse503 extends GetVacationResponse {
   const GetVacationResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdVacationGet503Response body;
+  final _i11.ApiV1AccountsIdVacationGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

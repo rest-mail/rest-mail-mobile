@@ -13,16 +13,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validat
     as _i5;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post403_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post404_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post413_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post503_response.dart'
+    as _i12;
 
 sealed class ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse();
@@ -93,10 +95,26 @@ class ValidateSieveScriptResponse403 extends ValidateSieveScriptResponse {
 }
 
 @_i1.immutable
+class ValidateSieveScriptResponse404 extends ValidateSieveScriptResponse {
+  const ValidateSieveScriptResponse404({required this.body});
+
+  final _i7.ApiV1AccountsIdSieveValidatePost404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ValidateSieveScriptResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ValidateSieveScriptResponse413 extends ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse413({required this.body});
 
-  final _i7.ApiV1AccountsIdSieveValidatePost413Response body;
+  final _i8.ApiV1AccountsIdSieveValidatePost413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -112,7 +130,7 @@ class ValidateSieveScriptResponse413 extends ValidateSieveScriptResponse {
 class ValidateSieveScriptResponse422 extends ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse422({required this.body});
 
-  final _i8.ApiV1AccountsIdSieveValidatePost422Response body;
+  final _i9.ApiV1AccountsIdSieveValidatePost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -128,7 +146,7 @@ class ValidateSieveScriptResponse422 extends ValidateSieveScriptResponse {
 class ValidateSieveScriptResponse429 extends ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse429({required this.body});
 
-  final _i9.ApiV1AccountsIdSieveValidatePost429Response body;
+  final _i10.ApiV1AccountsIdSieveValidatePost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -144,7 +162,7 @@ class ValidateSieveScriptResponse429 extends ValidateSieveScriptResponse {
 class ValidateSieveScriptResponse500 extends ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse500({required this.body});
 
-  final _i10.ApiV1AccountsIdSieveValidatePost500Response body;
+  final _i11.ApiV1AccountsIdSieveValidatePost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class ValidateSieveScriptResponse500 extends ValidateSieveScriptResponse {
 class ValidateSieveScriptResponse503 extends ValidateSieveScriptResponse {
   const ValidateSieveScriptResponse503({required this.body});
 
-  final _i11.ApiV1AccountsIdSieveValidatePost503Response body;
+  final _i12.ApiV1AccountsIdSieveValidatePost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

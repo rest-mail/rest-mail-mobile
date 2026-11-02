@@ -19,7 +19,8 @@ enum ScheduledMessageStatusModel
   sending(r'sending'),
   sent(r'sent'),
   failed(r'failed'),
-  cancelled(r'cancelled');
+  cancelled(r'cancelled'),
+  held(r'held');
 
   const ScheduledMessageStatusModel(this._$rawValue);
 

@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_delete503_response.dart'
+    as _i11;
 
 sealed class DeleteMtaStsPolicyResponse {
   const DeleteMtaStsPolicyResponse();
@@ -123,10 +125,26 @@ class DeleteMtaStsPolicyResponse422 extends DeleteMtaStsPolicyResponse {
 }
 
 @_i1.immutable
+class DeleteMtaStsPolicyResponse429 extends DeleteMtaStsPolicyResponse {
+  const DeleteMtaStsPolicyResponse429({required this.body});
+
+  final _i9.ApiV1AdminDomainsIdMtaStsDelete429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeleteMtaStsPolicyResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeleteMtaStsPolicyResponse500 extends DeleteMtaStsPolicyResponse {
   const DeleteMtaStsPolicyResponse500({required this.body});
 
-  final _i9.ApiV1AdminDomainsIdMtaStsDelete500Response body;
+  final _i10.ApiV1AdminDomainsIdMtaStsDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DeleteMtaStsPolicyResponse500 extends DeleteMtaStsPolicyResponse {
 class DeleteMtaStsPolicyResponse503 extends DeleteMtaStsPolicyResponse {
   const DeleteMtaStsPolicyResponse503({required this.body});
 
-  final _i10.ApiV1AdminDomainsIdMtaStsDelete503Response body;
+  final _i11.ApiV1AdminDomainsIdMtaStsDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
