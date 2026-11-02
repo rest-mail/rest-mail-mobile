@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete4
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_delete503_response.dart'
+    as _i11;
 
 sealed class DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse();
@@ -75,10 +77,26 @@ class DeleteSieveScriptResponse403 extends DeleteSieveScriptResponse {
 }
 
 @_i1.immutable
+class DeleteSieveScriptResponse404 extends DeleteSieveScriptResponse {
+  const DeleteSieveScriptResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdSieveDelete404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DeleteSieveScriptResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DeleteSieveScriptResponse413 extends DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdSieveDelete413Response body;
+  final _i7.ApiV1AccountsIdSieveDelete413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class DeleteSieveScriptResponse413 extends DeleteSieveScriptResponse {
 class DeleteSieveScriptResponse422 extends DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdSieveDelete422Response body;
+  final _i8.ApiV1AccountsIdSieveDelete422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class DeleteSieveScriptResponse422 extends DeleteSieveScriptResponse {
 class DeleteSieveScriptResponse429 extends DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdSieveDelete429Response body;
+  final _i9.ApiV1AccountsIdSieveDelete429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class DeleteSieveScriptResponse429 extends DeleteSieveScriptResponse {
 class DeleteSieveScriptResponse500 extends DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdSieveDelete500Response body;
+  final _i10.ApiV1AccountsIdSieveDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DeleteSieveScriptResponse500 extends DeleteSieveScriptResponse {
 class DeleteSieveScriptResponse503 extends DeleteSieveScriptResponse {
   const DeleteSieveScriptResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdSieveDelete503Response body;
+  final _i11.ApiV1AccountsIdSieveDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

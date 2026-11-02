@@ -25,6 +25,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     this.from,
     this.inReplyTo,
     this.listUnsubscribe,
+    this.onBehalf,
     this.requireTls,
     this.scheduledAt,
     this.subject,
@@ -71,6 +72,9 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
           : _i5.SendMessageRequestListUnsubscribeOneOfModel.fromJson(
               _$map[r'list_unsubscribe'],
             ),
+      onBehalf: _$map[r'on_behalf'].decodeJsonNullableBool(
+        context: r'SendMessageRequest.on_behalf',
+      ),
       requireTls: _$map[r'require_tls'].decodeJsonNullableBool(
         context: r'SendMessageRequest.require_tls',
       ),
@@ -111,6 +115,8 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
 
   final _i5.SendMessageRequestListUnsubscribeOneOfModel? listUnsubscribe;
 
+  final _i3.bool? onBehalf;
+
   final _i3.bool? requireTls;
 
   final _i3.DateTime? scheduledAt;
@@ -129,6 +135,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     if (from != null) r'from': from,
     if (inReplyTo != null) r'in_reply_to': inReplyTo,
     if (listUnsubscribe != null) r'list_unsubscribe': listUnsubscribe?.toJson(),
+    if (onBehalf != null) r'on_behalf': onBehalf,
     if (requireTls != null) r'require_tls': requireTls,
     r'scheduled_at': scheduledAt?.toTimeZonedIso8601String(),
     if (subject != null) r'subject': subject,
@@ -151,6 +158,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
         other.from == this.from &&
         other.inReplyTo == this.inReplyTo &&
         other.listUnsubscribe == this.listUnsubscribe &&
+        other.onBehalf == this.onBehalf &&
         other.requireTls == this.requireTls &&
         other.scheduledAt == this.scheduledAt &&
         other.subject == this.subject &&
@@ -169,6 +177,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
       from,
       inReplyTo,
       listUnsubscribe,
+      onBehalf,
       requireTls,
       scheduledAt,
       subject,
@@ -211,6 +220,7 @@ abstract class $$SendMessageRequestCopyWith<$Res> {
     _i3.String? from,
     _i3.String? inReplyTo,
     _i5.SendMessageRequestListUnsubscribeOneOfModel? listUnsubscribe,
+    _i3.bool? onBehalf,
     _i3.bool? requireTls,
     _i3.DateTime? scheduledAt,
     _i3.String? subject,
@@ -224,6 +234,7 @@ abstract class $$SendMessageRequestCopyWith<$Res> {
   _i3.String? get from;
   _i3.String? get inReplyTo;
   _i5.SendMessageRequestListUnsubscribeOneOfModel? get listUnsubscribe;
+  _i3.bool? get onBehalf;
   _i3.bool? get requireTls;
   _i3.DateTime? get scheduledAt;
   _i3.String? get subject;
@@ -265,6 +276,9 @@ class _SendMessageRequestCopyWith<$Res>
       _value.listUnsubscribe;
 
   @_i3.override
+  _i3.bool? get onBehalf => _value.onBehalf;
+
+  @_i3.override
   _i3.bool? get requireTls => _value.requireTls;
 
   @_i3.override
@@ -286,6 +300,7 @@ class _SendMessageRequestCopyWith<$Res>
     _i3.Object? from = _sentinel,
     _i3.Object? inReplyTo = _sentinel,
     _i3.Object? listUnsubscribe = _sentinel,
+    _i3.Object? onBehalf = _sentinel,
     _i3.Object? requireTls = _sentinel,
     _i3.Object? scheduledAt = _sentinel,
     _i3.Object? subject = _sentinel,
@@ -315,6 +330,9 @@ class _SendMessageRequestCopyWith<$Res>
           ? this.listUnsubscribe
           : (listUnsubscribe
                 as _i5.SendMessageRequestListUnsubscribeOneOfModel?),
+      onBehalf: _i3.identical(onBehalf, _sentinel)
+          ? this.onBehalf
+          : (onBehalf as _i3.bool?),
       requireTls: _i3.identical(requireTls, _sentinel)
           ? this.requireTls
           : (requireTls as _i3.bool?),

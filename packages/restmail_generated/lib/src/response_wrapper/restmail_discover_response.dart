@@ -7,16 +7,14 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/well_known_restmail_get200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/well_known_restmail_get400_response.dart'
-    as _i4;
 import 'package:restmail_generated/src/response/well_known_restmail_get404_response.dart'
-    as _i5;
+    as _i4;
 import 'package:restmail_generated/src/response/well_known_restmail_get422_response.dart'
-    as _i6;
+    as _i5;
 import 'package:restmail_generated/src/response/well_known_restmail_get500_response.dart'
-    as _i7;
+    as _i6;
 import 'package:restmail_generated/src/response/well_known_restmail_get503_response.dart'
-    as _i8;
+    as _i7;
 
 sealed class RestmailDiscoverResponse {
   const RestmailDiscoverResponse();
@@ -39,26 +37,10 @@ class RestmailDiscoverResponse200 extends RestmailDiscoverResponse {
 }
 
 @_i1.immutable
-class RestmailDiscoverResponse400 extends RestmailDiscoverResponse {
-  const RestmailDiscoverResponse400({required this.body});
-
-  final _i4.WellKnownRestmailGet400Response body;
-
-  @_i3.override
-  _i3.bool operator ==(_i3.Object other) {
-    if (_i3.identical(this, other)) return true;
-    return other is RestmailDiscoverResponse400 && other.body == this.body;
-  }
-
-  @_i3.override
-  _i3.int get hashCode => body.hashCode;
-}
-
-@_i1.immutable
 class RestmailDiscoverResponse404 extends RestmailDiscoverResponse {
   const RestmailDiscoverResponse404({required this.body});
 
-  final _i5.WellKnownRestmailGet404Response body;
+  final _i4.WellKnownRestmailGet404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -74,7 +56,7 @@ class RestmailDiscoverResponse404 extends RestmailDiscoverResponse {
 class RestmailDiscoverResponse422 extends RestmailDiscoverResponse {
   const RestmailDiscoverResponse422({required this.body});
 
-  final _i6.WellKnownRestmailGet422Response body;
+  final _i5.WellKnownRestmailGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -90,7 +72,7 @@ class RestmailDiscoverResponse422 extends RestmailDiscoverResponse {
 class RestmailDiscoverResponse500 extends RestmailDiscoverResponse {
   const RestmailDiscoverResponse500({required this.body});
 
-  final _i7.WellKnownRestmailGet500Response body;
+  final _i6.WellKnownRestmailGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -106,7 +88,7 @@ class RestmailDiscoverResponse500 extends RestmailDiscoverResponse {
 class RestmailDiscoverResponse503 extends RestmailDiscoverResponse {
   const RestmailDiscoverResponse503({required this.body});
 
-  final _i8.WellKnownRestmailGet503Response body;
+  final _i7.WellKnownRestmailGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

@@ -21,10 +21,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get413_re
     as _i12;
 import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get422_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get429_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get500_response.dart'
     as _i16;
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_get503_response.dart'
+    as _i17;
 import 'package:restmail_generated/src/response_wrapper/list_mailboxes_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -246,11 +248,39 @@ final class ListMailboxes extends _i1.HttpOperation<_i2.ListMailboxesResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
+        return _i2.ListMailboxesResponse429(
+          body: _i15.ApiV1AdminMailboxesGet429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMailboxesResponse500(
-          body: _i15.ApiV1AdminMailboxesGet500Response(
+          body: _i16.ApiV1AdminMailboxesGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -276,7 +306,7 @@ final class ListMailboxes extends _i1.HttpOperation<_i2.ListMailboxesResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMailboxesResponse503(
-          body: _i16.ApiV1AdminMailboxesGet503Response(
+          body: _i17.ApiV1AdminMailboxesGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

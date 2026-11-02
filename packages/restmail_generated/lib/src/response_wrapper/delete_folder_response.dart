@@ -7,24 +7,22 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete204_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete400_response.dart'
-    as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete401_response.dart'
-    as _i5;
+    as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete403_response.dart'
-    as _i6;
+    as _i5;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete404_response.dart'
-    as _i7;
+    as _i6;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete413_response.dart'
-    as _i8;
+    as _i7;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete422_response.dart'
-    as _i9;
+    as _i8;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete429_response.dart'
-    as _i10;
+    as _i9;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete500_response.dart'
-    as _i11;
+    as _i10;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete503_response.dart'
-    as _i12;
+    as _i11;
 
 sealed class DeleteFolderResponse {
   const DeleteFolderResponse();
@@ -47,26 +45,10 @@ class DeleteFolderResponse204 extends DeleteFolderResponse {
 }
 
 @_i1.immutable
-class DeleteFolderResponse400 extends DeleteFolderResponse {
-  const DeleteFolderResponse400({required this.body});
-
-  final _i4.ApiV1AccountsIdFoldersFolderDelete400Response body;
-
-  @_i3.override
-  _i3.bool operator ==(_i3.Object other) {
-    if (_i3.identical(this, other)) return true;
-    return other is DeleteFolderResponse400 && other.body == this.body;
-  }
-
-  @_i3.override
-  _i3.int get hashCode => body.hashCode;
-}
-
-@_i1.immutable
 class DeleteFolderResponse401 extends DeleteFolderResponse {
   const DeleteFolderResponse401({required this.body});
 
-  final _i5.ApiV1AccountsIdFoldersFolderDelete401Response body;
+  final _i4.ApiV1AccountsIdFoldersFolderDelete401Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -82,7 +64,7 @@ class DeleteFolderResponse401 extends DeleteFolderResponse {
 class DeleteFolderResponse403 extends DeleteFolderResponse {
   const DeleteFolderResponse403({required this.body});
 
-  final _i6.ApiV1AccountsIdFoldersFolderDelete403Response body;
+  final _i5.ApiV1AccountsIdFoldersFolderDelete403Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -98,7 +80,7 @@ class DeleteFolderResponse403 extends DeleteFolderResponse {
 class DeleteFolderResponse404 extends DeleteFolderResponse {
   const DeleteFolderResponse404({required this.body});
 
-  final _i7.ApiV1AccountsIdFoldersFolderDelete404Response body;
+  final _i6.ApiV1AccountsIdFoldersFolderDelete404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -114,7 +96,7 @@ class DeleteFolderResponse404 extends DeleteFolderResponse {
 class DeleteFolderResponse413 extends DeleteFolderResponse {
   const DeleteFolderResponse413({required this.body});
 
-  final _i8.ApiV1AccountsIdFoldersFolderDelete413Response body;
+  final _i7.ApiV1AccountsIdFoldersFolderDelete413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -130,7 +112,7 @@ class DeleteFolderResponse413 extends DeleteFolderResponse {
 class DeleteFolderResponse422 extends DeleteFolderResponse {
   const DeleteFolderResponse422({required this.body});
 
-  final _i9.ApiV1AccountsIdFoldersFolderDelete422Response body;
+  final _i8.ApiV1AccountsIdFoldersFolderDelete422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -146,7 +128,7 @@ class DeleteFolderResponse422 extends DeleteFolderResponse {
 class DeleteFolderResponse429 extends DeleteFolderResponse {
   const DeleteFolderResponse429({required this.body});
 
-  final _i10.ApiV1AccountsIdFoldersFolderDelete429Response body;
+  final _i9.ApiV1AccountsIdFoldersFolderDelete429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -162,7 +144,7 @@ class DeleteFolderResponse429 extends DeleteFolderResponse {
 class DeleteFolderResponse500 extends DeleteFolderResponse {
   const DeleteFolderResponse500({required this.body});
 
-  final _i11.ApiV1AccountsIdFoldersFolderDelete500Response body;
+  final _i10.ApiV1AccountsIdFoldersFolderDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +160,7 @@ class DeleteFolderResponse500 extends DeleteFolderResponse {
 class DeleteFolderResponse503 extends DeleteFolderResponse {
   const DeleteFolderResponse503({required this.body});
 
-  final _i12.ApiV1AccountsIdFoldersFolderDelete503Response body;
+  final _i11.ApiV1AccountsIdFoldersFolderDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

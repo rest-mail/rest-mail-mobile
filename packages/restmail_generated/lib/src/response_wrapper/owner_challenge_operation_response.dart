@@ -9,10 +9,12 @@ import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post
     as _i2;
 import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post409_response.dart'
     as _i4;
-import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post413_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post429_response.dart'
     as _i6;
+import 'package:restmail_generated/src/response/api_v1_auth_owner_challenge_post500_response.dart'
+    as _i7;
 
 sealed class OwnerChallengeOperationResponse {
   const OwnerChallengeOperationResponse();
@@ -55,11 +57,29 @@ class OwnerChallengeOperationResponse409
 }
 
 @_i1.immutable
+class OwnerChallengeOperationResponse413
+    extends OwnerChallengeOperationResponse {
+  const OwnerChallengeOperationResponse413({required this.body});
+
+  final _i5.ApiV1AuthOwnerChallengePost413Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is OwnerChallengeOperationResponse413 &&
+        other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class OwnerChallengeOperationResponse429
     extends OwnerChallengeOperationResponse {
   const OwnerChallengeOperationResponse429({required this.body});
 
-  final _i5.ApiV1AuthOwnerChallengePost429Response body;
+  final _i6.ApiV1AuthOwnerChallengePost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -77,7 +97,7 @@ class OwnerChallengeOperationResponse500
     extends OwnerChallengeOperationResponse {
   const OwnerChallengeOperationResponse500({required this.body});
 
-  final _i6.ApiV1AuthOwnerChallengePost500Response body;
+  final _i7.ApiV1AuthOwnerChallengePost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

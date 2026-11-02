@@ -11,14 +11,12 @@ import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post400_r
     as _i4;
 import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post413_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post415_response.dart'
-    as _i6;
 import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post422_response.dart'
-    as _i7;
+    as _i6;
 import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post429_response.dart'
-    as _i8;
+    as _i7;
 import 'package:restmail_generated/src/response/well_known_smtp_tlsrpt_post500_response.dart'
-    as _i9;
+    as _i8;
 
 sealed class ReceiveTlsReportResponse {
   const ReceiveTlsReportResponse();
@@ -73,26 +71,10 @@ class ReceiveTlsReportResponse413 extends ReceiveTlsReportResponse {
 }
 
 @_i1.immutable
-class ReceiveTlsReportResponse415 extends ReceiveTlsReportResponse {
-  const ReceiveTlsReportResponse415({required this.body});
-
-  final _i6.WellKnownSmtpTlsrptPost415Response body;
-
-  @_i3.override
-  _i3.bool operator ==(_i3.Object other) {
-    if (_i3.identical(this, other)) return true;
-    return other is ReceiveTlsReportResponse415 && other.body == this.body;
-  }
-
-  @_i3.override
-  _i3.int get hashCode => body.hashCode;
-}
-
-@_i1.immutable
 class ReceiveTlsReportResponse422 extends ReceiveTlsReportResponse {
   const ReceiveTlsReportResponse422({required this.body});
 
-  final _i7.WellKnownSmtpTlsrptPost422Response body;
+  final _i6.WellKnownSmtpTlsrptPost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -108,7 +90,7 @@ class ReceiveTlsReportResponse422 extends ReceiveTlsReportResponse {
 class ReceiveTlsReportResponse429 extends ReceiveTlsReportResponse {
   const ReceiveTlsReportResponse429({required this.body});
 
-  final _i8.WellKnownSmtpTlsrptPost429Response body;
+  final _i7.WellKnownSmtpTlsrptPost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -124,7 +106,7 @@ class ReceiveTlsReportResponse429 extends ReceiveTlsReportResponse {
 class ReceiveTlsReportResponse500 extends ReceiveTlsReportResponse {
   const ReceiveTlsReportResponse500({required this.body});
 
-  final _i9.WellKnownSmtpTlsrptPost500Response body;
+  final _i8.WellKnownSmtpTlsrptPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

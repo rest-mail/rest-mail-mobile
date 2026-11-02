@@ -2,16 +2,18 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:convert' as _i4;
+import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
+import 'package:restmail_generated/src/model/protocol_sign_in_request_protocol_model.dart'
+    as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
 class ProtocolSignInRequest extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const ProtocolSignInRequest({this.protocol});
+  const ProtocolSignInRequest({required this.protocol});
 
   factory ProtocolSignInRequest.fromSimple(
     _i3.String? value, {
@@ -25,8 +27,9 @@ class ProtocolSignInRequest extends _i1.ObjectParameterEncodable
       context: r'ProtocolSignInRequest',
     );
     return ProtocolSignInRequest(
-      protocol: _$values[r'protocol'].decodeSimpleNullableString(
-        context: r'ProtocolSignInRequest.protocol',
+      protocol: _i4.ProtocolSignInRequestProtocolModel.fromSimple(
+        _$values[r'protocol'],
+        explode: explode,
       ),
     );
   }
@@ -34,8 +37,8 @@ class ProtocolSignInRequest extends _i1.ObjectParameterEncodable
   factory ProtocolSignInRequest.fromJson(_i3.Object? json) {
     final _$map = json.decodeMap(context: r'ProtocolSignInRequest');
     return ProtocolSignInRequest(
-      protocol: _$map[r'protocol'].decodeJsonNullableString(
-        context: r'ProtocolSignInRequest.protocol',
+      protocol: _i4.ProtocolSignInRequestProtocolModel.fromJson(
+        _$map[r'protocol'],
       ),
     );
   }
@@ -52,16 +55,17 @@ class ProtocolSignInRequest extends _i1.ObjectParameterEncodable
       context: r'ProtocolSignInRequest',
     );
     return ProtocolSignInRequest(
-      protocol: _$values[r'protocol'].decodeFormNullableString(
-        context: r'ProtocolSignInRequest.protocol',
+      protocol: _i4.ProtocolSignInRequestProtocolModel.fromForm(
+        _$values[r'protocol'],
+        explode: explode,
       ),
     );
   }
 
-  final _i3.String? protocol;
+  final _i4.ProtocolSignInRequestProtocolModel protocol;
 
   @_i3.override
-  _i3.Object? toJson() => {if (protocol != null) r'protocol': protocol};
+  _i3.Object? toJson() => {r'protocol': protocol.toJson()};
 
   $$ProtocolSignInRequestCopyWith<ProtocolSignInRequest> get copyWith =>
       _ProtocolSignInRequestCopyWith(this);
@@ -82,16 +86,14 @@ class ProtocolSignInRequest extends _i1.ObjectParameterEncodable
     _i3.bool allowEmpty = true,
   }) {
     final _$result = <_i3.String, _i1.PropertyValue>{};
-    if (protocol != null) {
-      _$result[r'protocol'] = _i1.PropertyValue.scalar(protocol!);
-    }
+    _$result[r'protocol'] = _i1.PropertyValue.scalar(protocol.toJson());
     return _$result;
   }
 
   @_i3.override
   _i3.String uriEncode({
     required _i3.bool allowEmpty,
-    required _i4.Encoding textEncoding,
+    required _i5.Encoding textEncoding,
     _i3.bool useQueryComponent = false,
     _i3.bool allowReserved = false,
   }) {
@@ -105,8 +107,8 @@ abstract class $$ProtocolSignInRequestCopyWith<$Res> {
   factory $$ProtocolSignInRequestCopyWith(ProtocolSignInRequest value) =
       _ProtocolSignInRequestCopyWith<$Res>;
 
-  $Res call({_i3.String? protocol});
-  _i3.String? get protocol;
+  $Res call({_i4.ProtocolSignInRequestProtocolModel? protocol});
+  _i4.ProtocolSignInRequestProtocolModel get protocol;
 }
 
 class _ProtocolSignInRequestCopyWith<$Res>
@@ -118,14 +120,14 @@ class _ProtocolSignInRequestCopyWith<$Res>
   final ProtocolSignInRequest _value;
 
   @_i3.override
-  _i3.String? get protocol => _value.protocol;
+  _i4.ProtocolSignInRequestProtocolModel get protocol => _value.protocol;
 
   @_i3.override
   $Res call({_i3.Object? protocol = _sentinel}) {
     return (ProtocolSignInRequest(
       protocol: _i3.identical(protocol, _sentinel)
           ? this.protocol
-          : (protocol as _i3.String?),
+          : (protocol as _i4.ProtocolSignInRequestProtocolModel),
     ) as $Res);
   }
 }

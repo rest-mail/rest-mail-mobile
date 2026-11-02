@@ -7,34 +7,38 @@ import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/data_message.dart' as _i10;
+import 'package:restmail_generated/src/model/data_scheduled_message.dart'
+    as _i12;
 import 'package:restmail_generated/src/model/data_send_discarded.dart' as _i8;
-import 'package:restmail_generated/src/model/error_response.dart' as _i12;
+import 'package:restmail_generated/src/model/error_response.dart' as _i14;
 import 'package:restmail_generated/src/model/forward_body.dart' as _i6;
 import 'package:restmail_generated/src/model/forward_refusal_response.dart'
-    as _i18;
+    as _i20;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post200_response.dart'
     as _i9;
 import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post201_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post400_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post202_response.dart'
     as _i13;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post401_response.dart'
-    as _i14;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post403_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post400_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post404_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post401_response.dart'
     as _i16;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post403_response.dart'
     as _i17;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post404_response.dart'
+    as _i18;
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post413_response.dart'
     as _i19;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post429_response.dart'
-    as _i20;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post422_response.dart'
     as _i21;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post429_response.dart'
     as _i22;
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post500_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post503_response.dart'
+    as _i24;
 import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -137,11 +141,37 @@ final class ForwardMessage
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (202, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i12.DataScheduledMessage.fromJson(_$json);
+        return _i2.ForwardMessageResponse202(
+          body: _i13.ApiV1MessagesIdForwardPost202Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (400, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse400(
-          body: _i13.ApiV1MessagesIdForwardPost400Response(
+          body: _i15.ApiV1MessagesIdForwardPost400Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -165,9 +195,9 @@ final class ForwardMessage
         );
       case (401, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse401(
-          body: _i14.ApiV1MessagesIdForwardPost401Response(
+          body: _i16.ApiV1MessagesIdForwardPost401Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -191,9 +221,9 @@ final class ForwardMessage
         );
       case (403, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse403(
-          body: _i15.ApiV1MessagesIdForwardPost403Response(
+          body: _i17.ApiV1MessagesIdForwardPost403Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -217,9 +247,9 @@ final class ForwardMessage
         );
       case (404, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse404(
-          body: _i16.ApiV1MessagesIdForwardPost404Response(
+          body: _i18.ApiV1MessagesIdForwardPost404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -243,9 +273,9 @@ final class ForwardMessage
         );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse413(
-          body: _i17.ApiV1MessagesIdForwardPost413Response(
+          body: _i19.ApiV1MessagesIdForwardPost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -269,9 +299,9 @@ final class ForwardMessage
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i18.ForwardRefusalResponse.fromJson(_$json);
+        final _$body = _i20.ForwardRefusalResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse422(
-          body: _i19.ApiV1MessagesIdForwardPost422Response(
+          body: _i21.ApiV1MessagesIdForwardPost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -295,9 +325,9 @@ final class ForwardMessage
         );
       case (429, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse429(
-          body: _i20.ApiV1MessagesIdForwardPost429Response(
+          body: _i22.ApiV1MessagesIdForwardPost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -323,9 +353,9 @@ final class ForwardMessage
         );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse500(
-          body: _i21.ApiV1MessagesIdForwardPost500Response(
+          body: _i23.ApiV1MessagesIdForwardPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -349,9 +379,9 @@ final class ForwardMessage
         );
       case (503, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ErrorResponse.fromJson(_$json);
+        final _$body = _i14.ErrorResponse.fromJson(_$json);
         return _i2.ForwardMessageResponse503(
-          body: _i22.ApiV1MessagesIdForwardPost503Response(
+          body: _i24.ApiV1MessagesIdForwardPost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

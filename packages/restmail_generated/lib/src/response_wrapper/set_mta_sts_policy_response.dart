@@ -21,10 +21,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_
     as _i9;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_mta_sts_put503_response.dart'
+    as _i13;
 
 sealed class SetMtaStsPolicyResponse {
   const SetMtaStsPolicyResponse();
@@ -159,10 +161,26 @@ class SetMtaStsPolicyResponse422 extends SetMtaStsPolicyResponse {
 }
 
 @_i1.immutable
+class SetMtaStsPolicyResponse429 extends SetMtaStsPolicyResponse {
+  const SetMtaStsPolicyResponse429({required this.body});
+
+  final _i11.ApiV1AdminDomainsIdMtaStsPut429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is SetMtaStsPolicyResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class SetMtaStsPolicyResponse500 extends SetMtaStsPolicyResponse {
   const SetMtaStsPolicyResponse500({required this.body});
 
-  final _i11.ApiV1AdminDomainsIdMtaStsPut500Response body;
+  final _i12.ApiV1AdminDomainsIdMtaStsPut500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class SetMtaStsPolicyResponse500 extends SetMtaStsPolicyResponse {
 class SetMtaStsPolicyResponse503 extends SetMtaStsPolicyResponse {
   const SetMtaStsPolicyResponse503({required this.body});
 
-  final _i12.ApiV1AdminDomainsIdMtaStsPut503Response body;
+  final _i13.ApiV1AdminDomainsIdMtaStsPut503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

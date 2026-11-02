@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete40
     as _i10;
 import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete413_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete429_response.dart'
     as _i12;
-import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete500_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/api_v1_admin_bans_ip_ip_delete503_response.dart'
+    as _i14;
 import 'package:restmail_generated/src/response_wrapper/unban_ip_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -196,11 +198,39 @@ final class UnbanIp extends _i1.HttpOperation<_i2.UnbanIpResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        return _i2.UnbanIpResponse429(
+          body: _i12.ApiV1AdminBansIpIpDelete429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.UnbanIpResponse500(
-          body: _i12.ApiV1AdminBansIpIpDelete500Response(
+          body: _i13.ApiV1AdminBansIpIpDelete500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -226,7 +256,7 @@ final class UnbanIp extends _i1.HttpOperation<_i2.UnbanIpResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.UnbanIpResponse503(
-          body: _i13.ApiV1AdminBansIpIpDelete503Response(
+          body: _i14.ApiV1AdminBansIpIpDelete503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

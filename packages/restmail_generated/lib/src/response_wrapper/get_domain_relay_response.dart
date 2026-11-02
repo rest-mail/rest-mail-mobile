@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_ge
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_relay_get503_response.dart'
+    as _i11;
 
 sealed class GetDomainRelayResponse {
   const GetDomainRelayResponse();
@@ -123,10 +125,26 @@ class GetDomainRelayResponse422 extends GetDomainRelayResponse {
 }
 
 @_i1.immutable
+class GetDomainRelayResponse429 extends GetDomainRelayResponse {
+  const GetDomainRelayResponse429({required this.body});
+
+  final _i9.ApiV1AdminDomainsIdRelayGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetDomainRelayResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetDomainRelayResponse500 extends GetDomainRelayResponse {
   const GetDomainRelayResponse500({required this.body});
 
-  final _i9.ApiV1AdminDomainsIdRelayGet500Response body;
+  final _i10.ApiV1AdminDomainsIdRelayGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetDomainRelayResponse500 extends GetDomainRelayResponse {
 class GetDomainRelayResponse503 extends GetDomainRelayResponse {
   const GetDomainRelayResponse503({required this.body});
 
-  final _i10.ApiV1AdminDomainsIdRelayGet503Response body;
+  final _i11.ApiV1AdminDomainsIdRelayGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

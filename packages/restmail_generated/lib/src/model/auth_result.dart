@@ -2,10 +2,14 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:convert' as _i4;
+import 'dart:convert' as _i6;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
+import 'package:restmail_generated/src/model/auth_result_method_model.dart'
+    as _i4;
+import 'package:restmail_generated/src/model/auth_result_property_model.dart'
+    as _i5;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
@@ -33,12 +37,16 @@ class AuthResult extends _i1.ObjectParameterEncodable
       domain: _$values[r'domain'].decodeSimpleNullableString(
         context: r'AuthResult.domain',
       ),
-      method: _$values[r'method'].decodeSimpleString(
-        context: r'AuthResult.method',
+      method: _i4.AuthResultMethodModel.fromSimple(
+        _$values[r'method'],
+        explode: explode,
       ),
-      property: _$values[r'property'].decodeSimpleNullableString(
-        context: r'AuthResult.property',
-      ),
+      property: _$values[r'property'] == null
+          ? null
+          : _i5.AuthResultPropertyModel.fromSimple(
+              _$values[r'property'],
+              explode: explode,
+            ),
       result: _$values[r'result'].decodeSimpleString(
         context: r'AuthResult.result',
       ),
@@ -51,10 +59,10 @@ class AuthResult extends _i1.ObjectParameterEncodable
       domain: _$map[r'domain'].decodeJsonNullableString(
         context: r'AuthResult.domain',
       ),
-      method: _$map[r'method'].decodeJsonString(context: r'AuthResult.method'),
-      property: _$map[r'property'].decodeJsonNullableString(
-        context: r'AuthResult.property',
-      ),
+      method: _i4.AuthResultMethodModel.fromJson(_$map[r'method']),
+      property: _$map[r'property'] == null
+          ? null
+          : _i5.AuthResultPropertyModel.fromJson(_$map[r'property']),
       result: _$map[r'result'].decodeJsonString(context: r'AuthResult.result'),
     );
   }
@@ -71,12 +79,16 @@ class AuthResult extends _i1.ObjectParameterEncodable
       domain: _$values[r'domain'].decodeFormNullableString(
         context: r'AuthResult.domain',
       ),
-      method: _$values[r'method'].decodeFormString(
-        context: r'AuthResult.method',
+      method: _i4.AuthResultMethodModel.fromForm(
+        _$values[r'method'],
+        explode: explode,
       ),
-      property: _$values[r'property'].decodeFormNullableString(
-        context: r'AuthResult.property',
-      ),
+      property: _$values[r'property'] == null
+          ? null
+          : _i5.AuthResultPropertyModel.fromForm(
+              _$values[r'property'],
+              explode: explode,
+            ),
       result: _$values[r'result'].decodeFormString(
         context: r'AuthResult.result',
       ),
@@ -85,17 +97,17 @@ class AuthResult extends _i1.ObjectParameterEncodable
 
   final _i3.String? domain;
 
-  final _i3.String method;
+  final _i4.AuthResultMethodModel method;
 
-  final _i3.String? property;
+  final _i5.AuthResultPropertyModel? property;
 
   final _i3.String result;
 
   @_i3.override
   _i3.Object? toJson() => {
     if (domain != null) r'domain': domain,
-    r'method': method,
-    if (property != null) r'property': property,
+    r'method': method.toJson(),
+    if (property != null) r'property': property?.toJson(),
     r'result': result,
   };
 
@@ -126,9 +138,9 @@ class AuthResult extends _i1.ObjectParameterEncodable
     if (domain != null) {
       _$result[r'domain'] = _i1.PropertyValue.scalar(domain!);
     }
-    _$result[r'method'] = _i1.PropertyValue.scalar(method);
+    _$result[r'method'] = _i1.PropertyValue.scalar(method.toJson());
     if (property != null) {
-      _$result[r'property'] = _i1.PropertyValue.scalar(property!);
+      _$result[r'property'] = _i1.PropertyValue.scalar(property!.toJson());
     }
     _$result[r'result'] = _i1.PropertyValue.scalar(result);
     return _$result;
@@ -137,7 +149,7 @@ class AuthResult extends _i1.ObjectParameterEncodable
   @_i3.override
   _i3.String uriEncode({
     required _i3.bool allowEmpty,
-    required _i4.Encoding textEncoding,
+    required _i6.Encoding textEncoding,
     _i3.bool useQueryComponent = false,
     _i3.bool allowReserved = false,
   }) {
@@ -152,13 +164,13 @@ abstract class $$AuthResultCopyWith<$Res> {
 
   $Res call({
     _i3.String? domain,
-    _i3.String? method,
-    _i3.String? property,
+    _i4.AuthResultMethodModel? method,
+    _i5.AuthResultPropertyModel? property,
     _i3.String? result,
   });
   _i3.String? get domain;
-  _i3.String get method;
-  _i3.String? get property;
+  _i4.AuthResultMethodModel get method;
+  _i5.AuthResultPropertyModel? get property;
   _i3.String get result;
 }
 
@@ -173,10 +185,10 @@ class _AuthResultCopyWith<$Res> implements $$AuthResultCopyWith<$Res> {
   _i3.String? get domain => _value.domain;
 
   @_i3.override
-  _i3.String get method => _value.method;
+  _i4.AuthResultMethodModel get method => _value.method;
 
   @_i3.override
-  _i3.String? get property => _value.property;
+  _i5.AuthResultPropertyModel? get property => _value.property;
 
   @_i3.override
   _i3.String get result => _value.result;
@@ -194,10 +206,10 @@ class _AuthResultCopyWith<$Res> implements $$AuthResultCopyWith<$Res> {
           : (domain as _i3.String?),
       method: _i3.identical(method, _sentinel)
           ? this.method
-          : (method as _i3.String),
+          : (method as _i4.AuthResultMethodModel),
       property: _i3.identical(property, _sentinel)
           ? this.property
-          : (property as _i3.String?),
+          : (property as _i5.AuthResultPropertyModel?),
       result: _i3.identical(result, _sentinel)
           ? this.result
           : (result as _i3.String),

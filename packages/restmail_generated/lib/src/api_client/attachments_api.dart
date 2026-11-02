@@ -27,7 +27,7 @@ class AttachmentsApi {
   final _i3.ListAttachments _listAttachments;
 
   /// Download an attachment
-  /// The attachment's bytes, always as application/octet-stream; the type its sender gave it is listAttachments' content_type. Range and conditional requests are answered (206, 304, 412, 416).
+  /// The attachment's bytes are application/octet-stream; listAttachments' content_type is the sender's declared type. Range requests return a binary part or multipart/byteranges. Conditional requests can return bodyless 304 or 412; malformed or non-overlapping ranges return plain-text 416.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -36,31 +36,6 @@ class AttachmentsApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/octet-stream):
-  /// **Example** "app_password":
-  /// ```
-  /// attachment café
-  ///
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```
-  /// attachment café
-  ///
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```
-  /// attachment café
-  ///
-  /// ```
-  ///
-  /// **Example** "empty":
-  /// A retained zero-byte object is a successful empty attachment, with Content-Length: 0.
-  ///
-  /// ```
-  ///
-  /// ```
-  ///
   /// **Example** "found":
   /// Production routing, real credential/holder access checks and the real signed S3 client stream bytes through a local S3 wire fixture. Controlled SQL proves lookup/authorization wiring, not PostgreSQL semantics. Sender HTML type is ignored; UTF-8/CRLF and attachment download headers are retained, with an injection-safe filename.
   ///
@@ -69,21 +44,30 @@ class AttachmentsApi {
   ///
   /// ```
   ///
-  /// **Example** "key_domain":
-  /// ```
-  /// attachment café
+  /// Response 206 (application/octet-stream):
+  /// **Example** "range_single":
+  /// A single byte range is served as 206 with the selected bytes.
   ///
   /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```
-  /// attachment café
-  ///
+  /// attachment
   /// ```
   ///
-  /// **Example** "primary":
+  /// Response 206 (multipart/byteranges):
+  /// **Example** "range_multiple":
+  /// Two byte ranges are served as one 206 multipart/byteranges body, a part per range. The boundary is chosen per response.
+  ///
   /// ```
-  /// attachment café
+  /// --EXAMPLE
+  /// Content-Range: bytes 0-1/18
+  /// Content-Type: application/octet-stream
+  ///
+  /// at
+  /// --EXAMPLE
+  /// Content-Range: bytes 4-5/18
+  /// Content-Type: application/octet-stream
+  ///
+  /// ch
+  /// --EXAMPLE--
   ///
   /// ```
   ///
@@ -109,108 +93,8 @@ class AttachmentsApi {
   /// }
   /// ```
   ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "file_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment file not found on disk"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing_message":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "source_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Attachment object not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "error": {
@@ -231,22 +115,16 @@ class AttachmentsApi {
   /// }
   /// ```
   ///
-  /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
+  /// Response 416 (text/plain):
+  /// **Example** "range_not_satisfiable":
+  /// A range starting past the end of the attachment answers plain-text 416.
+  ///
+  /// ```
+  /// invalid range: failed to overlap
+  ///
   /// ```
   ///
+  /// Response 422 (application/json):
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -274,72 +152,12 @@ class AttachmentsApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "message_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "object_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to open attachment object"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unknown_storage":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Unknown attachment storage type"
   ///   }
   /// }
   /// ```
@@ -357,8 +175,23 @@ class AttachmentsApi {
   _i4.Future<_i5.TonikResult<_i6.GetAttachmentResponse, _i7.Response>>
   getAttachment({
     required _i4.int id,
+    _i4.String? range,
+    _i4.String? ifRange,
+    _i4.String? ifMatch,
+    _i4.String? ifNoneMatch,
+    _i4.String? ifModifiedSince,
+    _i4.String? ifUnmodifiedSince,
     _i5.TonikCancellation? cancellation,
-  }) async => _getAttachment(id: id, cancellation: cancellation);
+  }) async => _getAttachment(
+    id: id,
+    range: range,
+    ifRange: ifRange,
+    ifMatch: ifMatch,
+    ifNoneMatch: ifNoneMatch,
+    ifModifiedSince: ifModifiedSince,
+    ifUnmodifiedSince: ifUnmodifiedSince,
+    cancellation: cancellation,
+  );
 
   /// List a message's attachments
   ///
@@ -369,91 +202,6 @@ class AttachmentsApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 10,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 10,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 1,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 1,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 1,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 1,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty":
-  /// ```json
-  /// {
-  ///   "data": []
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — A readable message exposes attachment metadata without storage details or content:
   /// Real credential and holder access checks precede the message-scoped, ID-ordered metadata query. Fixed rows include private disk/object-reference sentinels that must not appear in the complete public response; this GET reads no object/file bytes.
   ///
@@ -482,84 +230,6 @@ class AttachmentsApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 1,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 1,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 1,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 1,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": [
-  ///     {
-  ///       "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ///       "content_type": "application/pdf",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "résumé.pdf",
-  ///       "id": 61,
-  ///       "message_id": 10,
-  ///       "size_bytes": 123
-  ///     },
-  ///     {
-  ///       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///       "content_type": "application/octet-stream",
-  ///       "created_at": "2026-10-20T00:00:00Z",
-  ///       "filename": "",
-  ///       "id": 62,
-  ///       "message_id": 10,
-  ///       "size_bytes": 0
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  ///
   /// Response 401 (application/json):
   /// **Example** "unauthenticated":
   /// ```json
@@ -583,67 +253,7 @@ class AttachmentsApi {
   /// ```
   ///
   /// Response 404 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Message not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "error": {
@@ -665,21 +275,6 @@ class AttachmentsApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -707,46 +302,6 @@ class AttachmentsApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "content_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {

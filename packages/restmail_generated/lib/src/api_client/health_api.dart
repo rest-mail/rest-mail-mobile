@@ -31,8 +31,8 @@ class HealthApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — Unexpected handler errors use the shared sanitized envelope:
-  /// Checked through the production endpoint error adapter. The normal liveness probe returns503 for its expected database failures.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -52,18 +52,6 @@ class HealthApi {
   ///   "error": {
   ///     "code": "unhealthy",
   ///     "message": "Database connection unavailable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "database_ping_failed" — The database pool exists but its probe fails:
-  /// Fault precondition: the database ping fails. Exercised through the real health registration with a controlled SQL connector.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unhealthy",
-  ///     "message": "Database ping failed"
   ///   }
   /// }
   /// ```

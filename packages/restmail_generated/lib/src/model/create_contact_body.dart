@@ -2,10 +2,12 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:convert' as _i4;
+import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
+import 'package:restmail_generated/src/model/create_contact_body_trust_level_model.dart'
+    as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
@@ -31,9 +33,12 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
       name: _$values[r'name'].decodeSimpleNullableString(
         context: r'CreateContactBody.name',
       ),
-      trustLevel: _$values[r'trust_level'].decodeSimpleNullableString(
-        context: r'CreateContactBody.trust_level',
-      ),
+      trustLevel: _$values[r'trust_level'] == null
+          ? null
+          : _i4.CreateContactBodyTrustLevelModel.fromSimple(
+              _$values[r'trust_level'],
+              explode: explode,
+            ),
     );
   }
 
@@ -46,9 +51,11 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
       name: _$map[r'name'].decodeJsonNullableString(
         context: r'CreateContactBody.name',
       ),
-      trustLevel: _$map[r'trust_level'].decodeJsonNullableString(
-        context: r'CreateContactBody.trust_level',
-      ),
+      trustLevel: _$map[r'trust_level'] == null
+          ? null
+          : _i4.CreateContactBodyTrustLevelModel.fromJson(
+              _$map[r'trust_level'],
+            ),
     );
   }
 
@@ -70,9 +77,12 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
       name: _$values[r'name'].decodeFormNullableString(
         context: r'CreateContactBody.name',
       ),
-      trustLevel: _$values[r'trust_level'].decodeFormNullableString(
-        context: r'CreateContactBody.trust_level',
-      ),
+      trustLevel: _$values[r'trust_level'] == null
+          ? null
+          : _i4.CreateContactBodyTrustLevelModel.fromForm(
+              _$values[r'trust_level'],
+              explode: explode,
+            ),
     );
   }
 
@@ -80,13 +90,13 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
 
   final _i3.String? name;
 
-  final _i3.String? trustLevel;
+  final _i4.CreateContactBodyTrustLevelModel? trustLevel;
 
   @_i3.override
   _i3.Object? toJson() => {
     r'email': email,
     if (name != null) r'name': name,
-    r'trust_level': trustLevel,
+    r'trust_level': trustLevel?.toJson(),
   };
 
   $$CreateContactBodyCopyWith<CreateContactBody> get copyWith =>
@@ -118,7 +128,7 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
       _$result[r'name'] = _i1.PropertyValue.scalar(name!);
     }
     if (trustLevel != null) {
-      _$result[r'trust_level'] = _i1.PropertyValue.scalar(trustLevel!);
+      _$result[r'trust_level'] = _i1.PropertyValue.scalar(trustLevel!.toJson());
     }
     return _$result;
   }
@@ -126,7 +136,7 @@ class CreateContactBody extends _i1.ObjectParameterEncodable
   @_i3.override
   _i3.String uriEncode({
     required _i3.bool allowEmpty,
-    required _i4.Encoding textEncoding,
+    required _i5.Encoding textEncoding,
     _i3.bool useQueryComponent = false,
     _i3.bool allowReserved = false,
   }) {
@@ -140,10 +150,14 @@ abstract class $$CreateContactBodyCopyWith<$Res> {
   factory $$CreateContactBodyCopyWith(CreateContactBody value) =
       _CreateContactBodyCopyWith<$Res>;
 
-  $Res call({_i3.String? email, _i3.String? name, _i3.String? trustLevel});
+  $Res call({
+    _i3.String? email,
+    _i3.String? name,
+    _i4.CreateContactBodyTrustLevelModel? trustLevel,
+  });
   _i3.String get email;
   _i3.String? get name;
-  _i3.String? get trustLevel;
+  _i4.CreateContactBodyTrustLevelModel? get trustLevel;
 }
 
 class _CreateContactBodyCopyWith<$Res>
@@ -161,7 +175,7 @@ class _CreateContactBodyCopyWith<$Res>
   _i3.String? get name => _value.name;
 
   @_i3.override
-  _i3.String? get trustLevel => _value.trustLevel;
+  _i4.CreateContactBodyTrustLevelModel? get trustLevel => _value.trustLevel;
 
   @_i3.override
   $Res call({
@@ -176,7 +190,7 @@ class _CreateContactBodyCopyWith<$Res>
       name: _i3.identical(name, _sentinel) ? this.name : (name as _i3.String?),
       trustLevel: _i3.identical(trustLevel, _sentinel)
           ? this.trustLevel
-          : (trustLevel as _i3.String?),
+          : (trustLevel as _i4.CreateContactBodyTrustLevelModel?),
     ) as $Res);
   }
 }

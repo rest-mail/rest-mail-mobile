@@ -11,7 +11,7 @@ import 'package:restmail_generated/src/model/data_contacts_imported.dart'
 import 'package:restmail_generated/src/model/error_response.dart' as _i10;
 import 'package:restmail_generated/src/model/import_contacts_body.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i15;
+    as _i16;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post200_response.dart'
     as _i9;
@@ -21,16 +21,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_impo
     as _i12;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post403_response.dart'
     as _i13;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post404_response.dart'
     as _i14;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post413_response.dart'
+    as _i15;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post422_response.dart'
-    as _i16;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post429_response.dart'
     as _i17;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post429_response.dart'
     as _i18;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post500_response.dart'
     as _i19;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_contacts_import_post503_response.dart'
+    as _i20;
 import 'package:restmail_generated/src/response_wrapper/import_contacts_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -186,11 +188,37 @@ final class ImportContacts
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        return _i2.ImportContactsResponse404(
+          body: _i14.ApiV1AccountsIdContactsImportPost404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ImportContactsResponse413(
-          body: _i14.ApiV1AccountsIdContactsImportPost413Response(
+          body: _i15.ApiV1AccountsIdContactsImportPost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -214,9 +242,9 @@ final class ImportContacts
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i15.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i16.ValidationErrorResponse.fromJson(_$json);
         return _i2.ImportContactsResponse422(
-          body: _i16.ApiV1AccountsIdContactsImportPost422Response(
+          body: _i17.ApiV1AccountsIdContactsImportPost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -242,7 +270,7 @@ final class ImportContacts
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ImportContactsResponse429(
-          body: _i17.ApiV1AccountsIdContactsImportPost429Response(
+          body: _i18.ApiV1AccountsIdContactsImportPost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -270,7 +298,7 @@ final class ImportContacts
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ImportContactsResponse500(
-          body: _i18.ApiV1AccountsIdContactsImportPost500Response(
+          body: _i19.ApiV1AccountsIdContactsImportPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -296,7 +324,7 @@ final class ImportContacts
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ImportContactsResponse503(
-          body: _i19.ApiV1AccountsIdContactsImportPost503Response(
+          body: _i20.ApiV1AccountsIdContactsImportPost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

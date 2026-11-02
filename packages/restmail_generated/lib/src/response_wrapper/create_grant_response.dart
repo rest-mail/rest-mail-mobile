@@ -19,10 +19,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_grants_post413_resp
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_admin_grants_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_grants_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_grants_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_admin_grants_post503_response.dart'
+    as _i12;
 
 sealed class CreateGrantResponse {
   const CreateGrantResponse();
@@ -141,10 +143,26 @@ class CreateGrantResponse422 extends CreateGrantResponse {
 }
 
 @_i1.immutable
+class CreateGrantResponse429 extends CreateGrantResponse {
+  const CreateGrantResponse429({required this.body});
+
+  final _i10.ApiV1AdminGrantsPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is CreateGrantResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class CreateGrantResponse500 extends CreateGrantResponse {
   const CreateGrantResponse500({required this.body});
 
-  final _i10.ApiV1AdminGrantsPost500Response body;
+  final _i11.ApiV1AdminGrantsPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class CreateGrantResponse500 extends CreateGrantResponse {
 class CreateGrantResponse503 extends CreateGrantResponse {
   const CreateGrantResponse503({required this.body});
 
-  final _i11.ApiV1AdminGrantsPost503Response body;
+  final _i12.ApiV1AdminGrantsPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

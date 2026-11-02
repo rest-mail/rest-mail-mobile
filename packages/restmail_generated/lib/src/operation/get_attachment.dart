@@ -5,28 +5,36 @@
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
-import 'package:restmail_generated/src/model/error_response.dart' as _i7;
+import 'package:restmail_generated/src/model/error_response.dart' as _i9;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i12;
+    as _i16;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_attachments_id_get200_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get401_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get206_response.dart'
+    as _i7;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get304_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get403_response.dart'
-    as _i9;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get404_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get401_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get403_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get404_response.dart'
+    as _i12;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get412_response.dart'
     as _i13;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get413_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get416_response.dart'
     as _i15;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get422_response.dart'
+    as _i17;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get429_response.dart'
+    as _i18;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get500_response.dart'
+    as _i19;
 import 'package:restmail_generated/src/response/api_v1_attachments_id_get503_response.dart'
-    as _i16;
+    as _i20;
 import 'package:restmail_generated/src/response_wrapper/get_attachment_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -36,6 +44,12 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
 
   _i3.Future<_i4.TonikResult<_i2.GetAttachmentResponse, _i5.Response>> call({
     required _i3.int id,
+    _i3.String? range,
+    _i3.String? ifRange,
+    _i3.String? ifMatch,
+    _i3.String? ifNoneMatch,
+    _i3.String? ifModifiedSince,
+    _i3.String? ifUnmodifiedSince,
     _i4.TonikCancellation? cancellation,
   }) {
     return this.execute(
@@ -45,7 +59,14 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
         path: _path(id: id),
         query: null,
         data: _data(),
-        options: _options(),
+        options: _options(
+          range: range,
+          ifRange: ifRange,
+          ifMatch: ifMatch,
+          ifNoneMatch: ifNoneMatch,
+          ifModifiedSince: ifModifiedSince,
+          ifUnmodifiedSince: ifUnmodifiedSince,
+        ),
       ),
       decode: _parseResponse,
     );
@@ -64,9 +85,58 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
     return null;
   }
 
-  _i3.Map<_i3.String, _i3.String> _options() {
+  _i3.Map<_i3.String, _i3.String> _options({
+    _i3.String? range,
+    _i3.String? ifRange,
+    _i3.String? ifMatch,
+    _i3.String? ifNoneMatch,
+    _i3.String? ifModifiedSince,
+    _i3.String? ifUnmodifiedSince,
+  }) {
     final _$headers = <_i3.String, _i3.String>{};
-    _$headers['Accept'] = r'application/octet-stream,application/json';
+    _$headers['Accept'] = r'application/octet-stream,multipart/byteranges,application/json,text/plain';
+    if (range != null) {
+      _$headers[r'Range'] = range.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
+    if (ifRange != null) {
+      _$headers[r'If-Range'] = ifRange.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
+    if (ifMatch != null) {
+      _$headers[r'If-Match'] = ifMatch.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
+    if (ifNoneMatch != null) {
+      _$headers[r'If-None-Match'] = ifNoneMatch.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
+    if (ifModifiedSince != null) {
+      _$headers[r'If-Modified-Since'] = ifModifiedSince.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
+    if (ifUnmodifiedSince != null) {
+      _$headers[r'If-Unmodified-Since'] = ifUnmodifiedSince.toSimple(
+        explode: false,
+        allowEmpty: false,
+        literal: true,
+      );
+    }
     return _$headers;
   }
 
@@ -107,13 +177,137 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
             xFrameOptions:
                 (response.headersSplitValues[r'x-frame-options']?.join(','))
                     .decodeSimpleString(context: r'X-Frame-Options'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
+          ),
+        );
+      case (206, r'application/octet-stream'):
+        final _$body = _i4.TonikFileBytes(
+          _i4.decodeResponseBytes(response.bodyBytes),
+        );
+        return _i2.GetAttachmentResponse206(
+          body: _i7.ApiV1AttachmentsIdGet206ResponseOctetStream(
+            body: _$body,
+            acceptRanges: (response.headersSplitValues[r'accept-ranges']?.join(
+              ',',
+            )).decodeSimpleString(context: r'Accept-Ranges'),
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(','))
+                    .decodeSimpleString(context: r'Content-Disposition'),
+            contentLength:
+                (response.headersSplitValues[r'content-length']?.join(','))
+                    .decodeSimpleInt(context: r'Content-Length'),
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+            contentRange: (response.headersSplitValues[r'content-range']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Content-Range'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
+          ),
+        );
+      case (206, r'multipart/byteranges'):
+        final _$body = _i4.TonikFileBytes(
+          _i4.decodeResponseBytes(response.bodyBytes),
+        );
+        return _i2.GetAttachmentResponse206(
+          body: _i7.ApiV1AttachmentsIdGet206ResponseByteranges(
+            body: _$body,
+            acceptRanges: (response.headersSplitValues[r'accept-ranges']?.join(
+              ',',
+            )).decodeSimpleString(context: r'Accept-Ranges'),
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(','))
+                    .decodeSimpleString(context: r'Content-Disposition'),
+            contentLength:
+                (response.headersSplitValues[r'content-length']?.join(','))
+                    .decodeSimpleInt(context: r'Content-Length'),
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+            contentRange: (response.headersSplitValues[r'content-range']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Content-Range'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
+          ),
+        );
+      case (304, _):
+        return _i2.GetAttachmentResponse304(
+          body: _i8.ApiV1AttachmentsIdGet304Response(
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(','))
+                    .decodeSimpleString(context: r'Content-Disposition'),
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
           ),
         );
       case (401, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse401(
-          body: _i8.ApiV1AttachmentsIdGet401Response(
+          body: _i10.ApiV1AttachmentsIdGet401Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -137,9 +331,9 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
         );
       case (403, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse403(
-          body: _i9.ApiV1AttachmentsIdGet403Response(
+          body: _i11.ApiV1AttachmentsIdGet403Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -163,9 +357,9 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
         );
       case (404, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse404(
-          body: _i10.ApiV1AttachmentsIdGet404Response(
+          body: _i12.ApiV1AttachmentsIdGet404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -185,13 +379,47 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
             xFrameOptions:
                 (response.headersSplitValues[r'x-frame-options']?.join(','))
                     .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
+      case (412, _):
+        return _i2.GetAttachmentResponse412(
+          body: _i13.ApiV1AttachmentsIdGet412Response(
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(','))
+                    .decodeSimpleString(context: r'Content-Disposition'),
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+            contentLength:
+                (response.headersSplitValues[r'content-length']?.join(','))
+                    .decodeSimpleNullableInt(context: r'Content-Length'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
           ),
         );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse413(
-          body: _i11.ApiV1AttachmentsIdGet413Response(
+          body: _i14.ApiV1AttachmentsIdGet413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -213,11 +441,53 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (416, r'text/plain'):
+        final _$body = _i4.decodeResponseText(
+          response.bodyBytes,
+          contentType: response.headers['content-type'],
+        );
+        return _i2.GetAttachmentResponse416(
+          body: _i15.ApiV1AttachmentsIdGet416Response(
+            body: _$body,
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(','))
+                    .decodeSimpleString(context: r'Content-Disposition'),
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+            contentLength:
+                (response.headersSplitValues[r'content-length']?.join(','))
+                    .decodeSimpleNullableInt(context: r'Content-Length'),
+            contentRange: (response.headersSplitValues[r'content-range']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Content-Range'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
+          ),
+        );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i16.ValidationErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse422(
-          body: _i13.ApiV1AttachmentsIdGet422Response(
+          body: _i17.ApiV1AttachmentsIdGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -241,9 +511,9 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
         );
       case (429, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse429(
-          body: _i14.ApiV1AttachmentsIdGet429Response(
+          body: _i18.ApiV1AttachmentsIdGet429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -269,9 +539,9 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
         );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse500(
-          body: _i15.ApiV1AttachmentsIdGet500Response(
+          body: _i19.ApiV1AttachmentsIdGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -291,13 +561,25 @@ final class GetAttachment extends _i1.HttpOperation<_i2.GetAttachmentResponse> {
             xFrameOptions:
                 (response.headersSplitValues[r'x-frame-options']?.join(','))
                     .decodeSimpleString(context: r'X-Frame-Options'),
+            contentDisposition:
+                (response.headersSplitValues[r'content-disposition']?.join(
+                  ',',
+                )).decodeSimpleNullableString(context: r'Content-Disposition'),
+            contentLength:
+                (response.headersSplitValues[r'content-length']?.join(','))
+                    .decodeSimpleNullableInt(context: r'Content-Length'),
+            eTag: (response.headersSplitValues[r'etag']?.join(','))
+                .decodeSimpleNullableString(context: r'ETag'),
+            lastModified: (response.headersSplitValues[r'last-modified']?.join(
+              ',',
+            )).decodeSimpleNullableString(context: r'Last-Modified'),
           ),
         );
       case (503, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.GetAttachmentResponse503(
-          body: _i16.ApiV1AttachmentsIdGet503Response(
+          body: _i20.ApiV1AttachmentsIdGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

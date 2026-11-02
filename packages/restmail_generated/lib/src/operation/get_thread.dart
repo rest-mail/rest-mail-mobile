@@ -8,7 +8,7 @@ import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/error_response.dart' as _i8;
 import 'package:restmail_generated/src/model/list_message.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i12;
+    as _i13;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get200_response.dart'
     as _i7;
@@ -16,16 +16,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_threa
     as _i9;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get403_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get404_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get413_response.dart'
+    as _i12;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get422_response.dart'
-    as _i13;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get429_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get429_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get500_response.dart'
     as _i16;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_threads_thread_id_get503_response.dart'
+    as _i17;
 import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -156,11 +158,37 @@ final class GetThread extends _i1.HttpOperation<_i2.GetThreadResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
+        return _i2.GetThreadResponse404(
+          body: _i11.ApiV1AccountsIdThreadsThreadIdGet404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.GetThreadResponse413(
-          body: _i11.ApiV1AccountsIdThreadsThreadIdGet413Response(
+          body: _i12.ApiV1AccountsIdThreadsThreadIdGet413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -184,9 +212,9 @@ final class GetThread extends _i1.HttpOperation<_i2.GetThreadResponse> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i12.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i13.ValidationErrorResponse.fromJson(_$json);
         return _i2.GetThreadResponse422(
-          body: _i13.ApiV1AccountsIdThreadsThreadIdGet422Response(
+          body: _i14.ApiV1AccountsIdThreadsThreadIdGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -212,7 +240,7 @@ final class GetThread extends _i1.HttpOperation<_i2.GetThreadResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.GetThreadResponse429(
-          body: _i14.ApiV1AccountsIdThreadsThreadIdGet429Response(
+          body: _i15.ApiV1AccountsIdThreadsThreadIdGet429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -240,7 +268,7 @@ final class GetThread extends _i1.HttpOperation<_i2.GetThreadResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.GetThreadResponse500(
-          body: _i15.ApiV1AccountsIdThreadsThreadIdGet500Response(
+          body: _i16.ApiV1AccountsIdThreadsThreadIdGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -266,7 +294,7 @@ final class GetThread extends _i1.HttpOperation<_i2.GetThreadResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.GetThreadResponse503(
-          body: _i16.ApiV1AccountsIdThreadsThreadIdGet503Response(
+          body: _i17.ApiV1AccountsIdThreadsThreadIdGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

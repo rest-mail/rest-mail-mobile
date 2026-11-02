@@ -118,14 +118,14 @@ class SystemApi {
   ///     <domain>example.com</domain>
   ///     <displayName>example.com Mail</displayName>
   ///     <incomingServer type="imap">
-  ///       <hostname>mail.example.com</hostname>
+  ///       <hostname>restmail.test</hostname>
   ///       <port>993</port>
   ///       <socketType>SSL</socketType>
   ///       <authentication>password-cleartext</authentication>
   ///       <username>%EMAILADDRESS%</username>
   ///     </incomingServer>
   ///     <outgoingServer type="smtp">
-  ///       <hostname>mail.example.com</hostname>
+  ///       <hostname>restmail.test</hostname>
   ///       <port>465</port>
   ///       <socketType>SSL</socketType>
   ///       <authentication>password-cleartext</authentication>
@@ -135,15 +135,6 @@ class SystemApi {
   /// </clientConfig>
   /// ```
   ///
-  /// Response 400 (text/plain):
-  /// **Example** "invalid_address" — The address has no usable domain:
-  /// The optional query is a valid string but names no email domain. The handler refuses it before looking up any domain; this is a business refusal, not a schema-invalid request.
-  ///
-  /// ```
-  /// no email domain in the address or the host name
-  ///
-  /// ```
-  ///
   /// Response 404 (text/plain):
   /// **Example** "domain_not_found" — The domain is not hosted:
   /// The active-domain lookup completes successfully without a matching row. The actual handler returns the plain-text unknown-domain response.
@@ -151,6 +142,24 @@ class SystemApi {
   /// ```
   /// domain not found
   ///
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_address" — The address has no usable domain:
+  /// The optional query names no email domain: it has no @, which the parameter's pattern requires. Binding refuses it before the handler looks up any domain, in the handler's own words.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "emailaddress": "no email domain in the address or the host name"
+  ///       }
+  ///     },
+  ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
   /// ```
   ///
   /// Response 500 (application/json):
@@ -200,28 +209,6 @@ class SystemApi {
   ///
   /// ```
   ///
-  /// **Example** "internationalized_mx":
-  /// An A-label Host resolves the internationalized domain; the policy serializes its Unicode MX as the RFC-required A-label.
-  ///
-  /// ```
-  /// version: STSv1
-  /// mode: enforce
-  /// mx: mail.xn--bcher-kva.example
-  /// max_age: 604800
-  ///
-  /// ```
-  ///
-  /// **Example** "normalized_authority":
-  /// The existing route normalizes case, one trailing DNS dot and an explicit port before resolving the domain.
-  ///
-  /// ```
-  /// version: STSv1
-  /// mode: enforce
-  /// mx: mail.example.com
-  /// max_age: 604800
-  ///
-  /// ```
-  ///
   /// Response 404 (application/json):
   /// **Example** "inactive_policy":
   /// ```json
@@ -233,58 +220,8 @@ class SystemApi {
   /// }
   /// ```
   ///
-  /// **Example** "invalid_dns_host":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not found"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing_policy":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "No MTA-STS policy configured"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 500 (application/json):
   /// **Example** "domain_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_stored_mx":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "MTA-STS policy has an invalid mx host"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "policy_store_unavailable":
   /// ```json
   /// {
   ///   "error": {
@@ -306,50 +243,6 @@ class SystemApi {
   /// **Example** "body_array":
   /// ```json
   /// []
-  /// ```
-  ///
-  /// **Example** "body_boundary":
-  /// Send this JSON followed by ASCII whitespace to exactly 524288 bytes. The complete original report bytes are stored.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
   /// ```
   ///
   /// **Example** "cancelled":
@@ -385,530 +278,6 @@ class SystemApi {
   ///           "max_age: 86400"
   ///         ],
   ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled_after_first":
-  /// The request is cancelled after its first policy insert; the report is rolled back.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "example.com",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "commit_failure":
-  /// The report database fails during commit failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "insert_failure":
-  /// The report database fails during insert failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "late_insert_failure":
-  /// The report database fails during late insert failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "example.com",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "late_lookup_failure":
-  /// The report database fails during late lookup failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "example.com",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "lookup_failure":
-  /// The report database fails during lookup failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "mixed_policies":
-  /// Hosted policies are stored, unknown or unnamed domains are skipped, one trailing dot is removed, and unknown policy kinds retain the receiver’s no-policy mapping.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "unknown.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "example.com.",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "tlsa"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test.",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "no-policy-found"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     },
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "example.com",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "future-policy"
   ///       },
   ///       "summary": {
   ///         "total-failure-session-count": 1,
@@ -962,163 +331,6 @@ class SystemApi {
   /// }
   /// ```
   ///
-  /// **Example** "organization_missing":
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1"
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts"
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12
-  ///       }
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "policy_limit":
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {},
-  ///     {}
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
   /// The same client IP has exhausted its configured TLS report bucket. Retry-After states the positive number of seconds to wait.
   ///
@@ -1160,66 +372,6 @@ class SystemApi {
   ///     }
   ///   ],
   ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
-  /// }
-  /// ```
-  ///
-  /// **Example** "reporter_extensions":
-  /// Reporter extension fields at every open report level survive in the original raw report; failure-detail extensions survive in stored details.
-  ///
-  /// ```json
-  /// {
-  ///   "contact-info": "tlsrpt@reporter.example.com",
-  ///   "date-range": {
-  ///     "end-datetime": "2026-10-16T23:59:59Z",
-  ///     "start-datetime": "2026-10-16T00:00:00Z",
-  ///     "x-clock": "utc"
-  ///   },
-  ///   "organization-name": "Example Reporter",
-  ///   "policies": [
-  ///     {
-  ///       "failure-details": [
-  ///         {
-  ///           "failed-session-count": 1,
-  ///           "receiving-mx-hostname": "mail.restmail.test",
-  ///           "result-type": "certificate-expired",
-  ///           "sending-mta-ip": "192.0.2.1",
-  ///           "x-reason": [
-  ///             "future",
-  ///             true
-  ///           ]
-  ///         }
-  ///       ],
-  ///       "policy": {
-  ///         "mx-host": [
-  ///           "mail.restmail.test"
-  ///         ],
-  ///         "policy-domain": "restmail.test",
-  ///         "policy-string": [
-  ///           "version: STSv1",
-  ///           "mode: testing",
-  ///           "mx: mail.restmail.test",
-  ///           "max_age: 86400"
-  ///         ],
-  ///         "policy-type": "sts",
-  ///         "x-description": {
-  ///           "version": 2
-  ///         }
-  ///       },
-  ///       "summary": {
-  ///         "total-failure-session-count": 1,
-  ///         "total-successful-session-count": 12,
-  ///         "x-count": 17
-  ///       },
-  ///       "x-policy": "kept"
-  ///     }
-  ///   ],
-  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test",
-  ///   "x-reporter": {
-  ///     "nested": [
-  ///       1,
-  ///       false
-  ///     ]
-  ///   }
   /// }
   /// ```
   ///
@@ -1268,6 +420,59 @@ class SystemApi {
   /// ```
   ///
   /// **Example** "stored":
+  /// ```json
+  /// {
+  ///   "contact-info": "tlsrpt@reporter.example.com",
+  ///   "date-range": {
+  ///     "end-datetime": "2026-10-16T23:59:59Z",
+  ///     "start-datetime": "2026-10-16T00:00:00Z"
+  ///   },
+  ///   "organization-name": "Example Reporter",
+  ///   "policies": [
+  ///     {
+  ///       "failure-details": [
+  ///         {
+  ///           "failed-session-count": 1,
+  ///           "receiving-mx-hostname": "mail.restmail.test",
+  ///           "result-type": "certificate-expired",
+  ///           "sending-mta-ip": "192.0.2.1"
+  ///         }
+  ///       ],
+  ///       "policy": {
+  ///         "mx-host": [
+  ///           "mail.restmail.test"
+  ///         ],
+  ///         "policy-domain": "restmail.test",
+  ///         "policy-string": [
+  ///           "version: STSv1",
+  ///           "mode: testing",
+  ///           "mx: mail.restmail.test",
+  ///           "max_age: 86400"
+  ///         ],
+  ///         "policy-type": "sts"
+  ///       },
+  ///       "summary": {
+  ///         "total-failure-session-count": 1,
+  ///         "total-successful-session-count": 12
+  ///       }
+  ///     }
+  ///   ],
+  ///   "report-id": "2026-10-17T00:00:00Z_restmail.test"
+  /// }
+  /// ```
+  ///
+  /// Request body (application/tlsrpt+gzip):
+  /// **Example** "stored_gzip":
+  /// The same report gzip-compressed under application/tlsrpt+gzip (RFC 1952), which a JSON example cannot hold.
+  ///
+  /// ```
+  /// H4sIAAAAAAAC/3WSTW6DMBCFr4K8xghomzasuukFmqxSRZFlhtQStpE9RKRR794HJKnUpMIS4/E3b37sk/Bhr5z5Umy8k05ZEpV4G5TtWkreqfOBKYhUaO9YaZbGNR4EtzF0/BrOQEZzRKa9BTy7palBlnm5kEUui+d1nlfT2uwCRbbKtBnDQECtmGRQbo/sJxFZIXr0sZnquWosfjUQRa7+hyofqqcl1kZ8p6LzrdGGoqg+TvPmOGaZLcnHbgyOHEV68UUOxu3BiwOFiMFUyWq9OhQgrK+pSsayRwL7oUqmTv62ZNWwU3uwL4vHPBfbq3jtgTmkvIkY5KeHhbR3FLfoJPbWqjBVz55VK2OvNcXY9DDxH69Q+95BoyjTM9NAog90A0DvclQTw5oHhKx9y5exaApsGqPH+6GhM4FqVBoxebQvLStpOmDFsszyrMyK6fI1mcN0PDd0flR3pzRWQPVtbVt8Pze088+cAgAA
+  /// ```
+  ///
+  /// Request body (application/tlsrpt+json):
+  /// **Example** "stored_tlsrpt_json":
+  /// The same report under application/tlsrpt+json, the media type RFC 8460 names.
+  ///
   /// ```json
   /// {
   ///   "contact-info": "tlsrpt@reporter.example.com",
@@ -1310,39 +515,6 @@ class SystemApi {
   /// ```
   ///
   /// Response 201 (application/json):
-  /// **Example** "body_boundary":
-  /// Send this JSON followed by ASCII whitespace to exactly 524288 bytes. The complete original report bytes are stored.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "stored": 1
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mixed_policies":
-  /// Hosted policies are stored, unknown or unnamed domains are skipped, one trailing dot is removed, and unknown policy kinds retain the receiver’s no-policy mapping.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "stored": 4
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "reporter_extensions":
-  /// Reporter extension fields at every open report level survive in the original raw report; failure-detail extensions survive in stored details.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "stored": 1
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "stored":
   /// ```json
   /// {
@@ -1352,13 +524,35 @@ class SystemApi {
   /// }
   /// ```
   ///
+  /// **Example** "stored_gzip":
+  /// The same report gzip-compressed under application/tlsrpt+gzip (RFC 1952), which a JSON example cannot hold.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "stored": 1
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "stored_tlsrpt_json":
+  /// The same report under application/tlsrpt+json, the media type RFC 8460 names.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "stored": 1
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
+  /// **Example** "unsupported_media":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "bad_request",
-  ///     "message": "Invalid request body"
+  ///     "message": "Unsupported media type: text/plain; the body is taken as application/tlsrpt+json, application/json, application/tlsrpt+gzip"
   ///   }
   /// }
   /// ```
@@ -1376,54 +570,28 @@ class SystemApi {
   /// }
   /// ```
   ///
-  /// Response 415 (application/json):
-  /// **Example** "unsupported_media":
+  /// Response 422 (application/json):
+  /// **Example** "body_array":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "unsupported_media_type",
-  ///     "message": "Unsupported media type: text/plain; the body is taken as application/tlsrpt+json, application/json, application/tlsrpt+gzip"
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
   ///
-  /// Response 422 (application/json):
   /// **Example** "no_matching_domains":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "no_matching_domains",
   ///     "message": "None of the policy domains in the report match a known domain"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "organization_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "organization-name": "Required field"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "policy_limit":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "policies": "Must hold 1 to 100 policy entries"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
@@ -1444,78 +612,6 @@ class SystemApi {
   /// Response 500 (application/json):
   /// **Example** "cancelled":
   /// The request is cancelled during its domain lookup.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled_after_first":
-  /// The request is cancelled after its first policy insert; the report is rolled back.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "commit_failure":
-  /// The report database fails during commit failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "insert_failure":
-  /// The report database fails during insert failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "late_insert_failure":
-  /// The report database fails during late insert failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "late_lookup_failure":
-  /// The report database fails during late lookup failure. The receiver returns no internal database detail and commits no report rows.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "lookup_failure":
-  /// The report database fails during lookup failure. The receiver returns no internal database detail and commits no report rows.
   ///
   /// ```json
   /// {
@@ -1554,8 +650,8 @@ class SystemApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// Checked through the production endpoint error adapter; a healthy discovery GET cannot deliberately provoke this fault.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -1572,8 +668,8 @@ class SystemApi {
   /// Swagger UI documentation page
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// This fault response is exercised through the endpoint error adapter; a healthy GET does not provoke it. Metrics additionally exercises a failing scrape.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -1591,8 +687,8 @@ class SystemApi {
   /// The OpenAPI 3.1 description go-oapifly generates from the routes this server registers, the description itself among them. It replaces openapi.yaml once the two agree (#670).
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// This fault response is exercised through the endpoint error adapter; a healthy GET does not provoke it. Metrics additionally exercises a failing scrape.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -1609,8 +705,8 @@ class SystemApi {
   /// This OpenAPI specification document
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// This fault response is exercised through the endpoint error adapter; a healthy GET does not provoke it. Metrics additionally exercises a failing scrape.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -1630,11 +726,6 @@ class SystemApi {
   /// **Example** "address_invalid" — An XML address without a domain is refused:
   /// ```
   /// <Autodiscover><Request><EMailAddress>not-an-address</EMailAddress></Request></Autodiscover>
-  /// ```
-  ///
-  /// **Example** "address_missing" — XML without an address is refused:
-  /// ```
-  /// <Autodiscover><Request/></Autodiscover>
   /// ```
   ///
   /// **Example** "domain_not_found" — The active-domain lookup has no matching row:
@@ -1667,11 +758,6 @@ class SystemApi {
   /// not XML
   /// ```
   ///
-  /// **Example** "valid" — XML settings advertise the configured mail host:
-  /// ```
-  /// <Autodiscover><Request><EMailAddress>user@example.com</EMailAddress></Request></Autodiscover>
-  /// ```
-  ///
   /// Response 200 (application/xml):
   /// **Example** "query_fallback" — Malformed XML uses the supplied address:
   /// ```
@@ -1683,7 +769,7 @@ class SystemApi {
   ///       <Action>settings</Action>
   ///       <Protocol>
   ///         <Type>IMAP</Type>
-  ///         <Server>mail.example.com</Server>
+  ///         <Server>restmail.test</Server>
   ///         <Port>993</Port>
   ///         <SSL>on</SSL>
   ///         <Encryption>SSL</Encryption>
@@ -1691,7 +777,7 @@ class SystemApi {
   ///       </Protocol>
   ///       <Protocol>
   ///         <Type>SMTP</Type>
-  ///         <Server>mail.example.com</Server>
+  ///         <Server>restmail.test</Server>
   ///         <Port>465</Port>
   ///         <SSL>on</SSL>
   ///         <Encryption>SSL</Encryption>
@@ -1702,52 +788,15 @@ class SystemApi {
   /// </Autodiscover>
   /// ```
   ///
-  /// **Example** "valid" — XML settings advertise the configured mail host:
-  /// ```
-  /// <?xml version="1.0" encoding="UTF-8"?>
-  /// <Autodiscover xmlns="http://schemas.microsoft.com/exchange/autodiscover/responseschema/2006">
-  ///   <Response xmlns="http://schemas.microsoft.com/exchange/autodiscover/outlook/responseschema/2006a">
-  ///     <Account>
-  ///       <AccountType>email</AccountType>
-  ///       <Action>settings</Action>
-  ///       <Protocol>
-  ///         <Type>IMAP</Type>
-  ///         <Server>mail.example.com</Server>
-  ///         <Port>993</Port>
-  ///         <SSL>on</SSL>
-  ///         <Encryption>SSL</Encryption>
-  ///         <LoginName>user@example.com</LoginName>
-  ///       </Protocol>
-  ///       <Protocol>
-  ///         <Type>SMTP</Type>
-  ///         <Server>mail.example.com</Server>
-  ///         <Port>465</Port>
-  ///         <SSL>on</SSL>
-  ///         <Encryption>SSL</Encryption>
-  ///         <LoginName>user@example.com</LoginName>
-  ///       </Protocol>
-  ///     </Account>
-  ///   </Response>
-  /// </Autodiscover>
-  /// ```
-  ///
-  /// Response 400 (text/plain):
-  /// **Example** "address_invalid" — An XML address without a domain is refused:
-  /// ```
-  /// invalid email address
-  ///
-  /// ```
-  ///
-  /// **Example** "address_missing" — XML without an address is refused:
-  /// ```
-  /// email address required
-  ///
-  /// ```
-  ///
+  /// Response 400 (application/json):
   /// **Example** "malformed" — Malformed XML without a fallback address is refused:
-  /// ```
-  /// invalid request
-  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "invalid request"
+  ///   }
+  /// }
   /// ```
   ///
   /// Response 404 (text/plain):
@@ -1764,6 +813,22 @@ class SystemApi {
   ///   "error": {
   ///     "code": "request_too_large",
   ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "address_invalid" — An XML address without a domain is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "EMailAddress": "invalid email address"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
@@ -1812,14 +877,14 @@ class SystemApi {
   ///     <domain>example.com</domain>
   ///     <displayName>example.com Mail</displayName>
   ///     <incomingServer type="imap">
-  ///       <hostname>mail.example.com</hostname>
+  ///       <hostname>restmail.test</hostname>
   ///       <port>993</port>
   ///       <socketType>SSL</socketType>
   ///       <authentication>password-cleartext</authentication>
   ///       <username>%EMAILADDRESS%</username>
   ///     </incomingServer>
   ///     <outgoingServer type="smtp">
-  ///       <hostname>mail.example.com</hostname>
+  ///       <hostname>restmail.test</hostname>
   ///       <port>465</port>
   ///       <socketType>SSL</socketType>
   ///       <authentication>password-cleartext</authentication>
@@ -1829,15 +894,6 @@ class SystemApi {
   /// </clientConfig>
   /// ```
   ///
-  /// Response 400 (text/plain):
-  /// **Example** "invalid_address" — The address has no usable domain:
-  /// The optional query is a valid string but names no email domain. The handler refuses it before looking up any domain; this is a business refusal, not a schema-invalid request.
-  ///
-  /// ```
-  /// no email domain in the address or the host name
-  ///
-  /// ```
-  ///
   /// Response 404 (text/plain):
   /// **Example** "domain_not_found" — The domain is not hosted:
   /// The active-domain lookup completes successfully without a matching row. The actual handler returns the plain-text unknown-domain response.
@@ -1845,6 +901,24 @@ class SystemApi {
   /// ```
   /// domain not found
   ///
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_address" — The address has no usable domain:
+  /// The optional query names no email domain: it has no @, which the parameter's pattern requires. Binding refuses it before the handler looks up any domain, in the handler's own words.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "emailaddress": "no email domain in the address or the host name"
+  ///       }
+  ///     },
+  ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
   /// ```
   ///
   /// Response 500 (application/json):
@@ -1880,8 +954,8 @@ class SystemApi {
   /// Prometheus metrics exposition
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// This fault response is exercised through the endpoint error adapter; a healthy GET does not provoke it. Metrics additionally exercises a failing scrape.
+  /// **Example** "internal_error" — A scrape that cannot read the database fails without detail:
+  /// Fault precondition: the database refuses queries, so the DKIM key-age collector cannot read the key inventory and the scrape fails. The public response does not disclose the collector's error.
   ///
   /// ```json
   /// {

@@ -10,7 +10,7 @@ import 'package:restmail_generated/src/model/data_sieve_validation.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i10;
 import 'package:restmail_generated/src/model/validate_sieve_body.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i15;
+    as _i16;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post200_response.dart'
     as _i9;
@@ -20,16 +20,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validat
     as _i12;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post403_response.dart'
     as _i13;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post404_response.dart'
     as _i14;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post413_response.dart'
+    as _i15;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post422_response.dart'
-    as _i16;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post429_response.dart'
     as _i17;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post429_response.dart'
     as _i18;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post500_response.dart'
     as _i19;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_validate_post503_response.dart'
+    as _i20;
 import 'package:restmail_generated/src/response_wrapper/validate_sieve_script_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -186,11 +188,37 @@ final class ValidateSieveScript
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        return _i2.ValidateSieveScriptResponse404(
+          body: _i14.ApiV1AccountsIdSieveValidatePost404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ValidateSieveScriptResponse413(
-          body: _i14.ApiV1AccountsIdSieveValidatePost413Response(
+          body: _i15.ApiV1AccountsIdSieveValidatePost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -214,9 +242,9 @@ final class ValidateSieveScript
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i15.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i16.ValidationErrorResponse.fromJson(_$json);
         return _i2.ValidateSieveScriptResponse422(
-          body: _i16.ApiV1AccountsIdSieveValidatePost422Response(
+          body: _i17.ApiV1AccountsIdSieveValidatePost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -242,7 +270,7 @@ final class ValidateSieveScript
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ValidateSieveScriptResponse429(
-          body: _i17.ApiV1AccountsIdSieveValidatePost429Response(
+          body: _i18.ApiV1AccountsIdSieveValidatePost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -270,7 +298,7 @@ final class ValidateSieveScript
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ValidateSieveScriptResponse500(
-          body: _i18.ApiV1AccountsIdSieveValidatePost500Response(
+          body: _i19.ApiV1AccountsIdSieveValidatePost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -296,7 +324,7 @@ final class ValidateSieveScript
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.ValidateSieveScriptResponse503(
-          body: _i19.ApiV1AccountsIdSieveValidatePost503Response(
+          body: _i20.ApiV1AccountsIdSieveValidatePost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

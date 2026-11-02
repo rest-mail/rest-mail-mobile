@@ -6,18 +6,20 @@ import 'dart:convert' as _i6;
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
-import 'package:restmail_generated/src/model/error_response.dart' as _i10;
+import 'package:restmail_generated/src/model/error_response.dart' as _i11;
+import 'package:restmail_generated/src/model/validation_error_response.dart'
+    as _i9;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get200_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get400_response.dart'
-    as _i8;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get404_response.dart'
-    as _i9;
+    as _i8;
+import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get422_response.dart'
+    as _i10;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get500_response.dart'
-    as _i11;
-import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get503_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get503_response.dart'
+    as _i13;
 import 'package:restmail_generated/src/response_wrapper/mozilla_autoconfig_well_known_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -107,13 +109,13 @@ final class MozillaAutoconfigWellKnown
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
-      case (400, r'text/plain'):
+      case (404, r'text/plain'):
         final _$body = _i4.decodeResponseText(
           response.bodyBytes,
           contentType: response.headers['content-type'],
         );
-        return _i2.MozillaAutoconfigWellKnownResponse400(
-          body: _i8.WellKnownAutoconfigMailConfigV11XmlGet400Response(
+        return _i2.MozillaAutoconfigWellKnownResponse404(
+          body: _i8.WellKnownAutoconfigMailConfigV11XmlGet404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -135,13 +137,11 @@ final class MozillaAutoconfigWellKnown
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
-      case (404, r'text/plain'):
-        final _$body = _i4.decodeResponseText(
-          response.bodyBytes,
-          contentType: response.headers['content-type'],
-        );
-        return _i2.MozillaAutoconfigWellKnownResponse404(
-          body: _i9.WellKnownAutoconfigMailConfigV11XmlGet404Response(
+      case (422, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i9.ValidationErrorResponse.fromJson(_$json);
+        return _i2.MozillaAutoconfigWellKnownResponse422(
+          body: _i10.WellKnownAutoconfigMailConfigV11XmlGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -165,9 +165,9 @@ final class MozillaAutoconfigWellKnown
         );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        final _$body = _i11.ErrorResponse.fromJson(_$json);
         return _i2.MozillaAutoconfigWellKnownResponse500(
-          body: _i11.WellKnownAutoconfigMailConfigV11XmlGet500Response(
+          body: _i12.WellKnownAutoconfigMailConfigV11XmlGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -195,7 +195,7 @@ final class MozillaAutoconfigWellKnown
           contentType: response.headers['content-type'],
         );
         return _i2.MozillaAutoconfigWellKnownResponse503(
-          body: _i12.WellKnownAutoconfigMailConfigV11XmlGet503Response(
+          body: _i13.WellKnownAutoconfigMailConfigV11XmlGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

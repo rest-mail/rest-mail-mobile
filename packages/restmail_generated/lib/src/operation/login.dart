@@ -10,7 +10,7 @@ import 'package:restmail_generated/src/model/data_login_response.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i10;
 import 'package:restmail_generated/src/model/login_request.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i14;
+    as _i15;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_auth_login_post200_response.dart'
     as _i9;
@@ -18,14 +18,16 @@ import 'package:restmail_generated/src/response/api_v1_auth_login_post400_respon
     as _i11;
 import 'package:restmail_generated/src/response/api_v1_auth_login_post401_response.dart'
     as _i12;
-import 'package:restmail_generated/src/response/api_v1_auth_login_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_login_post403_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/api_v1_auth_login_post413_response.dart'
+    as _i14;
 import 'package:restmail_generated/src/response/api_v1_auth_login_post422_response.dart'
-    as _i15;
-import 'package:restmail_generated/src/response/api_v1_auth_login_post429_response.dart'
     as _i16;
-import 'package:restmail_generated/src/response/api_v1_auth_login_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_auth_login_post429_response.dart'
     as _i17;
+import 'package:restmail_generated/src/response/api_v1_auth_login_post500_response.dart'
+    as _i18;
 import 'package:restmail_generated/src/response_wrapper/login_response_wrapper.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -148,11 +150,37 @@ final class Login extends _i1.HttpOperation<_i2.LoginResponseWrapper> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (403, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        return _i2.LoginResponseWrapper403(
+          body: _i13.ApiV1AuthLoginPost403Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.LoginResponseWrapper413(
-          body: _i13.ApiV1AuthLoginPost413Response(
+          body: _i14.ApiV1AuthLoginPost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -176,9 +204,9 @@ final class Login extends _i1.HttpOperation<_i2.LoginResponseWrapper> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i14.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i15.ValidationErrorResponse.fromJson(_$json);
         return _i2.LoginResponseWrapper422(
-          body: _i15.ApiV1AuthLoginPost422Response(
+          body: _i16.ApiV1AuthLoginPost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -204,7 +232,7 @@ final class Login extends _i1.HttpOperation<_i2.LoginResponseWrapper> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.LoginResponseWrapper429(
-          body: _i16.ApiV1AuthLoginPost429Response(
+          body: _i17.ApiV1AuthLoginPost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -232,7 +260,7 @@ final class Login extends _i1.HttpOperation<_i2.LoginResponseWrapper> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.LoginResponseWrapper500(
-          body: _i17.ApiV1AuthLoginPost500Response(
+          body: _i18.ApiV1AuthLoginPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

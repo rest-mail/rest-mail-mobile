@@ -15,16 +15,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put401_
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put403_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put404_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put413_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put422_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put429_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put500_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_sieve_put503_response.dart'
+    as _i13;
 
 sealed class PutSieveScriptResponse {
   const PutSieveScriptResponse();
@@ -111,10 +113,26 @@ class PutSieveScriptResponse403 extends PutSieveScriptResponse {
 }
 
 @_i1.immutable
+class PutSieveScriptResponse404 extends PutSieveScriptResponse {
+  const PutSieveScriptResponse404({required this.body});
+
+  final _i8.ApiV1AccountsIdSievePut404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is PutSieveScriptResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class PutSieveScriptResponse413 extends PutSieveScriptResponse {
   const PutSieveScriptResponse413({required this.body});
 
-  final _i8.ApiV1AccountsIdSievePut413Response body;
+  final _i9.ApiV1AccountsIdSievePut413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -130,7 +148,7 @@ class PutSieveScriptResponse413 extends PutSieveScriptResponse {
 class PutSieveScriptResponse422 extends PutSieveScriptResponse {
   const PutSieveScriptResponse422({required this.body});
 
-  final _i9.ApiV1AccountsIdSievePut422Response body;
+  final _i10.ApiV1AccountsIdSievePut422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -146,7 +164,7 @@ class PutSieveScriptResponse422 extends PutSieveScriptResponse {
 class PutSieveScriptResponse429 extends PutSieveScriptResponse {
   const PutSieveScriptResponse429({required this.body});
 
-  final _i10.ApiV1AccountsIdSievePut429Response body;
+  final _i11.ApiV1AccountsIdSievePut429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -162,7 +180,7 @@ class PutSieveScriptResponse429 extends PutSieveScriptResponse {
 class PutSieveScriptResponse500 extends PutSieveScriptResponse {
   const PutSieveScriptResponse500({required this.body});
 
-  final _i11.ApiV1AccountsIdSievePut500Response body;
+  final _i12.ApiV1AccountsIdSievePut500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -178,7 +196,7 @@ class PutSieveScriptResponse500 extends PutSieveScriptResponse {
 class PutSieveScriptResponse503 extends PutSieveScriptResponse {
   const PutSieveScriptResponse503({required this.body});
 
-  final _i12.ApiV1AccountsIdSievePut503Response body;
+  final _i13.ApiV1AccountsIdSievePut503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

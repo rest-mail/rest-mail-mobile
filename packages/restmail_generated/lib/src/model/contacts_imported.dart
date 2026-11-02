@@ -11,7 +11,7 @@ import 'package:tonik_util/tonik_util.dart' as _i1;
 @_i2.immutable
 class ContactsImported extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const ContactsImported({required this.imported});
+  const ContactsImported({required this.imported, required this.skipped});
 
   factory ContactsImported.fromSimple(
     _i3.String? value, {
@@ -20,13 +20,16 @@ class ContactsImported extends _i1.ObjectParameterEncodable
     final _$values = value.decodeObject(
       explode: explode,
       explodeSeparator: ',',
-      expectedKeys: {r'imported'},
+      expectedKeys: {r'imported', r'skipped'},
       listKeys: {},
       context: r'ContactsImported',
     );
     return ContactsImported(
       imported: _$values[r'imported'].decodeSimpleInt(
         context: r'ContactsImported.imported',
+      ),
+      skipped: _$values[r'skipped'].decodeSimpleInt(
+        context: r'ContactsImported.skipped',
       ),
     );
   }
@@ -36,6 +39,9 @@ class ContactsImported extends _i1.ObjectParameterEncodable
     return ContactsImported(
       imported: _$map[r'imported'].decodeJsonInt(
         context: r'ContactsImported.imported',
+      ),
+      skipped: _$map[r'skipped'].decodeJsonInt(
+        context: r'ContactsImported.skipped',
       ),
     );
   }
@@ -47,7 +53,7 @@ class ContactsImported extends _i1.ObjectParameterEncodable
     final _$values = value.decodeObject(
       explode: explode,
       explodeSeparator: '&',
-      expectedKeys: {r'imported'},
+      expectedKeys: {r'imported', r'skipped'},
       listKeys: {},
       context: r'ContactsImported',
     );
@@ -55,13 +61,18 @@ class ContactsImported extends _i1.ObjectParameterEncodable
       imported: _$values[r'imported'].decodeFormInt(
         context: r'ContactsImported.imported',
       ),
+      skipped: _$values[r'skipped'].decodeFormInt(
+        context: r'ContactsImported.skipped',
+      ),
     );
   }
 
   final _i3.int imported;
 
+  final _i3.int skipped;
+
   @_i3.override
-  _i3.Object? toJson() => {r'imported': imported};
+  _i3.Object? toJson() => {r'imported': imported, r'skipped': skipped};
 
   $$ContactsImportedCopyWith<ContactsImported> get copyWith =>
       _ContactsImportedCopyWith(this);
@@ -69,11 +80,15 @@ class ContactsImported extends _i1.ObjectParameterEncodable
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    return other is ContactsImported && other.imported == this.imported;
+    return other is ContactsImported &&
+        other.imported == this.imported &&
+        other.skipped == this.skipped;
   }
 
   @_i3.override
-  _i3.int get hashCode => imported.hashCode;
+  _i3.int get hashCode {
+    return _i3.Object.hashAll([imported, skipped]);
+  }
 
   _i1.EncodingShape get currentEncodingShape => _i1.EncodingShape.complex;
 
@@ -83,6 +98,7 @@ class ContactsImported extends _i1.ObjectParameterEncodable
   }) {
     final _$result = <_i3.String, _i1.PropertyValue>{};
     _$result[r'imported'] = _i1.PropertyValue.scalar(imported.toString());
+    _$result[r'skipped'] = _i1.PropertyValue.scalar(skipped.toString());
     return _$result;
   }
 
@@ -103,8 +119,9 @@ abstract class $$ContactsImportedCopyWith<$Res> {
   factory $$ContactsImportedCopyWith(ContactsImported value) =
       _ContactsImportedCopyWith<$Res>;
 
-  $Res call({_i3.int? imported});
+  $Res call({_i3.int? imported, _i3.int? skipped});
   _i3.int get imported;
+  _i3.int get skipped;
 }
 
 class _ContactsImportedCopyWith<$Res>
@@ -119,11 +136,20 @@ class _ContactsImportedCopyWith<$Res>
   _i3.int get imported => _value.imported;
 
   @_i3.override
-  $Res call({_i3.Object? imported = _sentinel}) {
+  _i3.int get skipped => _value.skipped;
+
+  @_i3.override
+  $Res call({
+    _i3.Object? imported = _sentinel,
+    _i3.Object? skipped = _sentinel,
+  }) {
     return (ContactsImported(
       imported: _i3.identical(imported, _sentinel)
           ? this.imported
           : (imported as _i3.int),
+      skipped: _i3.identical(skipped, _sentinel)
+          ? this.skipped
+          : (skipped as _i3.int),
     ) as $Res);
   }
 }

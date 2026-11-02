@@ -13,10 +13,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_dkim_get403_respons
     as _i5;
 import 'package:restmail_generated/src/response/api_v1_admin_dkim_get413_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_admin_dkim_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_get429_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_dkim_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_get500_response.dart'
     as _i8;
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_get503_response.dart'
+    as _i9;
 
 sealed class ListDkimKeysResponse {
   const ListDkimKeysResponse();
@@ -87,10 +89,26 @@ class ListDkimKeysResponse413 extends ListDkimKeysResponse {
 }
 
 @_i1.immutable
+class ListDkimKeysResponse429 extends ListDkimKeysResponse {
+  const ListDkimKeysResponse429({required this.body});
+
+  final _i7.ApiV1AdminDkimGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListDkimKeysResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListDkimKeysResponse500 extends ListDkimKeysResponse {
   const ListDkimKeysResponse500({required this.body});
 
-  final _i7.ApiV1AdminDkimGet500Response body;
+  final _i8.ApiV1AdminDkimGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -106,7 +124,7 @@ class ListDkimKeysResponse500 extends ListDkimKeysResponse {
 class ListDkimKeysResponse503 extends ListDkimKeysResponse {
   const ListDkimKeysResponse503({required this.body});
 
-  final _i8.ApiV1AdminDkimGet503Response body;
+  final _i9.ApiV1AdminDkimGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

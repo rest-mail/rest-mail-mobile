@@ -11,7 +11,7 @@ import 'package:tonik_util/tonik_util.dart' as _i1;
 @_i2.immutable
 class ApiKeyPermission extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const ApiKeyPermission({this.capability, this.scope});
+  const ApiKeyPermission({required this.capability, required this.scope});
 
   factory ApiKeyPermission.fromSimple(
     _i3.String? value, {
@@ -25,10 +25,10 @@ class ApiKeyPermission extends _i1.ObjectParameterEncodable
       context: r'ApiKeyPermission',
     );
     return ApiKeyPermission(
-      capability: _$values[r'capability'].decodeSimpleNullableString(
+      capability: _$values[r'capability'].decodeSimpleString(
         context: r'ApiKeyPermission.capability',
       ),
-      scope: _$values[r'scope'].decodeSimpleNullableString(
+      scope: _$values[r'scope'].decodeSimpleString(
         context: r'ApiKeyPermission.scope',
       ),
     );
@@ -37,10 +37,10 @@ class ApiKeyPermission extends _i1.ObjectParameterEncodable
   factory ApiKeyPermission.fromJson(_i3.Object? json) {
     final _$map = json.decodeMap(context: r'ApiKeyPermission');
     return ApiKeyPermission(
-      capability: _$map[r'capability'].decodeJsonNullableString(
+      capability: _$map[r'capability'].decodeJsonString(
         context: r'ApiKeyPermission.capability',
       ),
-      scope: _$map[r'scope'].decodeJsonNullableString(
+      scope: _$map[r'scope'].decodeJsonString(
         context: r'ApiKeyPermission.scope',
       ),
     );
@@ -58,24 +58,21 @@ class ApiKeyPermission extends _i1.ObjectParameterEncodable
       context: r'ApiKeyPermission',
     );
     return ApiKeyPermission(
-      capability: _$values[r'capability'].decodeFormNullableString(
+      capability: _$values[r'capability'].decodeFormString(
         context: r'ApiKeyPermission.capability',
       ),
-      scope: _$values[r'scope'].decodeFormNullableString(
+      scope: _$values[r'scope'].decodeFormString(
         context: r'ApiKeyPermission.scope',
       ),
     );
   }
 
-  final _i3.String? capability;
+  final _i3.String capability;
 
-  final _i3.String? scope;
+  final _i3.String scope;
 
   @_i3.override
-  _i3.Object? toJson() => {
-    if (capability != null) r'capability': capability,
-    if (scope != null) r'scope': scope,
-  };
+  _i3.Object? toJson() => {r'capability': capability, r'scope': scope};
 
   $$ApiKeyPermissionCopyWith<ApiKeyPermission> get copyWith =>
       _ApiKeyPermissionCopyWith(this);
@@ -100,12 +97,8 @@ class ApiKeyPermission extends _i1.ObjectParameterEncodable
     _i3.bool allowEmpty = true,
   }) {
     final _$result = <_i3.String, _i1.PropertyValue>{};
-    if (capability != null) {
-      _$result[r'capability'] = _i1.PropertyValue.scalar(capability!);
-    }
-    if (scope != null) {
-      _$result[r'scope'] = _i1.PropertyValue.scalar(scope!);
-    }
+    _$result[r'capability'] = _i1.PropertyValue.scalar(capability);
+    _$result[r'scope'] = _i1.PropertyValue.scalar(scope);
     return _$result;
   }
 
@@ -127,8 +120,8 @@ abstract class $$ApiKeyPermissionCopyWith<$Res> {
       _ApiKeyPermissionCopyWith<$Res>;
 
   $Res call({_i3.String? capability, _i3.String? scope});
-  _i3.String? get capability;
-  _i3.String? get scope;
+  _i3.String get capability;
+  _i3.String get scope;
 }
 
 class _ApiKeyPermissionCopyWith<$Res>
@@ -140,10 +133,10 @@ class _ApiKeyPermissionCopyWith<$Res>
   final ApiKeyPermission _value;
 
   @_i3.override
-  _i3.String? get capability => _value.capability;
+  _i3.String get capability => _value.capability;
 
   @_i3.override
-  _i3.String? get scope => _value.scope;
+  _i3.String get scope => _value.scope;
 
   @_i3.override
   $Res call({
@@ -153,10 +146,10 @@ class _ApiKeyPermissionCopyWith<$Res>
     return (ApiKeyPermission(
       capability: _i3.identical(capability, _sentinel)
           ? this.capability
-          : (capability as _i3.String?),
+          : (capability as _i3.String),
       scope: _i3.identical(scope, _sentinel)
           ? this.scope
-          : (scope as _i3.String?),
+          : (scope as _i3.String),
     ) as $Res);
   }
 }

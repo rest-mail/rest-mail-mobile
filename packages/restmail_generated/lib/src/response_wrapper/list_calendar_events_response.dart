@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_even
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_calendar_events_get503_response.dart'
+    as _i11;
 
 sealed class ListCalendarEventsResponse {
   const ListCalendarEventsResponse();
@@ -75,10 +77,26 @@ class ListCalendarEventsResponse403 extends ListCalendarEventsResponse {
 }
 
 @_i1.immutable
+class ListCalendarEventsResponse404 extends ListCalendarEventsResponse {
+  const ListCalendarEventsResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdCalendarEventsGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListCalendarEventsResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListCalendarEventsResponse413 extends ListCalendarEventsResponse {
   const ListCalendarEventsResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdCalendarEventsGet413Response body;
+  final _i7.ApiV1AccountsIdCalendarEventsGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class ListCalendarEventsResponse413 extends ListCalendarEventsResponse {
 class ListCalendarEventsResponse422 extends ListCalendarEventsResponse {
   const ListCalendarEventsResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdCalendarEventsGet422Response body;
+  final _i8.ApiV1AccountsIdCalendarEventsGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class ListCalendarEventsResponse422 extends ListCalendarEventsResponse {
 class ListCalendarEventsResponse429 extends ListCalendarEventsResponse {
   const ListCalendarEventsResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdCalendarEventsGet429Response body;
+  final _i9.ApiV1AccountsIdCalendarEventsGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class ListCalendarEventsResponse429 extends ListCalendarEventsResponse {
 class ListCalendarEventsResponse500 extends ListCalendarEventsResponse {
   const ListCalendarEventsResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdCalendarEventsGet500Response body;
+  final _i10.ApiV1AccountsIdCalendarEventsGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class ListCalendarEventsResponse500 extends ListCalendarEventsResponse {
 class ListCalendarEventsResponse503 extends ListCalendarEventsResponse {
   const ListCalendarEventsResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdCalendarEventsGet503Response body;
+  final _i11.ApiV1AccountsIdCalendarEventsGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

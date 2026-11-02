@@ -9,7 +9,7 @@ import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/error_response.dart' as _i9;
 import 'package:restmail_generated/src/model/list_message.dart' as _i7;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i13;
+    as _i14;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get200_response.dart'
     as _i8;
@@ -17,16 +17,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folde
     as _i10;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get403_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get404_response.dart'
     as _i12;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get413_response.dart'
+    as _i13;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get422_response.dart'
-    as _i14;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get429_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get429_response.dart'
     as _i16;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get500_response.dart'
     as _i17;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_messages_get503_response.dart'
+    as _i18;
 import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -190,11 +192,37 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i9.ErrorResponse.fromJson(_$json);
+        return _i2.ListMessagesResponse404(
+          body: _i12.ApiV1AccountsIdFoldersFolderMessagesGet404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (413, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMessagesResponse413(
-          body: _i12.ApiV1AccountsIdFoldersFolderMessagesGet413Response(
+          body: _i13.ApiV1AccountsIdFoldersFolderMessagesGet413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -218,9 +246,9 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i13.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i14.ValidationErrorResponse.fromJson(_$json);
         return _i2.ListMessagesResponse422(
-          body: _i14.ApiV1AccountsIdFoldersFolderMessagesGet422Response(
+          body: _i15.ApiV1AccountsIdFoldersFolderMessagesGet422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -246,7 +274,7 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMessagesResponse429(
-          body: _i15.ApiV1AccountsIdFoldersFolderMessagesGet429Response(
+          body: _i16.ApiV1AccountsIdFoldersFolderMessagesGet429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -274,7 +302,7 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMessagesResponse500(
-          body: _i16.ApiV1AccountsIdFoldersFolderMessagesGet500Response(
+          body: _i17.ApiV1AccountsIdFoldersFolderMessagesGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -300,7 +328,7 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i9.ErrorResponse.fromJson(_$json);
         return _i2.ListMessagesResponse503(
-          body: _i17.ApiV1AccountsIdFoldersFolderMessagesGet503Response(
+          body: _i18.ApiV1AccountsIdFoldersFolderMessagesGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

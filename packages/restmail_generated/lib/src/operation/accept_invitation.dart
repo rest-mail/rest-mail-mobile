@@ -6,9 +6,10 @@ import 'dart:convert' as _i7;
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
+import 'package:restmail_generated/src/model/accept_invitation_request.dart'
+    as _i6;
 import 'package:restmail_generated/src/model/data_login_response.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i10;
-import 'package:restmail_generated/src/model/reset_request.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
     as _i14;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
@@ -37,7 +38,7 @@ final class AcceptInvitation
   AcceptInvitation(super.baseUrl, super.clientAccessor);
 
   _i3.Future<_i4.TonikResult<_i2.AcceptInvitationResponse, _i5.Response>> call({
-    required _i6.ResetRequest body,
+    required _i6.AcceptInvitationRequest body,
     _i4.TonikCancellation? cancellation,
   }) {
     return this.execute(
@@ -57,7 +58,7 @@ final class AcceptInvitation
     return [r'api', r'v1', r'auth', r'invitation'];
   }
 
-  _i3.Object? _data({required _i6.ResetRequest body}) {
+  _i3.Object? _data({required _i6.AcceptInvitationRequest body}) {
     return _i7.utf8.encode(_i7.jsonEncode(body.toJson()));
   }
 

@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_g
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_custom_filters_id_get503_response.dart'
+    as _i11;
 
 sealed class GetCustomFilterResponse {
   const GetCustomFilterResponse();
@@ -123,10 +125,26 @@ class GetCustomFilterResponse422 extends GetCustomFilterResponse {
 }
 
 @_i1.immutable
+class GetCustomFilterResponse429 extends GetCustomFilterResponse {
+  const GetCustomFilterResponse429({required this.body});
+
+  final _i9.ApiV1AdminCustomFiltersIdGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetCustomFilterResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetCustomFilterResponse500 extends GetCustomFilterResponse {
   const GetCustomFilterResponse500({required this.body});
 
-  final _i9.ApiV1AdminCustomFiltersIdGet500Response body;
+  final _i10.ApiV1AdminCustomFiltersIdGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetCustomFilterResponse500 extends GetCustomFilterResponse {
 class GetCustomFilterResponse503 extends GetCustomFilterResponse {
   const GetCustomFilterResponse503({required this.body});
 
-  final _i10.ApiV1AdminCustomFiltersIdGet503Response body;
+  final _i11.ApiV1AdminCustomFiltersIdGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

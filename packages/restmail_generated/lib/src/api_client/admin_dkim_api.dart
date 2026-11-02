@@ -106,6 +106,19 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The read dependency fails:
   /// Session and permission checks pass, but the database read fails. The production handler and error writer produce this refusal without exposing dependency details.
@@ -143,36 +156,7 @@ class AdminDkimApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Request body (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// []
-  /// ```
-  ///
   /// **Example** "body_boundary":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled_after_lookup":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "concurrent":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
   /// ```json
   /// {
   ///   "private_key": "fixture-signing-key",
@@ -188,38 +172,6 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "installed":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -228,71 +180,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "legacy_age_unknown":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
   /// ```json
   /// {
   ///   "private_key": "fixture-signing-key",
@@ -313,62 +201,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_empty":
-  /// ```json
-  /// {
-  ///   "private_key": "",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_invalid":
-  /// ```json
-  /// {
-  ///   "private_key": "not a key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_missing":
-  /// ```json
-  /// {
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_wrong_type":
-  /// ```json
-  /// {
-  ///   "private_key": 42,
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "replaced":
   /// ```json
   /// {
   ///   "private_key": "fixture-signing-key",
@@ -386,61 +219,6 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_changed":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "other"
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_empty":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": ""
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_invalid":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "invalid_selector"
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_missing":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key"
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_wrong_type":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": 42
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -450,38 +228,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// **Example** "unauthenticated":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "private_key": "fixture-signing-key",
-  ///   "selector": "contract"
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
   /// ```json
   /// {
   ///   "private_key": "fixture-signing-key",
@@ -504,157 +250,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "installed":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "legacy_age_unknown":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": null,
-  ///     "created_at": null,
-  ///     "domain": "example.com",
-  ///     "domain_id": 10,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "replaced":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 2,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_changed":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "other"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "age_seconds": 0,
-  ///     "created_at": "2026-10-01T12:00:00Z",
-  ///     "domain": "example.com",
-  ///     "domain_id": 1,
-  ///     "has_key": true,
-  ///     "selector": "contract"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Invalid request body"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// ```json
   /// {
@@ -687,107 +283,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "concurrent":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
   /// ```json
   /// {
@@ -812,21 +308,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -838,126 +319,6 @@ class AdminDkimApi {
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_empty":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "private_key": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "private_key": "is not a PEM-encoded private key"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "private_key": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "private_key_wrong_type":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "private_key": "must be a string"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_empty":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "selector": "Must be a DNS label (letters, digits, hyphens), at most 63 characters"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_invalid":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "selector": "Must be a DNS label (letters, digits, hyphens), at most 63 characters"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "selector": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "selector_wrong_type":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "selector": "must be a string"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
@@ -974,16 +335,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "cancelled_after_lookup":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -994,37 +345,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -1070,46 +391,6 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "other_capability":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
   /// **Example** "missing":
   /// ```json
@@ -1133,21 +414,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1163,17 +429,20 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// Response 500 (application/json):
-  /// **Example** "internal_error":
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -1184,37 +453,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "scoped_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -1238,52 +477,6 @@ class AdminDkimApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Response 200 (application/json):
-  /// **Example** "awaiting_publication" — Rotation state: awaiting_publication:
-  /// A deterministic public RFC8032 test key exercises the real public-record mapping. Unreadable stored key material keeps an empty record_value; no private signing material is returned.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 5,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": {
-  ///       "published_at": null,
-  ///       "record_name": "restmail-next._domainkey.example.com",
-  ///       "record_value": "v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
-  ///       "selector": "restmail-next"
-  ///     },
-  ///     "state": "awaiting_publication"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "disabled" — Disabled configuration remains readable to administrators:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 2,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 0,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope" — The domain-scoped reader can inspect rotation:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — The full public resource is returned:
   /// A current session holds the installation-wide read capability. Stored public fields pass through the production mapper; private certificate and signing keys have no response field.
   ///
@@ -1295,68 +488,6 @@ class AdminDkimApi {
   ///     "rotation_interval_days": 90,
   ///     "staged": null,
   ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "retiring" — Rotation state: retiring:
-  /// A deterministic public RFC8032 test key exercises the real public-record mapping. Unreadable stored key material keeps an empty record_value; no private signing material is returned.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 7,
-  ///     "previous": {
-  ///       "published_at": "2026-10-20T00:00:00Z",
-  ///       "record_name": "restmail-previous._domainkey.example.com",
-  ///       "record_value": "v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
-  ///       "retire_after": "2026-10-21T00:00:00Z",
-  ///       "selector": "restmail-previous"
-  ///     },
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "retiring"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unreadable_key" — Rotation state: unreadable_key:
-  /// A deterministic public RFC8032 test key exercises the real public-record mapping. Unreadable stored key material keeps an empty record_value; no private signing material is returned.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 9,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": {
-  ///       "published_at": null,
-  ///       "record_name": "restmail-next._domainkey.example.com",
-  ///       "record_value": "",
-  ///       "selector": "restmail-next"
-  ///     },
-  ///     "state": "awaiting_publication"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "waiting_ttl" — Rotation state: waiting_ttl:
-  /// A deterministic public RFC8032 test key exercises the real public-record mapping. Unreadable stored key material keeps an empty record_value; no private signing material is returned.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 6,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": {
-  ///       "activates_at": "2026-10-20T01:00:00Z",
-  ///       "published_at": "2026-10-20T00:00:00Z",
-  ///       "record_name": "restmail-next._domainkey.example.com",
-  ///       "record_value": "v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
-  ///       "selector": "restmail-next"
-  ///     },
-  ///     "state": "waiting_ttl"
   ///   }
   /// }
   /// ```
@@ -1408,21 +539,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format" — The domain ID cannot bind to an integer:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1434,6 +550,19 @@ class AdminDkimApi {
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
   ///   }
   /// }
   /// ```
@@ -1451,29 +580,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "keys_unavailable" — Rotation configuration exists but its key query fails:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable" — The grant-store lookup fails:
-  /// The current session is valid, but its held grants cannot be loaded; permission middleware fails closed.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// The database-backed current-session lookup fails. The production session-cache builder and stale-session middleware produce this refusal.
   ///
@@ -1482,16 +589,6 @@ class AdminDkimApi {
   ///   "error": {
   ///     "code": "unavailable",
   ///     "message": "Could not verify the session"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "target_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
   ///   }
   /// }
   /// ```
@@ -1509,40 +606,7 @@ class AdminDkimApi {
   /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
   ///
   /// Request body (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// []
-  /// ```
-  ///
   /// **Example** "body_boundary":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled_after_lookup":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "concurrent":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "configured":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
   /// ```json
   /// {
   ///   "rotation_interval_days": 90
@@ -1556,118 +620,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "disabled":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 0
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "field_unknown":
-  /// ```json
-  /// {
-  ///   "private_key": "injected",
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_missing":
-  /// ```json
-  /// {}
-  /// ```
-  ///
-  /// **Example** "interval_negative":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": -1
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_null":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": null
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_too_large":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 3651
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_wrong_type":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": "90"
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
   /// ```json
   /// {
   ///   "rotation_interval_days": 90
@@ -1681,23 +634,9 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// ```json
   /// []
-  /// ```
-  ///
-  /// **Example** "maximum":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 3650
-  /// }
   /// ```
   ///
   /// **Example** "missing":
@@ -1707,21 +646,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
   /// ```json
   /// {
   ///   "rotation_interval_days": 90
@@ -1737,20 +662,6 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {
@@ -1758,42 +669,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "status_unavailable":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
   /// **Example** "unauthenticated":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "rotation_interval_days": 90
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
   /// ```json
   /// {
   ///   "rotation_interval_days": 90
@@ -1814,134 +690,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "configured":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "disabled":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 0,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "maximum":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 3650,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unchanged":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "domain_id": 1,
-  ///     "previous": null,
-  ///     "rotation_interval_days": 90,
-  ///     "staged": null,
-  ///     "state": "stable"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "body_array":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Invalid request body"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// ```json
   /// {
@@ -1974,107 +723,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scoped_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "concurrent":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not found"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing":
   /// ```json
   /// {
@@ -2099,111 +748,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "field_unknown":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "private_key": "not allowed"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "rotation_interval_days": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_negative":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "rotation_interval_days": "Must be an integer between 0 and 3650 days; 0 disables rotation"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_null":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "rotation_interval_days": "must not be null"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_too_large":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "rotation_interval_days": "Must be an integer between 0 and 3650 days; 0 disables rotation"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "interval_wrong_type":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "rotation_interval_days": "must be an integer"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -2231,16 +775,6 @@ class AdminDkimApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "cancelled_after_lookup":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -2251,47 +785,7 @@ class AdminDkimApi {
   /// }
   /// ```
   ///
-  /// **Example** "status_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "scope_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
   /// ```json
   /// {

@@ -19,10 +19,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invita
     as _i8;
 import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post422_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post429_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post500_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_admin_mailboxes_id_invitation_post503_response.dart'
+    as _i12;
 
 sealed class InviteAccountResponse {
   const InviteAccountResponse();
@@ -141,10 +143,26 @@ class InviteAccountResponse422 extends InviteAccountResponse {
 }
 
 @_i1.immutable
+class InviteAccountResponse429 extends InviteAccountResponse {
+  const InviteAccountResponse429({required this.body});
+
+  final _i10.ApiV1AdminMailboxesIdInvitationPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is InviteAccountResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class InviteAccountResponse500 extends InviteAccountResponse {
   const InviteAccountResponse500({required this.body});
 
-  final _i10.ApiV1AdminMailboxesIdInvitationPost500Response body;
+  final _i11.ApiV1AdminMailboxesIdInvitationPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +178,7 @@ class InviteAccountResponse500 extends InviteAccountResponse {
 class InviteAccountResponse503 extends InviteAccountResponse {
   const InviteAccountResponse503({required this.body});
 
-  final _i11.ApiV1AdminMailboxesIdInvitationPost503Response body;
+  final _i12.ApiV1AdminMailboxesIdInvitationPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

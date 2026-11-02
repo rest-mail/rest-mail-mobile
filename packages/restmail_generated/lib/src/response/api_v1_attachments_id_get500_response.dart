@@ -16,6 +16,10 @@ class ApiV1AttachmentsIdGet500Response {
     required this.xContentTypeOptions,
     required this.xFrameOptions,
     required this.body,
+    this.contentDisposition,
+    this.contentLength,
+    this.eTag,
+    this.lastModified,
   });
 
   final _i2.String contentSecurityPolicy;
@@ -30,6 +34,14 @@ class ApiV1AttachmentsIdGet500Response {
 
   final _i3.ErrorResponse body;
 
+  final _i2.String? contentDisposition;
+
+  final _i2.int? contentLength;
+
+  final _i2.String? eTag;
+
+  final _i2.String? lastModified;
+
   @_i2.override
   _i2.bool operator ==(_i2.Object other) {
     if (_i2.identical(this, other)) return true;
@@ -39,7 +51,11 @@ class ApiV1AttachmentsIdGet500Response {
         other.strictTransportSecurity == this.strictTransportSecurity &&
         other.xContentTypeOptions == this.xContentTypeOptions &&
         other.xFrameOptions == this.xFrameOptions &&
-        other.body == this.body;
+        other.body == this.body &&
+        other.contentDisposition == this.contentDisposition &&
+        other.contentLength == this.contentLength &&
+        other.eTag == this.eTag &&
+        other.lastModified == this.lastModified;
   }
 
   @_i2.override
@@ -51,6 +67,10 @@ class ApiV1AttachmentsIdGet500Response {
       xContentTypeOptions,
       xFrameOptions,
       body,
+      contentDisposition,
+      contentLength,
+      eTag,
+      lastModified,
     ]);
   }
 
@@ -70,6 +90,10 @@ abstract class $$ApiV1AttachmentsIdGet500ResponseCopyWith<$Res> {
     _i2.String? xContentTypeOptions,
     _i2.String? xFrameOptions,
     _i3.ErrorResponse? body,
+    _i2.String? contentDisposition,
+    _i2.int? contentLength,
+    _i2.String? eTag,
+    _i2.String? lastModified,
   });
   _i2.String get contentSecurityPolicy;
   _i2.String get referrerPolicy;
@@ -77,6 +101,10 @@ abstract class $$ApiV1AttachmentsIdGet500ResponseCopyWith<$Res> {
   _i2.String get xContentTypeOptions;
   _i2.String get xFrameOptions;
   _i3.ErrorResponse get body;
+  _i2.String? get contentDisposition;
+  _i2.int? get contentLength;
+  _i2.String? get eTag;
+  _i2.String? get lastModified;
 }
 
 class _ApiV1AttachmentsIdGet500ResponseCopyWith<$Res>
@@ -106,6 +134,18 @@ class _ApiV1AttachmentsIdGet500ResponseCopyWith<$Res>
   _i3.ErrorResponse get body => _value.body;
 
   @_i2.override
+  _i2.String? get contentDisposition => _value.contentDisposition;
+
+  @_i2.override
+  _i2.int? get contentLength => _value.contentLength;
+
+  @_i2.override
+  _i2.String? get eTag => _value.eTag;
+
+  @_i2.override
+  _i2.String? get lastModified => _value.lastModified;
+
+  @_i2.override
   $Res call({
     _i2.Object? contentSecurityPolicy = _sentinel,
     _i2.Object? referrerPolicy = _sentinel,
@@ -113,6 +153,10 @@ class _ApiV1AttachmentsIdGet500ResponseCopyWith<$Res>
     _i2.Object? xContentTypeOptions = _sentinel,
     _i2.Object? xFrameOptions = _sentinel,
     _i2.Object? body = _sentinel,
+    _i2.Object? contentDisposition = _sentinel,
+    _i2.Object? contentLength = _sentinel,
+    _i2.Object? eTag = _sentinel,
+    _i2.Object? lastModified = _sentinel,
   }) {
     return (ApiV1AttachmentsIdGet500Response(
       contentSecurityPolicy: _i2.identical(contentSecurityPolicy, _sentinel)
@@ -133,6 +177,16 @@ class _ApiV1AttachmentsIdGet500ResponseCopyWith<$Res>
       body: _i2.identical(body, _sentinel)
           ? this.body
           : (body as _i3.ErrorResponse),
+      contentDisposition: _i2.identical(contentDisposition, _sentinel)
+          ? this.contentDisposition
+          : (contentDisposition as _i2.String?),
+      contentLength: _i2.identical(contentLength, _sentinel)
+          ? this.contentLength
+          : (contentLength as _i2.int?),
+      eTag: _i2.identical(eTag, _sentinel) ? this.eTag : (eTag as _i2.String?),
+      lastModified: _i2.identical(lastModified, _sentinel)
+          ? this.lastModified
+          : (lastModified as _i2.String?),
     ) as $Res);
   }
 }

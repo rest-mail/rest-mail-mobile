@@ -13,10 +13,12 @@ import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_po
     as _i5;
 import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post413_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post500_response.dart'
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post422_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post503_response.dart'
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post500_response.dart'
     as _i8;
+import 'package:restmail_generated/src/response/autodiscover_autodiscover_xml_post503_response.dart'
+    as _i9;
 
 sealed class MicrosoftAutodiscoverResponse {
   const MicrosoftAutodiscoverResponse();
@@ -87,10 +89,26 @@ class MicrosoftAutodiscoverResponse413 extends MicrosoftAutodiscoverResponse {
 }
 
 @_i1.immutable
+class MicrosoftAutodiscoverResponse422 extends MicrosoftAutodiscoverResponse {
+  const MicrosoftAutodiscoverResponse422({required this.body});
+
+  final _i7.AutodiscoverAutodiscoverXmlPost422Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is MicrosoftAutodiscoverResponse422 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class MicrosoftAutodiscoverResponse500 extends MicrosoftAutodiscoverResponse {
   const MicrosoftAutodiscoverResponse500({required this.body});
 
-  final _i7.AutodiscoverAutodiscoverXmlPost500Response body;
+  final _i8.AutodiscoverAutodiscoverXmlPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -106,7 +124,7 @@ class MicrosoftAutodiscoverResponse500 extends MicrosoftAutodiscoverResponse {
 class MicrosoftAutodiscoverResponse503 extends MicrosoftAutodiscoverResponse {
   const MicrosoftAutodiscoverResponse503({required this.body});
 
-  final _i8.AutodiscoverAutodiscoverXmlPost503Response body;
+  final _i9.AutodiscoverAutodiscoverXmlPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

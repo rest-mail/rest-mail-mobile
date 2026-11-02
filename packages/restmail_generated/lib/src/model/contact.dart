@@ -22,6 +22,7 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     required this.source,
     required this.trustLevel,
     required this.updatedAt,
+    this.usualReplySeconds,
   });
 
   factory Contact.fromSimple(_i3.String? value, {required _i3.bool explode}) {
@@ -37,6 +38,7 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         r'source',
         r'trust_level',
         r'updated_at',
+        r'usual_reply_seconds',
       },
       listKeys: {},
       context: r'Contact',
@@ -62,6 +64,8 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       updatedAt: _$values[r'updated_at'].decodeSimpleDateTime(
         context: r'Contact.updated_at',
       ),
+      usualReplySeconds: _$values[r'usual_reply_seconds']
+          .decodeSimpleNullableInt(context: r'Contact.usual_reply_seconds'),
     );
   }
 
@@ -82,6 +86,9 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       updatedAt: _$map[r'updated_at'].decodeJsonDateTime(
         context: r'Contact.updated_at',
       ),
+      usualReplySeconds: _$map[r'usual_reply_seconds'].decodeJsonNullableInt(
+        context: r'Contact.usual_reply_seconds',
+      ),
     );
   }
 
@@ -98,6 +105,7 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         r'source',
         r'trust_level',
         r'updated_at',
+        r'usual_reply_seconds',
       },
       listKeys: {},
       context: r'Contact',
@@ -123,6 +131,9 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       updatedAt: _$values[r'updated_at'].decodeFormDateTime(
         context: r'Contact.updated_at',
       ),
+      usualReplySeconds: _$values[r'usual_reply_seconds'].decodeFormNullableInt(
+        context: r'Contact.usual_reply_seconds',
+      ),
     );
   }
 
@@ -142,6 +153,8 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i3.DateTime updatedAt;
 
+  final _i3.int? usualReplySeconds;
+
   @_i3.override
   _i3.Object? toJson() => {
     r'created_at': createdAt.toTimeZonedIso8601String(),
@@ -152,6 +165,7 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     r'source': source.toJson(),
     r'trust_level': trustLevel.toJson(),
     r'updated_at': updatedAt.toTimeZonedIso8601String(),
+    r'usual_reply_seconds': usualReplySeconds,
   };
 
   $$ContactCopyWith<Contact> get copyWith => _ContactCopyWith(this);
@@ -167,7 +181,8 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         other.name == this.name &&
         other.source == this.source &&
         other.trustLevel == this.trustLevel &&
-        other.updatedAt == this.updatedAt;
+        other.updatedAt == this.updatedAt &&
+        other.usualReplySeconds == this.usualReplySeconds;
   }
 
   @_i3.override
@@ -181,6 +196,7 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       source,
       trustLevel,
       updatedAt,
+      usualReplySeconds,
     ]);
   }
 
@@ -203,6 +219,11 @@ class Contact extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     _$result[r'updated_at'] = _i1.PropertyValue.scalar(
       updatedAt.toTimeZonedIso8601String(),
     );
+    if (usualReplySeconds != null) {
+      _$result[r'usual_reply_seconds'] = _i1.PropertyValue.scalar(
+        usualReplySeconds!.toString(),
+      );
+    }
     return _$result;
   }
 
@@ -231,6 +252,7 @@ abstract class $$ContactCopyWith<$Res> {
     _i4.ContactSourceModel? source,
     _i5.ContactTrustLevelModel? trustLevel,
     _i3.DateTime? updatedAt,
+    _i3.int? usualReplySeconds,
   });
   _i3.DateTime get createdAt;
   _i3.String get email;
@@ -240,6 +262,7 @@ abstract class $$ContactCopyWith<$Res> {
   _i4.ContactSourceModel get source;
   _i5.ContactTrustLevelModel get trustLevel;
   _i3.DateTime get updatedAt;
+  _i3.int? get usualReplySeconds;
 }
 
 class _ContactCopyWith<$Res> implements $$ContactCopyWith<$Res> {
@@ -274,6 +297,9 @@ class _ContactCopyWith<$Res> implements $$ContactCopyWith<$Res> {
   _i3.DateTime get updatedAt => _value.updatedAt;
 
   @_i3.override
+  _i3.int? get usualReplySeconds => _value.usualReplySeconds;
+
+  @_i3.override
   $Res call({
     _i3.Object? createdAt = _sentinel,
     _i3.Object? email = _sentinel,
@@ -283,6 +309,7 @@ class _ContactCopyWith<$Res> implements $$ContactCopyWith<$Res> {
     _i3.Object? source = _sentinel,
     _i3.Object? trustLevel = _sentinel,
     _i3.Object? updatedAt = _sentinel,
+    _i3.Object? usualReplySeconds = _sentinel,
   }) {
     return (Contact(
       createdAt: _i3.identical(createdAt, _sentinel)
@@ -305,6 +332,9 @@ class _ContactCopyWith<$Res> implements $$ContactCopyWith<$Res> {
       updatedAt: _i3.identical(updatedAt, _sentinel)
           ? this.updatedAt
           : (updatedAt as _i3.DateTime),
+      usualReplySeconds: _i3.identical(usualReplySeconds, _sentinel)
+          ? this.usualReplySeconds
+          : (usualReplySeconds as _i3.int?),
     ) as $Res);
   }
 }

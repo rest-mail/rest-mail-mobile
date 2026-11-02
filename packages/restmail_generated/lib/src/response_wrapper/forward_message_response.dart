@@ -9,24 +9,26 @@ import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post2
     as _i2;
 import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post201_response.dart'
     as _i4;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post400_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post202_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post401_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post400_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post403_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post401_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post404_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post403_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post404_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post413_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post422_response.dart'
     as _i11;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post429_response.dart'
     as _i12;
-import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post500_response.dart'
     as _i13;
+import 'package:restmail_generated/src/response/api_v1_messages_id_forward_post503_response.dart'
+    as _i14;
 
 sealed class ForwardMessageResponse {
   const ForwardMessageResponse();
@@ -65,10 +67,26 @@ class ForwardMessageResponse201 extends ForwardMessageResponse {
 }
 
 @_i1.immutable
+class ForwardMessageResponse202 extends ForwardMessageResponse {
+  const ForwardMessageResponse202({required this.body});
+
+  final _i5.ApiV1MessagesIdForwardPost202Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ForwardMessageResponse202 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ForwardMessageResponse400 extends ForwardMessageResponse {
   const ForwardMessageResponse400({required this.body});
 
-  final _i5.ApiV1MessagesIdForwardPost400Response body;
+  final _i6.ApiV1MessagesIdForwardPost400Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -84,7 +102,7 @@ class ForwardMessageResponse400 extends ForwardMessageResponse {
 class ForwardMessageResponse401 extends ForwardMessageResponse {
   const ForwardMessageResponse401({required this.body});
 
-  final _i6.ApiV1MessagesIdForwardPost401Response body;
+  final _i7.ApiV1MessagesIdForwardPost401Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -100,7 +118,7 @@ class ForwardMessageResponse401 extends ForwardMessageResponse {
 class ForwardMessageResponse403 extends ForwardMessageResponse {
   const ForwardMessageResponse403({required this.body});
 
-  final _i7.ApiV1MessagesIdForwardPost403Response body;
+  final _i8.ApiV1MessagesIdForwardPost403Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -116,7 +134,7 @@ class ForwardMessageResponse403 extends ForwardMessageResponse {
 class ForwardMessageResponse404 extends ForwardMessageResponse {
   const ForwardMessageResponse404({required this.body});
 
-  final _i8.ApiV1MessagesIdForwardPost404Response body;
+  final _i9.ApiV1MessagesIdForwardPost404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -132,7 +150,7 @@ class ForwardMessageResponse404 extends ForwardMessageResponse {
 class ForwardMessageResponse413 extends ForwardMessageResponse {
   const ForwardMessageResponse413({required this.body});
 
-  final _i9.ApiV1MessagesIdForwardPost413Response body;
+  final _i10.ApiV1MessagesIdForwardPost413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -148,7 +166,7 @@ class ForwardMessageResponse413 extends ForwardMessageResponse {
 class ForwardMessageResponse422 extends ForwardMessageResponse {
   const ForwardMessageResponse422({required this.body});
 
-  final _i10.ApiV1MessagesIdForwardPost422Response body;
+  final _i11.ApiV1MessagesIdForwardPost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -164,7 +182,7 @@ class ForwardMessageResponse422 extends ForwardMessageResponse {
 class ForwardMessageResponse429 extends ForwardMessageResponse {
   const ForwardMessageResponse429({required this.body});
 
-  final _i11.ApiV1MessagesIdForwardPost429Response body;
+  final _i12.ApiV1MessagesIdForwardPost429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -180,7 +198,7 @@ class ForwardMessageResponse429 extends ForwardMessageResponse {
 class ForwardMessageResponse500 extends ForwardMessageResponse {
   const ForwardMessageResponse500({required this.body});
 
-  final _i12.ApiV1MessagesIdForwardPost500Response body;
+  final _i13.ApiV1MessagesIdForwardPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -196,7 +214,7 @@ class ForwardMessageResponse500 extends ForwardMessageResponse {
 class ForwardMessageResponse503 extends ForwardMessageResponse {
   const ForwardMessageResponse503({required this.body});
 
-  final _i13.ApiV1MessagesIdForwardPost503Response body;
+  final _i14.ApiV1MessagesIdForwardPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

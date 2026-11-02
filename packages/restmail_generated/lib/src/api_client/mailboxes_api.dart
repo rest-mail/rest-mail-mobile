@@ -36,48 +36,22 @@ class MailboxesApi {
   /// }
   /// ```
   ///
-  /// **Example** "inactive":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "address": "disabled@example.com",
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_address":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "address": "not-an-address",
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "not_local":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "address": "external@example.net",
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// Response 400 (application/json):
+  /// Response 422 (application/json):
   /// **Example** "address_empty":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "address query parameter required"
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "address": "address query parameter required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
   ///
-  /// Response 422 (application/json):
   /// **Example** "address_missing":
   /// ```json
   /// {

@@ -10,7 +10,7 @@ import 'package:restmail_generated/src/model/data_folder_name.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i10;
 import 'package:restmail_generated/src/model/folder_name_body.dart' as _i6;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i16;
+    as _i17;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post201_response.dart'
     as _i9;
@@ -20,18 +20,20 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post4
     as _i12;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post403_response.dart'
     as _i13;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post409_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post404_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post409_response.dart'
     as _i15;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post413_response.dart'
+    as _i16;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post422_response.dart'
-    as _i17;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post429_response.dart'
     as _i18;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post429_response.dart'
     as _i19;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post500_response.dart'
     as _i20;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_post503_response.dart'
+    as _i21;
 import 'package:restmail_generated/src/response_wrapper/create_folder_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -185,11 +187,37 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i10.ErrorResponse.fromJson(_$json);
+        return _i2.CreateFolderResponse404(
+          body: _i14.ApiV1AccountsIdFoldersPost404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (409, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse409(
-          body: _i14.ApiV1AccountsIdFoldersPost409Response(
+          body: _i15.ApiV1AccountsIdFoldersPost409Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -215,7 +243,7 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse413(
-          body: _i15.ApiV1AccountsIdFoldersPost413Response(
+          body: _i16.ApiV1AccountsIdFoldersPost413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -239,9 +267,9 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i16.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i17.ValidationErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse422(
-          body: _i17.ApiV1AccountsIdFoldersPost422Response(
+          body: _i18.ApiV1AccountsIdFoldersPost422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -267,7 +295,7 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse429(
-          body: _i18.ApiV1AccountsIdFoldersPost429Response(
+          body: _i19.ApiV1AccountsIdFoldersPost429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -295,7 +323,7 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse500(
-          body: _i19.ApiV1AccountsIdFoldersPost500Response(
+          body: _i20.ApiV1AccountsIdFoldersPost500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -321,7 +349,7 @@ final class CreateFolder extends _i1.HttpOperation<_i2.CreateFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i10.ErrorResponse.fromJson(_$json);
         return _i2.CreateFolderResponse503(
-          body: _i20.ApiV1AccountsIdFoldersPost503Response(
+          body: _i21.ApiV1AccountsIdFoldersPost503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

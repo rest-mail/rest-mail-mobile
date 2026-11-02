@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_po
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_bulk_retry_post503_response.dart'
+    as _i11;
 
 sealed class BulkRetryQueueResponse {
   const BulkRetryQueueResponse();
@@ -123,10 +125,26 @@ class BulkRetryQueueResponse422 extends BulkRetryQueueResponse {
 }
 
 @_i1.immutable
+class BulkRetryQueueResponse429 extends BulkRetryQueueResponse {
+  const BulkRetryQueueResponse429({required this.body});
+
+  final _i9.ApiV1AdminQueueBulkRetryPost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is BulkRetryQueueResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class BulkRetryQueueResponse500 extends BulkRetryQueueResponse {
   const BulkRetryQueueResponse500({required this.body});
 
-  final _i9.ApiV1AdminQueueBulkRetryPost500Response body;
+  final _i10.ApiV1AdminQueueBulkRetryPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class BulkRetryQueueResponse500 extends BulkRetryQueueResponse {
 class BulkRetryQueueResponse503 extends BulkRetryQueueResponse {
   const BulkRetryQueueResponse503({required this.body});
 
-  final _i10.ApiV1AdminQueueBulkRetryPost503Response body;
+  final _i11.ApiV1AdminQueueBulkRetryPost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

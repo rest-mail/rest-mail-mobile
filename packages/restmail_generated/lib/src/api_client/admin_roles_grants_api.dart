@@ -2,43 +2,53 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i11;
+import 'dart:core' as _i13;
 
-import 'package:http/http.dart' as _i14;
-import 'package:restmail_generated/src/model/activate_request.dart' as _i21;
-import 'package:restmail_generated/src/model/create_grant_request.dart' as _i17;
+import 'package:http/http.dart' as _i16;
+import 'package:restmail_generated/src/model/activate_request.dart' as _i23;
+import 'package:restmail_generated/src/model/create_grant_request.dart' as _i19;
 import 'package:restmail_generated/src/model/second_factor_request.dart'
-    as _i24;
+    as _i26;
+import 'package:restmail_generated/src/model/update_server_capabilities_request.dart'
+    as _i30;
 import 'package:restmail_generated/src/operation/activate_grant.dart' as _i7;
 import 'package:restmail_generated/src/operation/create_grant.dart' as _i4;
 import 'package:restmail_generated/src/operation/deactivate_grant.dart' as _i8;
 import 'package:restmail_generated/src/operation/delete_grant.dart' as _i6;
+import 'package:restmail_generated/src/operation/get_server_capabilities.dart'
+    as _i11;
 import 'package:restmail_generated/src/operation/list_capabilities.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_grants.dart' as _i3;
 import 'package:restmail_generated/src/operation/list_my_grants.dart' as _i5;
 import 'package:restmail_generated/src/operation/list_roles.dart' as _i10;
 import 'package:restmail_generated/src/operation/make_grant_eligible.dart'
     as _i9;
+import 'package:restmail_generated/src/operation/update_server_capabilities.dart'
+    as _i12;
 import 'package:restmail_generated/src/response_wrapper/activate_grant_response.dart'
-    as _i20;
-import 'package:restmail_generated/src/response_wrapper/create_grant_response.dart'
-    as _i16;
-import 'package:restmail_generated/src/response_wrapper/deactivate_grant_response.dart'
     as _i22;
-import 'package:restmail_generated/src/response_wrapper/delete_grant_response.dart'
-    as _i19;
-import 'package:restmail_generated/src/response_wrapper/list_capabilities_response.dart'
-    as _i13;
-import 'package:restmail_generated/src/response_wrapper/list_grants_response.dart'
-    as _i15;
-import 'package:restmail_generated/src/response_wrapper/list_my_grants_response.dart'
+import 'package:restmail_generated/src/response_wrapper/create_grant_response.dart'
     as _i18;
+import 'package:restmail_generated/src/response_wrapper/deactivate_grant_response.dart'
+    as _i24;
+import 'package:restmail_generated/src/response_wrapper/delete_grant_response.dart'
+    as _i21;
+import 'package:restmail_generated/src/response_wrapper/get_server_capabilities_response.dart'
+    as _i28;
+import 'package:restmail_generated/src/response_wrapper/list_capabilities_response.dart'
+    as _i15;
+import 'package:restmail_generated/src/response_wrapper/list_grants_response.dart'
+    as _i17;
+import 'package:restmail_generated/src/response_wrapper/list_my_grants_response.dart'
+    as _i20;
 import 'package:restmail_generated/src/response_wrapper/list_roles_response.dart'
-    as _i25;
+    as _i27;
 import 'package:restmail_generated/src/response_wrapper/make_grant_eligible_response.dart'
-    as _i23;
+    as _i25;
+import 'package:restmail_generated/src/response_wrapper/update_server_capabilities_response.dart'
+    as _i29;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i12;
+import 'package:tonik_util/tonik_util.dart' as _i14;
 
 class AdminRolesGrantsApi {
   AdminRolesGrantsApi(_i1.Server server)
@@ -59,7 +69,15 @@ class AdminRolesGrantsApi {
         server.baseUrl,
         () => server.client,
       ),
-      _listRoles = _i10.ListRoles(server.baseUrl, () => server.client);
+      _listRoles = _i10.ListRoles(server.baseUrl, () => server.client),
+      _getServerCapabilities = _i11.GetServerCapabilities(
+        server.baseUrl,
+        () => server.client,
+      ),
+      _updateServerCapabilities = _i12.UpdateServerCapabilities(
+        server.baseUrl,
+        () => server.client,
+      );
 
   final _i2.ListCapabilities _listCapabilities;
 
@@ -78,6 +96,10 @@ class AdminRolesGrantsApi {
   final _i9.MakeGrantEligible _makeGrantEligible;
 
   final _i10.ListRoles _listRoles;
+
+  final _i11.GetServerCapabilities _getServerCapabilities;
+
+  final _i12.UpdateServerCapabilities _updateServerCapabilities;
 
   /// List capabilities
   ///
@@ -141,6 +163,19 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The capability store read fails:
   /// Fault precondition: session and permission checks pass, but the capability table cannot be read. The real registration proves this refusal.
@@ -166,8 +201,8 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i11.Future<_i12.TonikResult<_i13.ListCapabilitiesResponse, _i14.Response>>
-  listCapabilities({_i12.TonikCancellation? cancellation}) async =>
+  _i13.Future<_i14.TonikResult<_i15.ListCapabilitiesResponse, _i16.Response>>
+  listCapabilities({_i14.TonikCancellation? cancellation}) async =>
       _listCapabilities(cancellation: cancellation);
 
   /// List grants, oldest first
@@ -247,6 +282,19 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The list dependency fails:
   /// Session and permission checks pass, but the list dependency fails. The production handler and error writer produce this refusal without exposing dependency details.
@@ -272,14 +320,14 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i11.Future<_i12.TonikResult<_i15.ListGrantsResponse, _i14.Response>>
+  _i13.Future<_i14.TonikResult<_i17.ListGrantsResponse, _i16.Response>>
   listGrants({
-    _i11.String? holderKind,
-    _i11.int? holderId,
-    _i11.String? scope,
-    _i11.int? limit,
-    _i11.int? offset,
-    _i12.TonikCancellation? cancellation,
+    _i13.String? holderKind,
+    _i13.int? holderId,
+    _i13.String? scope,
+    _i13.int? limit,
+    _i13.int? offset,
+    _i14.TonikCancellation? cancellation,
   }) async => _listGrants(
     holderKind: holderKind,
     holderId: holderId,
@@ -294,10 +342,324 @@ class AdminRolesGrantsApi {
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
-  _i11.Future<_i12.TonikResult<_i16.CreateGrantResponse, _i14.Response>>
+  ///
+  /// Request body (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "exceeds_held" — The granter does not hold the role's capabilities:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "role": "superadmin",
+  ///   "scope": "*"
+  /// }
+  /// ```
+  ///
+  /// **Example** "exists" — The holder already has that grant:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "eligible",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// **Example** "granted" — An eligible admin grant on one domain:
+  /// Changing grants needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "eligible",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "eligible",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "no_holder" — The holder does not exist:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2147483647,
+  ///     "kind": "account"
+  ///   },
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "role": "superadmin",
+  ///   "scope": "*"
+  /// }
+  /// ```
+  ///
+  /// **Example** "recent_two_factor_required" — A stale second-factor sign-in must authenticate again:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "active",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.test"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "eligible",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "active",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.test"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "holder": {
+  ///     "id": 2,
+  ///     "kind": "account"
+  ///   },
+  ///   "mode": "eligible",
+  ///   "role": "admin",
+  ///   "scope": "domain:example.com"
+  /// }
+  /// ```
+  ///
+  /// Response 201 (application/json):
+  /// **Example** "granted" — An eligible admin grant on one domain:
+  /// Changing grants needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "activation": null,
+  ///     "expires_at": null,
+  ///     "granted_at": "2026-10-20T00:00:00Z",
+  ///     "granted_by": {
+  ///       "id": 1,
+  ///       "kind": "account"
+  ///     },
+  ///     "holder": {
+  ///       "id": 2,
+  ///       "kind": "account"
+  ///     },
+  ///     "id": 7,
+  ///     "mode": "eligible",
+  ///     "role": "admin",
+  ///     "role_id": 2,
+  ///     "scope": "domain:example.com"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "exceeds_held" — The granter does not hold the role's capabilities:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "grant_exceeds_held",
+  ///     "message": "you can only grant or remove a role whose capabilities you hold, at a scope within your own"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "recent_two_factor_required" — A stale second-factor sign-in must authenticate again:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "recent_two_factor_required",
+  ///     "message": "Sign in again with two-factor authentication: a recent second factor is required"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "two_factor_required",
+  ///     "message": "This action needs a session signed in with two-factor authentication: sign in again with your code"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "exists" — The holder already has that grant:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "conflict",
+  ///     "message": "the holder already holds this role at this scope"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "no_holder" — The holder does not exist:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "holder": "no such account"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to change grants"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<_i14.TonikResult<_i18.CreateGrantResponse, _i16.Response>>
   createGrant({
-    required _i17.CreateGrantRequest body,
-    _i12.TonikCancellation? cancellation,
+    required _i19.CreateGrantRequest body,
+    _i14.TonikCancellation? cancellation,
   }) async => _createGrant(body: body, cancellation: cancellation);
 
   /// The caller's own grants
@@ -355,6 +717,19 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The read dependency fails:
   /// Session and permission checks pass, but the database read fails. The production handler and error writer produce this refusal without exposing dependency details.
@@ -380,8 +755,8 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i11.Future<_i12.TonikResult<_i18.ListMyGrantsResponse, _i14.Response>>
-  listMyGrants({_i12.TonikCancellation? cancellation}) async =>
+  _i13.Future<_i14.TonikResult<_i20.ListMyGrantsResponse, _i16.Response>>
+  listMyGrants({_i14.TonikCancellation? cancellation}) async =>
       _listMyGrants(cancellation: cancellation);
 
   /// Remove a grant
@@ -412,122 +787,12 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
-  /// **Example** "csrf_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "csrf_failed",
-  ///     "message": "Missing or invalid CSRF token"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_exceeds_held":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "grant_exceeds_held",
-  ///     "message": "you can only grant or remove a role whose capabilities you hold, at a scope within your own"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "session_required",
-  ///     "message": "Sign in with your password to manage eligible permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_mailbox":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "session_required",
-  ///     "message": "Sign in with your password to manage eligible permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "session_required",
-  ///     "message": "Sign in with your password to manage eligible permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "session_required",
-  ///     "message": "Sign in with your password to manage eligible permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "session_required",
-  ///     "message": "Sign in with your password to manage eligible permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "mailbox_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "read_only":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "two_factor_required":
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "two_factor_required",
-  ///     "message": "Changing grants needs a session signed in with two-factor authentication: sign in again with your code"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "wrong_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Insufficient permissions"
+  ///     "message": "This action needs a session signed in with two-factor authentication: sign in again with your code"
   ///   }
   /// }
   /// ```
@@ -568,21 +833,6 @@ class AdminRolesGrantsApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -610,96 +860,6 @@ class AdminRolesGrantsApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "activation_audit_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "activation_delete_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "activation_lookup_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "audit_read_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "audit_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "authorize_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cancelled":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_delete_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "lock_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
@@ -710,17 +870,306 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
-  /// **Example** "remaining_unavailable":
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to change grants"
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<_i14.TonikResult<_i21.DeleteGrantResponse, _i16.Response>>
+  deleteGrant({
+    required _i13.int id,
+    _i14.TonikCancellation? cancellation,
+  }) async => _deleteGrant(id: id, cancellation: cancellation);
+
+  /// Switch an eligible grant on
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Request body (application/json):
+  /// **Example** "activated" — An eligible grant is switched on for an hour:
+  /// ```json
+  /// {
+  ///   "minutes": 60,
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "already_active" — The grant is on already:
+  /// ```json
+  /// {
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "minutes": 60,
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_code" — The second factor does not match:
+  /// ```json
+  /// {
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "000000"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "missing" — No such grant of the caller's:
+  /// ```json
+  /// {
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "minutes": 60,
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "minutes": 60,
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "minutes": 60,
+  ///   "reason": "Rotate the DKIM key",
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// Response 201 (application/json):
+  /// **Example** "activated" — An eligible grant is switched on for an hour:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "capabilities": [],
+  ///     "grant": {
+  ///       "activation": {
+  ///         "activated_at": "2026-10-20T00:00:00Z",
+  ///         "expires_at": "2026-10-20T01:00:00Z",
+  ///         "id": 3,
+  ///         "reason": "Rotate the DKIM key",
+  ///         "seconds_left": 3600
+  ///       },
+  ///       "expires_at": null,
+  ///       "granted_at": "2026-10-20T00:00:00Z",
+  ///       "granted_by": {
+  ///         "id": 1,
+  ///         "kind": "account"
+  ///       },
+  ///       "holder": {
+  ///         "id": 2,
+  ///         "kind": "account"
+  ///       },
+  ///       "id": 7,
+  ///       "mode": "eligible",
+  ///       "role": "admin",
+  ///       "role_id": 2,
+  ///       "scope": "domain:example.com"
+  ///     },
+  ///     "scoped_capabilities": [
+  ///       {
+  ///         "capability": "admin:session",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "domains:read",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:read",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_as",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_on_behalf",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:write",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:manage",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:session",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       }
+  ///     ]
   ///   }
   /// }
   /// ```
   ///
-  /// **Example** "role_unavailable":
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "invalid_code" — The second factor does not match:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "invalid_totp",
+  ///     "message": "Invalid two-factor authentication code"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such grant of the caller's:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Grant not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "already_active" — The grant is on already:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "already_active",
+  ///     "message": "this grant is already switched on"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
   /// ```json
   /// {
   ///   "error": {
@@ -731,17 +1180,7 @@ class AdminRolesGrantsApi {
   /// ```
   ///
   /// Response 503 (application/json):
-  /// **Example** "permission_store_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "unavailable",
-  ///     "message": "Could not verify permissions"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "session_unavailable":
+  /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
   /// {
   ///   "error": {
@@ -750,22 +1189,11 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i11.Future<_i12.TonikResult<_i19.DeleteGrantResponse, _i14.Response>>
-  deleteGrant({
-    required _i11.int id,
-    _i12.TonikCancellation? cancellation,
-  }) async => _deleteGrant(id: id, cancellation: cancellation);
-
-  /// Switch an eligible grant on
-  ///
-  /// Security:
-  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
-  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
-  _i11.Future<_i12.TonikResult<_i20.ActivateGrantResponse, _i14.Response>>
+  _i13.Future<_i14.TonikResult<_i22.ActivateGrantResponse, _i16.Response>>
   activateGrant({
-    required _i21.ActivateRequest body,
-    required _i11.int id,
-    _i12.TonikCancellation? cancellation,
+    required _i23.ActivateRequest body,
+    required _i13.int id,
+    _i14.TonikCancellation? cancellation,
   }) async => _activateGrant(body: body, id: id, cancellation: cancellation);
 
   /// Switch a grant off
@@ -773,10 +1201,192 @@ class AdminRolesGrantsApi {
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
-  _i11.Future<_i12.TonikResult<_i22.DeactivateGrantResponse, _i14.Response>>
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "switched_off" — The running activation ends:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "capabilities": [],
+  ///     "grant": {
+  ///       "activation": null,
+  ///       "expires_at": null,
+  ///       "granted_at": "2026-10-20T00:00:00Z",
+  ///       "granted_by": {
+  ///         "id": 1,
+  ///         "kind": "account"
+  ///       },
+  ///       "holder": {
+  ///         "id": 2,
+  ///         "kind": "account"
+  ///       },
+  ///       "id": 7,
+  ///       "mode": "eligible",
+  ///       "role": "admin",
+  ///       "role_id": 2,
+  ///       "scope": "domain:example.com"
+  ///     },
+  ///     "scoped_capabilities": [
+  ///       {
+  ///         "capability": "admin:session",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "domains:read",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:read",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_as",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_on_behalf",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:write",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:manage",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:session",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       }
+  ///     ]
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "csrf_mismatch" — A cookie session sends no CSRF header:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "csrf_failed",
+  ///     "message": "Missing or invalid CSRF token"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "two_factor_required" — A password-only session cannot perform this sensitive action:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "two_factor_required",
+  ///     "message": "This action needs a session signed in with two-factor authentication: sign in again with your code"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such grant of the caller's:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Grant not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "not_active" — Nothing to switch off:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_active",
+  ///     "message": "this grant is not switched on"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to change grants"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<_i14.TonikResult<_i24.DeactivateGrantResponse, _i16.Response>>
   deactivateGrant({
-    required _i11.int id,
-    _i12.TonikCancellation? cancellation,
+    required _i13.int id,
+    _i14.TonikCancellation? cancellation,
   }) async => _deactivateGrant(id: id, cancellation: cancellation);
 
   /// Make an active grant eligible
@@ -784,11 +1394,289 @@ class AdminRolesGrantsApi {
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
-  _i11.Future<_i12.TonikResult<_i23.MakeGrantEligibleResponse, _i14.Response>>
+  ///
+  /// Request body (application/json):
+  /// **Example** "already_eligible" — The grant is eligible already:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_code" — The second factor does not match:
+  /// ```json
+  /// {
+  ///   "totp_code": "000000"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "missing" — No such grant of the caller's:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "now_eligible" — An active grant becomes eligible:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "totp_code": "123456"
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "now_eligible" — An active grant becomes eligible:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "capabilities": [],
+  ///     "grant": {
+  ///       "activation": null,
+  ///       "expires_at": null,
+  ///       "granted_at": "2026-10-20T00:00:00Z",
+  ///       "granted_by": {
+  ///         "id": 1,
+  ///         "kind": "account"
+  ///       },
+  ///       "holder": {
+  ///         "id": 2,
+  ///         "kind": "account"
+  ///       },
+  ///       "id": 7,
+  ///       "mode": "eligible",
+  ///       "role": "admin",
+  ///       "role_id": 2,
+  ///       "scope": "domain:example.com"
+  ///     },
+  ///     "scoped_capabilities": [
+  ///       {
+  ///         "capability": "admin:session",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "domains:read",
+  ///         "scope": "domain:example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:read",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_as",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:send_on_behalf",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mail:write",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:manage",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       },
+  ///       {
+  ///         "capability": "mailbox:session",
+  ///         "scope": "mailbox:admin@example.com"
+  ///       }
+  ///     ]
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "invalid_code" — The second factor does not match:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "invalid_totp",
+  ///     "message": "Invalid two-factor authentication code"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — No such grant of the caller's:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Grant not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "already_eligible" — The grant is eligible already:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "already_eligible",
+  ///     "message": "this grant is eligible already"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id" — A zero id is refused before the handler:
+  /// The JSON body is valid. The real path binder refuses the zero identifier; a body-invalid marker would not describe path binding.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The limit is already spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to change grants"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<_i14.TonikResult<_i25.MakeGrantEligibleResponse, _i16.Response>>
   makeGrantEligible({
-    required _i24.SecondFactorRequest body,
-    required _i11.int id,
-    _i12.TonikCancellation? cancellation,
+    required _i26.SecondFactorRequest body,
+    required _i13.int id,
+    _i14.TonikCancellation? cancellation,
   }) async =>
       _makeGrantEligible(body: body, id: id, cancellation: cancellation);
 
@@ -848,6 +1736,19 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The read dependency fails:
   /// Session and permission checks pass, but the database read fails. The production handler and error writer produce this refusal without exposing dependency details.
@@ -873,7 +1774,273 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i11.Future<_i12.TonikResult<_i25.ListRolesResponse, _i14.Response>>
-  listRoles({_i12.TonikCancellation? cancellation}) async =>
+  _i13.Future<_i14.TonikResult<_i27.ListRolesResponse, _i16.Response>>
+  listRoles({_i14.TonikCancellation? cancellation}) async =>
       _listRoles(cancellation: cancellation);
+
+  /// The server capability ceiling
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "available" — A superadmin reads the ceiling stored in the database:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "capabilities": [
+  ///       "admin:session",
+  ///       "mail:read",
+  ///       "mail:send",
+  ///       "mailbox:session"
+  ///     ],
+  ///     "source": "database"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "superadmin_required",
+  ///     "message": "only a superadmin can read or change the server capability ceiling"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<
+    _i14.TonikResult<_i28.GetServerCapabilitiesResponse, _i16.Response>
+  >
+  getServerCapabilities({_i14.TonikCancellation? cancellation}) async =>
+      _getServerCapabilities(cancellation: cancellation);
+
+  /// Replace the server capability ceiling
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Request body (application/json):
+  /// **Example** "from_environment" — The environment sets the ceiling:
+  /// Precondition: RESTMAIL_SERVER_CAPABILITIES is set, so the stored ceiling cannot be changed here.
+  ///
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read",
+  ///     "mail:send"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "replaced" — A superadmin replaces the stored ceiling:
+  /// Changing the ceiling needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read",
+  ///     "mail:send"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read",
+  ///     "mail:send"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "unknown_capability" — A name outside the capability vocabulary is refused:
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:reed"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "replaced" — A superadmin replaces the stored ceiling:
+  /// Changing the ceiling needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "capabilities": [
+  ///       "mail:read",
+  ///       "mail:send"
+  ///     ],
+  ///     "source": "database"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "superadmin_required",
+  ///     "message": "only a superadmin can read or change the server capability ceiling"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 409 (application/json):
+  /// **Example** "from_environment" — The environment sets the ceiling:
+  /// Precondition: RESTMAIL_SERVER_CAPABILITIES is set, so the stored ceiling cannot be changed here.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "server_capabilities_from_environment",
+  ///     "message": "the server capability ceiling is set by RESTMAIL_SERVER_CAPABILITIES; change it there and restart, or unset it to manage the ceiling here"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "unknown_capability" — A name outside the capability vocabulary is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "capabilities": "unknown capability \"mail:reed\""
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i13.Future<
+    _i14.TonikResult<_i29.UpdateServerCapabilitiesResponse, _i16.Response>
+  >
+  updateServerCapabilities({
+    required _i30.UpdateServerCapabilitiesRequest body,
+    _i14.TonikCancellation? cancellation,
+  }) async => _updateServerCapabilities(body: body, cancellation: cancellation);
 }

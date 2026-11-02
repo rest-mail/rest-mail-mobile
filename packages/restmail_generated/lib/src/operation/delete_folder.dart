@@ -7,28 +7,26 @@ import 'dart:core' as _i3;
 import 'package:http/http.dart' as _i5;
 import 'package:restmail_generated/src/model/error_response.dart' as _i7;
 import 'package:restmail_generated/src/model/validation_error_response.dart'
-    as _i13;
+    as _i12;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete204_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete400_response.dart'
-    as _i8;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete401_response.dart'
-    as _i9;
+    as _i8;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete403_response.dart'
-    as _i10;
+    as _i9;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete404_response.dart'
-    as _i11;
+    as _i10;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete413_response.dart'
-    as _i12;
+    as _i11;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete422_response.dart'
-    as _i14;
+    as _i13;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete429_response.dart'
-    as _i15;
+    as _i14;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete500_response.dart'
-    as _i16;
+    as _i15;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_folders_folder_delete503_response.dart'
-    as _i17;
+    as _i16;
 import 'package:restmail_generated/src/response_wrapper/delete_folder_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -104,37 +102,11 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
-      case (400, r'application/json'):
-        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
-        return _i2.DeleteFolderResponse400(
-          body: _i8.ApiV1AccountsIdFoldersFolderDelete400Response(
-            body: _$body,
-            contentSecurityPolicy:
-                (response.headersSplitValues[r'content-security-policy']?.join(
-                  ',',
-                )).decodeSimpleString(context: r'Content-Security-Policy'),
-            referrerPolicy:
-                (response.headersSplitValues[r'referrer-policy']?.join(','))
-                    .decodeSimpleString(context: r'Referrer-Policy'),
-            strictTransportSecurity:
-                (response.headersSplitValues[r'strict-transport-security']
-                        ?.join(','))
-                    .decodeSimpleString(context: r'Strict-Transport-Security'),
-            xContentTypeOptions:
-                (response.headersSplitValues[r'x-content-type-options']?.join(
-                  ',',
-                )).decodeSimpleString(context: r'X-Content-Type-Options'),
-            xFrameOptions:
-                (response.headersSplitValues[r'x-frame-options']?.join(','))
-                    .decodeSimpleString(context: r'X-Frame-Options'),
-          ),
-        );
       case (401, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse401(
-          body: _i9.ApiV1AccountsIdFoldersFolderDelete401Response(
+          body: _i8.ApiV1AccountsIdFoldersFolderDelete401Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -160,7 +132,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse403(
-          body: _i10.ApiV1AccountsIdFoldersFolderDelete403Response(
+          body: _i9.ApiV1AccountsIdFoldersFolderDelete403Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -186,7 +158,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse404(
-          body: _i11.ApiV1AccountsIdFoldersFolderDelete404Response(
+          body: _i10.ApiV1AccountsIdFoldersFolderDelete404Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -212,7 +184,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse413(
-          body: _i12.ApiV1AccountsIdFoldersFolderDelete413Response(
+          body: _i11.ApiV1AccountsIdFoldersFolderDelete413Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -236,9 +208,9 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         );
       case (422, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i13.ValidationErrorResponse.fromJson(_$json);
+        final _$body = _i12.ValidationErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse422(
-          body: _i14.ApiV1AccountsIdFoldersFolderDelete422Response(
+          body: _i13.ApiV1AccountsIdFoldersFolderDelete422Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -264,7 +236,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse429(
-          body: _i15.ApiV1AccountsIdFoldersFolderDelete429Response(
+          body: _i14.ApiV1AccountsIdFoldersFolderDelete429Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -292,7 +264,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse500(
-          body: _i16.ApiV1AccountsIdFoldersFolderDelete500Response(
+          body: _i15.ApiV1AccountsIdFoldersFolderDelete500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -318,7 +290,7 @@ final class DeleteFolder extends _i1.HttpOperation<_i2.DeleteFolderResponse> {
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i7.ErrorResponse.fromJson(_$json);
         return _i2.DeleteFolderResponse503(
-          body: _i17.ApiV1AccountsIdFoldersFolderDelete503Response(
+          body: _i16.ApiV1AccountsIdFoldersFolderDelete503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

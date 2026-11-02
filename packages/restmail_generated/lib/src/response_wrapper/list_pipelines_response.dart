@@ -15,10 +15,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get413_re
     as _i6;
 import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get422_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get429_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get500_response.dart'
     as _i9;
+import 'package:restmail_generated/src/response/api_v1_admin_pipelines_get503_response.dart'
+    as _i10;
 
 sealed class ListPipelinesResponse {
   const ListPipelinesResponse();
@@ -105,10 +107,26 @@ class ListPipelinesResponse422 extends ListPipelinesResponse {
 }
 
 @_i1.immutable
+class ListPipelinesResponse429 extends ListPipelinesResponse {
+  const ListPipelinesResponse429({required this.body});
+
+  final _i8.ApiV1AdminPipelinesGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is ListPipelinesResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class ListPipelinesResponse500 extends ListPipelinesResponse {
   const ListPipelinesResponse500({required this.body});
 
-  final _i8.ApiV1AdminPipelinesGet500Response body;
+  final _i9.ApiV1AdminPipelinesGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -124,7 +142,7 @@ class ListPipelinesResponse500 extends ListPipelinesResponse {
 class ListPipelinesResponse503 extends ListPipelinesResponse {
   const ListPipelinesResponse503({required this.body});
 
-  final _i9.ApiV1AdminPipelinesGet503Response body;
+  final _i10.ApiV1AdminPipelinesGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

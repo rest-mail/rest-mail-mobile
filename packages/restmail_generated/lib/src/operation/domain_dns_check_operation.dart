@@ -22,10 +22,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get4
     as _i12;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get422_response.dart'
     as _i14;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get429_response.dart'
     as _i15;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get500_response.dart'
     as _i16;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_dns_get503_response.dart'
+    as _i17;
 import 'package:restmail_generated/src/response_wrapper/domain_dns_check_operation_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -229,11 +231,39 @@ final class DomainDnsCheckOperation
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (429, r'application/json'):
+        final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
+        return _i2.DomainDnsCheckOperationResponse429(
+          body: _i15.ApiV1AdminDomainsIdDnsGet429Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            retryAfter: (response.headersSplitValues[r'retry-after']?.join(','))
+                .decodeSimpleInt(context: r'Retry-After'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.DomainDnsCheckOperationResponse500(
-          body: _i15.ApiV1AdminDomainsIdDnsGet500Response(
+          body: _i16.ApiV1AdminDomainsIdDnsGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(
@@ -259,7 +289,7 @@ final class DomainDnsCheckOperation
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
         final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.DomainDnsCheckOperationResponse503(
-          body: _i16.ApiV1AdminDomainsIdDnsGet503Response(
+          body: _i17.ApiV1AdminDomainsIdDnsGet503Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

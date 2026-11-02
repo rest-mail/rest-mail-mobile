@@ -54,33 +54,6 @@ class SieveApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "defaults" — A genuinely absent configuration returns its documented defaults:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": false,
-  ///     "mailbox_id": 2,
-  ///     "script": ""
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant" — A mail-read grant covering the domain reaches this account:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "id": 101,
-  ///     "mailbox_id": 1,
-  ///     "script": "require [\"fileinto\"];\nfileinto \"Archive\";\n",
-  ///     "script_hash": "be7a2f84b9288b159538f3bd8632a5a7bd34d0a14432a4ba686005867350c9bf",
-  ///     "updated_at": "2026-10-20T00:00:00Z",
-  ///     "validated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — A linked account is readable through its mailbox grant:
   /// The real account resolver loads mail:read from the grant tables and maps the full public result. No credential hash or secret is returned.
   ///
@@ -91,40 +64,6 @@ class SieveApi {
   ///     "created_at": "2026-10-20T00:00:00Z",
   ///     "id": 101,
   ///     "mailbox_id": 1,
-  ///     "script": "require [\"fileinto\"];\nfileinto \"Archive\";\n",
-  ///     "script_hash": "be7a2f84b9288b159538f3bd8632a5a7bd34d0a14432a4ba686005867350c9bf",
-  ///     "updated_at": "2026-10-20T00:00:00Z",
-  ///     "validated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_read" — A scoped API key reads the permitted account:
-  /// A temporary key passes the production key parser, hash comparison and repository verifier. Both its mail:read mailbox scope and its holder ceiling permit this account.
-  ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "id": 101,
-  ///     "mailbox_id": 1,
-  ///     "script": "require [\"fileinto\"];\nfileinto \"Archive\";\n",
-  ///     "script_hash": "be7a2f84b9288b159538f3bd8632a5a7bd34d0a14432a4ba686005867350c9bf",
-  ///     "updated_at": "2026-10-20T00:00:00Z",
-  ///     "validated_at": "2026-10-20T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary" — The active primary account has implicit owner capabilities:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-10-20T00:00:00Z",
-  ///     "id": 110,
-  ///     "mailbox_id": 10,
   ///     "script": "require [\"fileinto\"];\nfileinto \"Archive\";\n",
   ///     "script_hash": "be7a2f84b9288b159538f3bd8632a5a7bd34d0a14432a4ba686005867350c9bf",
   ///     "updated_at": "2026-10-20T00:00:00Z",
@@ -145,8 +84,8 @@ class SieveApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "key_holder_missing" — A valid key cannot exceed its holder's current grants:
-  /// The production verifier accepts the scoped key, but the actual grant loader supplies only mail:write for its holder on this account. The old key permission cannot supply the missing mail:read capability.
+  /// **Example** "write_only" — A mail-write grant alone does not permit a read:
+  /// A caller that can see the account is told this action is what it lacks.
   ///
   /// ```json
   /// {
@@ -157,60 +96,15 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_only" — A valid API key with only mail-write permission cannot read:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "key_wrong_scope" — A valid API key scoped to another mailbox is refused:
   /// Unknown and inaccessible accounts remain indistinguishable to the caller.
   ///
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing" — A missing account retains the existing privacy refusal:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required" — A session still in setup cannot use account reads:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only" — A mail-write grant alone does not permit a read:
-  /// Unknown and inaccessible accounts remain indistinguishable to the caller.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -229,21 +123,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format" — The domain ID cannot bind to an integer:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -273,37 +152,7 @@ class SieveApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "content_unavailable" — A failed configuration query cannot silently become defaults:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable" — The account exists but its grant lookup fails:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "internal_error" — An account lookup fault is not an authorization decision:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable" — Implicit ownership cannot be loaded:
   /// ```json
   /// {
   ///   "error": {
@@ -332,7 +181,7 @@ class SieveApi {
   }) async => _getSieveScript(id: id, cancellation: cancellation);
 
   /// Create or replace the Sieve filter script
-  /// 201 when it creates the script, 200 when it replaces it. A script that does not parse, or fails its dry run, is 400 invalid_sieve with the parser's message, and is not stored.
+  /// 201 when it creates the script, 200 when it replaces it. A script that does not parse, or fails its dry run, is 422 validation_failed with the parser's message in fields.script, and is not stored.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -341,58 +190,6 @@ class SieveApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Request body (application/json):
-  /// **Example** "active_false":
-  /// ```json
-  /// {
-  ///   "active": false,
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "active_null":
-  /// ```json
-  /// {
-  ///   "active": null,
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "active_true":
-  /// ```json
-  /// {
-  ///   "active": true,
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "create_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "# create unavailable\nkeep;"
-  /// }
-  /// ```
-  ///
   /// **Example** "created":
   /// ```json
   /// {
@@ -400,45 +197,8 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty_script":
-  /// ```json
-  /// {
-  ///   "script": ""
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Real registered route, JWT/Basic/scoped-key verification, holder grants and CSRF precede installation. Local SQL asserts exact mailbox selection, script bytes/hash, active defaults and explicit false, persistence-clock markers and lookup/create/update failures. Fixed rows do not prove PostgreSQL durability or delivery execution; PostgreSQL regression cases run when TEST_DATABASE_URL is configured.
-  ///
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
   /// ```json
   /// {
@@ -455,35 +215,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "invalid_syntax":
-  /// ```json
-  /// {
-  ///   "script": "if"
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_domain":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
   /// ```json
   /// {
   ///   "script": "keep;"
@@ -518,27 +250,6 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
   /// **Example** "rate_limited":
   /// ```json
   /// {
@@ -555,38 +266,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "script_missing":
-  /// ```json
-  /// {
-  ///   "active": true
-  /// }
-  /// ```
-  ///
-  /// **Example** "script_null":
-  /// Null is permitted by the published nullable string schema but refused as a missing required value at the runtime boundary. This pair is a schema-valid refusal, not an invalid-schema example.
-  ///
-  /// ```json
-  /// {
-  ///   "active": true,
-  ///   "script": null
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "target_unavailable":
   /// ```json
   /// {
   ///   "script": "keep;"
@@ -600,100 +280,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "# update unavailable\nkeep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "utf8_script":
-  /// ```json
-  /// {
-  ///   "script": "# café\r\nkeep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "valid":
-  /// ```json
-  /// {
-  ///   "active": true,
-  ///   "script": "require [\"fileinto\"];\nif header :contains \"subject\" \"invoice\" {\n  fileinto \"Invoices\";\n}\n"
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 10,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty_script":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "",
-  ///     "script_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Real registered route, JWT/Basic/scoped-key verification, holder grants and CSRF precede installation. Local SQL asserts exact mailbox selection, script bytes/hash, active defaults and explicit false, persistence-clock markers and lookup/create/update failures. Fixed rows do not prove PostgreSQL durability or delivery execution; PostgreSQL regression cases run when TEST_DATABASE_URL is configured.
   ///
@@ -712,151 +299,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 10,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 10,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "valid":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "require [\"fileinto\"];\nif header :contains \"subject\" \"invoice\" {\n  fileinto \"Invoices\";\n}\n",
-  ///     "script_hash": "7091965918f81b8726f2ff1b22731eacb1290c04718b14ee96821456767384b4",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 1,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 201 (application/json):
-  /// **Example** "active_false":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": false,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 2,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "active_null":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 2,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "active_true":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 2,
-  ///     "script": "keep;",
-  ///     "script_hash": "b417a17598906ccac858842b18641400c875995a9c052e7bda50b4c802456956",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "created":
   /// ```json
   /// {
@@ -873,33 +316,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "utf8_script":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "active": true,
-  ///     "created_at": "2026-01-01T00:00:00Z",
-  ///     "id": 1,
-  ///     "mailbox_id": 2,
-  ///     "script": "# café\r\nkeep;",
-  ///     "script_hash": "94573e8207294aadb4d3e82b98336f4d4ec51d432252284224924422f381e54f",
-  ///     "updated_at": "2026-01-01T00:00:00Z",
-  ///     "validated_at": "2026-01-01T00:00:00Z"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 400 (application/json):
-  /// **Example** "invalid_syntax":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "invalid_sieve",
-  ///     "message": "sieve parse error: sieve: line 1: expected a test, got end of script"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "malformed_json":
   /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
   ///
@@ -924,26 +341,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
   /// ```json
   /// {
@@ -954,22 +351,13 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "key_wrong_scope":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -978,18 +366,8 @@ class SieveApi {
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -1008,23 +386,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
@@ -1042,38 +403,6 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "script_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "script": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "script_null":
-  /// Null is permitted by the published nullable string schema but refused as a missing required value at the runtime boundary. This pair is a schema-valid refusal, not an invalid-schema example.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "script": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 429 (application/json):
   /// **Example** "rate_limited":
   /// ```json
@@ -1086,62 +415,12 @@ class SieveApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "create_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to create script"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "lookup_unavailable":
   /// ```json
   /// {
   ///   "error": {
   ///     "code": "internal_error",
   ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "target_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "update_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Failed to update script"
   ///   }
   /// }
   /// ```
@@ -1172,90 +451,9 @@ class SieveApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Production route/session/credential/holder/CSRF gates precede mailbox-bound deletion or side-effect-free validation. Local SQL proves exact mailbox selection, idempotent zero-row deletion and fault refusal; validation never reads or writes stored scripts. Fixed local rows do not prove PostgreSQL/audit persistence or delivery-time execution.
   ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "status": "deleted"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "data": {
@@ -1276,36 +474,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
   /// ```json
   /// {
@@ -1316,42 +484,13 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "no_grants":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -1370,21 +509,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -1412,36 +536,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "internal_error":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {
@@ -1477,66 +571,8 @@ class SieveApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Request body (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty_script":
-  /// ```json
-  /// {
-  ///   "script": ""
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Production route/session/credential/holder/CSRF gates precede mailbox-bound deletion or side-effect-free validation. Local SQL proves exact mailbox selection, idempotent zero-row deletion and fault refusal; validation never reads or writes stored scripts. Fixed local rows do not prove PostgreSQL/audit persistence or delivery-time execution.
-  ///
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
   /// ```json
   /// {
@@ -1553,49 +589,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "invalid_syntax":
-  /// ```json
-  /// {
-  ///   "script": "if"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_domain":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
   /// ```json
   /// {
   ///   "script": "keep;"
@@ -1609,35 +603,7 @@ class SieveApi {
   /// {
   /// ```
   ///
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
   /// **Example** "no_grants":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only":
   /// ```json
   /// {
   ///   "script": "keep;"
@@ -1660,28 +626,7 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "script_missing":
-  /// ```json
-  /// {}
-  /// ```
-  ///
-  /// **Example** "script_null":
-  /// Null is permitted by the published nullable string schema but refused as a missing required value at the runtime boundary. This pair is a schema-valid refusal, not an invalid-schema example.
-  ///
-  /// ```json
-  /// {
-  ///   "script": null
-  /// }
-  /// ```
-  ///
   /// **Example** "session_unavailable":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
   /// ```json
   /// {
   ///   "script": "keep;"
@@ -1702,161 +647,10 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "valid":
-  /// ```json
-  /// {
-  ///   "script": "require [\"fileinto\"];\nif header :contains \"subject\" \"invoice\" {\n  fileinto \"Invoices\";\n}\n"
-  /// }
-  /// ```
-  ///
-  /// **Example** "valid_keep":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
-  /// ```json
-  /// {
-  ///   "script": "keep;"
-  /// }
-  /// ```
-  ///
   /// Response 200 (application/json):
-  /// **Example** "app_password":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "cookie_session":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "domain_grant":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "empty_script":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Empty script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found":
   /// Production route/session/credential/holder/CSRF gates precede mailbox-bound deletion or side-effect-free validation. Local SQL proves exact mailbox selection, idempotent zero-row deletion and fault refusal; validation never reads or writes stored scripts. Fixed local rows do not prove PostgreSQL/audit persistence or delivery-time execution.
   ///
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_syntax":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "sieve parse error: sieve: line 1: expected a test, got end of script",
-  ///     "valid": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_domain":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_write_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "primary_only":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "valid":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "valid_keep":
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "message": "Script is valid",
-  ///     "valid": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "write_only":
   /// ```json
   /// {
   ///   "data": {
@@ -1891,36 +685,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 403 (application/json):
-  /// **Example** "app_password_other":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "inaccessible":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_domain":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "key_read":
   /// ```json
   /// {
@@ -1931,42 +695,13 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "key_write_holder_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "key_wrong_scope":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
+  /// Response 404 (application/json):
   /// **Example** "no_grants":
   /// ```json
   /// {
   ///   "error": {
-  ///     "code": "forbidden",
-  ///     "message": "Access denied"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "setup_required":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "setup_required",
-  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
   ///   }
   /// }
   /// ```
@@ -1985,23 +720,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 422 (application/json):
-  /// **Example** "invalid_format":
-  /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "id": "must be a non-negative integer"
-  ///       }
-  ///     },
-  ///     "message": "Path parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "invalid_id":
   /// The JSON body validates; the malformed path value is refused by the real path binder with 422. The invalid-body marker does not describe path binding.
   ///
@@ -2019,38 +737,6 @@ class SieveApi {
   /// }
   /// ```
   ///
-  /// **Example** "script_missing":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "script": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "script_null":
-  /// Null is permitted by the published nullable string schema but refused as a missing required value at the runtime boundary. This pair is a schema-valid refusal, not an invalid-schema example.
-  ///
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "script": "required"
-  ///       }
-  ///     },
-  ///     "message": "Request body failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 429 (application/json):
   /// **Example** "rate_limited":
   /// ```json
@@ -2063,26 +749,6 @@ class SieveApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "grant_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "ownership_unavailable":
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "internal_error",
-  ///     "message": "Internal server error"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "target_unavailable":
   /// ```json
   /// {

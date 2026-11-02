@@ -52,16 +52,9 @@ class RestmailApi {
   final _i5.RestmailDeliver _restmailDeliver;
 
   /// Discover RESTMAIL delivery for a hosted domain
-  /// Fetched from the recipient domain's MX host over verified HTTPS. The answer is a protocol document without the data envelope, naming the configured GATEWAY_HOSTNAME, never the request's Host. A 404 means the domain is not hosted here; a missing hostname is 503 and a failed lookup 500, never 404. A domain given twice, or not a domain, is 400.
+  /// Fetched from the recipient domain's MX host over verified HTTPS. The answer is a protocol document without the data envelope, naming the configured GATEWAY_HOSTNAME, never the request's Host. A 404 means the domain is not hosted here; a missing hostname is 503 and a failed lookup 500, never 404. A domain given twice, or not a domain, is 422 validation_failed.
   ///
   /// Response 200 (application/json):
-  /// **Example** "canonical_domain" — A domain is case-folded and its trailing dot removed:
-  /// ```json
-  /// {
-  ///   "endpoint": "https://mx.example.test/restmail"
-  /// }
-  /// ```
-  ///
   /// **Example** "example" — The configured public delivery endpoint is advertised:
   /// No session is required. The protocol document has no API data envelope. The configured gateway wins over caller Host and forwarding headers; every answer is no-store.
   ///
@@ -71,55 +64,7 @@ class RestmailApi {
   /// }
   /// ```
   ///
-  /// **Example** "unicode_domain" — An internationalized domain resolves through its IDNA identity:
-  /// ```json
-  /// {
-  ///   "endpoint": "https://mx.example.test/restmail"
-  /// }
-  /// ```
-  ///
-  /// Response 400 (application/json):
-  /// **Example** "empty_domain" — An explicitly empty domain is invalid:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Invalid domain query parameter"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "invalid_domain" — A mailbox address is not a recipient domain:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Invalid domain query parameter"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "repeated_domain" — The domain must be supplied exactly once:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "bad_request",
-  ///     "message": "Exactly one domain query parameter required"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 404 (application/json):
-  /// **Example** "inactive" — An inactive hosted domain is not advertised:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "not_found",
-  ///     "message": "Domain not hosted"
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "missing" — An unknown domain is not advertised:
   /// ```json
   /// {
@@ -131,6 +76,21 @@ class RestmailApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "empty_domain" — An explicitly empty domain is invalid:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "domain": "Invalid domain query parameter"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "missing_domain" — A missing domain is refused by typed binding:
   /// ```json
   /// {
@@ -191,8 +151,8 @@ class RestmailApi {
   /// ```
   ///
   /// Response 500 (application/json):
-  /// **Example** "internal_error" — An unexpected handler failure uses the shared error envelope:
-  /// This fault response is exercised through the endpoint error adapter; a healthy GET does not provoke it. Metrics additionally exercises a failing scrape.
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. This pair proves its shared response adapter directly; it does not claim that this operation queries a database.
   ///
   /// ```json
   /// {
@@ -211,25 +171,6 @@ class RestmailApi {
   /// Check if a recipient mailbox exists
   ///
   /// Response 200 (application/json):
-  /// **Example** "canonical_address" — Case-equivalent input uses the stored account identity:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "address": "user@example.test",
-  ///     "exists": true
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "disabled" — A disabled recipient is unavailable:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
   /// **Example** "found" — An active recipient returns its stored address:
   /// ```json
   /// {
@@ -240,51 +181,8 @@ class RestmailApi {
   /// }
   /// ```
   ///
-  /// **Example** "invalid_address" — A non-address remains an unavailable recipient:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing" — An absent recipient has no address field:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "exists": false
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "unicode_address" — NFC and IDNA normalization preserve the stored public identity:
-  /// ```json
-  /// {
-  ///   "data": {
-  ///     "address": "café@xn--mnchen-3ya.test",
-  ///     "exists": true
-  ///   }
-  /// }
-  /// ```
-  ///
   /// Response 422 (application/json):
   /// **Example** "empty_address" — An empty address is refused before lookup:
-  /// ```json
-  /// {
-  ///   "error": {
-  ///     "code": "validation_failed",
-  ///     "details": {
-  ///       "fields": {
-  ///         "address": "address query parameter required"
-  ///       }
-  ///     },
-  ///     "message": "Query parameters failed validation"
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// **Example** "missing_address" — An omitted address is refused before lookup:
   /// ```json
   /// {
   ///   "error": {
@@ -317,9 +215,26 @@ class RestmailApi {
       _restmailCheckMailbox(address: address, cancellation: cancellation);
 
   /// Deliver a message via RESTMAIL protocol
-  /// Server-to-server delivery. Unauthenticated at the HTTP layer: a delivery must come from a trusted peer network or carry a DKIM signature aligned with its From domain, or it is refused 403 unauthorized. The inbound pipeline can refuse it 403 rejected or defer it 503 deferred. When no recipient takes the message the answer is 422 undeliverable.
+  /// Server-to-server delivery. Unauthenticated at the HTTP layer: a delivery must come from a trusted peer network or carry a DKIM signature aligned with its From domain, or it is refused 403 unauthorized. The inbound pipeline can refuse it 403 rejected or defer it 503 deferred. When no recipient takes the message the answer is 422 undeliverable. Failed sender/recipient or inbound-policy lookups and corrupt stored policy defer with 503; recipient lookups finish before delivery side effects.
   ///
   /// Request body (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// []
+  /// ```
+  ///
+  /// **Example** "deferred" — Storage fails; the sender retries:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello, Eve.",
+  ///   "from": "someone@ext-contract.test",
+  ///   "subject": "Delivered over RESTMAIL",
+  ///   "to": [
+  ///     "eve@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
   /// **Example** "delivered":
   /// ```json
   /// {
@@ -334,6 +249,41 @@ class RestmailApi {
   /// }
   /// ```
   ///
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. Delivery answers its own dependency failures 503 deferred, so the sending server retries; this pair proves the shared response adapter directly and does not claim that delivery answers a database fault with it.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello, Eve.",
+  ///   "from": "someone@ext-contract.test",
+  ///   "subject": "Delivered over RESTMAIL",
+  ///   "to": [
+  ///     "eve@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "lookup_deferred" — A database failure defers delivery for retry:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello, Eve.",
+  ///   "date": "Sat, 17 Oct 2026 12:00:00 +0000",
+  ///   "from": "someone@ext-contract.test",
+  ///   "message_id": "<restmail-delivery@ext-contract.test>",
+  ///   "subject": "Delivered over RESTMAIL",
+  ///   "to": [
+  ///     "eve@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
   /// **Example** "recipients_missing":
   /// ```json
   /// {
@@ -342,6 +292,31 @@ class RestmailApi {
   ///   "from": "someone@ext-contract.test",
   ///   "message_id": "<restmail-delivery@ext-contract.test>",
   ///   "subject": "Delivered over RESTMAIL"
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "body_text": "Hello, Eve.",
+  ///   "date": "Sat, 17 Oct 2026 12:00:00 +0000",
+  ///   "from": "someone@ext-contract.test",
+  ///   "message_id": "<restmail-delivery@ext-contract.test>",
+  ///   "subject": "Delivered over RESTMAIL",
+  ///   "to": [
+  ///     "eve@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated_delivery" — The sending server is not authenticated:
+  /// ```json
+  /// {
+  ///   "from": "sender@example.net",
+  ///   "raw_message": "U3ViamVjdDogSGVsbG8NCg0KSGVsbG8NCg==",
+  ///   "to": [
+  ///     "admin@restmail.test"
+  ///   ]
   /// }
   /// ```
   ///
@@ -358,7 +333,57 @@ class RestmailApi {
   /// }
   /// ```
   ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "unauthenticated_delivery" — The sending server is not authenticated:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Delivery not authenticated"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 422 (application/json):
+  /// **Example** "body_array" — The body is not a JSON object:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "recipients_missing":
   /// ```json
   /// {
@@ -370,6 +395,40 @@ class RestmailApi {
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — The shared error adapter sanitizes an unexpected failure:
+  /// The endpoint layer advertises a fallback 500. Delivery answers its own dependency failures 503 deferred, so the sending server retries; this pair proves the shared response adapter directly and does not claim that delivery answers a database fault with it.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "deferred" — Storage fails; the sender retries:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "deferred",
+  ///     "message": "Message deferred, retry later"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "lookup_deferred" — A database failure defers delivery for retry:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "deferred",
+  ///     "message": "Message deferred, retry later"
   ///   }
   /// }
   /// ```

@@ -5,12 +5,24 @@
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i1;
-import 'package:restmail_generated/src/model/data_delivery_processed.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/model/data_message.dart' as _i4;
-import 'package:restmail_generated/src/model/error_response.dart' as _i5;
-import 'package:restmail_generated/src/model/validation_error_response.dart'
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post201_response.dart'
+    as _i4;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post400_response.dart'
+    as _i5;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post404_response.dart'
     as _i6;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post413_response.dart'
+    as _i7;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post422_response.dart'
+    as _i8;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post451_response.dart'
+    as _i9;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post500_response.dart'
+    as _i10;
+import 'package:restmail_generated/src/response/api_v1_messages_deliver_post550_response.dart'
+    as _i11;
 
 sealed class DeliverMessageResponse {
   const DeliverMessageResponse();
@@ -20,7 +32,7 @@ sealed class DeliverMessageResponse {
 class DeliverMessageResponse200 extends DeliverMessageResponse {
   const DeliverMessageResponse200({required this.body});
 
-  final _i2.DataDeliveryProcessed body;
+  final _i2.ApiV1MessagesDeliverPost200Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -36,7 +48,7 @@ class DeliverMessageResponse200 extends DeliverMessageResponse {
 class DeliverMessageResponse201 extends DeliverMessageResponse {
   const DeliverMessageResponse201({required this.body});
 
-  final _i4.DataMessage body;
+  final _i4.ApiV1MessagesDeliverPost201Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -52,7 +64,7 @@ class DeliverMessageResponse201 extends DeliverMessageResponse {
 class DeliverMessageResponse400 extends DeliverMessageResponse {
   const DeliverMessageResponse400({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i5.ApiV1MessagesDeliverPost400Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -68,7 +80,7 @@ class DeliverMessageResponse400 extends DeliverMessageResponse {
 class DeliverMessageResponse404 extends DeliverMessageResponse {
   const DeliverMessageResponse404({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i6.ApiV1MessagesDeliverPost404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -84,7 +96,7 @@ class DeliverMessageResponse404 extends DeliverMessageResponse {
 class DeliverMessageResponse413 extends DeliverMessageResponse {
   const DeliverMessageResponse413({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i7.ApiV1MessagesDeliverPost413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -100,7 +112,7 @@ class DeliverMessageResponse413 extends DeliverMessageResponse {
 class DeliverMessageResponse422 extends DeliverMessageResponse {
   const DeliverMessageResponse422({required this.body});
 
-  final _i6.ValidationErrorResponse body;
+  final _i8.ApiV1MessagesDeliverPost422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -116,7 +128,7 @@ class DeliverMessageResponse422 extends DeliverMessageResponse {
 class DeliverMessageResponse451 extends DeliverMessageResponse {
   const DeliverMessageResponse451({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i9.ApiV1MessagesDeliverPost451Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -132,7 +144,7 @@ class DeliverMessageResponse451 extends DeliverMessageResponse {
 class DeliverMessageResponse500 extends DeliverMessageResponse {
   const DeliverMessageResponse500({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i10.ApiV1MessagesDeliverPost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -148,7 +160,7 @@ class DeliverMessageResponse500 extends DeliverMessageResponse {
 class DeliverMessageResponse550 extends DeliverMessageResponse {
   const DeliverMessageResponse550({required this.body});
 
-  final _i5.ErrorResponse body;
+  final _i11.ApiV1MessagesDeliverPost550Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

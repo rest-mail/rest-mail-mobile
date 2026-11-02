@@ -5,9 +5,11 @@
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i1;
-import 'package:restmail_generated/src/model/data_address_check.dart' as _i2;
-import 'package:restmail_generated/src/model/error_response.dart' as _i4;
-import 'package:restmail_generated/src/model/validation_error_response.dart'
+import 'package:restmail_generated/src/response/api_mailboxes_get200_response.dart'
+    as _i2;
+import 'package:restmail_generated/src/response/api_mailboxes_get422_response.dart'
+    as _i4;
+import 'package:restmail_generated/src/response/api_mailboxes_get500_response.dart'
     as _i5;
 
 sealed class CheckMailboxAddressResponse {
@@ -18,7 +20,7 @@ sealed class CheckMailboxAddressResponse {
 class CheckMailboxAddressResponse200 extends CheckMailboxAddressResponse {
   const CheckMailboxAddressResponse200({required this.body});
 
-  final _i2.DataAddressCheck body;
+  final _i2.ApiMailboxesGet200Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -31,26 +33,10 @@ class CheckMailboxAddressResponse200 extends CheckMailboxAddressResponse {
 }
 
 @_i1.immutable
-class CheckMailboxAddressResponse400 extends CheckMailboxAddressResponse {
-  const CheckMailboxAddressResponse400({required this.body});
-
-  final _i4.ErrorResponse body;
-
-  @_i3.override
-  _i3.bool operator ==(_i3.Object other) {
-    if (_i3.identical(this, other)) return true;
-    return other is CheckMailboxAddressResponse400 && other.body == this.body;
-  }
-
-  @_i3.override
-  _i3.int get hashCode => body.hashCode;
-}
-
-@_i1.immutable
 class CheckMailboxAddressResponse422 extends CheckMailboxAddressResponse {
   const CheckMailboxAddressResponse422({required this.body});
 
-  final _i5.ValidationErrorResponse body;
+  final _i4.ApiMailboxesGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -66,7 +52,7 @@ class CheckMailboxAddressResponse422 extends CheckMailboxAddressResponse {
 class CheckMailboxAddressResponse500 extends CheckMailboxAddressResponse {
   const CheckMailboxAddressResponse500({required this.body});
 
-  final _i4.ErrorResponse body;
+  final _i5.ApiMailboxesGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

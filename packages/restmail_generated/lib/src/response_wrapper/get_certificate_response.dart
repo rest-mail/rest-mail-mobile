@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_certificates_id_get503_response.dart'
+    as _i11;
 
 sealed class GetCertificateResponse {
   const GetCertificateResponse();
@@ -123,10 +125,26 @@ class GetCertificateResponse422 extends GetCertificateResponse {
 }
 
 @_i1.immutable
+class GetCertificateResponse429 extends GetCertificateResponse {
+  const GetCertificateResponse429({required this.body});
+
+  final _i9.ApiV1AdminCertificatesIdGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetCertificateResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetCertificateResponse500 extends GetCertificateResponse {
   const GetCertificateResponse500({required this.body});
 
-  final _i9.ApiV1AdminCertificatesIdGet500Response body;
+  final _i10.ApiV1AdminCertificatesIdGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetCertificateResponse500 extends GetCertificateResponse {
 class GetCertificateResponse503 extends GetCertificateResponse {
   const GetCertificateResponse503({required this.body});
 
-  final _i10.ApiV1AdminCertificatesIdGet503Response body;
+  final _i11.ApiV1AdminCertificatesIdGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

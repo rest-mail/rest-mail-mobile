@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_pos
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_queue_id_bounce_post503_response.dart'
+    as _i11;
 
 sealed class BounceQueueEntryResponse {
   const BounceQueueEntryResponse();
@@ -123,10 +125,26 @@ class BounceQueueEntryResponse422 extends BounceQueueEntryResponse {
 }
 
 @_i1.immutable
+class BounceQueueEntryResponse429 extends BounceQueueEntryResponse {
+  const BounceQueueEntryResponse429({required this.body});
+
+  final _i9.ApiV1AdminQueueIdBouncePost429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is BounceQueueEntryResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class BounceQueueEntryResponse500 extends BounceQueueEntryResponse {
   const BounceQueueEntryResponse500({required this.body});
 
-  final _i9.ApiV1AdminQueueIdBouncePost500Response body;
+  final _i10.ApiV1AdminQueueIdBouncePost500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class BounceQueueEntryResponse500 extends BounceQueueEntryResponse {
 class BounceQueueEntryResponse503 extends BounceQueueEntryResponse {
   const BounceQueueEntryResponse503({required this.body});
 
-  final _i10.ApiV1AdminQueueIdBouncePost503Response body;
+  final _i11.ApiV1AdminQueueIdBouncePost503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

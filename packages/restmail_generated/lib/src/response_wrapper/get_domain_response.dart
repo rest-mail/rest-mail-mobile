@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get413_r
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_domains_id_get503_response.dart'
+    as _i11;
 
 sealed class GetDomainResponse {
   const GetDomainResponse();
@@ -123,10 +125,26 @@ class GetDomainResponse422 extends GetDomainResponse {
 }
 
 @_i1.immutable
+class GetDomainResponse429 extends GetDomainResponse {
+  const GetDomainResponse429({required this.body});
+
+  final _i9.ApiV1AdminDomainsIdGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetDomainResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetDomainResponse500 extends GetDomainResponse {
   const GetDomainResponse500({required this.body});
 
-  final _i9.ApiV1AdminDomainsIdGet500Response body;
+  final _i10.ApiV1AdminDomainsIdGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetDomainResponse500 extends GetDomainResponse {
 class GetDomainResponse503 extends GetDomainResponse {
   const GetDomainResponse503({required this.body});
 
-  final _i10.ApiV1AdminDomainsIdGet503Response body;
+  final _i11.ApiV1AdminDomainsIdGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

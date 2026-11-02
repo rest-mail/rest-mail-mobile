@@ -11,16 +11,18 @@ import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_dele
     as _i4;
 import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete403_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete404_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete413_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_accounts_id_vacation_delete503_response.dart'
+    as _i11;
 
 sealed class DisableVacationResponse {
   const DisableVacationResponse();
@@ -75,10 +77,26 @@ class DisableVacationResponse403 extends DisableVacationResponse {
 }
 
 @_i1.immutable
+class DisableVacationResponse404 extends DisableVacationResponse {
+  const DisableVacationResponse404({required this.body});
+
+  final _i6.ApiV1AccountsIdVacationDelete404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is DisableVacationResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class DisableVacationResponse413 extends DisableVacationResponse {
   const DisableVacationResponse413({required this.body});
 
-  final _i6.ApiV1AccountsIdVacationDelete413Response body;
+  final _i7.ApiV1AccountsIdVacationDelete413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -94,7 +112,7 @@ class DisableVacationResponse413 extends DisableVacationResponse {
 class DisableVacationResponse422 extends DisableVacationResponse {
   const DisableVacationResponse422({required this.body});
 
-  final _i7.ApiV1AccountsIdVacationDelete422Response body;
+  final _i8.ApiV1AccountsIdVacationDelete422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -110,7 +128,7 @@ class DisableVacationResponse422 extends DisableVacationResponse {
 class DisableVacationResponse429 extends DisableVacationResponse {
   const DisableVacationResponse429({required this.body});
 
-  final _i8.ApiV1AccountsIdVacationDelete429Response body;
+  final _i9.ApiV1AccountsIdVacationDelete429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -126,7 +144,7 @@ class DisableVacationResponse429 extends DisableVacationResponse {
 class DisableVacationResponse500 extends DisableVacationResponse {
   const DisableVacationResponse500({required this.body});
 
-  final _i9.ApiV1AccountsIdVacationDelete500Response body;
+  final _i10.ApiV1AccountsIdVacationDelete500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class DisableVacationResponse500 extends DisableVacationResponse {
 class DisableVacationResponse503 extends DisableVacationResponse {
   const DisableVacationResponse503({required this.body});
 
-  final _i10.ApiV1AccountsIdVacationDelete503Response body;
+  final _i11.ApiV1AccountsIdVacationDelete503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

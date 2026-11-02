@@ -7,7 +7,10 @@
 #
 # The default server is the immutable image in the generated-client contract
 # lock (public, amd64 and arm64), or IMAGE= another for an explicit comparison.
-# It starts as a fresh install does: one
+# It runs in production mode on a private loopback fixture, so it acknowledges
+# the server's refusals of plaintext Postgres, plaintext HTTP and public internal
+# routes. It keeps audit anchor mail off, so the outbound queue the tests read
+# holds only what they put there. It starts as a fresh install does: one
 # admin, admin@live.test, with a bootstrap password and nothing else. The
 # tests do the rest themselves through the client, as the app would: a
 # password of their own, an authenticator, then the admin API.
@@ -45,7 +48,7 @@ LIVE_ENV=${LIVE_ENV:-.dart_tool/live_server.env}
 ADMIN=admin@live.test
 
 down() {
-  docker rm -f "$NAME-api" "$NAME-pg" >/dev/null 2>&1 || true
+  docker rm -f -v "$NAME-api" "$NAME-pg" >/dev/null 2>&1 || true
   docker network rm "$NAME" >/dev/null 2>&1 || true
 }
 
@@ -73,7 +76,9 @@ up() {
   fi
   docker run -d --name "$NAME-api" --network "$NAME" -p "127.0.0.1:$PORT:8080" \
     -e DB_HOST="$NAME-pg" -e DB_NAME=restmail -e DB_USER=restmail -e DB_PASS=restmail \
-    -e DB_SSLMODE=disable \
+    -e DB_SSLMODE=disable -e DB_ALLOW_INSECURE=true \
+    -e API_TLS_TERMINATED_BY_PROXY=true -e INTERNAL_ROUTES_ALLOW_PUBLIC=true \
+    -e RESTMAIL_AUDIT_ANCHOR_EMAIL_ENABLED=false \
     -e JWT_SECRET="$(openssl rand -hex 32)" -e MASTER_KEY="$(openssl rand -hex 32)" \
     -e RESTMAIL_BOOTSTRAP_ADMIN_ADDRESS="$ADMIN" \
     -e RESTMAIL_BOOTSTRAP_ADMIN_PASSWORD="$password" \

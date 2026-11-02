@@ -99,6 +99,19 @@ class AdminLogsApi {
   /// }
   /// ```
   ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — The list dependency fails:
   /// Session and permission checks pass, but the list dependency fails. The production handler and error writer produce this refusal without exposing dependency details.

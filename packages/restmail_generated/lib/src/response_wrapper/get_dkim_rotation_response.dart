@@ -17,10 +17,12 @@ import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_ge
     as _i7;
 import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get422_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get429_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get500_response.dart'
     as _i10;
+import 'package:restmail_generated/src/response/api_v1_admin_dkim_id_rotation_get503_response.dart'
+    as _i11;
 
 sealed class GetDkimRotationResponse {
   const GetDkimRotationResponse();
@@ -123,10 +125,26 @@ class GetDkimRotationResponse422 extends GetDkimRotationResponse {
 }
 
 @_i1.immutable
+class GetDkimRotationResponse429 extends GetDkimRotationResponse {
+  const GetDkimRotationResponse429({required this.body});
+
+  final _i9.ApiV1AdminDkimIdRotationGet429Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetDkimRotationResponse429 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetDkimRotationResponse500 extends GetDkimRotationResponse {
   const GetDkimRotationResponse500({required this.body});
 
-  final _i9.ApiV1AdminDkimIdRotationGet500Response body;
+  final _i10.ApiV1AdminDkimIdRotationGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -142,7 +160,7 @@ class GetDkimRotationResponse500 extends GetDkimRotationResponse {
 class GetDkimRotationResponse503 extends GetDkimRotationResponse {
   const GetDkimRotationResponse503({required this.body});
 
-  final _i10.ApiV1AdminDkimIdRotationGet503Response body;
+  final _i11.ApiV1AdminDkimIdRotationGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

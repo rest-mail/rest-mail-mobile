@@ -7,22 +7,30 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_attachments_id_get200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get401_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get206_response.dart'
     as _i4;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get403_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get304_response.dart'
     as _i5;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get404_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get401_response.dart'
     as _i6;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get413_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get403_response.dart'
     as _i7;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get422_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get404_response.dart'
     as _i8;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get429_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get412_response.dart'
     as _i9;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get500_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get413_response.dart'
     as _i10;
-import 'package:restmail_generated/src/response/api_v1_attachments_id_get503_response.dart'
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get416_response.dart'
     as _i11;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get422_response.dart'
+    as _i12;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get429_response.dart'
+    as _i13;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get500_response.dart'
+    as _i14;
+import 'package:restmail_generated/src/response/api_v1_attachments_id_get503_response.dart'
+    as _i15;
 
 sealed class GetAttachmentResponse {
   const GetAttachmentResponse();
@@ -45,10 +53,42 @@ class GetAttachmentResponse200 extends GetAttachmentResponse {
 }
 
 @_i1.immutable
+class GetAttachmentResponse206 extends GetAttachmentResponse {
+  const GetAttachmentResponse206({required this.body});
+
+  final _i4.ApiV1AttachmentsIdGet206Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetAttachmentResponse206 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
+class GetAttachmentResponse304 extends GetAttachmentResponse {
+  const GetAttachmentResponse304({required this.body});
+
+  final _i5.ApiV1AttachmentsIdGet304Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetAttachmentResponse304 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetAttachmentResponse401 extends GetAttachmentResponse {
   const GetAttachmentResponse401({required this.body});
 
-  final _i4.ApiV1AttachmentsIdGet401Response body;
+  final _i6.ApiV1AttachmentsIdGet401Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -64,7 +104,7 @@ class GetAttachmentResponse401 extends GetAttachmentResponse {
 class GetAttachmentResponse403 extends GetAttachmentResponse {
   const GetAttachmentResponse403({required this.body});
 
-  final _i5.ApiV1AttachmentsIdGet403Response body;
+  final _i7.ApiV1AttachmentsIdGet403Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -80,7 +120,7 @@ class GetAttachmentResponse403 extends GetAttachmentResponse {
 class GetAttachmentResponse404 extends GetAttachmentResponse {
   const GetAttachmentResponse404({required this.body});
 
-  final _i6.ApiV1AttachmentsIdGet404Response body;
+  final _i8.ApiV1AttachmentsIdGet404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -93,10 +133,26 @@ class GetAttachmentResponse404 extends GetAttachmentResponse {
 }
 
 @_i1.immutable
+class GetAttachmentResponse412 extends GetAttachmentResponse {
+  const GetAttachmentResponse412({required this.body});
+
+  final _i9.ApiV1AttachmentsIdGet412Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetAttachmentResponse412 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetAttachmentResponse413 extends GetAttachmentResponse {
   const GetAttachmentResponse413({required this.body});
 
-  final _i7.ApiV1AttachmentsIdGet413Response body;
+  final _i10.ApiV1AttachmentsIdGet413Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -109,10 +165,26 @@ class GetAttachmentResponse413 extends GetAttachmentResponse {
 }
 
 @_i1.immutable
+class GetAttachmentResponse416 extends GetAttachmentResponse {
+  const GetAttachmentResponse416({required this.body});
+
+  final _i11.ApiV1AttachmentsIdGet416Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is GetAttachmentResponse416 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class GetAttachmentResponse422 extends GetAttachmentResponse {
   const GetAttachmentResponse422({required this.body});
 
-  final _i8.ApiV1AttachmentsIdGet422Response body;
+  final _i12.ApiV1AttachmentsIdGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -128,7 +200,7 @@ class GetAttachmentResponse422 extends GetAttachmentResponse {
 class GetAttachmentResponse429 extends GetAttachmentResponse {
   const GetAttachmentResponse429({required this.body});
 
-  final _i9.ApiV1AttachmentsIdGet429Response body;
+  final _i13.ApiV1AttachmentsIdGet429Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -144,7 +216,7 @@ class GetAttachmentResponse429 extends GetAttachmentResponse {
 class GetAttachmentResponse500 extends GetAttachmentResponse {
   const GetAttachmentResponse500({required this.body});
 
-  final _i10.ApiV1AttachmentsIdGet500Response body;
+  final _i14.ApiV1AttachmentsIdGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
@@ -160,7 +232,7 @@ class GetAttachmentResponse500 extends GetAttachmentResponse {
 class GetAttachmentResponse503 extends GetAttachmentResponse {
   const GetAttachmentResponse503({required this.body});
 
-  final _i11.ApiV1AttachmentsIdGet503Response body;
+  final _i15.ApiV1AttachmentsIdGet503Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

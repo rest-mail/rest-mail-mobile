@@ -7,9 +7,9 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get400_response.dart'
-    as _i4;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get404_response.dart'
+    as _i4;
+import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get422_response.dart'
     as _i5;
 import 'package:restmail_generated/src/response/well_known_autoconfig_mail_config_v11_xml_get500_response.dart'
     as _i6;
@@ -39,16 +39,16 @@ class MozillaAutoconfigWellKnownResponse200
 }
 
 @_i1.immutable
-class MozillaAutoconfigWellKnownResponse400
+class MozillaAutoconfigWellKnownResponse404
     extends MozillaAutoconfigWellKnownResponse {
-  const MozillaAutoconfigWellKnownResponse400({required this.body});
+  const MozillaAutoconfigWellKnownResponse404({required this.body});
 
-  final _i4.WellKnownAutoconfigMailConfigV11XmlGet400Response body;
+  final _i4.WellKnownAutoconfigMailConfigV11XmlGet404Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    return other is MozillaAutoconfigWellKnownResponse400 &&
+    return other is MozillaAutoconfigWellKnownResponse404 &&
         other.body == this.body;
   }
 
@@ -57,16 +57,16 @@ class MozillaAutoconfigWellKnownResponse400
 }
 
 @_i1.immutable
-class MozillaAutoconfigWellKnownResponse404
+class MozillaAutoconfigWellKnownResponse422
     extends MozillaAutoconfigWellKnownResponse {
-  const MozillaAutoconfigWellKnownResponse404({required this.body});
+  const MozillaAutoconfigWellKnownResponse422({required this.body});
 
-  final _i5.WellKnownAutoconfigMailConfigV11XmlGet404Response body;
+  final _i5.WellKnownAutoconfigMailConfigV11XmlGet422Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    return other is MozillaAutoconfigWellKnownResponse404 &&
+    return other is MozillaAutoconfigWellKnownResponse422 &&
         other.body == this.body;
   }
 
