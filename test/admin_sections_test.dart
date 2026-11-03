@@ -171,6 +171,7 @@ void main() {
     'Pipeline log',
     'Pipeline analytics',
     'TLS reports',
+    'DMARC reports',
     'Audit log',
     'DKIM keys',
     'Certificates',
@@ -1026,6 +1027,7 @@ void main() {
       'Domains',
       'Overview',
       'TLS reports',
+      'DMARC reports',
       'DKIM keys',
       'Certificates',
     ]);

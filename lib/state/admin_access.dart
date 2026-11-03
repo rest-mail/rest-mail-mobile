@@ -104,6 +104,16 @@ enum AdminSection {
     read: Capability.domainsRead,
     group: AdminGroup.logs,
   ),
+
+  /// The server lets a domain-scoped administrator read their own domains'
+  /// reports, so [AdminAccess.canList] asks for a domain scope, not a global
+  /// grant as for TLS reports.
+  dmarcReports.readOnly(
+    'admin.section.dmarcReports.title',
+    'admin.section.dmarcReports.subtitle',
+    read: Capability.domainsRead,
+    group: AdminGroup.logs,
+  ),
   audit.readOnly(
     'admin.section.audit.title',
     'admin.section.audit.subtitle',
@@ -266,6 +276,7 @@ class AdminAccess {
   /// may list its mailbox, but cannot list domains or aliases of its parent.
   bool canList(AdminSection section) => switch (section) {
     AdminSection.domains ||
+    AdminSection.dmarcReports ||
     AdminSection.aliases => capabilities.allowsSomewhere(
       section.read,
       within: scope,

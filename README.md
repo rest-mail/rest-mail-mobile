@@ -27,7 +27,7 @@ webmail uses, not IMAP.
   each one's DNS check, sender lists and MTA-STS policy, mailboxes, aliases,
   bans, an overview, the delivery log, the activity and audit logs, message
   traces, the pipeline log and its
-  analytics, TLS reports, the audit log and its chain check, DKIM keys,
+  analytics, TLS reports, received DMARC reports, the audit log and its chain check, DKIM keys,
   certificates, pipelines and custom filters. Each part shows only to a
   session whose capabilities allow it, and its changes only with the
   capability to make them.

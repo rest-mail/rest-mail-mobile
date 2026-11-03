@@ -157,6 +157,7 @@ class FakeRestmail {
   /// traces by the message they are for. [_traceLog] has every trace, those
   /// of mail that never became a message too.
   final _tlsReports = <Map<String, Object?>>[];
+  final _dmarcReports = <Map<String, Object?>>[];
   final _traces = <int, Map<String, Object?>>{};
   final _traceLog = <Map<String, Object?>>[];
   final _appPasswords = <int, FakeAppPassword>{};
@@ -3736,6 +3737,7 @@ class FakeRestmail {
         'created_at': _time(day.add(const Duration(hours: 3))),
       });
     }
+    _seedDmarcReports(host, day);
 
     for (final domain in _domains.values) {
       _certificates[_nextRowId] = FakeCertificate(
@@ -4935,6 +4937,11 @@ class FakeRestmail {
           query,
           (r) => r,
         );
+
+      case ('GET', ['dmarc-reports']):
+        return _dmarcReportList(request, query);
+      case ('GET', ['dmarc-reports', final id]):
+        return _dmarcReportDetail(request, id);
 
       case ('GET', ['audit']):
         need('audit:read');
@@ -6373,6 +6380,283 @@ class FakeRestmail {
     'updated_at': _time(s.createdAt),
     'expires_at': _time(s.expiresAt),
   };
+
+  /// Received DMARC reports as the server stores them. It answers RFC 3339
+  /// times in UTC and leaves out whatever the reporter did not send.
+  void _seedDmarcReports(String host, DateTime day) {
+    String at(DateTime time) =>
+        time.toIso8601String().replaceFirst(RegExp(r'\.\d+Z$'), 'Z');
+    final other = _domains.keys.firstWhere(
+      (name) => name != host,
+      orElse: () => host,
+    );
+    final yesterday = day.subtract(const Duration(days: 1));
+    Map<String, Object?> report(
+      String domain,
+      String reporter,
+      String org,
+      Duration age,
+      List<Map<String, Object?>> records, {
+      Map<String, Object?> policy = const {},
+    }) => {
+      'id': _nextRowId++,
+      'domain_id': _domains[domain]?.id ?? 0,
+      'reporter': reporter,
+      'reporting_org': org,
+      'report_id': '$reporter-${yesterday.millisecondsSinceEpoch ~/ 1000}',
+      'start_date': at(yesterday),
+      'end_date': at(day.subtract(const Duration(seconds: 1))),
+      'policy_published': {'domain': domain, 'p': 'quarantine', ...policy},
+      'records': records,
+      'received_at': at(day.subtract(age)),
+    };
+    _dmarcReports.addAll([
+      report(
+        host,
+        'google.com',
+        'Google Inc.',
+        const Duration(hours: 1),
+        [
+          {
+            'row': {
+              'source_ip': '192.0.2.10',
+              'count': 214,
+              'policy_evaluated': {
+                'disposition': 'none',
+                'dkim': 'pass',
+                'spf': 'pass',
+              },
+            },
+            'identifiers': {'header_from': host},
+            'auth_results': {
+              'dkim': [
+                {'domain': host, 'selector': 'mail', 'result': 'pass'},
+              ],
+              'spf': [
+                {'domain': host, 'scope': 'mfrom', 'result': 'pass'},
+              ],
+            },
+          },
+        ],
+        policy: const {'adkim': 'r', 'aspf': 'r', 'sp': 'reject', 'pct': 100},
+      ),
+      report(
+        host,
+        'enterprise.protection.outlook.com',
+        'Microsoft Corporation',
+        const Duration(hours: 2),
+        [
+          {
+            'row': {
+              'source_ip': '192.0.2.10',
+              'count': 96,
+              'policy_evaluated': {
+                'disposition': 'none',
+                'dkim': 'pass',
+                'spf': 'fail',
+              },
+            },
+            'identifiers': {'header_from': host, 'envelope_to': 'outlook.com'},
+            'auth_results': {
+              'dkim': [
+                {'domain': host, 'selector': 'mail', 'result': 'pass'},
+              ],
+            },
+          },
+          {
+            'row': {
+              'source_ip': '198.51.100.7',
+              'count': 3,
+              'policy_evaluated': {
+                'disposition': 'quarantine',
+                'dkim': 'fail',
+                'spf': 'fail',
+                'reasons': [
+                  {'type': 'other', 'comment': 'Sent through a mailing list'},
+                ],
+              },
+            },
+            'identifiers': {
+              'header_from': host,
+              'envelope_from': 'lists.example.net',
+            },
+            'auth_results': {
+              'dkim': [
+                {
+                  'domain': host,
+                  'selector': 'mail',
+                  'result': 'fail',
+                  'human_result': 'body hash mismatch',
+                },
+              ],
+              'spf': [
+                {
+                  'domain': 'lists.example.net',
+                  'scope': 'mfrom',
+                  'result': 'neutral',
+                },
+              ],
+            },
+          },
+        ],
+      ),
+      if (other != host)
+        report(other, 'mail.ru', 'Mail.Ru', const Duration(hours: 3), [
+          {
+            'row': {
+              'source_ip': '203.0.113.20',
+              'count': 12,
+              'policy_evaluated': {
+                'disposition': 'none',
+                'dkim': 'pass',
+                'spf': 'pass',
+              },
+            },
+            'identifiers': {'header_from': other},
+            'auth_results': const <String, Object?>{},
+          },
+        ]),
+    ]);
+  }
+
+  /// `GET /admin/dmarc-reports`: the capability at any scope, then the
+  /// filters, then a scope that can hold reports; a scoped session's page and
+  /// total count only its own domains. The server leaves a total of zero out.
+  http.StreamedResponse _dmarcReportList(
+    http.BaseRequest request,
+    Map<String, String> query,
+  ) {
+    final held = _dmarcReportScopes(request);
+    final domain = _dmarcReportFilters(query);
+    final domains = _dmarcReportDomains(held);
+    final reporter = query['reporter']?.toLowerCase();
+    final rows =
+        _dmarcReports
+            .where(
+              (r) =>
+                  (domains == null || domains.contains(r['domain_id'])) &&
+                  (domain == null || r['domain_id'] == domain) &&
+                  (reporter == null ||
+                      (r['reporter']! as String).toLowerCase().contains(
+                        reporter,
+                      )),
+            )
+            .toList()
+          ..sort((a, b) {
+            final byTime = (b['received_at']! as String).compareTo(
+              a['received_at']! as String,
+            );
+            return byTime != 0
+                ? byTime
+                : (b['id']! as int).compareTo(a['id']! as int);
+          });
+    final (limit, offset) = _paging(query);
+    return _json({
+      'data': rows.skip(offset).take(limit).toList(),
+      'pagination': {
+        'has_more': offset + limit < rows.length,
+        if (rows.isNotEmpty) 'total': rows.length,
+      },
+    });
+  }
+
+  /// `GET /admin/dmarc-reports/{id}`: a report outside the session's scope
+  /// answers as a missing one does.
+  http.StreamedResponse _dmarcReportDetail(
+    http.BaseRequest request,
+    String id,
+  ) {
+    final held = _dmarcReportScopes(request);
+    final number = RegExp(r'^[0-9]+$').hasMatch(id) ? int.tryParse(id) : null;
+    if (number == null || number > 0xffffffff || number < 1) {
+      _fail(
+        422,
+        'validation_failed',
+        'Path parameters failed validation',
+        fields: {
+          'id': number == 0
+              ? 'must be at least 1'
+              : 'must be a non-negative integer',
+        },
+      );
+    }
+    final domains = _dmarcReportDomains(held);
+    for (final report in _dmarcReports) {
+      if (report['id'] == number &&
+          (domains == null || domains.contains(report['domain_id']))) {
+        return _json({'data': report});
+      }
+    }
+    _fail(404, 'dmarc_report_not_found', 'DMARC report not found');
+  }
+
+  /// The scopes at which the session holds `domains:read`, refusing one that
+  /// holds it nowhere.
+  Set<String> _dmarcReportScopes(http.BaseRequest request) {
+    final box = _mailboxes[_authenticate(request).primary]!;
+    final scopes = {
+      for (final (capability, scope) in _heldEntries(box))
+        if (capability == '*' || capability == 'domains:read') scope,
+    };
+    if (scopes.isEmpty) _fail(403, 'forbidden', 'Insufficient permissions');
+    return scopes;
+  }
+
+  /// The domain ids [scopes] can read, null for all of them. Only a mailbox
+  /// scope cannot read a report at all.
+  Set<int>? _dmarcReportDomains(Set<String> scopes) {
+    if (scopes.contains('*')) return null;
+    final names = [
+      for (final scope in scopes)
+        if (scope.startsWith('domain:')) scope.substring(7),
+    ];
+    if (names.isEmpty) _fail(403, 'forbidden', 'Insufficient permissions');
+    return {
+      for (final name in names)
+        if (_domains[name] case final domain?) domain.id,
+    };
+  }
+
+  /// The DMARC report list's filters as the server binds them, every problem
+  /// at once; the domain id, if one is given.
+  int? _dmarcReportFilters(Map<String, String> query) {
+    final problems = <String, String>{};
+    final rawDomain = query['domain_id'] ?? '';
+    int? domain;
+    if (rawDomain.isNotEmpty) {
+      domain = RegExp(r'^[0-9]+$').hasMatch(rawDomain)
+          ? int.tryParse(rawDomain)
+          : null;
+      if (domain == null || domain > 0xffffffff) {
+        problems['domain_id'] = 'must be a non-negative integer';
+      }
+    }
+    if ((query['reporter'] ?? '').runes.length > 255) {
+      problems['reporter'] = 'must be at most 255 characters';
+    }
+    final rawLimit = query['limit'] ?? '';
+    if (rawLimit.isNotEmpty) {
+      final limit = int.tryParse(rawLimit);
+      if (limit == null) {
+        problems['limit'] = 'must be an integer';
+      } else if (limit > 200) {
+        problems['limit'] = 'exceeds the maximum page size';
+      }
+    }
+    final rawOffset = query['offset'] ?? '';
+    if (rawOffset.isNotEmpty && int.tryParse(rawOffset) == null) {
+      problems['offset'] = 'must be an integer';
+    }
+    if (problems.isNotEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Query parameters failed validation',
+        fields: problems,
+      );
+    }
+    return domain;
+  }
 
   /// The TLS report list's filters as the server binds them, every problem
   /// at once; the domain id, if one is given.

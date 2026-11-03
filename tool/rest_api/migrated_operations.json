@@ -4,6 +4,20 @@
   "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
   "operations": [
     {
+      "operationId": "listDmarcReports",
+      "facade": "dmarcReports",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "OffsetPage<DmarcReport>; a total the server leaves out counts what was returned",
+      "tests": ["dmarc_reports_test.dart", "dmarc_reports_flow_test.dart"]
+    },
+    {
+      "operationId": "getDmarcReport",
+      "facade": "dmarcReport",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "DmarcReport with the published policy and each record's source, count, disposition and results",
+      "tests": ["dmarc_reports_test.dart", "dmarc_reports_flow_test.dart"]
+    },
+    {
       "operationId": "snoozeThread",
       "facade": "snoozeThread",
       "wire_responses": "generated typed DTOs",

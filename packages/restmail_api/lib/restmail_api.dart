@@ -14,6 +14,7 @@ export 'src/calendar.dart';
 export 'src/client.dart'
     show RestmailClient, ServerDescription, ServerHealth, TokensChanged;
 export 'src/discovery.dart';
+export 'src/dmarc_reports.dart';
 export 'src/errors.dart';
 export 'src/events.dart';
 export 'src/filter_models.dart';

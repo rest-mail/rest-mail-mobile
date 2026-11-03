@@ -5,12 +5,14 @@
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
-import 'package:restmail_generated/src/model/error_response.dart' as _i7;
+import 'package:restmail_generated/src/model/error_response.dart' as _i8;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/metrics_get200_response.dart'
     as _i6;
+import 'package:restmail_generated/src/response/metrics_get404_response.dart'
+    as _i7;
 import 'package:restmail_generated/src/response/metrics_get500_response.dart'
-    as _i8;
+    as _i9;
 import 'package:restmail_generated/src/response_wrapper/prometheus_metrics_response.dart'
     as _i2;
 import 'package:tonik_util/tonik_util.dart' as _i4;
@@ -79,11 +81,39 @@ final class PrometheusMetrics
                     .decodeSimpleString(context: r'X-Frame-Options'),
           ),
         );
+      case (404, r'text/plain'):
+        final _$body = _i4.decodeResponseText(
+          response.bodyBytes,
+          contentType: response.headers['content-type'],
+        );
+        return _i2.PrometheusMetricsResponse404(
+          body: _i7.MetricsGet404Response(
+            body: _$body,
+            contentSecurityPolicy:
+                (response.headersSplitValues[r'content-security-policy']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'Content-Security-Policy'),
+            referrerPolicy:
+                (response.headersSplitValues[r'referrer-policy']?.join(','))
+                    .decodeSimpleString(context: r'Referrer-Policy'),
+            strictTransportSecurity:
+                (response.headersSplitValues[r'strict-transport-security']
+                        ?.join(','))
+                    .decodeSimpleString(context: r'Strict-Transport-Security'),
+            xContentTypeOptions:
+                (response.headersSplitValues[r'x-content-type-options']?.join(
+                  ',',
+                )).decodeSimpleString(context: r'X-Content-Type-Options'),
+            xFrameOptions:
+                (response.headersSplitValues[r'x-frame-options']?.join(','))
+                    .decodeSimpleString(context: r'X-Frame-Options'),
+          ),
+        );
       case (500, r'application/json'):
         final _$json = _i4.decodeResponseJson<_i3.Object?>(response.bodyBytes);
-        final _$body = _i7.ErrorResponse.fromJson(_$json);
+        final _$body = _i8.ErrorResponse.fromJson(_$json);
         return _i2.PrometheusMetricsResponse500(
-          body: _i8.MetricsGet500Response(
+          body: _i9.MetricsGet500Response(
             body: _$body,
             contentSecurityPolicy:
                 (response.headersSplitValues[r'content-security-policy']?.join(

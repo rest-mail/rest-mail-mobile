@@ -11,6 +11,7 @@ import 'package:tonik_util/tonik_util.dart' as tonik;
 import 'admin_models.dart';
 import 'calendar.dart';
 import 'capabilities.dart';
+import 'dmarc_reports.dart';
 import 'errors.dart';
 import 'events.dart';
 import 'filter_models.dart';
@@ -519,6 +520,7 @@ class RestmailClient {
 
   late final _domainApi = wire.AdminDomainsApi(generatedSession);
   late final _mailboxApi = wire.AdminMailboxesApi(generatedSession);
+  late final _domainPolicyApi = wire.AdminDomainmailpolicyApi(generatedSession);
   late final _contactsApi = wire.ContactsApi(generatedSession);
   late final _credentialsApi = wire.CredentialsApi(generatedSession);
 
@@ -925,6 +927,53 @@ class RestmailClient {
       'reporting_org': ?reportingOrg,
     },
   );
+
+  /// The DMARC aggregate reports other servers sent, newest first. Needs
+  /// `domains:read`; at a domain scope the server answers with that domain's
+  /// reports only, and a filter narrows that further.
+  Future<OffsetPage<DmarcReport>> dmarcReports({
+    int? domainId,
+    String? reporter,
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    final response = await generatedValue(
+      _domainPolicyApi.listDmarcReports(
+        domainId: domainId,
+        reporter: reporter,
+        limit: limit,
+        offset: offset,
+      ),
+    );
+    if (response is! wire.ListDmarcReportsResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    // The server leaves the total out when it is zero.
+    final total = switch (body.pagination) {
+      wire.$RawListDmarcReportPaginationOneOfModelPagination(:final value) =>
+        value.total,
+      _ => null,
+    };
+    final items = body.data.map(DmarcReport.fromWire).toList();
+    return OffsetPage(
+      items,
+      offset: offset,
+      total: total ?? offset + items.length,
+    );
+  }
+
+  /// One DMARC report. Needs `domains:read` at its domain; the server answers
+  /// a report outside the session's scope with the same 404 as a missing one.
+  Future<DmarcReport> dmarcReport(int id) async {
+    final response = await generatedValue(
+      _domainPolicyApi.getDmarcReport(id: id),
+    );
+    if (response is! wire.GetDmarcReportResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return DmarcReport.fromWire(response.body.body.data);
+  }
 
   /// The audit log, newest first, a page at a time: hand the page's cursor
   /// back as [before] for the next. Only entries with [outcome] or by an

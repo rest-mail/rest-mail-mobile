@@ -224,7 +224,7 @@ class AdminQueueApi {
   );
 
   /// Bounce multiple queue entries
-  /// Database work follows the HTTP request context, including cancellation and deadlines.
+  /// Select entries by nonempty IDs (which take precedence) or by an explicit filter object. An empty filter object selects all entries subject to the action's status eligibility. A supplied filter must never be null, even with IDs; null is refused with 422 before queue access. Database work follows the HTTP request context, including cancellation and deadlines.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -253,10 +253,31 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": {}
+  /// }
+  /// ```
+  ///
   /// **Example** "empty_ids":
   /// ```json
   /// {
   ///   "ids": []
+  /// }
+  /// ```
+  ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null,
+  ///   "ids": [
+  ///     987654
+  ///   ]
   /// }
   /// ```
   ///
@@ -284,6 +305,15 @@ class AdminQueueApi {
   /// **Example** "malformed_json":
   /// ```json
   /// {}
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null
+  /// }
   /// ```
   ///
   /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
@@ -329,6 +359,17 @@ class AdminQueueApi {
   ///
   /// Response 200 (application/json):
   /// **Example** "by_filter":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "affected": 3
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
   /// ```json
   /// {
   ///   "data": {
@@ -397,6 +438,23 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "invalid_body":
   /// ```json
   /// {
@@ -420,6 +478,23 @@ class AdminQueueApi {
   ///     "details": {
   ///       "fields": {
   ///         "ids": "must be an array"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
@@ -468,7 +543,7 @@ class AdminQueueApi {
   }) async => _bulkBounceQueue(body: body, cancellation: cancellation);
 
   /// Delete multiple queue entries
-  /// Database work follows the HTTP request context, including cancellation and deadlines.
+  /// Select entries by nonempty IDs (which take precedence) or by an explicit filter object. An empty filter object selects all entries subject to the action's status eligibility. A supplied filter must never be null, even with IDs; null is refused with 422 before queue access. Database work follows the HTTP request context, including cancellation and deadlines.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -497,10 +572,31 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": {}
+  /// }
+  /// ```
+  ///
   /// **Example** "empty_ids":
   /// ```json
   /// {
   ///   "ids": []
+  /// }
+  /// ```
+  ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null,
+  ///   "ids": [
+  ///     987654
+  ///   ]
   /// }
   /// ```
   ///
@@ -528,6 +624,15 @@ class AdminQueueApi {
   /// **Example** "malformed_json":
   /// ```json
   /// {}
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null
+  /// }
   /// ```
   ///
   /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
@@ -573,6 +678,17 @@ class AdminQueueApi {
   ///
   /// Response 200 (application/json):
   /// **Example** "by_filter":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "affected": 3
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
   /// ```json
   /// {
   ///   "data": {
@@ -641,6 +757,23 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "invalid_body":
   /// ```json
   /// {
@@ -664,6 +797,23 @@ class AdminQueueApi {
   ///     "details": {
   ///       "fields": {
   ///         "ids": "must be an array"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
@@ -712,7 +862,7 @@ class AdminQueueApi {
   }) async => _bulkDeleteQueue(body: body, cancellation: cancellation);
 
   /// Retry multiple queue entries
-  /// Database work follows the HTTP request context, including cancellation and deadlines.
+  /// Select entries by nonempty IDs (which take precedence) or by an explicit filter object. An empty filter object selects all entries subject to the action's status eligibility. A supplied filter must never be null, even with IDs; null is refused with 422 before queue access. Database work follows the HTTP request context, including cancellation and deadlines.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -741,10 +891,31 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": {}
+  /// }
+  /// ```
+  ///
   /// **Example** "empty_ids":
   /// ```json
   /// {
   ///   "ids": []
+  /// }
+  /// ```
+  ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null,
+  ///   "ids": [
+  ///     987654
+  ///   ]
   /// }
   /// ```
   ///
@@ -772,6 +943,15 @@ class AdminQueueApi {
   /// **Example** "malformed_json":
   /// ```json
   /// {}
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "filter": null
+  /// }
   /// ```
   ///
   /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
@@ -817,6 +997,17 @@ class AdminQueueApi {
   ///
   /// Response 200 (application/json):
   /// **Example** "by_filter":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "affected": 3
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "empty_filter":
+  /// An explicit empty filter object intentionally selects every entry eligible for the action. Null is not an empty filter. Controlled SQL proves route wiring, not PostgreSQL persistence.
+  ///
   /// ```json
   /// {
   ///   "data": {
@@ -885,6 +1076,23 @@ class AdminQueueApi {
   /// }
   /// ```
   ///
+  /// **Example** "ids_null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "invalid_body":
   /// ```json
   /// {
@@ -908,6 +1116,23 @@ class AdminQueueApi {
   ///     "details": {
   ///       "fields": {
   ///         "ids": "must be an array"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "null_filter":
+  /// A supplied filter must be an object, never null, even when nonempty IDs are present. Binding refuses null with 422 before any queue SQL.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "filter": "must not be null"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
