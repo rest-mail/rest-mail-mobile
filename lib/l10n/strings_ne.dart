@@ -1,6 +1,20 @@
 /// Nepali base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsNe = {
   'classic': {
+    'quietHours.title': 'सूचनाका शान्त समय',
+    'quietHours.help': 'पूर्वनिर्धारित रूपमा बन्द। मेल आइरहन्छ। पुश सूचनाहरू शान्त समय सकिन्जेल रोकिन्छन्, त्यसपछि एउटा सारांशले कति सन्देश आए भनेर बताउँछ।',
+    'quietHours.toggle': 'शान्त समयमा सूचनाहरू रोक्नुहोस्',
+    'quietHours.start': 'सुरु (स्थानीय समय)',
+    'quietHours.end': 'अन्त्य (स्थानीय समय)',
+    'quietHours.timeZone': 'IANA समय क्षेत्र',
+    'quietHours.scheduleHelp': 'सुरु अन्त्यभन्दा पछि भएमा समय मध्यरात पार गर्छ। समयले यस क्षेत्रलाई पछ्याउँछ, डेलाइट सेभिङका परिवर्तनहरू सहित।',
+    'quietHours.save': 'शान्त समय सुरक्षित गर्नुहोस्',
+    'quietHours.loading': 'शान्त समय लोड हुँदैछ...',
+    'quietHours.saving': 'सुरक्षित हुँदैछ...',
+    'quietHours.saved': 'शान्त समय सुरक्षित भयो।',
+    'quietHours.loadFailed': 'शान्त समय लोड गर्न सकिएन।',
+    'quietHours.saveFailed': 'शान्त समय सुरक्षित गर्न सकिएन। दुवै समय र IANA समय क्षेत्र जाँच्नुहोस्।',
+    'quietHours.retry': 'फेरि प्रयास गर्नुहोस्',
     'messageClass.collapseLists': 'सूचीका मेल खुम्च्याउनुहोस् ({count})',
     'messageClass.showLists': 'सूचीका मेल देखाउनुहोस् ({count})',
     'messageClass.list': 'सूची',

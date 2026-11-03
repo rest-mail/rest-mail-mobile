@@ -21,6 +21,7 @@ import 'generated_transport.dart';
 import 'models.dart';
 import 'message_seal.dart';
 import 'push.dart';
+import 'quiet_hours.dart';
 import 'session.dart';
 import 'thread_due.dart';
 import 'thread_snooze.dart';
@@ -30,6 +31,15 @@ import 'thread_snooze.dart';
 /// when the session ends. Persist what it is given, or the next launch starts
 /// from a refresh token the server has already retired.
 typedef TokensChanged = void Function(SessionTokens? tokens);
+
+class _QuietHoursBody extends wire.QuietHoursBody {
+  const _QuietHoursBody(this.setting);
+
+  final wire.Setting setting;
+
+  @override
+  Object? toJson() => setting.toJson();
+}
 
 /// What `GET /api/health` reports.
 class ServerHealth {
@@ -1942,6 +1952,47 @@ class RestmailClient {
   //
   // An account's contacts: reading them needs mail:read on it, changing
   // them mail:write, and the server answers 403 forbidden otherwise.
+
+  Future<QuietHoursSetting> quietHours(int accountId) async {
+    final response = await generatedValue(
+      wire.NotificationsApi(generatedSession).getQuietHours(id: accountId),
+    );
+    if (response is! wire.GetQuietHoursResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return _quietHoursSetting(response.body.body.data);
+  }
+
+  Future<QuietHoursSetting> setQuietHours(
+    int accountId,
+    QuietHoursSetting setting,
+  ) async {
+    final response = await generatedValue(
+      wire.NotificationsApi(generatedSession).setQuietHours(
+        id: accountId,
+        body: _QuietHoursBody(
+          wire.Setting(
+            enabled: setting.enabled,
+            start: setting.start,
+            end: setting.end,
+            timeZone: setting.timeZone,
+          ),
+        ),
+      ),
+    );
+    if (response is! wire.SetQuietHoursResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    return _quietHoursSetting(response.body.body.data);
+  }
+
+  QuietHoursSetting _quietHoursSetting(wire.Setting setting) =>
+      QuietHoursSetting(
+        enabled: setting.enabled,
+        start: setting.start,
+        end: setting.end,
+        timeZone: setting.timeZone,
+      );
 
   /// Whether the account shows contact reply-time estimates. Off by default,
   /// and needs `mail:read` on the account.

@@ -1,6 +1,20 @@
 /// German base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsDe = {
   'classic': {
+    'quietHours.title': 'Ruhezeiten für Benachrichtigungen',
+    'quietHours.help': 'Standardmäßig aus. E-Mails kommen weiterhin an. Push-Benachrichtigungen warten bis zum Ende der Ruhezeit. Dann zeigt eine Zusammenfassung, wie viele Nachrichten eingegangen sind.',
+    'quietHours.toggle': 'Benachrichtigungen während der Ruhezeit zurückhalten',
+    'quietHours.start': 'Beginn (Ortszeit)',
+    'quietHours.end': 'Ende (Ortszeit)',
+    'quietHours.timeZone': 'IANA-Zeitzone',
+    'quietHours.scheduleHelp': 'Liegt der Beginn nach dem Ende, reicht die Ruhezeit über Mitternacht. Die Zeiten folgen dieser Zeitzone, auch bei Sommerzeitwechseln.',
+    'quietHours.save': 'Ruhezeiten speichern',
+    'quietHours.loading': 'Ruhezeiten werden geladen...',
+    'quietHours.saving': 'Wird gespeichert...',
+    'quietHours.saved': 'Ruhezeiten gespeichert.',
+    'quietHours.loadFailed': 'Ruhezeiten konnten nicht geladen werden.',
+    'quietHours.saveFailed': 'Ruhezeiten konnten nicht gespeichert werden. Prüfe beide Zeiten und die IANA-Zeitzone.',
+    'quietHours.retry': 'Erneut versuchen',
     'messageClass.collapseLists': 'Listenmails einklappen ({count})',
     'messageClass.showLists': 'Listenmails anzeigen ({count})',
     'messageClass.list': 'Liste',

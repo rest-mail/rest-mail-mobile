@@ -6,6 +6,21 @@
 /// in `voice.dart` (one import, one map entry, one `Locale`).
 const Map<String, Map<String, String>> stringsEn = {
   'classic': {
+    'quietHours.title': 'Notification quiet hours',
+    'quietHours.help': 'Off by default. Mail still arrives. Push notifications wait until quiet hours end, then one summary tells you how many messages arrived.',
+    'quietHours.toggle': 'Hold notifications during quiet hours',
+    'quietHours.start': 'Start (local time)',
+    'quietHours.end': 'End (local time)',
+    'quietHours.timeZone': 'IANA time zone',
+    'quietHours.scheduleHelp': 'Start later than end spans midnight. Times follow this zone, including daylight-saving changes.',
+    'quietHours.save': 'Save quiet hours',
+    'quietHours.loading': 'Loading quiet hours...',
+    'quietHours.saving': 'Saving...',
+    'quietHours.saved': 'Quiet hours saved.',
+    'quietHours.loadFailed': 'Could not load quiet hours.',
+    'quietHours.saveFailed':
+        'Could not save quiet hours. Check both times and the IANA time zone.',
+    'quietHours.retry': 'Try again',
     'messageClass.collapseLists': 'Collapse list mail ({count})',
     'messageClass.showLists': 'Show list mail ({count})',
     'messageClass.list': 'list',
