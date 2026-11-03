@@ -1499,6 +1499,19 @@ const Map<String, Map<String, String>> stringsEn = {
     'apikeys.copyAPIKey': 'Copy API key',
     'apikeys.useThisKeyAsABearerCredential':
         'Use this key as a Bearer credential in the Authorization header.',
+    'apikeys.permissionsOfName': 'Permissions of “{name}”',
+    'apikeys.ownerAddress': 'Owner: {address}',
+    'apikeys.theNewPermissionsReplaceTheOnes': 'The new permissions replace the ones below and apply to the key\'s next request. Its secret, name and expiry stay as they are, so nothing using the key has to change.',
+    'apikeys.aKeyCanHoldOnlyWhatBoth': 'A key can hold only what both you and its owner hold now, so a permission either of you has lost must be removed before the key can be saved.',
+    'apikeys.changingAKeyRequiresARecentSignIn': 'Changing a key\'s permissions requires a recent sign-in with a second factor, and your current password.',
+    'apikeys.savedThePermissionsOfName':
+        'Saved the permissions of “{name}”. Its secret has not changed.',
+    'apikeys.yourTwoFactorSignInIsNo': 'Your two-factor sign-in is no longer recent enough for this change. Sign in again with your code, then make the change again.',
+    'apikeys.thisChangeNeedsASessionSigned': 'This change needs a session signed in with two-factor authentication. Sign in again with your code, then make the change again.',
+    'apikeys.enterYourCurrentPasswordToChange':
+        'Enter your current password to change this key\'s permissions.',
+    'apikeys.thatIsNotYourCurrentPassword': 'That is not your current password. Enter the password you sign in with, not the key owner\'s.',
+    'apikeys.thisAPIKeyNoLongerExists': 'This API key no longer exists, or you may not manage its account. Nothing was changed.',
     'apppasswords.whateverSignsInWithItStopsWorking': 'Whatever signs in with it stops working at once, mail apps that are connected included. This cannot be undone.',
     'apppasswords.appPasswords': 'App passwords',
     'apppasswords.anAppPasswordLetsAMailApp': 'An app password lets a mail app, such as Thunderbird or the iPhone\'s Mail, or an automation sign in to {address} without a password of yours. Each one can be revoked on its own. An account with two-factor sign-in must use one over IMAP and SMTP: its own password is refused there.',

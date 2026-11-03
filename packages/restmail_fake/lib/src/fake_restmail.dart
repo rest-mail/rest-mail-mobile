@@ -91,6 +91,11 @@ class FakeRestmail {
   /// server's. The fake never expires one.
   static const _refreshTokenLifetime = Duration(days: 7);
 
+  /// How long ago a second factor may have been proved for what asks for a
+  /// recent one, the real server's default.
+  static const _freshTwoFactorWindow = Duration(minutes: 15);
+  static const _oneSecond = Duration(seconds: 1);
+
   /// A pause before every answer, for a slow network.
   final Duration latency;
 
@@ -288,6 +293,18 @@ class FakeRestmail {
     _accessTokens.updateAll(
       (_, grant) => _Grant(grant.session, past, grant.capabilities),
     );
+  }
+
+  /// Makes every session's proof of a second factor too old for what asks for
+  /// a recent one, as time passing would. A refresh does not renew it.
+  void ageTwoFactorProofs() {
+    final past = _clock().subtract(_freshTwoFactorWindow + _oneSecond);
+    for (final session in [
+      for (final grant in _accessTokens.values) grant.session,
+      ..._refreshTokens.values,
+    ]) {
+      if (session.twoFactor) session.twoFactorAt = past;
+    }
   }
 
   /// Ends every session: the next refresh is refused.
@@ -841,6 +858,13 @@ class FakeRestmail {
           'api_keys.revoke',
           () => _revokeAPIKey(session, id, key),
         ),
+      ('PATCH', ['api', 'v1', 'accounts', final id, 'api-keys', final key]) =>
+        _auditedBy(
+          request,
+          session,
+          'api_keys.update',
+          () => _updateAPIKey(session, id, key, bytes),
+        ),
       ('GET', ['api', 'v1', 'devices']) => _listDevices(session),
       ('POST', ['api', 'v1', 'devices']) => _registerDevice(
         session,
@@ -934,8 +958,13 @@ class FakeRestmail {
     }
     // The real server marks a session that took the second factor, and a
     // refresh keeps the mark; making an app password asks for it.
+    final proved = box.totpCode != null;
     return _issue(
-      _Session(box.id, twoFactor: box.totpCode != null),
+      _Session(
+        box.id,
+        twoFactor: proved,
+        twoFactorAt: proved ? _clock() : null,
+      ),
       native: body['client'] == 'native',
     );
   }
@@ -1019,7 +1048,7 @@ class FakeRestmail {
     revokeSessionsOf(box.address);
     _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
     return _issue(
-      _Session(box.id, twoFactor: true),
+      _Session(box.id, twoFactor: true, twoFactorAt: _clock()),
       native: client == 'native',
     );
   }
@@ -2062,6 +2091,108 @@ class FakeRestmail {
     } else if (name is! String) {
       problems['name'] = 'must be a string';
     }
+    _bindAPIKeyPermissions(body, problems);
+    final rawExpiry = body['expires_at'];
+    final expiresAt = rawExpiry is String ? DateTime.tryParse(rawExpiry) : null;
+    if (rawExpiry != null && expiresAt == null) {
+      problems['expires_at'] = 'must be a date-time';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+
+    final box = _manageable(session, id);
+    if (!session.twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'Sign in with two-factor authentication to create API keys',
+      );
+    }
+    final now = _clock();
+    final trimmed = (name as String).trim();
+    final rules = <String, String>{};
+    if (trimmed.isEmpty) {
+      rules['name'] = 'required';
+    } else if (trimmed.runes.length > 100 ||
+        trimmed.runes.any((r) => r < 0x20 || (r >= 0x7f && r < 0xa0))) {
+      rules['name'] =
+          'must contain at most 100 characters and no control characters';
+    }
+    final granted = _apiKeyPermissions(body, rules);
+    if (expiresAt != null && !expiresAt.isAfter(now)) {
+      rules['expires_at'] = 'must be in the future';
+    }
+    if (rules.isNotEmpty) _invalid(rules);
+
+    _checkAPIKeyCeiling(session, box, body, granted);
+    final publicId = _base62(12);
+    final created = _apiKeys[_nextRowId] = FakeAPIKey(
+      id: _nextRowId++,
+      mailboxId: box.id,
+      name: trimmed,
+      publicId: publicId,
+      secret: 'rmk_${publicId}_${_base62(43)}',
+      permissions: granted,
+      createdAt: now,
+      expiresAt: expiresAt ?? now.add(const Duration(days: 90)),
+    );
+    return _json({
+      'data': {..._apiKeyJson(created), 'token': created.secret},
+    }, status: 201);
+  }
+
+  http.StreamedResponse _updateAPIKey(
+    _Session session,
+    String id,
+    String key,
+    List<int> bytes,
+  ) {
+    // Login's throttle sits in front of this route too.
+    _spendSignInBudget();
+    final body = _object(bytes);
+    final problems = _undeclared(body, const {'password', 'permissions'});
+    _bindAPIKeyPermissions(body, problems);
+    if (problems.isNotEmpty) _invalid(problems);
+
+    final box = _manageable(session, id);
+    if (!session.twoFactor) {
+      _fail(
+        403,
+        'two_factor_required',
+        'This action needs a session signed in with two-factor '
+            'authentication: sign in again with your code',
+      );
+    }
+    // The time of the proof itself, so a refresh cannot reopen the window.
+    final proved = session.twoFactorAt;
+    final now = _clock();
+    if (proved == null ||
+        proved.isAfter(now) ||
+        now.difference(proved) > _freshTwoFactorWindow) {
+      _fail(
+        403,
+        'recent_two_factor_required',
+        'Sign in again with two-factor authentication: a recent second factor '
+            'is required',
+      );
+    }
+    final rules = <String, String>{};
+    final granted = _apiKeyPermissions(body, rules);
+    if (rules.isNotEmpty) _invalid(rules);
+    _checkAPIKeyCeiling(session, box, body, granted);
+    final found = _apiKeys[int.tryParse(key)];
+    if (found == null || found.mailboxId != box.id || found.isRevoked) {
+      _fail(404, 'not_found', 'API key not found');
+    }
+    found.permissions = granted;
+    return _json({'data': _apiKeyJson(found)});
+  }
+
+  /// What the server's binder says about the password and permissions of a
+  /// body that makes or changes an API key, before the route reads them.
+  static void _bindAPIKeyPermissions(
+    Map<String, dynamic> body,
+    Map<String, String> problems,
+  ) {
     final password = body['password'];
     if (body.containsKey('password') && password is! String) {
       problems['password'] = password == null
@@ -2097,32 +2228,15 @@ class FakeRestmail {
         }
       }
     }
-    final rawExpiry = body['expires_at'];
-    final expiresAt = rawExpiry is String ? DateTime.tryParse(rawExpiry) : null;
-    if (rawExpiry != null && expiresAt == null) {
-      problems['expires_at'] = 'must be a date-time';
-    }
-    if (problems.isNotEmpty) _invalid(problems);
+  }
 
-    final box = _manageable(session, id);
-    if (!session.twoFactor) {
-      _fail(
-        403,
-        'two_factor_required',
-        'Sign in with two-factor authentication to create API keys',
-      );
-    }
-    final now = _clock();
-    final trimmed = (name as String).trim();
-    final asked = permissions as List<Object?>? ?? const [];
-    final rules = <String, String>{};
-    if (trimmed.isEmpty) {
-      rules['name'] = 'required';
-    } else if (trimmed.runes.length > 100 ||
-        trimmed.runes.any((r) => r < 0x20 || (r >= 0x7f && r < 0xa0))) {
-      rules['name'] =
-          'must contain at most 100 characters and no control characters';
-    }
+  /// The permissions asked for, as a key stores them, adding to [rules] what
+  /// is wrong with them.
+  static List<(String, String)> _apiKeyPermissions(
+    Map<String, dynamic> body,
+    Map<String, String> rules,
+  ) {
+    final asked = body['permissions'] as List<Object?>? ?? const [];
     if (asked.isEmpty || asked.length > 64) {
       rules['permissions'] = 'must contain between 1 and 64 scoped permissions';
     }
@@ -2139,13 +2253,20 @@ class FakeRestmail {
         granted.add((capability, scope));
       }
     }
-    if (expiresAt != null && !expiresAt.isAfter(now)) {
-      rules['expires_at'] = 'must be in the future';
-    }
-    if (rules.isNotEmpty) _invalid(rules);
+    return granted;
+  }
 
+  /// The one rule for what a key may be given, when it is made and when it is
+  /// changed: the current password, nothing beyond what the session and the
+  /// account both hold now, and only capabilities that exist.
+  void _checkAPIKeyCeiling(
+    _Session session,
+    FakeMailbox box,
+    Map<String, dynamic> body,
+    List<(String, String)> granted,
+  ) {
     final own = _mailboxes[session.primary]!;
-    final current = password as String? ?? '';
+    final current = body['password'] as String? ?? '';
     if (current.isEmpty) {
       _fail(
         403,
@@ -2170,20 +2291,6 @@ class FakeRestmail {
     if (granted.any((p) => !known.contains(p.$1))) {
       _invalid({'permissions': 'contains an unknown capability'});
     }
-    final publicId = _base62(12);
-    final created = _apiKeys[_nextRowId] = FakeAPIKey(
-      id: _nextRowId++,
-      mailboxId: box.id,
-      name: trimmed,
-      publicId: publicId,
-      secret: 'rmk_${publicId}_${_base62(43)}',
-      permissions: granted,
-      createdAt: now,
-      expiresAt: expiresAt ?? now.add(const Duration(days: 90)),
-    );
-    return _json({
-      'data': {..._apiKeyJson(created), 'token': created.secret},
-    }, status: 201);
   }
 
   http.StreamedResponse _revokeAPIKey(_Session session, String id, String key) {
@@ -6716,7 +6823,7 @@ class FakeRestmail {
 }
 
 class _Session {
-  _Session(this.primary, {this.twoFactor = false});
+  _Session(this.primary, {this.twoFactor = false, this.twoFactorAt});
 
   /// The account it signed in to. The others it reaches are the server's
   /// owner grants, as they are now.
@@ -6724,6 +6831,9 @@ class _Session {
 
   /// Its sign-in took the account's second factor.
   final bool twoFactor;
+
+  /// When it took it. A refresh keeps this, so it never renews the proof.
+  DateTime? twoFactorAt;
 }
 
 class _Grant {

@@ -208,6 +208,285 @@ void main() {
     },
   );
 
+  group('changing a key', () {
+    late Account account;
+    late RestmailClient client;
+    late CreatedAPIKey made;
+    final mine = APIKeyPermission(capability: 'mail:read', scope: '*');
+    final other = APIKeyPermission(capability: 'mail:send', scope: '*');
+
+    Future<void> prepare([FakeRestmail? on]) async {
+      client = await _login(on ?? fake);
+      addTearDown(client.close);
+      account = (await client.accounts()).first;
+      made = await client.createAPIKey(
+        account.id,
+        name: 'Robot',
+        password: FakeAccounts.adminPassword,
+        permissions: [mine],
+      );
+    }
+
+    Future<APIKey> change({
+      String password = FakeAccounts.adminPassword,
+      List<APIKeyPermission>? permissions,
+      int? key,
+    }) => client.updateAPIKey(
+      account.id,
+      key ?? made.key.id,
+      password: password,
+      permissions: permissions ?? [other],
+    );
+
+    test('replaces the permissions, keeps everything else, and the answer '
+        'never carries the secret', () async {
+      await prepare();
+      final raw = await fake.client.patch(
+        Uri.parse(
+          'https://${fake.host}/api/v1/accounts/${account.id}/api-keys/'
+          '${made.key.id}',
+        ),
+        headers: {
+          'authorization': 'Bearer ${client.tokens!.accessToken}',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'password': FakeAccounts.adminPassword,
+          'permissions': [
+            {'capability': 'mail:send', 'scope': 'DOMAIN:EXAMPLE.COM'},
+            {'capability': 'mail:send', 'scope': 'domain:example.com'},
+            other.toJson(),
+          ],
+        }),
+      );
+      expect(raw.statusCode, 200);
+      expect(raw.body, isNot(contains('token')));
+      expect(raw.body, isNot(contains(made.token)));
+
+      final listed = (await client.apiKeys(account.id)).single;
+      // Stored as the server stores any key: lower case, without duplicates.
+      expect(listed.permissions, [
+        const APIKeyPermission(
+          capability: 'mail:send',
+          scope: 'domain:example.com',
+        ),
+        other,
+      ]);
+      expect(listed.id, made.key.id);
+      expect(listed.name, made.key.name);
+      expect(listed.publicId, made.key.publicId);
+      expect(listed.createdAt, made.key.createdAt);
+      expect(listed.expiresAt, made.key.expiresAt);
+    });
+
+    test('the client reads back what the server stored', () async {
+      await prepare();
+      final saved = await change();
+      expect(saved.permissions, [other]);
+      expect(saved.name, 'Robot');
+      expect((await client.apiKeys(account.id)).single.permissions, [other]);
+    });
+
+    test(
+      'refusals come in the server order and leave the key and session alone',
+      () async {
+        await prepare();
+        await expectLater(
+          change(password: '', permissions: []),
+          _field(
+            'permissions',
+            'must contain between 1 and 64 scoped permissions',
+          ),
+        );
+        await expectLater(
+          change(
+            password: '',
+            permissions: [
+              APIKeyPermission(capability: 'mail:read', scope: 'team:ops'),
+            ],
+          ),
+          _field(
+            'permissions',
+            'each permission needs a named capability and a valid scope',
+          ),
+        );
+        await expectLater(
+          change(password: ''),
+          _refused(403, 'reauth_required'),
+        );
+        await expectLater(
+          change(password: 'not it'),
+          _refused(403, 'invalid_password'),
+        );
+        await expectLater(
+          change(
+            permissions: [APIKeyPermission(capability: 'mail:fly', scope: '*')],
+          ),
+          _field('permissions', 'contains an unknown capability'),
+        );
+        // The password is read before the key is looked up.
+        await expectLater(
+          change(password: 'not it', key: 9999),
+          _refused(403, 'invalid_password'),
+        );
+        await expectLater(change(key: 9999), _refused(404, 'not_found'));
+        expect(client.tokens, isNotNull);
+        expect((await client.apiKeys(account.id)).single.permissions, [mine]);
+      },
+    );
+
+    test('a key is not changed to hold more than its creator does', () async {
+      fake.addAccount(
+        'watcher@${FakeAccounts.host}',
+        capabilities: {'queue:read'},
+      );
+      final watcher = await _login(fake, email: 'watcher@${FakeAccounts.host}');
+      addTearDown(watcher.close);
+      final own = (await watcher.accounts()).first;
+      const held = APIKeyPermission(capability: 'queue:read', scope: '*');
+      final key = await watcher.createAPIKey(
+        own.id,
+        name: 'Queue reader',
+        password: FakeAccounts.adminPassword,
+        permissions: [held],
+      );
+      await expectLater(
+        watcher.updateAPIKey(
+          own.id,
+          key.key.id,
+          password: FakeAccounts.adminPassword,
+          permissions: const [
+            APIKeyPermission(capability: 'queue:manage', scope: '*'),
+          ],
+        ),
+        _refused(403, 'forbidden'),
+      );
+      expect((await watcher.apiKeys(own.id)).single.permissions, [held]);
+    });
+
+    test('a revoked key and a key of another account are not found', () async {
+      await prepare();
+      await client.revokeAPIKey(account.id, made.key.id);
+      await expectLater(change(), _refused(404, 'not_found'));
+
+      await prepare();
+      fake.addAccount(
+        'other@${FakeAccounts.host}',
+        capabilities: {'mail:send'},
+      );
+      final others = await _login(fake, email: 'other@${FakeAccounts.host}');
+      addTearDown(others.close);
+      final own = (await others.accounts()).first;
+      expect(own.id, isNot(account.id));
+      await expectLater(
+        others.updateAPIKey(
+          account.id,
+          made.key.id,
+          password: FakeAccounts.adminPassword,
+          permissions: [other],
+        ),
+        _refused(404, 'not_found'),
+      );
+    });
+
+    test('a session without a second factor cannot change a key', () async {
+      fake.addAccount(
+        'plain@${FakeAccounts.host}',
+        capabilities: {'queue:read'},
+        twoFactor: false,
+      );
+      final plain = await _login(
+        fake,
+        email: 'plain@${FakeAccounts.host}',
+        withCode: false,
+      );
+      addTearDown(plain.close);
+      final own = (await plain.accounts()).first;
+      await expectLater(
+        plain.updateAPIKey(
+          own.id,
+          1,
+          password: FakeAccounts.adminPassword,
+          permissions: [other],
+        ),
+        _refused(403, 'two_factor_required'),
+      );
+    });
+
+    test('a second factor proved too long ago is refused, a refresh does not '
+        'renew it, and signing in again does', () async {
+      var now = DateTime.utc(2026, 11, 3, 12);
+      final timed = FakeRestmail(clock: () => now);
+      addTearDown(timed.close);
+      await prepare(timed);
+
+      now = now.add(const Duration(minutes: 15));
+      await change();
+
+      now = now.add(const Duration(seconds: 1));
+      // The access token has expired too, so this request refreshes first.
+      await expectLater(change(), _refused(403, 'recent_two_factor_required'));
+      expect(client.tokens, isNotNull);
+      await expectLater(change(), _refused(403, 'recent_two_factor_required'));
+
+      await client.login(
+        email: FakeAccounts.adminEmail,
+        password: FakeAccounts.adminPassword,
+        totpCode: FakeAccounts.totpCode,
+      );
+      expect((await change(permissions: [mine])).permissions, [mine]);
+    });
+
+    test('ageing the proofs reaches the sessions already open', () async {
+      await prepare();
+      await change();
+      fake.ageTwoFactorProofs();
+      await expectLater(change(), _refused(403, 'recent_two_factor_required'));
+    });
+
+    test('shares sign-in\'s budget', () async {
+      await prepare();
+      fake.throttleSignIns(const Duration(minutes: 1));
+      await expectLater(change(), _refused(429, 'rate_limited'));
+    });
+
+    test('a body is bound as the server binds it', () async {
+      await prepare();
+      Future<http.Response> send(Object body) => fake.client.patch(
+        Uri.parse(
+          'https://${fake.host}/api/v1/accounts/${account.id}/api-keys/'
+          '${made.key.id}',
+        ),
+        headers: {
+          'authorization': 'Bearer ${client.tokens!.accessToken}',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+      final cases = <Map<String, Object?>, Map<String, String>>{
+        {'password': FakeAccounts.adminPassword}: {
+          'permissions': 'must contain between 1 and 64 scoped permissions',
+        },
+        {'password': 7, 'permissions': 'mail:read', 'name': 'Renamed'}: {
+          'password': 'must be a string',
+          'permissions': 'must be an array',
+          'name': 'not allowed',
+        },
+      };
+      for (final MapEntry(key: body, value: want) in cases.entries) {
+        final response = await send(body);
+        expect(response.statusCode, 422, reason: '$body');
+        expect(
+          (jsonDecode(response.body)
+              as Map<String, dynamic>)['error']['details']['fields'],
+          want,
+          reason: '$body',
+        );
+      }
+      expect((await client.apiKeys(account.id)).single.name, 'Robot');
+    });
+  });
+
   test('a create body is bound as the server binds it', () async {
     final client = await _login(fake);
     addTearDown(client.close);

@@ -1499,6 +1499,18 @@ const Map<String, Map<String, String>> stringsEs = {
     'apikeys.copyAPIKey': 'Copiar clave API',
     'apikeys.useThisKeyAsABearerCredential':
         'Usa esta clave como credencial Bearer en la cabecera de Autorización.',
+    'apikeys.permissionsOfName': 'Permisos de «{name}»',
+    'apikeys.ownerAddress': 'Propietario: {address}',
+    'apikeys.theNewPermissionsReplaceTheOnes': 'Los nuevos permisos sustituyen a los de abajo y se aplican a la siguiente solicitud de la clave. Su secreto, nombre y caducidad no cambian, así que nada de lo que usa la clave tiene que cambiar.',
+    'apikeys.aKeyCanHoldOnlyWhatBoth': 'Una clave solo puede tener lo que tú y su propietario tenéis ahora, así que un permiso que cualquiera de los dos haya perdido debe quitarse antes de poder guardar la clave.',
+    'apikeys.changingAKeyRequiresARecentSignIn': 'Cambiar los permisos de una clave requiere un inicio de sesión reciente con un segundo factor y tu contraseña actual.',
+    'apikeys.savedThePermissionsOfName':
+        'Se guardaron los permisos de «{name}». Su secreto no ha cambiado.',
+    'apikeys.yourTwoFactorSignInIsNo': 'Tu inicio de sesión con dos factores ya no es lo bastante reciente para este cambio. Inicia sesión de nuevo con tu código y vuelve a hacer el cambio.',
+    'apikeys.thisChangeNeedsASessionSigned': 'Este cambio necesita una sesión iniciada con autenticación de dos factores. Inicia sesión de nuevo con tu código y vuelve a hacer el cambio.',
+    'apikeys.enterYourCurrentPasswordToChange': 'Introduce tu contraseña actual para cambiar los permisos de esta clave.',
+    'apikeys.thatIsNotYourCurrentPassword': 'Esa no es tu contraseña actual. Introduce la contraseña con la que inicias sesión, no la del propietario de la clave.',
+    'apikeys.thisAPIKeyNoLongerExists': 'Esta clave API ya no existe o no puedes administrar su cuenta. No se cambió nada.',
     'apppasswords.whateverSignsInWithItStopsWorking': 'Todo lo que inicie sesión con ella deja de funcionar al instante, incluidas las apps de correo que estén conectadas. Esto no se puede deshacer.',
     'apppasswords.appPasswords': 'Contraseñas de app',
     'apppasswords.anAppPasswordLetsAMailApp': 'Una contraseña de app permite que una app de correo, como Thunderbird o el Mail del iPhone, o una automatización, inicie sesión en {address} sin tu contraseña. Cada una puede ser revocada por separado. Una cuenta con inicio de sesión de dos factores debe usar una sobre IMAP y SMTP: su propia contraseña es rechazada allí.',

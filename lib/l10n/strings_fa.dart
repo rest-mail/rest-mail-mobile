@@ -1475,6 +1475,19 @@ const Map<String, Map<String, String>> stringsFa = {
     'apikeys.copyAPIKey': 'کپی کردن کلید API',
     'apikeys.useThisKeyAsABearerCredential':
         'از این کلید به عنوان مدرک Bearer در هدر Authorization استفاده کنید.',
+    'apikeys.permissionsOfName': 'مجوزهای «{name}»',
+    'apikeys.ownerAddress': 'مالک: {address}',
+    'apikeys.theNewPermissionsReplaceTheOnes': 'مجوزهای جدید جایگزین مجوزهای زیر می‌شوند و از درخواست بعدی کلید اعمال می‌شوند. راز، نام و تاریخ انقضای آن تغییر نمی‌کند، پس لازم نیست چیزی که از این کلید استفاده می‌کند تغییر کند.',
+    'apikeys.aKeyCanHoldOnlyWhatBoth': 'یک کلید فقط می‌تواند چیزی را داشته باشد که شما و مالک آن هر دو اکنون دارید، پس مجوزی که هر یک از شما از دست داده است باید پیش از ذخیرهٔ کلید حذف شود.',
+    'apikeys.changingAKeyRequiresARecentSignIn': 'تغییر مجوزهای یک کلید به ورود اخیر با عامل دوم و گذرواژهٔ فعلی شما نیاز دارد.',
+    'apikeys.savedThePermissionsOfName':
+        'مجوزهای «{name}» ذخیره شد. راز آن تغییر نکرده است.',
+    'apikeys.yourTwoFactorSignInIsNo': 'ورود دومرحله‌ای شما دیگر برای این تغییر به‌اندازهٔ کافی تازه نیست. دوباره با کد خود وارد شوید و سپس تغییر را دوباره انجام دهید.',
+    'apikeys.thisChangeNeedsASessionSigned': 'این تغییر به نشستی نیاز دارد که با احراز هویت دومرحله‌ای وارد شده باشد. دوباره با کد خود وارد شوید و سپس تغییر را دوباره انجام دهید.',
+    'apikeys.enterYourCurrentPasswordToChange':
+        'برای تغییر مجوزهای این کلید، گذرواژهٔ فعلی خود را وارد کنید.',
+    'apikeys.thatIsNotYourCurrentPassword': 'این گذرواژهٔ فعلی شما نیست. گذرواژه‌ای را وارد کنید که با آن وارد می‌شوید، نه گذرواژهٔ مالک کلید را.',
+    'apikeys.thisAPIKeyNoLongerExists': 'این کلید API دیگر وجود ندارد، یا شما اجازهٔ مدیریت حساب آن را ندارید. چیزی تغییر نکرد.',
     'apppasswords.whateverSignsInWithItStopsWorking': 'هر چیزی که با آن وارد شود فوراً از کار می‌افتد، از جمله برنامه‌های ایمیلی که متصل هستند. این قابل بازگشت نیست.',
     'apppasswords.appPasswords': 'رمزهای برنامه',
     'apppasswords.anAppPasswordLetsAMailApp': 'یک رمز برنامه اجازه می‌دهد یک برنامه ایمیل، مثل Thunderbird یا برنامه Mail آیفون، یا یک اتوماسیون بدون رمز شما وارد {address} شود. هر کدام می‌توانند به‌طور جداگانه لغو شوند. یک حساب با ورود دو مرحله‌ای باید برای IMAP و SMTP از یکی استفاده کند: رمز خودش آنجا پذیرفته نمی‌شود.',
