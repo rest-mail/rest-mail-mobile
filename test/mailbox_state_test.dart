@@ -12,9 +12,11 @@ Map<String, dynamic> _message(
   int id, {
   String received = '2026-09-10T10:00:00Z',
   bool read = false,
+  String? thread,
 }) => {
   'id': id,
   'mailbox_id': 1,
+  'thread_id': ?thread,
   'folder': 'INBOX',
   'sender': 'bob@example.test',
   'subject': 'Message $id',
@@ -28,6 +30,7 @@ class _Server {
   final events = StreamController<List<int>>();
   List<Map<String, dynamic>> inbox = [];
   bool refuseDeletes = false;
+  bool refuseLists = false;
 
   late final client = RestmailClient(
     server: Uri.parse('https://mail.example.test'),
@@ -55,6 +58,11 @@ class _Server {
                 },
               }, 500)
             : http.StreamedResponse(const Stream.empty(), 204);
+      }
+      if (refuseLists && path.endsWith('/messages')) {
+        return json({
+          'error': {'code': 'internal_error', 'message': 'Unavailable'},
+        }, 500);
       }
       return switch (path) {
         '/api/v1/accounts' => json({
@@ -127,6 +135,108 @@ void main() {
     await _settle();
 
     expect(mailbox.messages.map((m) => m.id), [2, 1]);
+  });
+
+  group('a thread snooze announced on the stream', () {
+    Map<String, Object> announced(
+      Object? until, {
+      int mailbox = 1,
+      String thread = 'thread-1',
+    }) => {'mailbox_id': mailbox, 'thread_id': thread, 'snoozed_until': ?until};
+
+    late _Server server;
+    late MailboxState mailbox;
+
+    setUp(() async {
+      server = _Server()
+        ..inbox = [
+          _message(3, thread: 'thread-1'),
+          _message(2, thread: 'thread-1'),
+          _message(1, thread: 'thread-2'),
+        ];
+      mailbox = MailboxState(RestBackend(server.client));
+      await mailbox.start();
+      await _settle();
+    });
+    tearDown(() => mailbox.dispose());
+
+    test('takes the whole thread out, even if a read says otherwise', () async {
+      server.refuseLists = true;
+      server.push(
+        MailEventType.folderUpdate,
+        announced('2099-01-01T10:00:00Z'),
+      );
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [1]);
+      expect(mailbox.error, isNull);
+    });
+
+    test('tells an open reader of the change', () async {
+      final heard = <ThreadSnooze>[];
+      final listening = mailbox.threadSnoozes.listen(heard.add);
+      addTearDown(listening.cancel);
+      server.push(
+        MailEventType.folderUpdate,
+        announced('2099-01-01T10:00:00Z'),
+      );
+      await _settle();
+      expect(heard.single.threadId, 'thread-1');
+      expect(heard.single.snoozedUntil!.toUtc(), DateTime.utc(2099, 1, 1, 10));
+    });
+
+    test('brings it back when the deadline is cleared', () async {
+      server.inbox = [_message(1, thread: 'thread-2')];
+      server.push(
+        MailEventType.folderUpdate,
+        announced('2099-01-01T10:00:00Z'),
+      );
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [1]);
+
+      server.inbox = [
+        _message(3, thread: 'thread-1'),
+        _message(2, thread: 'thread-1'),
+        _message(1, thread: 'thread-2'),
+      ];
+      server.events.add(
+        utf8.encode(
+          'event: folder_update\ndata: '
+          '{"mailbox_id":1,"thread_id":"thread-1","snoozed_until":null}\n\n',
+        ),
+      );
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [3, 2, 1]);
+    });
+
+    test('keeps the list when reading it again fails', () async {
+      server.refuseLists = true;
+      server.events.add(
+        utf8.encode(
+          'event: folder_update\ndata: '
+          '{"mailbox_id":1,"thread_id":"thread-1","snoozed_until":null}\n\n',
+        ),
+      );
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [3, 2, 1]);
+      expect(mailbox.error, isNull);
+    });
+
+    test('for another mailbox changes nothing here', () async {
+      server.inbox = [];
+      server.push(
+        MailEventType.folderUpdate,
+        announced('2099-01-01T10:00:00Z', mailbox: 2),
+      );
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [3, 2, 1]);
+    });
+
+    test('without its deadline is an ordinary folder update', () async {
+      server.inbox = [];
+      server.push(MailEventType.folderUpdate, announced(null));
+      await _settle();
+      expect(mailbox.messages.map((m) => m.id), [3, 2, 1]);
+    });
   });
 
   test('a message read on another device shows as read here', () async {

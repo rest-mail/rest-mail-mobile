@@ -59,6 +59,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     this.mailbox,
     this.receivedTls,
     this.sealedHash,
+    this.snoozedUntil,
     this.tlsVersion,
   });
 
@@ -154,6 +155,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       sizeBytes: _$map[r'size_bytes'].decodeJsonInt(
         context: r'Message.size_bytes',
       ),
+      snoozedUntil: _$map[r'snoozed_until'].decodeJsonNullableDateTime(
+        context: r'Message.snoozed_until',
+      ),
       subject: _$map[r'subject'].decodeJsonString(context: r'Message.subject'),
       threadId: _$map[r'thread_id'].decodeJsonString(
         context: r'Message.thread_id',
@@ -245,6 +249,8 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i3.int sizeBytes;
 
+  final _i3.DateTime? snoozedUntil;
+
   final _i3.String subject;
 
   final _i3.String threadId;
@@ -303,6 +309,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     r'sender': sender,
     r'sender_name': senderName,
     r'size_bytes': sizeBytes,
+    r'snoozed_until': snoozedUntil?.toTimeZonedIso8601String(),
     r'subject': subject,
     r'thread_id': threadId,
     if (tlsVersion != null) r'tls_version': tlsVersion,
@@ -352,6 +359,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         other.sender == this.sender &&
         other.senderName == this.senderName &&
         other.sizeBytes == this.sizeBytes &&
+        other.snoozedUntil == this.snoozedUntil &&
         other.subject == this.subject &&
         other.threadId == this.threadId &&
         other.tlsVersion == this.tlsVersion &&
@@ -398,6 +406,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       sender,
       senderName,
       sizeBytes,
+      snoozedUntil,
       subject,
       threadId,
       tlsVersion,
@@ -467,6 +476,7 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.String? sender,
     _i3.String? senderName,
     _i3.int? sizeBytes,
+    _i3.DateTime? snoozedUntil,
     _i3.String? subject,
     _i3.String? threadId,
     _i3.String? tlsVersion,
@@ -508,6 +518,7 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.String get sender;
   _i3.String get senderName;
   _i3.int get sizeBytes;
+  _i3.DateTime? get snoozedUntil;
   _i3.String get subject;
   _i3.String get threadId;
   _i3.String? get tlsVersion;
@@ -630,6 +641,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
   _i3.int get sizeBytes => _value.sizeBytes;
 
   @_i3.override
+  _i3.DateTime? get snoozedUntil => _value.snoozedUntil;
+
+  @_i3.override
   _i3.String get subject => _value.subject;
 
   @_i3.override
@@ -679,6 +693,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
     _i3.Object? sender = _sentinel,
     _i3.Object? senderName = _sentinel,
     _i3.Object? sizeBytes = _sentinel,
+    _i3.Object? snoozedUntil = _sentinel,
     _i3.Object? subject = _sentinel,
     _i3.Object? threadId = _sentinel,
     _i3.Object? tlsVersion = _sentinel,
@@ -785,6 +800,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       sizeBytes: _i3.identical(sizeBytes, _sentinel)
           ? this.sizeBytes
           : (sizeBytes as _i3.int),
+      snoozedUntil: _i3.identical(snoozedUntil, _sentinel)
+          ? this.snoozedUntil
+          : (snoozedUntil as _i3.DateTime?),
       subject: _i3.identical(subject, _sentinel)
           ? this.subject
           : (subject as _i3.String),

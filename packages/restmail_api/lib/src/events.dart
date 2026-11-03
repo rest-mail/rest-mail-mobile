@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'thread_snooze.dart';
+
 /// One event off a `text/event-stream` body.
 class ServerSentEvent {
   const ServerSentEvent({required this.event, required this.data, this.id});
@@ -67,7 +69,8 @@ abstract final class MailEventType {
   /// `{message_id}`
   static const messageDeleted = 'message_deleted';
 
-  /// `{folder, unread_count?}`
+  /// `{folder, unread_count?}`, or for a thread snoozed, returned or cancelled,
+  /// `{mailbox_id, thread_id, snoozed_until}`. See [MailEvent.threadSnooze].
   static const folderUpdate = 'folder_update';
 }
 
@@ -103,4 +106,26 @@ class MailEvent {
     final String folder => folder,
     _ => null,
   };
+
+  /// What a `folder_update` says of a thread's snooze, or null when it is about
+  /// something else. A null [ThreadSnooze.snoozedUntil] is a thread back in its
+  /// folders: its deadline came, or someone cancelled it.
+  ThreadSnooze? get threadSnooze {
+    if (type != MailEventType.folderUpdate) return null;
+    final mailboxId = data['mailbox_id'], threadId = data['thread_id'];
+    if (mailboxId is! num ||
+        threadId is! String ||
+        !data.containsKey('snoozed_until')) {
+      return null;
+    }
+    final until = data['snoozed_until'];
+    if (until != null && until is! String) return null;
+    final parsed = until is String ? DateTime.tryParse(until) : null;
+    if (until != null && parsed == null) return null;
+    return ThreadSnooze(
+      mailboxId: mailboxId.toInt(),
+      threadId: threadId,
+      snoozedUntil: parsed,
+    );
+  }
 }

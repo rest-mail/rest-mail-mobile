@@ -294,7 +294,16 @@ class FakeMessage {
     this.sealedHash,
     this.sealMismatch = false,
     this.authResults = const [],
+    this.threadId,
   });
+
+  /// Given by the fake when the message is stored, unless a test names it: a
+  /// reply joins the thread of the message it answers.
+  String? threadId;
+
+  /// When its thread returns, while the thread is snoozed. The fake keeps this
+  /// the same on every message of a thread.
+  DateTime? snoozedUntil;
 
   /// Given by the fake when the message is stored.
   late final int id;
@@ -378,7 +387,8 @@ class FakeMessage {
       'message_id': messageId,
       'in_reply_to': inReplyTo ?? '',
       'references': '',
-      'thread_id': '',
+      'thread_id': threadId ?? '',
+      'snoozed_until': ?snoozedUntil?.toUtc().toIso8601String(),
       'sender': sender,
       'sender_name': senderName ?? '',
       // Address strings, as the server sends them: it keeps no names.

@@ -616,6 +616,16 @@ const Map<String, Map<String, String>> stringsHi = {
     'kind.video': 'वीडियो',
     'kind.archive': 'संग्रह फ़ाइल',
     'kind.file': 'फ़ाइल',
+    'snooze.action': 'स्नूज़ करें',
+    'snooze.title': 'बातचीत स्नूज़ करें',
+    'snooze.description': 'चुने गए समय तक इस बातचीत को फ़ोल्डरों से छिपाएँ। खोज इसे फिर भी ढूँढ सकती है। समय आपके स्थानीय समय क्षेत्र में हैं।',
+    'snooze.until': '{time} तक स्नूज़ किया गया',
+    'snooze.returnAt': 'वापसी का समय',
+    'snooze.cancel': 'स्नूज़ रद्द करें',
+    'snooze.done': 'बातचीत स्नूज़ की गई',
+    'snooze.cancelled': 'स्नूज़ रद्द किया गया',
+    'snooze.failed': 'बातचीत स्नूज़ नहीं की जा सकी',
+    'snooze.future': 'भविष्य का समय चुनें',
     'trust.seal.intact':
         'इस सर्वर द्वारा स्वीकार किए जाने के बाद से संदेश अपरिवर्तित है',
     'trust.seal.mismatch':
@@ -1717,6 +1727,8 @@ const Map<String, Map<String, String>> stringsHi = {
     'client.cannotVerbStandardFolder': 'स्टैंडर्ड फ़ोल्डर {verb} नहीं कर सकता',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'इस खाते पर अभी निमंत्रणों का उत्तर नहीं दिया जा सकता।',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'इस खाते पर बातचीत स्नूज़ नहीं की जा सकती।',
     'client.theSourceOfThisMessageCannotBe':
         'इस संदेश का स्रोत अभी दिखाया नहीं जा सकता।',
     'client.imapHasNoContacts': 'IMAP में कोई संपर्क नहीं है।',

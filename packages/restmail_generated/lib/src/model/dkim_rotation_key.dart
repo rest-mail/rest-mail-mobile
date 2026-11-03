@@ -17,7 +17,10 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
     required this.recordValue,
     required this.selector,
     this.activatesAt,
+    this.removesAfter,
     this.retireAfter,
+    this.revocationPublishedAt,
+    this.revokedAt,
   });
 
   factory DkimRotationKey.fromSimple(
@@ -32,7 +35,10 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
         r'published_at',
         r'record_name',
         r'record_value',
+        r'removes_after',
         r'retire_after',
+        r'revocation_published_at',
+        r'revoked_at',
         r'selector',
       },
       listKeys: {},
@@ -51,8 +57,18 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
       recordValue: _$values[r'record_value'].decodeSimpleString(
         context: r'DkimRotationKey.record_value',
       ),
+      removesAfter: _$values[r'removes_after'].decodeSimpleNullableDateTime(
+        context: r'DkimRotationKey.removes_after',
+      ),
       retireAfter: _$values[r'retire_after'].decodeSimpleNullableDateTime(
         context: r'DkimRotationKey.retire_after',
+      ),
+      revocationPublishedAt: _$values[r'revocation_published_at']
+          .decodeSimpleNullableDateTime(
+            context: r'DkimRotationKey.revocation_published_at',
+          ),
+      revokedAt: _$values[r'revoked_at'].decodeSimpleNullableDateTime(
+        context: r'DkimRotationKey.revoked_at',
       ),
       selector: _$values[r'selector'].decodeSimpleString(
         context: r'DkimRotationKey.selector',
@@ -75,8 +91,18 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
       recordValue: _$map[r'record_value'].decodeJsonString(
         context: r'DkimRotationKey.record_value',
       ),
+      removesAfter: _$map[r'removes_after'].decodeJsonNullableDateTime(
+        context: r'DkimRotationKey.removes_after',
+      ),
       retireAfter: _$map[r'retire_after'].decodeJsonNullableDateTime(
         context: r'DkimRotationKey.retire_after',
+      ),
+      revocationPublishedAt: _$map[r'revocation_published_at']
+          .decodeJsonNullableDateTime(
+            context: r'DkimRotationKey.revocation_published_at',
+          ),
+      revokedAt: _$map[r'revoked_at'].decodeJsonNullableDateTime(
+        context: r'DkimRotationKey.revoked_at',
       ),
       selector: _$map[r'selector'].decodeJsonString(
         context: r'DkimRotationKey.selector',
@@ -96,7 +122,10 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
         r'published_at',
         r'record_name',
         r'record_value',
+        r'removes_after',
         r'retire_after',
+        r'revocation_published_at',
+        r'revoked_at',
         r'selector',
       },
       listKeys: {},
@@ -115,8 +144,18 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
       recordValue: _$values[r'record_value'].decodeFormString(
         context: r'DkimRotationKey.record_value',
       ),
+      removesAfter: _$values[r'removes_after'].decodeFormNullableDateTime(
+        context: r'DkimRotationKey.removes_after',
+      ),
       retireAfter: _$values[r'retire_after'].decodeFormNullableDateTime(
         context: r'DkimRotationKey.retire_after',
+      ),
+      revocationPublishedAt: _$values[r'revocation_published_at']
+          .decodeFormNullableDateTime(
+            context: r'DkimRotationKey.revocation_published_at',
+          ),
+      revokedAt: _$values[r'revoked_at'].decodeFormNullableDateTime(
+        context: r'DkimRotationKey.revoked_at',
       ),
       selector: _$values[r'selector'].decodeFormString(
         context: r'DkimRotationKey.selector',
@@ -132,7 +171,13 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
 
   final _i3.String recordValue;
 
+  final _i3.DateTime? removesAfter;
+
   final _i3.DateTime? retireAfter;
+
+  final _i3.DateTime? revocationPublishedAt;
+
+  final _i3.DateTime? revokedAt;
 
   final _i3.String selector;
 
@@ -142,7 +187,11 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
     r'published_at': publishedAt?.toTimeZonedIso8601String(),
     r'record_name': recordName,
     r'record_value': recordValue,
+    r'removes_after': removesAfter?.toTimeZonedIso8601String(),
     r'retire_after': retireAfter?.toTimeZonedIso8601String(),
+    r'revocation_published_at': revocationPublishedAt
+        ?.toTimeZonedIso8601String(),
+    r'revoked_at': revokedAt?.toTimeZonedIso8601String(),
     r'selector': selector,
   };
 
@@ -157,7 +206,10 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
         other.publishedAt == this.publishedAt &&
         other.recordName == this.recordName &&
         other.recordValue == this.recordValue &&
+        other.removesAfter == this.removesAfter &&
         other.retireAfter == this.retireAfter &&
+        other.revocationPublishedAt == this.revocationPublishedAt &&
+        other.revokedAt == this.revokedAt &&
         other.selector == this.selector;
   }
 
@@ -168,7 +220,10 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
       publishedAt,
       recordName,
       recordValue,
+      removesAfter,
       retireAfter,
+      revocationPublishedAt,
+      revokedAt,
       selector,
     ]);
   }
@@ -192,9 +247,24 @@ class DkimRotationKey extends _i1.ObjectParameterEncodable
     }
     _$result[r'record_name'] = _i1.PropertyValue.scalar(recordName);
     _$result[r'record_value'] = _i1.PropertyValue.scalar(recordValue);
+    if (removesAfter != null) {
+      _$result[r'removes_after'] = _i1.PropertyValue.scalar(
+        removesAfter!.toTimeZonedIso8601String(),
+      );
+    }
     if (retireAfter != null) {
       _$result[r'retire_after'] = _i1.PropertyValue.scalar(
         retireAfter!.toTimeZonedIso8601String(),
+      );
+    }
+    if (revocationPublishedAt != null) {
+      _$result[r'revocation_published_at'] = _i1.PropertyValue.scalar(
+        revocationPublishedAt!.toTimeZonedIso8601String(),
+      );
+    }
+    if (revokedAt != null) {
+      _$result[r'revoked_at'] = _i1.PropertyValue.scalar(
+        revokedAt!.toTimeZonedIso8601String(),
       );
     }
     _$result[r'selector'] = _i1.PropertyValue.scalar(selector);
@@ -223,14 +293,20 @@ abstract class $$DkimRotationKeyCopyWith<$Res> {
     _i3.DateTime? publishedAt,
     _i3.String? recordName,
     _i3.String? recordValue,
+    _i3.DateTime? removesAfter,
     _i3.DateTime? retireAfter,
+    _i3.DateTime? revocationPublishedAt,
+    _i3.DateTime? revokedAt,
     _i3.String? selector,
   });
   _i3.DateTime? get activatesAt;
   _i3.DateTime? get publishedAt;
   _i3.String get recordName;
   _i3.String get recordValue;
+  _i3.DateTime? get removesAfter;
   _i3.DateTime? get retireAfter;
+  _i3.DateTime? get revocationPublishedAt;
+  _i3.DateTime? get revokedAt;
   _i3.String get selector;
 }
 
@@ -255,7 +331,16 @@ class _DkimRotationKeyCopyWith<$Res>
   _i3.String get recordValue => _value.recordValue;
 
   @_i3.override
+  _i3.DateTime? get removesAfter => _value.removesAfter;
+
+  @_i3.override
   _i3.DateTime? get retireAfter => _value.retireAfter;
+
+  @_i3.override
+  _i3.DateTime? get revocationPublishedAt => _value.revocationPublishedAt;
+
+  @_i3.override
+  _i3.DateTime? get revokedAt => _value.revokedAt;
 
   @_i3.override
   _i3.String get selector => _value.selector;
@@ -266,7 +351,10 @@ class _DkimRotationKeyCopyWith<$Res>
     _i3.Object? publishedAt = _sentinel,
     _i3.Object? recordName = _sentinel,
     _i3.Object? recordValue = _sentinel,
+    _i3.Object? removesAfter = _sentinel,
     _i3.Object? retireAfter = _sentinel,
+    _i3.Object? revocationPublishedAt = _sentinel,
+    _i3.Object? revokedAt = _sentinel,
     _i3.Object? selector = _sentinel,
   }) {
     return (DkimRotationKey(
@@ -282,9 +370,18 @@ class _DkimRotationKeyCopyWith<$Res>
       recordValue: _i3.identical(recordValue, _sentinel)
           ? this.recordValue
           : (recordValue as _i3.String),
+      removesAfter: _i3.identical(removesAfter, _sentinel)
+          ? this.removesAfter
+          : (removesAfter as _i3.DateTime?),
       retireAfter: _i3.identical(retireAfter, _sentinel)
           ? this.retireAfter
           : (retireAfter as _i3.DateTime?),
+      revocationPublishedAt: _i3.identical(revocationPublishedAt, _sentinel)
+          ? this.revocationPublishedAt
+          : (revocationPublishedAt as _i3.DateTime?),
+      revokedAt: _i3.identical(revokedAt, _sentinel)
+          ? this.revokedAt
+          : (revokedAt as _i3.DateTime?),
       selector: _i3.identical(selector, _sentinel)
           ? this.selector
           : (selector as _i3.String),

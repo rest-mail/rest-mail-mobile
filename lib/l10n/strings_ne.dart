@@ -619,6 +619,16 @@ const Map<String, Map<String, String>> stringsNe = {
     'kind.video': 'भिडियो',
     'kind.archive': 'सङ्ग्रह फाइल',
     'kind.file': 'फाइल',
+    'snooze.action': 'स्नुज गर्नुहोस्',
+    'snooze.title': 'कुराकानी स्नुज गर्नुहोस्',
+    'snooze.description': 'छानिएको समयसम्म यो कुराकानी फोल्डरहरूबाट लुकाउनुहोस्। खोजले अझै पनि यसलाई भेट्टाउन सक्छ। समयहरू तपाईंको स्थानीय समय क्षेत्रमा छन्।',
+    'snooze.until': '{time} सम्म स्नुज गरिएको',
+    'snooze.returnAt': 'फर्कने समय',
+    'snooze.cancel': 'स्नुज रद्द गर्नुहोस्',
+    'snooze.done': 'कुराकानी स्नुज गरियो',
+    'snooze.cancelled': 'स्नुज रद्द गरियो',
+    'snooze.failed': 'कुराकानी स्नुज गर्न सकिएन',
+    'snooze.future': 'भविष्यको समय छान्नुहोस्',
     'trust.seal.intact': 'यो सर्भरले स्वीकार गरेदेखि सन्देश अपरिवर्तित छ',
     'trust.seal.mismatch': 'यो सर्भरले स्वीकार गरेदेखि सन्देश परिवर्तन भएको छ',
     'trust.seal.notSealed': 'सिल गरिएको छैन',
@@ -1722,6 +1732,8 @@ const Map<String, Map<String, String>> stringsNe = {
         '{verb} सामान्य फोल्डरमा पहुँच गर्न सक्दैन',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'यो खाताले अझै निम्तोहरूमा उत्तर दिन सक्दैन।',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'यो खातामा कुराकानी स्नुज गर्न सकिँदैन।',
     'client.theSourceOfThisMessageCannotBe':
         'यस सन्देशको स्रोत अझै देखाउन सकिँदैन।',
     'client.imapHasNoContacts': 'IMAP मा कुनै सम्पर्कहरू छैनन्।',

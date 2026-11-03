@@ -387,6 +387,7 @@ class Message {
     this.calendarEvents = const [],
     this.sealedHash,
     this.authResults = const [],
+    this.snoozedUntil,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -419,6 +420,7 @@ class Message {
         AuthCheck.fromStored(result as Map<String, dynamic>),
     ],
     calendarEvents: CalendarInvite.listFromJson(json['calendar_events']),
+    snoozedUntil: _optionalTime(json['snoozed_until']),
   );
 
   final int id;
@@ -462,6 +464,10 @@ class Message {
   final String? sealedHash;
   final List<AuthCheck> authResults;
 
+  /// When its thread returns to its folders, while the thread is snoozed. Only
+  /// search and direct reads can see a snoozed message.
+  final DateTime? snoozedUntil;
+
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
 
@@ -483,6 +489,7 @@ class Message {
     bool? isStarred,
     String? folder,
     List<String>? labels,
+    Object? snoozedUntil = _unchanged,
   }) => Message(
     id: id,
     mailboxId: mailboxId,
@@ -511,7 +518,12 @@ class Message {
     calendarEvents: calendarEvents,
     sealedHash: sealedHash,
     authResults: authResults,
+    snoozedUntil: identical(snoozedUntil, _unchanged)
+        ? this.snoozedUntil
+        : snoozedUntil as DateTime?,
   );
+
+  static const Object _unchanged = Object();
 }
 
 class Attachment {

@@ -2,72 +2,77 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i18;
+import 'dart:core' as _i19;
 
-import 'package:http/http.dart' as _i21;
+import 'package:http/http.dart' as _i22;
 import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_due_post_body_body_model.dart'
-    as _i27;
-import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i29;
-import 'package:restmail_generated/src/model/forward_body.dart' as _i40;
-import 'package:restmail_generated/src/model/import_message_body.dart' as _i24;
+    as _i28;
+import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_snooze_post_body_body_model.dart'
+    as _i30;
+import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i32;
+import 'package:restmail_generated/src/model/forward_body.dart' as _i43;
+import 'package:restmail_generated/src/model/import_message_body.dart' as _i25;
 import 'package:restmail_generated/src/model/send_message_description.dart'
-    as _i34;
-import 'package:restmail_generated/src/model/update_message_body.dart' as _i38;
+    as _i37;
+import 'package:restmail_generated/src/model/update_message_body.dart' as _i41;
 import 'package:restmail_generated/src/operation/cancel_scheduled_message.dart'
-    as _i9;
-import 'package:restmail_generated/src/operation/delete_message.dart' as _i13;
-import 'package:restmail_generated/src/operation/deliver_message.dart' as _i7;
-import 'package:restmail_generated/src/operation/forward_message.dart' as _i15;
-import 'package:restmail_generated/src/operation/get_message.dart' as _i12;
-import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i16;
+    as _i10;
+import 'package:restmail_generated/src/operation/delete_message.dart' as _i14;
+import 'package:restmail_generated/src/operation/deliver_message.dart' as _i8;
+import 'package:restmail_generated/src/operation/forward_message.dart' as _i16;
+import 'package:restmail_generated/src/operation/get_message.dart' as _i13;
+import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i17;
 import 'package:restmail_generated/src/operation/get_thread.dart' as _i5;
 import 'package:restmail_generated/src/operation/import_message.dart' as _i4;
 import 'package:restmail_generated/src/operation/list_held_messages.dart'
     as _i3;
 import 'package:restmail_generated/src/operation/list_messages.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_scheduled_messages.dart'
-    as _i8;
+    as _i9;
 import 'package:restmail_generated/src/operation/release_held_message.dart'
-    as _i10;
-import 'package:restmail_generated/src/operation/send_message.dart' as _i11;
+    as _i11;
+import 'package:restmail_generated/src/operation/send_message.dart' as _i12;
 import 'package:restmail_generated/src/operation/set_thread_due.dart' as _i6;
-import 'package:restmail_generated/src/operation/update_message.dart' as _i14;
+import 'package:restmail_generated/src/operation/snooze_thread.dart' as _i7;
+import 'package:restmail_generated/src/operation/update_message.dart' as _i15;
 import 'package:restmail_generated/src/operation/verify_message_seal.dart'
-    as _i17;
+    as _i18;
 import 'package:restmail_generated/src/response_wrapper/cancel_scheduled_message_response.dart'
-    as _i31;
+    as _i34;
 import 'package:restmail_generated/src/response_wrapper/delete_message_response.dart'
-    as _i36;
-import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
-    as _i28;
-import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
     as _i39;
-import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
-    as _i35;
-import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
-    as _i41;
-import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
-    as _i25;
-import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
-    as _i23;
-import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
-    as _i22;
-import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
-    as _i20;
-import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
-    as _i30;
-import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
-    as _i32;
-import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
-    as _i33;
-import 'package:restmail_generated/src/response_wrapper/set_thread_due_response.dart'
-    as _i26;
-import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
-    as _i37;
-import 'package:restmail_generated/src/response_wrapper/verify_message_seal_response.dart'
+import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
+    as _i31;
+import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
     as _i42;
+import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
+    as _i38;
+import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
+    as _i44;
+import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
+    as _i26;
+import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
+    as _i24;
+import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
+    as _i21;
+import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
+    as _i33;
+import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
+    as _i35;
+import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
+    as _i36;
+import 'package:restmail_generated/src/response_wrapper/set_thread_due_response.dart'
+    as _i27;
+import 'package:restmail_generated/src/response_wrapper/snooze_thread_response.dart'
+    as _i29;
+import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
+    as _i40;
+import 'package:restmail_generated/src/response_wrapper/verify_message_seal_response.dart'
+    as _i45;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i19;
+import 'package:tonik_util/tonik_util.dart' as _i20;
 
 class MessagesApi {
   MessagesApi(_i1.Server server)
@@ -79,29 +84,30 @@ class MessagesApi {
       _importMessage = _i4.ImportMessage(server.baseUrl, () => server.client),
       _getThread = _i5.GetThread(server.baseUrl, () => server.client),
       _setThreadDue = _i6.SetThreadDue(server.baseUrl, () => server.client),
-      _deliverMessage = _i7.DeliverMessage(server.baseUrl, () => server.client),
-      _listScheduledMessages = _i8.ListScheduledMessages(
+      _snoozeThread = _i7.SnoozeThread(server.baseUrl, () => server.client),
+      _deliverMessage = _i8.DeliverMessage(server.baseUrl, () => server.client),
+      _listScheduledMessages = _i9.ListScheduledMessages(
         server.baseUrl,
         () => server.client,
       ),
-      _cancelScheduledMessage = _i9.CancelScheduledMessage(
+      _cancelScheduledMessage = _i10.CancelScheduledMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _releaseHeldMessage = _i10.ReleaseHeldMessage(
+      _releaseHeldMessage = _i11.ReleaseHeldMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _sendMessage = _i11.SendMessage(server.baseUrl, () => server.client),
-      _getMessage = _i12.GetMessage(server.baseUrl, () => server.client),
-      _deleteMessage = _i13.DeleteMessage(server.baseUrl, () => server.client),
-      _updateMessage = _i14.UpdateMessage(server.baseUrl, () => server.client),
-      _forwardMessage = _i15.ForwardMessage(
+      _sendMessage = _i12.SendMessage(server.baseUrl, () => server.client),
+      _getMessage = _i13.GetMessage(server.baseUrl, () => server.client),
+      _deleteMessage = _i14.DeleteMessage(server.baseUrl, () => server.client),
+      _updateMessage = _i15.UpdateMessage(server.baseUrl, () => server.client),
+      _forwardMessage = _i16.ForwardMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _getRawMessage = _i16.GetRawMessage(server.baseUrl, () => server.client),
-      _verifyMessageSeal = _i17.VerifyMessageSeal(
+      _getRawMessage = _i17.GetRawMessage(server.baseUrl, () => server.client),
+      _verifyMessageSeal = _i18.VerifyMessageSeal(
         server.baseUrl,
         () => server.client,
       );
@@ -116,27 +122,29 @@ class MessagesApi {
 
   final _i6.SetThreadDue _setThreadDue;
 
-  final _i7.DeliverMessage _deliverMessage;
+  final _i7.SnoozeThread _snoozeThread;
 
-  final _i8.ListScheduledMessages _listScheduledMessages;
+  final _i8.DeliverMessage _deliverMessage;
 
-  final _i9.CancelScheduledMessage _cancelScheduledMessage;
+  final _i9.ListScheduledMessages _listScheduledMessages;
 
-  final _i10.ReleaseHeldMessage _releaseHeldMessage;
+  final _i10.CancelScheduledMessage _cancelScheduledMessage;
 
-  final _i11.SendMessage _sendMessage;
+  final _i11.ReleaseHeldMessage _releaseHeldMessage;
 
-  final _i12.GetMessage _getMessage;
+  final _i12.SendMessage _sendMessage;
 
-  final _i13.DeleteMessage _deleteMessage;
+  final _i13.GetMessage _getMessage;
 
-  final _i14.UpdateMessage _updateMessage;
+  final _i14.DeleteMessage _deleteMessage;
 
-  final _i15.ForwardMessage _forwardMessage;
+  final _i15.UpdateMessage _updateMessage;
 
-  final _i16.GetRawMessage _getRawMessage;
+  final _i16.ForwardMessage _forwardMessage;
 
-  final _i17.VerifyMessageSeal _verifyMessageSeal;
+  final _i17.GetRawMessage _getRawMessage;
+
+  final _i18.VerifyMessageSeal _verifyMessageSeal;
 
   /// List messages in a folder
   ///
@@ -364,13 +372,13 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i20.ListMessagesResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i21.ListMessagesResponse, _i22.Response>>
   listMessages({
-    required _i18.int id,
-    required _i18.String folder,
-    _i18.int? limit,
-    _i18.String? cursor,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    required _i19.String folder,
+    _i19.int? limit,
+    _i19.String? cursor,
+    _i20.TonikCancellation? cancellation,
   }) async => _listMessages(
     id: id,
     folder: folder,
@@ -476,10 +484,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i22.ListHeldMessagesResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i23.ListHeldMessagesResponse, _i22.Response>>
   listHeldMessages({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _listHeldMessages(id: id, cancellation: cancellation);
 
   /// Store a message the account already has
@@ -802,11 +810,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i23.ImportMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i24.ImportMessageResponse, _i22.Response>>
   importMessage({
-    required _i24.ImportMessageBody body,
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i25.ImportMessageBody body,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _importMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get all messages in a thread
@@ -1031,11 +1039,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i25.GetThreadResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i26.GetThreadResponse, _i22.Response>>
   getThread({
-    required _i18.int id,
-    required _i18.String threadId,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    required _i19.String threadId,
+    _i20.TonikCancellation? cancellation,
   }) async =>
       _getThread(id: id, threadId: threadId, cancellation: cancellation);
 
@@ -1383,13 +1391,350 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i26.SetThreadDueResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i27.SetThreadDueResponse, _i22.Response>>
   setThreadDue({
-    required _i27.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel body,
-    required _i18.int id,
-    required _i18.String threadId,
-    _i19.TonikCancellation? cancellation,
+    required _i28.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel body,
+    required _i19.int id,
+    required _i19.String threadId,
+    _i20.TonikCancellation? cancellation,
   }) async => _setThreadDue(
+    body: body,
+    id: id,
+    threadId: threadId,
+    cancellation: cancellation,
+  );
+
+  /// Snooze a thread or cancel its snooze
+  /// Hides every message in this account's thread from folder listings without changing messages or search results. A future snoozed_until sets or replaces the durable deadline; null cancels it. The existing background worker returns due threads at startup and within 30 seconds of their deadline, publishing folder_update to the account's event streams.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Request body (application/json):
+  /// **Example** "cancelled":
+  /// ```json
+  /// {
+  ///   "snoozed_until": null
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "key_read":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "malformed_time":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "tomorrow"
+  /// }
+  /// ```
+  ///
+  /// **Example** "no_grants":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "past":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2000-01-01T00:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "snoozed":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "snoozed_until_missing":
+  /// ```json
+  /// {}
+  /// ```
+  ///
+  /// **Example** "snoozed_until_wrong_type":
+  /// ```json
+  /// {
+  ///   "snoozed_until": 12345
+  /// }
+  /// ```
+  ///
+  /// **Example** "thread_missing":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// **Example** "write_unavailable":
+  /// ```json
+  /// {
+  ///   "snoozed_until": "2099-01-01T10:00:00Z"
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "cancelled":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "snoozed_until": null,
+  ///     "thread_id": "<thread/2026@example.net>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "snoozed":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "snoozed_until": "2099-01-01T10:00:00Z",
+  ///     "thread_id": "<thread/2026@example.net>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "key_read":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "no_grants":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "thread_missing":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Thread not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_time":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "snoozed_until": "must be a date-time"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "past":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "snoozed_until": "must be in the future"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "snoozed_until_missing":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "snoozed_until": "required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "snoozed_until_wrong_type":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "snoozed_until": "must be a date-time"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "write_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i19.Future<_i20.TonikResult<_i29.SnoozeThreadResponse, _i22.Response>>
+  snoozeThread({
+    required _i30.ApiV1AccountsIdThreadsThreadIdSnoozePostBodyBodyModel body,
+    required _i19.int id,
+    required _i19.String threadId,
+    _i20.TonikCancellation? cancellation,
+  }) async => _snoozeThread(
     body: body,
     id: id,
     threadId: threadId,
@@ -1633,10 +1978,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i28.DeliverMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i31.DeliverMessageResponse, _i22.Response>>
   deliverMessage({
-    required _i29.DeliverMessageBody body,
-    _i19.TonikCancellation? cancellation,
+    required _i32.DeliverMessageBody body,
+    _i20.TonikCancellation? cancellation,
   }) async => _deliverMessage(body: body, cancellation: cancellation);
 
   /// List the messages waiting to be sent
@@ -1771,10 +2116,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<
-    _i19.TonikResult<_i30.ListScheduledMessagesResponse, _i21.Response>
+  _i19.Future<
+    _i20.TonikResult<_i33.ListScheduledMessagesResponse, _i22.Response>
   >
-  listScheduledMessages({_i19.TonikCancellation? cancellation}) async =>
+  listScheduledMessages({_i20.TonikCancellation? cancellation}) async =>
       _listScheduledMessages(cancellation: cancellation);
 
   /// Cancel a scheduled message
@@ -1878,12 +2223,12 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<
-    _i19.TonikResult<_i31.CancelScheduledMessageResponse, _i21.Response>
+  _i19.Future<
+    _i20.TonikResult<_i34.CancelScheduledMessageResponse, _i22.Response>
   >
   cancelScheduledMessage({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _cancelScheduledMessage(id: id, cancellation: cancellation);
 
   /// Release held mail with a two-factor session
@@ -2031,10 +2376,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i32.ReleaseHeldMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i35.ReleaseHeldMessageResponse, _i22.Response>>
   releaseHeldMessage({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _releaseHeldMessage(id: id, cancellation: cancellation);
 
   /// Send a message
@@ -2529,10 +2874,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i33.SendMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i36.SendMessageResponse, _i22.Response>>
   sendMessage({
-    required _i34.SendMessageDescription body,
-    _i19.TonikCancellation? cancellation,
+    required _i37.SendMessageDescription body,
+    _i20.TonikCancellation? cancellation,
   }) async => _sendMessage(body: body, cancellation: cancellation);
 
   /// Get a message by ID
@@ -2791,10 +3136,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i35.GetMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i38.GetMessageResponse, _i22.Response>>
   getMessage({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _getMessage(id: id, cancellation: cancellation);
 
   /// Delete a message
@@ -2909,11 +3254,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i36.DeleteMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i39.DeleteMessageResponse, _i22.Response>>
   deleteMessage({
-    required _i18.int id,
-    _i18.String? permanent,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i19.String? permanent,
+    _i20.TonikCancellation? cancellation,
   }) async =>
       _deleteMessage(id: id, permanent: permanent, cancellation: cancellation);
 
@@ -3180,11 +3525,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i37.UpdateMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i40.UpdateMessageResponse, _i22.Response>>
   updateMessage({
-    required _i38.UpdateMessageBody body,
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i41.UpdateMessageBody body,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _updateMessage(body: body, id: id, cancellation: cancellation);
 
   /// Forward a message
@@ -3499,11 +3844,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i39.ForwardMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i42.ForwardMessageResponse, _i22.Response>>
   forwardMessage({
-    required _i40.ForwardBody body,
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i43.ForwardBody body,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _forwardMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get the raw RFC 2822 message source
@@ -3633,10 +3978,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i41.GetRawMessageResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i44.GetRawMessageResponse, _i22.Response>>
   getRawMessage({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _getRawMessage(id: id, cancellation: cancellation);
 
   /// Verify a message's receipt seal
@@ -3726,9 +4071,9 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i18.Future<_i19.TonikResult<_i42.VerifyMessageSealResponse, _i21.Response>>
+  _i19.Future<_i20.TonikResult<_i45.VerifyMessageSealResponse, _i22.Response>>
   verifyMessageSeal({
-    required _i18.int id,
-    _i19.TonikCancellation? cancellation,
+    required _i19.int id,
+    _i20.TonikCancellation? cancellation,
   }) async => _verifyMessageSeal(id: id, cancellation: cancellation);
 }

@@ -297,6 +297,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
           mailbox: m,
           message: message,
           others: conversation.sublist(1),
+          fromFolder: true,
         ),
       ),
     );

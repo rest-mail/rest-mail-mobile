@@ -4,6 +4,13 @@
   "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
   "operations": [
     {
+      "operationId": "snoozeThread",
+      "facade": "snoozeThread",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "ThreadSnooze with the stored deadline; null is cancelled",
+      "tests": ["thread_snooze_test.dart", "thread_snooze_flow_test.dart"]
+    },
+    {
       "operationId": "verifyMessageSeal",
       "facade": "verifyMessageSeal",
       "wire_responses": "generated typed DTOs",

@@ -634,6 +634,16 @@ const Map<String, Map<String, String>> stringsDe = {
     'kind.video': 'Video',
     'kind.archive': 'Archiv',
     'kind.file': 'Datei',
+    'snooze.action': 'Zurückstellen',
+    'snooze.title': 'Unterhaltung zurückstellen',
+    'snooze.description': 'Blendet diese Unterhaltung bis zum gewählten Zeitpunkt in den Ordnern aus. Die Suche findet sie weiterhin. Zeiten gelten in deiner lokalen Zeitzone.',
+    'snooze.until': 'Zurückgestellt bis {time}',
+    'snooze.returnAt': 'Rückkehr am',
+    'snooze.cancel': 'Zurückstellung aufheben',
+    'snooze.done': 'Unterhaltung zurückgestellt',
+    'snooze.cancelled': 'Zurückstellung aufgehoben',
+    'snooze.failed': 'Unterhaltung konnte nicht zurückgestellt werden',
+    'snooze.future': 'Wähle einen Zeitpunkt in der Zukunft',
     'trust.seal.intact':
         'Nachricht seit der Annahme durch diesen Server unverändert',
     'trust.seal.mismatch':
@@ -1730,6 +1740,8 @@ const Map<String, Map<String, String>> stringsDe = {
     'client.cannotVerbStandardFolder': 'Kann Standardordner nicht {verb}',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'Einladungen können mit diesem Konto noch nicht beantwortet werden.',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'Unterhaltungen können bei diesem Konto nicht zurückgestellt werden.',
     'client.theSourceOfThisMessageCannotBe':
         'Die Quelle dieser Nachricht kann noch nicht angezeigt werden.',
     'client.imapHasNoContacts': 'IMAP hat keine Kontakte.',

@@ -6,7 +6,7 @@ import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
-import 'package:restmail_generated/src/model/set_relay_body_transport_model.dart'
+import 'package:restmail_generated/src/model/set_relay_body_transport_model2.dart'
     as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
@@ -29,7 +29,7 @@ class SetRelayBodyModel2 extends _i1.ObjectParameterEncodable
     return SetRelayBodyModel2(
       transport: _$map[r'transport'] == null
           ? null
-          : _i4.SetRelayBodyTransportModel.fromJson(_$map[r'transport']),
+          : _i4.SetRelayBodyTransportModel2.fromJson(_$map[r'transport']),
     );
   }
 
@@ -42,7 +42,7 @@ class SetRelayBodyModel2 extends _i1.ObjectParameterEncodable
     );
   }
 
-  final _i4.SetRelayBodyTransportModel? transport;
+  final _i4.SetRelayBodyTransportModel2? transport;
 
   @_i3.override
   _i3.Object? toJson() => {
@@ -87,8 +87,8 @@ abstract class $$SetRelayBodyModel2CopyWith<$Res> {
   factory $$SetRelayBodyModel2CopyWith(SetRelayBodyModel2 value) =
       _SetRelayBodyModel2CopyWith<$Res>;
 
-  $Res call({_i4.SetRelayBodyTransportModel? transport});
-  _i4.SetRelayBodyTransportModel? get transport;
+  $Res call({_i4.SetRelayBodyTransportModel2? transport});
+  _i4.SetRelayBodyTransportModel2? get transport;
 }
 
 class _SetRelayBodyModel2CopyWith<$Res>
@@ -100,14 +100,14 @@ class _SetRelayBodyModel2CopyWith<$Res>
   final SetRelayBodyModel2 _value;
 
   @_i3.override
-  _i4.SetRelayBodyTransportModel? get transport => _value.transport;
+  _i4.SetRelayBodyTransportModel2? get transport => _value.transport;
 
   @_i3.override
   $Res call({_i3.Object? transport = _sentinel}) {
     return (SetRelayBodyModel2(
       transport: _i3.identical(transport, _sentinel)
           ? this.transport
-          : (transport as _i4.SetRelayBodyTransportModel?),
+          : (transport as _i4.SetRelayBodyTransportModel2?),
     ) as $Res);
   }
 }

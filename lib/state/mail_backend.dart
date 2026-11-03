@@ -107,6 +107,18 @@ abstract interface class MailBackend {
   /// first. [id] itself is among them under that id.
   Future<List<Message>> conversation(int id);
 
+  /// Whether a thread can be hidden from its folders until a chosen time
+  /// (REST Mail).
+  bool get canSnoozeThreads;
+
+  /// Sets or replaces [threadId]'s deadline, or with null cancels it, and
+  /// returns what the server stored.
+  Future<ThreadSnooze> snoozeThread(
+    int accountId,
+    String threadId,
+    DateTime? until,
+  );
+
   Future<Message> send(OutgoingMessage message);
 
   /// Whether the server can hold a message and send it at a chosen time.
@@ -345,6 +357,16 @@ class RestBackend implements MailBackend, OriginalForwardBackend {
   Future<List<Message>> conversation(int id) async => [
     await client.message(id),
   ];
+
+  @override
+  bool get canSnoozeThreads => true;
+
+  @override
+  Future<ThreadSnooze> snoozeThread(
+    int accountId,
+    String threadId,
+    DateTime? until,
+  ) => client.snoozeThread(accountId, threadId, until);
 
   @override
   Future<Message> send(OutgoingMessage message) => client.send(message);

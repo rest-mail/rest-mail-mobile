@@ -105,6 +105,10 @@ class FakeRestmail {
   final Set<String> pushPlatforms;
   final DateTime Function() _clock;
 
+  /// Snoozed threads' deadlines, by mailbox and thread. [FakeMessage.snoozedUntil]
+  /// mirrors these, and a message delivered later takes its thread's.
+  final _snoozes = <(int, String), DateTime>{};
+
   /// False to act like a server that cannot be reached.
   bool online = true;
 
@@ -267,6 +271,7 @@ class FakeRestmail {
     String? fromName,
     String body = '',
     List<FakeAttachment> attachments = const [],
+    String? threadId,
   }) {
     final box = _mailboxAt(to);
     if (box == null) throw ArgumentError.value(to, 'to', 'No such mailbox');
@@ -281,10 +286,26 @@ class FakeRestmail {
         bodyText: body,
         attachments: attachments,
         receivedAt: _clock(),
+        threadId: threadId,
       ),
     );
     _announce(message);
     return message;
+  }
+
+  /// Returns every thread whose deadline has come, as the server's worker does
+  /// within 30 seconds of it, and announces each on the event stream. The fake
+  /// also does this ahead of each request, so a sample app's thread comes back
+  /// without a test's help.
+  void returnSnoozedThreads() {
+    final now = _clock();
+    final due = [
+      for (final entry in _snoozes.entries)
+        if (!entry.value.isAfter(now)) entry.key,
+    ];
+    for (final (mailboxId, thread) in due) {
+      _setSnooze(mailboxId, thread, null);
+    }
   }
 
   /// Makes every access token stale, as time passing would.
@@ -594,6 +615,7 @@ class FakeRestmail {
     if (!online || request.url.host != host) {
       throw http.ClientException('Connection refused', request.url);
     }
+    returnSnoozedThreads();
     final bytes = await body.toBytes();
     try {
       return _route(request, request.url.pathSegments, bytes);
@@ -750,7 +772,18 @@ class FakeRestmail {
           'messages',
         ],
       ) =>
-        _page(_own(session, id), query, (m) => m.folder == folder),
+        _page(
+          _own(session, id),
+          query,
+          (m) => m.folder == folder && m.snoozedUntil == null,
+        ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'threads', final thread]) =>
+        _threadMessages(_own(session, id), thread),
+      (
+        'POST',
+        ['api', 'v1', 'accounts', final id, 'threads', final thread, 'snooze'],
+      ) =>
+        _snoozeThread(session, id, thread, _object(bytes)),
       ('GET', ['api', 'v1', 'accounts', final id, 'search']) => _page(
         _own(session, id),
         query,
@@ -1319,11 +1352,13 @@ class FakeRestmail {
   }
 
   http.StreamedResponse _folders(FakeMailbox box) {
-    final mine = _messages.values.where((m) => m.mailboxId == box.id).toList();
+    final all = _messages.values.where((m) => m.mailboxId == box.id);
+    // A snoozed thread stays out of the counts, but its folder stays listed.
+    final mine = all.where((m) => m.snoozedUntil == null).toList();
     final names = {
       ..._standardFolders,
       ...?_emptyFolders[box.id],
-      for (final m in mine) m.folder,
+      for (final m in all) m.folder,
     };
     return _json({
       'data': [
@@ -3039,7 +3074,7 @@ class FakeRestmail {
       'unread_count': messagesIn(
         _mailboxes[message.mailboxId]!.address,
         message.folder,
-      ).where((m) => !m.isRead).length,
+      ).where((m) => !m.isRead && m.snoozedUntil == null).length,
     });
     if (message.folder == 'INBOX') _pushNewMail(message.mailboxId);
   }
@@ -3815,6 +3850,14 @@ class FakeRestmail {
     message
       ..id = _nextId++
       ..mailboxId = box.id;
+    final answered = message.inReplyTo;
+    message.threadId ??=
+        _messages.values
+            .where((m) => m.mailboxId == box.id && m.messageId == answered)
+            .firstOrNull
+            ?.threadId ??
+        'thread-${message.id}';
+    message.snoozedUntil = _snoozes[(box.id, message.threadId!)];
     for (final attachment in message.attachments) {
       attachment
         ..id = _nextId++
@@ -3856,6 +3899,72 @@ class FakeRestmail {
       _fail(404, 'not_found', 'Message not found');
     }
     return message;
+  }
+
+  http.StreamedResponse _threadMessages(FakeMailbox box, String thread) =>
+      _json({
+        'data': [
+          for (final m in _inThread(box.id, thread)..sort(_oldestFirst))
+            m.toJson(),
+        ],
+      });
+
+  /// Sets, replaces or with null cancels a thread's deadline. Refuses what the
+  /// server refuses, in its order: the body first, then whether the account can
+  /// be reached, then the time, then whether the thread exists.
+  http.StreamedResponse _snoozeThread(
+    _Session session,
+    String id,
+    String thread,
+    Map<String, dynamic> body,
+  ) {
+    final problems = _undeclared(body, const {'snoozed_until'});
+    if (!body.containsKey('snoozed_until')) {
+      problems['snoozed_until'] = 'required';
+    }
+    final given = body['snoozed_until'];
+    final until = given is String && _rfc3339.hasMatch(given)
+        ? DateTime.tryParse(given)
+        : null;
+    if (given != null && until == null) {
+      problems['snoozed_until'] = 'must be a date-time';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _folderAccount(session, id);
+    if (until != null && !until.isAfter(_clock())) {
+      _invalid({'snoozed_until': 'must be in the future'});
+    }
+    if (_inThread(box.id, thread).isEmpty) {
+      _fail(404, 'not_found', 'Thread not found');
+    }
+    _setSnooze(box.id, thread, until);
+    return _json({
+      'data': {
+        'thread_id': thread,
+        'snoozed_until': until?.toUtc().toIso8601String(),
+      },
+    });
+  }
+
+  List<FakeMessage> _inThread(int mailboxId, String thread) => [
+    for (final m in _messages.values)
+      if (m.mailboxId == mailboxId && m.threadId == thread) m,
+  ];
+
+  void _setSnooze(int mailboxId, String thread, DateTime? until) {
+    if (until == null) {
+      _snoozes.remove((mailboxId, thread));
+    } else {
+      _snoozes[(mailboxId, thread)] = until;
+    }
+    for (final m in _inThread(mailboxId, thread)) {
+      m.snoozedUntil = until;
+    }
+    _emit(mailboxId, 'folder_update', {
+      'mailbox_id': mailboxId,
+      'thread_id': thread,
+      'snoozed_until': until?.toUtc().toIso8601String(),
+    });
   }
 
   http.StreamedResponse _messageSeal(FakeMessage message) {
@@ -6960,6 +7069,13 @@ Never _invalid(Map<String, String> fields) => _fail(
 
 /// A field of [body] its request type does not declare, each refused:
 /// request bodies are closed.
+final _rfc3339 = RegExp(
+  r'^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$',
+);
+
+int _oldestFirst(FakeMessage a, FakeMessage b) =>
+    a.receivedAt.compareTo(b.receivedAt);
+
 Map<String, String> _undeclared(
   Map<String, dynamic> body,
   Set<String> declared, [

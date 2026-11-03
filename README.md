@@ -34,6 +34,8 @@ webmail uses, not IMAP.
 - How quickly a contact usually replies, beside the contact, for a REST Mail
   account that opts in. It's off by default, and the server works it out from
   that account's own mail.
+- Snoozing a thread on a REST Mail account: it leaves its folders until a chosen
+  time and comes back by itself on every device. Search still finds it.
 - Live updates over the server's event stream while the app is open.
 - New mail notifications on iPhone, from a REST Mail server that sends
   them. The server pushes only a signal to fetch; the app fetches the mail
