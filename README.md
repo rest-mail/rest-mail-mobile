@@ -34,6 +34,10 @@ webmail uses, not IMAP.
 - How quickly a contact usually replies, beside the contact, for a REST Mail
   account that opts in. It's off by default, and the server works it out from
   that account's own mail.
+- Notification quiet hours in each REST Mail account's settings: on or off,
+  local start and end times, and an IANA time zone, initially the device's zone.
+  Mail still arrives. The server holds notifications until quiet hours end,
+  then sends one summary of what arrived. The app does not filter notifications.
 - Snoozing a thread on a REST Mail account: it leaves its folders until a chosen
   time and comes back by itself on every device. Search still finds it.
 - Live updates over the server's event stream while the app is open.

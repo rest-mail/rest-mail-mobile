@@ -2,6 +2,20 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsFa = {
   'classic': {
+    'quietHours.title': 'ساعت‌های سکوت اعلان‌ها',
+    'quietHours.help': 'به‌طور پیش‌فرض خاموش است. ایمیل همچنان می‌رسد. اعلان‌های پوش تا پایان ساعت‌های سکوت منتظر می‌مانند، سپس یک خلاصه تعداد پیام‌های رسیده را نشان می‌دهد.',
+    'quietHours.toggle': 'نگه داشتن اعلان‌ها در ساعت‌های سکوت',
+    'quietHours.start': 'شروع (زمان محلی)',
+    'quietHours.end': 'پایان (زمان محلی)',
+    'quietHours.timeZone': 'منطقهٔ زمانی IANA',
+    'quietHours.scheduleHelp': 'اگر شروع پس از پایان باشد، بازه از نیمه‌شب می‌گذرد. زمان‌ها از این منطقه، از جمله تغییرات ساعت تابستانی، پیروی می‌کنند.',
+    'quietHours.save': 'ذخیرهٔ ساعت‌های سکوت',
+    'quietHours.loading': 'در حال بارگیری ساعت‌های سکوت...',
+    'quietHours.saving': 'در حال ذخیره...',
+    'quietHours.saved': 'ساعت‌های سکوت ذخیره شد.',
+    'quietHours.loadFailed': 'بارگیری ساعت‌های سکوت ممکن نشد.',
+    'quietHours.saveFailed': 'ذخیرهٔ ساعت‌های سکوت ممکن نشد. هر دو زمان و منطقهٔ زمانی IANA را بررسی کنید.',
+    'quietHours.retry': 'تلاش دوباره',
     'messageClass.collapseLists': 'جمع کردن ایمیل‌های فهرست ({count})',
     'messageClass.showLists': 'نمایش ایمیل‌های فهرست ({count})',
     'messageClass.list': 'فهرست',

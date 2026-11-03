@@ -23,6 +23,7 @@ export 'src/grants_models.dart';
 export 'src/models.dart';
 export 'src/message_seal.dart';
 export 'src/push.dart';
+export 'src/quiet_hours.dart';
 export 'src/session.dart';
 export 'src/thread_due.dart';
 export 'src/thread_snooze.dart';

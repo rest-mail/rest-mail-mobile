@@ -2,6 +2,21 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsAr = {
   'classic': {
+    'quietHours.title': 'ساعات هدوء الإشعارات',
+    'quietHours.help': 'معطلة افتراضيًا. يستمر وصول البريد. تنتظر إشعارات الدفع حتى تنتهي ساعات الهدوء، ثم يخبرك ملخص واحد بعدد الرسائل التي وصلت.',
+    'quietHours.toggle': 'تأجيل الإشعارات خلال ساعات الهدوء',
+    'quietHours.start': 'البداية (بالتوقيت المحلي)',
+    'quietHours.end': 'النهاية (بالتوقيت المحلي)',
+    'quietHours.timeZone': 'المنطقة الزمنية IANA',
+    'quietHours.scheduleHelp': 'إذا كانت البداية بعد النهاية، تمتد الفترة عبر منتصف الليل. تتبع الأوقات هذه المنطقة، بما في ذلك تغييرات التوقيت الصيفي.',
+    'quietHours.save': 'حفظ ساعات الهدوء',
+    'quietHours.loading': 'جارٍ تحميل ساعات الهدوء...',
+    'quietHours.saving': 'جارٍ الحفظ...',
+    'quietHours.saved': 'حُفظت ساعات الهدوء.',
+    'quietHours.loadFailed': 'تعذر تحميل ساعات الهدوء.',
+    'quietHours.saveFailed':
+        'تعذر حفظ ساعات الهدوء. تحقق من الوقتين ومن المنطقة الزمنية IANA.',
+    'quietHours.retry': 'إعادة المحاولة',
     'messageClass.collapseLists': 'طي بريد القوائم ({count})',
     'messageClass.showLists': 'إظهار بريد القوائم ({count})',
     'messageClass.list': 'قائمة',

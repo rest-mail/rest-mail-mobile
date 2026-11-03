@@ -23,6 +23,12 @@ The received DMARC report strings are new English wording. Their German, Spanish
 Hindi, Nepali, Arabic, and Farsi translations are machine-made and have not had
 human translation review.
 
+The quiet-hours strings follow the webmail English wording, including the owner's
+decision that mail still arrives and notifications wait for one end-of-period
+summary. Their German, Spanish, Hindi, Nepali, Arabic, and Farsi translations are
+machine-made and have not had human translation review. Server field errors are
+displayed unchanged at the corresponding inputs.
+
 Use `tr(context, key)` for labels and `trArgs(context, key, values)` for complete
 sentences. Theme, panel, preset, and administration metadata store explicit
 translation keys. Their persisted IDs, option values, and API values stay stable.

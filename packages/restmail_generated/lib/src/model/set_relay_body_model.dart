@@ -6,7 +6,7 @@ import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
-import 'package:restmail_generated/src/model/set_relay_body_transport_model2.dart'
+import 'package:restmail_generated/src/model/set_relay_body_transport_model.dart'
     as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
@@ -30,7 +30,7 @@ class SetRelayBodyModel extends _i1.ObjectParameterEncodable
       host: _$map[r'host'],
       transport: _$map[r'transport'] == null
           ? null
-          : _i4.SetRelayBodyTransportModel2.fromJson(_$map[r'transport']),
+          : _i4.SetRelayBodyTransportModel.fromJson(_$map[r'transport']),
     );
   }
 
@@ -45,7 +45,7 @@ class SetRelayBodyModel extends _i1.ObjectParameterEncodable
 
   final _i3.Object? host;
 
-  final _i4.SetRelayBodyTransportModel2? transport;
+  final _i4.SetRelayBodyTransportModel? transport;
 
   @_i3.override
   _i3.Object? toJson() => {
@@ -95,9 +95,9 @@ abstract class $$SetRelayBodyModelCopyWith<$Res> {
   factory $$SetRelayBodyModelCopyWith(SetRelayBodyModel value) =
       _SetRelayBodyModelCopyWith<$Res>;
 
-  $Res call({_i3.Object? host, _i4.SetRelayBodyTransportModel2? transport});
+  $Res call({_i3.Object? host, _i4.SetRelayBodyTransportModel? transport});
   _i3.Object? get host;
-  _i4.SetRelayBodyTransportModel2? get transport;
+  _i4.SetRelayBodyTransportModel? get transport;
 }
 
 class _SetRelayBodyModelCopyWith<$Res>
@@ -112,7 +112,7 @@ class _SetRelayBodyModelCopyWith<$Res>
   _i3.Object? get host => _value.host;
 
   @_i3.override
-  _i4.SetRelayBodyTransportModel2? get transport => _value.transport;
+  _i4.SetRelayBodyTransportModel? get transport => _value.transport;
 
   @_i3.override
   $Res call({_i3.Object? host = _sentinel, _i3.Object? transport = _sentinel}) {
@@ -120,7 +120,7 @@ class _SetRelayBodyModelCopyWith<$Res>
       host: _i3.identical(host, _sentinel) ? this.host : host,
       transport: _i3.identical(transport, _sentinel)
           ? this.transport
-          : (transport as _i4.SetRelayBodyTransportModel2?),
+          : (transport as _i4.SetRelayBodyTransportModel?),
     ) as $Res);
   }
 }

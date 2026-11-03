@@ -1,6 +1,21 @@
 /// Spanish base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsEs = {
   'classic': {
+    'quietHours.title': 'Horario de silencio de las notificaciones',
+    'quietHours.help': 'Desactivado por defecto. El correo sigue llegando. Las notificaciones push esperan hasta que termine el horario de silencio; entonces un resumen indica cuántos mensajes llegaron.',
+    'quietHours.toggle':
+        'Retener notificaciones durante el horario de silencio',
+    'quietHours.start': 'Inicio (hora local)',
+    'quietHours.end': 'Fin (hora local)',
+    'quietHours.timeZone': 'Zona horaria IANA',
+    'quietHours.scheduleHelp': 'Si el inicio es posterior al fin, el horario cruza la medianoche. Las horas siguen esta zona, incluidos los cambios de horario de verano.',
+    'quietHours.save': 'Guardar horario de silencio',
+    'quietHours.loading': 'Cargando horario de silencio...',
+    'quietHours.saving': 'Guardando...',
+    'quietHours.saved': 'Horario de silencio guardado.',
+    'quietHours.loadFailed': 'No se pudo cargar el horario de silencio.',
+    'quietHours.saveFailed': 'No se pudo guardar el horario de silencio. Revisa ambas horas y la zona horaria IANA.',
+    'quietHours.retry': 'Intentar de nuevo',
     'messageClass.collapseLists': 'Contraer correo de listas ({count})',
     'messageClass.showLists': 'Mostrar correo de listas ({count})',
     'messageClass.list': 'lista',

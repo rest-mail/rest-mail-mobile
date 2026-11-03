@@ -21,6 +21,7 @@ import '../version.dart';
 import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'contact_reply_time.dart';
+import 'quiet_hours_screen.dart';
 import 'mail_rules_screen.dart';
 import 'api_keys_screen.dart';
 import 'two_factor_screen.dart';
@@ -505,6 +506,26 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                               MailFiltersScreen(
                                 account: session,
                                 mailbox: m.account!,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (session != null && m.account != null) ...[
+                      const SizedBox(height: 22),
+                      SectionLabel(tr(context, 'quietHours.title')),
+                      const SizedBox(height: 9),
+                      RmGroup(
+                        children: [
+                          RmRow(
+                            label: tr(context, 'quietHours.title'),
+                            subtitle: tr(context, 'quietHours.help'),
+                            onTap: () => _push(
+                              context,
+                              QuietHoursScreen(
+                                client: session.client,
+                                accountId: m.account!.id,
                               ),
                             ),
                           ),

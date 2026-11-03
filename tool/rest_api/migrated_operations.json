@@ -4,6 +4,20 @@
   "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
   "operations": [
     {
+      "operationId": "getQuietHours",
+      "facade": "quietHours",
+      "wire_responses": "generated Setting DTO",
+      "ui_projection": "QuietHoursSetting; server-backed account preference",
+      "tests": ["quiet_hours_test.dart", "quiet_hours_state_test.dart", "quiet_hours_flow_test.dart", "quiet_hours_live_test.dart"]
+    },
+    {
+      "operationId": "setQuietHours",
+      "facade": "setQuietHours",
+      "wire_responses": "generated Setting DTO; request adapter delegates serialization to that DTO",
+      "ui_projection": "QuietHoursSetting; field errors remain unchanged",
+      "tests": ["quiet_hours_test.dart", "quiet_hours_state_test.dart", "quiet_hours_flow_test.dart", "quiet_hours_live_test.dart"]
+    },
+    {
       "operationId": "listDmarcReports",
       "facade": "dmarcReports",
       "wire_responses": "generated typed DTOs",

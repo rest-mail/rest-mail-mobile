@@ -1,6 +1,21 @@
 /// Hindi base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsHi = {
   'classic': {
+    'quietHours.title': 'सूचनाओं के शांत समय',
+    'quietHours.help': 'डिफ़ॉल्ट रूप से बंद। मेल आता रहता है। पुश सूचनाएँ शांत समय समाप्त होने तक रुकी रहती हैं, फिर एक सारांश बताता है कि कितने संदेश आए।',
+    'quietHours.toggle': 'शांत समय के दौरान सूचनाएँ रोकें',
+    'quietHours.start': 'शुरुआत (स्थानीय समय)',
+    'quietHours.end': 'समाप्ति (स्थानीय समय)',
+    'quietHours.timeZone': 'IANA समय क्षेत्र',
+    'quietHours.scheduleHelp': 'शुरुआत समाप्ति से बाद में होने पर समय आधी रात को पार करता है। समय इस क्षेत्र के अनुसार चलता है, जिसमें डेलाइट सेविंग के बदलाव भी शामिल हैं।',
+    'quietHours.save': 'शांत समय सहेजें',
+    'quietHours.loading': 'शांत समय लोड हो रहा है...',
+    'quietHours.saving': 'सहेजा जा रहा है...',
+    'quietHours.saved': 'शांत समय सहेजा गया।',
+    'quietHours.loadFailed': 'शांत समय लोड नहीं हो सका।',
+    'quietHours.saveFailed':
+        'शांत समय सहेजा नहीं जा सका। दोनों समय और IANA समय क्षेत्र जाँचें।',
+    'quietHours.retry': 'फिर कोशिश करें',
     'messageClass.collapseLists': 'सूची वाले मेल समेटें ({count})',
     'messageClass.showLists': 'सूची वाले मेल दिखाएँ ({count})',
     'messageClass.list': 'सूची',

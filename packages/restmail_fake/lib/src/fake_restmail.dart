@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:timezone/data/latest_all.dart' as time_zone_data;
+import 'package:timezone/timezone.dart' as time_zones;
 
 import 'model.dart';
 import 'forward_source.dart';
@@ -177,6 +179,11 @@ class FakeRestmail {
   // The accounts that opted in to reply-time estimates, off by default, and
   // the estimate each contact would have: contact id -> seconds.
   final _contactReplyTimeOn = <int>{};
+  final _quietHours = <int, Map<String, Object?>>{};
+  static final _quietHoursZones = () {
+    time_zone_data.initializeTimeZones();
+    return time_zones.timeZoneDatabase.locations.keys.toSet();
+  }();
   final _contactReplySeconds = <int, int>{};
   var _nextId = 1;
   var _nextMailboxId = 1;
@@ -729,6 +736,22 @@ class FakeRestmail {
       );
     }
 
+    if (path case ['api', 'v1', 'accounts', final id, 'quiet-hours']
+        when (method == 'GET' || method == 'PUT') &&
+            _bearer(request)?.startsWith('rmk_') == true) {
+      final key = _apiKeys.values
+          .where((key) => key.secret == _bearer(request))
+          .firstOrNull;
+      if (key == null ||
+          key.revokedAt != null ||
+          (key.expiresAt != null && !_clock().isBefore(key.expiresAt!))) {
+        _fail(401, 'unauthorized', 'Invalid or expired key');
+      }
+      final session = _Session(key.mailboxId);
+      return method == 'GET'
+          ? _getQuietHours(session, id, key: key)
+          : _setQuietHours(session, id, _object(bytes), key: key);
+    }
     if ((method, path) case (
       'POST',
       ['api', 'v1', 'accounts', final id, 'threads', final thread, 'due'],
@@ -859,6 +882,10 @@ class FakeRestmail {
         ['api', 'v1', 'accounts', final id, 'quarantine', final mid],
       ) =>
         _deleteQuarantined(_own(session, id), mid),
+      ('GET', ['api', 'v1', 'accounts', final id, 'quiet-hours']) =>
+        _getQuietHours(session, id),
+      ('PUT', ['api', 'v1', 'accounts', final id, 'quiet-hours']) =>
+        _setQuietHours(session, id, _object(bytes)),
       ('GET', ['api', 'v1', 'accounts', final id, 'contact-reply-time']) =>
         _getContactReplyTime(session, id),
       ('PUT', ['api', 'v1', 'accounts', final id, 'contact-reply-time']) =>
@@ -1699,6 +1726,112 @@ class FakeRestmail {
       _fail(404, 'not_found', 'Contact not found');
     }
     return row;
+  }
+
+  FakeMailbox _quietHoursAccount(
+    _Session session,
+    String id,
+    String capability, {
+    FakeAPIKey? key,
+  }) {
+    final accountId = _pathId(id);
+    final box = _mailboxes[accountId];
+    if (box == null) _fail(404, 'not_found', 'Account not found');
+    final holder = _mailboxes[session.primary]!;
+    final target = 'mailbox:${box.address}';
+    bool credentialAllows(String capability) =>
+        key == null ||
+        key.permissions.any(
+          (entry) =>
+              (entry.$1 == '*' || entry.$1 == capability) &&
+              _covers(entry.$2, target),
+        );
+    if (!_allowsHeld(holder, capability, target) ||
+        !credentialAllows(capability)) {
+      if (accountId == session.primary ||
+          _heldEntries(holder).any(
+            (entry) =>
+                (entry.$1.startsWith('mail:') ||
+                    entry.$1 == 'mailbox:manage') &&
+                _covers(entry.$2, target) &&
+                credentialAllows(entry.$1),
+          )) {
+        _fail(403, 'forbidden', 'Access denied');
+      }
+      _fail(404, 'not_found', 'Account not found');
+    }
+    return box;
+  }
+
+  http.StreamedResponse _getQuietHours(
+    _Session session,
+    String id, {
+    FakeAPIKey? key,
+  }) {
+    final box = _quietHoursAccount(session, id, 'mail:read', key: key);
+    return _json({
+      'data':
+          _quietHours[box.id] ??
+          {'enabled': false, 'start': '', 'end': '', 'time_zone': ''},
+    });
+  }
+
+  http.StreamedResponse _setQuietHours(
+    _Session session,
+    String id,
+    Map<String, dynamic> body, {
+    FakeAPIKey? key,
+  }) {
+    final problems = _undeclared(body, const {
+      'enabled',
+      'start',
+      'end',
+      'time_zone',
+    });
+    for (final field in ['enabled', 'start', 'end', 'time_zone']) {
+      if (!body.containsKey(field)) problems[field] = 'required';
+    }
+    _typed<bool>(body, 'enabled', 'a boolean', problems, nullable: false);
+    for (final field in ['start', 'end', 'time_zone']) {
+      _typed<String>(body, field, 'a string', problems, nullable: false);
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final enabled = body['enabled'] as bool;
+    final start = body['start'] as String;
+    final end = body['end'] as String;
+    final zone = body['time_zone'] as String;
+    final time = RegExp(r'^([01][0-9]|2[0-3]):[0-5][0-9]$');
+    for (final field in ['start', 'end']) {
+      final value = body[field] as String;
+      if (value.isNotEmpty && (value.length != 5 || !time.hasMatch(value))) {
+        problems[field] = r'must match ^$|^([01][0-9]|2[0-3]):[0-5][0-9]$';
+      }
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    if (enabled) {
+      for (final field in ['start', 'end', 'time_zone']) {
+        if ((body[field] as String).isEmpty) {
+          problems[field] = 'required when enabled';
+        }
+      }
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final box = _quietHoursAccount(session, id, 'mail:write', key: key);
+    if (start.isNotEmpty && start == end) {
+      problems['end'] = 'must differ from start';
+    }
+    if ((zone.isNotEmpty || enabled) &&
+        (zone == 'Local' || !_quietHoursZones.contains(zone))) {
+      problems['time_zone'] = 'must be an IANA time zone name';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    _quietHours[box.id] = {
+      'enabled': enabled,
+      'start': start,
+      'end': end,
+      'time_zone': zone,
+    };
+    return _json({'data': _quietHours[box.id]});
   }
 
   http.StreamedResponse _getContactReplyTime(_Session session, String id) {

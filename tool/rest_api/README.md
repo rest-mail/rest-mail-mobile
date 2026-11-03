@@ -9,8 +9,9 @@ must match the contract revision before tests start. The generator's complete de
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The committed document is the exact JSON served by the `main` image of server
-revision `1f199b8ab9d6bc601571d3d56da14cea0d8d3112`, which carries the thread-snooze,
-receipt-seal, contact reply-time and received DMARC report routes: 198 operations. No release holds that revision yet, so
+revision `39483178c1084aeb70004c7c935018989543b69f`, which carries the thread-snooze,
+receipt-seal, contact reply-time, received DMARC report and quiet-hours routes:
+200 operations. No release holds that revision yet, so
 `info.version` and the lock's version read `main`, and the revision and image
 digest name it. A future server pin change must update the complete document
 and checksum, then regenerate; new operations are not held to the old fixed
@@ -64,6 +65,20 @@ through the existing account methods. This adapter buffers ordinary requests;
 do not move the event stream onto it.
 
 ## Remaining migration
+
+The quiet-hours facade uses the generated notifications operations and `Setting`
+DTO for both responses and request serialization. Tonik 0.10.0 loses the parent
+properties of the served `quietHoursBody` schema's `anyOf`: its generated request
+variants cannot encode the boolean `enabled` or retain all fields when disabled.
+A narrow `QuietHoursBody` subclass delegates `toJson` to the generated `Setting`
+DTO instead. Generated output and the served description are unchanged. The
+facade's wire test asserts all four fields in both enabled and disabled requests;
+the real-server test exercises both through the generated operation.
+
+The fake persists account-local schedules and returns the server's field errors
+and mail-capability refusals. It validates IANA names against bundled time-zone
+data, not a hand-maintained list. It does not suppress mail or notifications: the
+production server owns notification holding and summary delivery.
 
 Generating a package and adding a transport is not the complete client migration.
 The domain and mailbox facade batch, and the contact reply-time setting, migrate
