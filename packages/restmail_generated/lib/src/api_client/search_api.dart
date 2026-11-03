@@ -34,6 +34,7 @@ class SearchApi {
   ///   "data": [
   ///     {
   ///       "calendar_events": [],
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": "2026-10-20T00:00:00Z",
   ///       "downgraded_size": 137,
@@ -61,6 +62,7 @@ class SearchApi {
   ///         "recipient@example.com"
   ///       ],
   ///       "references": "",
+  ///       "sealed_hash": "00ced91ef87007eb619fe4d649ec941257846db0f6aa30fcea744c76902a3eea",
   ///       "sender": "sender@example.net",
   ///       "sender_name": "Sender",
   ///       "size_bytes": 80,

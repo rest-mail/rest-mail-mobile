@@ -70,19 +70,20 @@ class RmTrustBadge extends StatelessWidget {
 
 /// The badge with the space above it, or nothing at all.
 class RmTrustLine extends StatelessWidget {
-  const RmTrustLine({super.key, required this.headers});
+  const RmTrustLine({super.key, required this.headers, this.verdict});
 
   final Map<String, String> headers;
+  final TrustVerdict? verdict;
 
   @override
   Widget build(BuildContext context) {
-    final verdict = trustFromHeaders(headers);
-    if (verdict.isUnchecked) return const SizedBox.shrink();
+    final current = verdict ?? trustFromHeaders(headers);
+    if (current.isUnchecked) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: RmTrustBadge(verdict: verdict, compact: true),
+        child: RmTrustBadge(verdict: current, compact: true),
       ),
     );
   }

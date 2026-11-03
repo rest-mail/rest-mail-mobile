@@ -7,6 +7,10 @@ client errors, notification summaries, and generated reply/forward headings.
 Translations added in this migration are machine translated and can be corrected
 in the packs without changing their keys or placeholders.
 
+The receipt-seal strings follow the webmail English wording. Their German,
+Spanish, Hindi, Nepali, Arabic, and Farsi translations are machine-made and
+have not had human translation review.
+
 Use `tr(context, key)` for labels and `trArgs(context, key, values)` for complete
 sentences. Theme, panel, preset, and administration metadata store explicit
 translation keys. Their persisted IDs, option values, and API values stay stable.

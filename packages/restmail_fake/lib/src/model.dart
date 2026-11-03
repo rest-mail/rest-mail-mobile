@@ -291,6 +291,9 @@ class FakeMessage {
     this.isDraft = false,
     this.inReplyTo,
     this.attachments = const [],
+    this.sealedHash,
+    this.sealMismatch = false,
+    this.authResults = const [],
   });
 
   /// Given by the fake when the message is stored.
@@ -304,6 +307,9 @@ class FakeMessage {
   String subject;
   String bodyText;
   String? bodyHtml;
+  String? sealedHash;
+  bool sealMismatch;
+  List<Map<String, String>> authResults;
   DateTime receivedAt;
   bool isRead;
   bool isFlagged;
@@ -381,6 +387,8 @@ class FakeMessage {
       'subject': subject,
       'body_text': bodyText,
       'body_html': bodyHtml ?? '',
+      'sealed_hash': sealedHash,
+      'auth_results': authResults,
       'size_bytes': sizeBytes,
       'raw_size': 0,
       'has_attachments': attachments.isNotEmpty,

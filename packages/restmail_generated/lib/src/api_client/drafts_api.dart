@@ -101,6 +101,7 @@ class DraftsApi {
   /// ```json
   /// {
   ///   "data": {
+  ///     "class": "person",
   ///     "created_at": "2026-10-27T07:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 0,
@@ -242,6 +243,15 @@ class DraftsApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Request body (application/json):
+  /// **Example** "capability_removed":
+  /// Message 12 belongs to the signed-in account 1 (admin@restmail.test). It is a draft for draft operations. The server capability ceiling permits mailbox:session but not mail:write or mail:read. The account can know its own mailbox exists, so refusal is 403, not a foreign-resource 404.
+  ///
+  /// ```json
+  /// {
+  ///   "subject": "Not authorized"
+  /// }
+  /// ```
+  ///
   /// **Example** "example" — The operation's example:
   /// ```json
   /// {
@@ -346,6 +356,7 @@ class DraftsApi {
   ///   "data": {
   ///     "body_text": "Ready to send.",
   ///     "calendar_events": [],
+  ///     "class": "person",
   ///     "created_at": "2026-10-27T07:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 0,
@@ -399,6 +410,19 @@ class DraftsApi {
   ///   "error": {
   ///     "code": "unauthorized",
   ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "capability_removed":
+  /// Message 12 belongs to the signed-in account 1 (admin@restmail.test). It is a draft for draft operations. The server capability ceiling permits mailbox:session but not mail:write or mail:read. The account can know its own mailbox exists, so refusal is 403, not a foreign-resource 404.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
   ///   }
   /// }
   /// ```
@@ -540,6 +564,7 @@ class DraftsApi {
   /// {
   ///   "data": {
   ///     "body_text": "Not sent yet.",
+  ///     "class": "person",
   ///     "created_at": "2026-10-27T07:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 200,
@@ -562,6 +587,7 @@ class DraftsApi {
   ///       "someone@imap.restmail.test"
   ///     ],
   ///     "references": "",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
   ///     "sender": "admin@restmail.test",
   ///     "sender_name": "",
   ///     "size_bytes": 18,
@@ -614,6 +640,19 @@ class DraftsApi {
   ///   "error": {
   ///     "code": "unauthorized",
   ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "capability_removed":
+  /// Message 12 belongs to the signed-in account 1 (admin@restmail.test). It is a draft for draft operations. The server capability ceiling permits mailbox:session but not mail:write or mail:read. The account can know its own mailbox exists, so refusal is 403, not a foreign-resource 404.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
   ///   }
   /// }
   /// ```

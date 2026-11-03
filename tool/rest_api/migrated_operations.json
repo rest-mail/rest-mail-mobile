@@ -4,6 +4,13 @@
   "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
   "operations": [
     {
+      "operationId": "verifyMessageSeal",
+      "facade": "verifyMessageSeal",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "MessageSeal with three integrity verdicts; checking and unavailable are UI states",
+      "tests": ["message_seal_test.dart", "message_seal_flow_test.dart"]
+    },
+    {
       "operationId": "listDomains",
       "facade": "domains",
       "wire_responses": "generated typed DTOs",

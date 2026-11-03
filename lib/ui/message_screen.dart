@@ -60,6 +60,8 @@ class _MessageScreenState extends State<MessageScreen> {
   ApiException? _error;
   List<Attachment> _attachments = const [];
   bool _allRecipients = false;
+  ReceiptSealState? _sealState;
+  String? _sealedHash;
 
   /// A private note, kept on this phone, under this account and message.
   String? _note;
@@ -123,6 +125,34 @@ class _MessageScreenState extends State<MessageScreen> {
     if (mounted) setState(() => _note = trimmed.isEmpty ? null : trimmed);
   }
 
+  Future<void> _checkSeal(Message message) async {
+    final backend = _mailbox.backend;
+    if (backend is! RestBackend || message.isDraft) return;
+    setState(() {
+      _sealState = ReceiptSealState.checking;
+      _sealedHash = message.sealedHash;
+    });
+    try {
+      final seal = await backend.client.verifyMessageSeal(message.id);
+      if (!mounted) return;
+      setState(() {
+        _sealState = switch (seal.state) {
+          MessageSealState.intact => ReceiptSealState.intact,
+          MessageSealState.mismatch => ReceiptSealState.mismatch,
+          MessageSealState.notSealed => ReceiptSealState.notSealed,
+        };
+        _sealedHash = seal.sealedHash;
+      });
+    } on ApiException {
+      if (mounted) {
+        setState(() {
+          _sealState = ReceiptSealState.unavailable;
+          _sealedHash = null;
+        });
+      }
+    }
+  }
+
   Future<void> _load() async {
     try {
       final full = await _mailbox.backend.message(widget.message.id);
@@ -131,6 +161,7 @@ class _MessageScreenState extends State<MessageScreen> {
         _message = full;
         _loaded = true;
       });
+      unawaited(_checkSeal(full));
       if (!full.isRead) unawaited(_markRead(full));
       for (final other in widget.others) {
         if (!other.isRead) unawaited(_markRead(other, shown: false));
@@ -418,11 +449,20 @@ class _MessageScreenState extends State<MessageScreen> {
     final family = typefaceFamily(v.readerType);
     final m = _message;
     final i = AppScope.of(context).settings.interface;
-    final trust = trustFromHeaders(m.headers);
+    final trust = _mailbox.backend is RestBackend
+        ? verdictFromAuth(
+            m.authResults.isEmpty
+                ? null
+                : MailAuth(authservId: 'this server', checks: m.authResults),
+          )
+        : trustFromHeaders(m.headers);
     final warningsOnly =
         i.choice(senderTrustPanel, trustShowForOption) == 'warnings';
     final showTrust =
-        i.isOn(senderTrustPanel) && (!warningsOnly || trust.isWarning);
+        i.isOn(senderTrustPanel) &&
+        (!warningsOnly ||
+            trust.isWarning ||
+            _sealState == ReceiptSealState.mismatch);
     final showReceipt =
         showTrust && i.choice(senderTrustPanel, trustDetailOption) == 'receipt';
     final error = _error;
@@ -631,7 +671,7 @@ class _MessageScreenState extends State<MessageScreen> {
                                   email: m.sender.trim(),
                                 ),
                               if (showTrust && !showReceipt)
-                                RmTrustLine(headers: m.headers),
+                                RmTrustLine(headers: m.headers, verdict: trust),
                             ],
                           ),
                         ),
@@ -642,7 +682,12 @@ class _MessageScreenState extends State<MessageScreen> {
                       ],
                     ),
                   ),
-                  if (showReceipt) RmTrustReceipt(verdict: trust),
+                  if (showReceipt)
+                    RmTrustReceipt(
+                      verdict: trust,
+                      sealState: _sealState,
+                      sealedHash: _sealedHash,
+                    ),
                   InkWell(
                     onTap: () =>
                         setState(() => _allRecipients = !_allRecipients),

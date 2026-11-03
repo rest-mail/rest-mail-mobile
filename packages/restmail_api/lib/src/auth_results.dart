@@ -40,6 +40,18 @@ class AuthCheck {
     this.reason,
   });
 
+  factory AuthCheck.fromStored(Map<String, dynamic> json) {
+    final result = json['result'] as String? ?? 'unknown';
+    final method = json['method'] as String;
+    return AuthCheck(
+      method: method,
+      result: _outcomes.contains(result) ? result : 'unknown',
+      raw: '$method=$result',
+      identity: json['property'] as String?,
+      domain: json['domain'] as String?,
+    );
+  }
+
   /// `spf`, `dkim`, `arc` or `dmarc`.
   final String method;
 

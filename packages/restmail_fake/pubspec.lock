@@ -57,6 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  big_decimal:
+    dependency: transitive
+    description:
+      name: big_decimal
+      sha256: "6413818091e80c907bb73bae383418db5c148fd7fd283e56197bfeeeb212d5bd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0"
   boolean_selector:
     dependency: transitive
     description:
@@ -65,6 +73,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  charset:
+    dependency: transitive
+    description:
+      name: charset
+      sha256: "27802032a581e01ac565904ece8c8962564b1070690794f0072f6865958ce8b9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
   cli_config:
     dependency: transitive
     description:
@@ -288,6 +304,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  restmail_generated:
+    dependency: transitive
+    description:
+      path: "../restmail_generated"
+      relative: true
+    source: path
+    version: "0.0.1-main"
   shelf:
     dependency: transitive
     description:
@@ -400,6 +423,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.20"
+  tonik_util:
+    dependency: transitive
+    description:
+      name: tonik_util
+      sha256: c4bcfe66b546dd0108055f49b05708a4d7357131a73822b40c6cb8815c7c174a
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.0"
   typed_data:
     dependency: transitive
     description:
@@ -465,4 +496,4 @@ packages:
     source: hosted
     version: "3.1.4"
 sdks:
-  dart: ">=3.11.0 <4.0.0"
+  dart: ">=3.13.1 <4.0.0"

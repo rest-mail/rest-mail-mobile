@@ -2,21 +2,25 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:convert' as _i8;
+import 'dart:convert' as _i10;
 import 'dart:core' as _i3;
 
-import 'package:collection/collection.dart' as _i7;
+import 'package:collection/collection.dart' as _i9;
 import 'package:meta/meta.dart' as _i2;
 import 'package:restmail_generated/src/model/auth_result.dart' as _i4;
 import 'package:restmail_generated/src/model/message_auth_verdict_model.dart'
     as _i5;
+import 'package:restmail_generated/src/model/message_class_model.dart' as _i6;
+import 'package:restmail_generated/src/model/message_due_source_model.dart'
+    as _i7;
 import 'package:restmail_generated/src/model/message_mailbox_one_of_model.dart'
-    as _i6;
+    as _i8;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
 class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
   const Message({
+    required this.$class,
     required this.createdAt,
     required this.dateHeader,
     required this.downgradedSize,
@@ -48,10 +52,13 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     this.bodyHtml,
     this.bodyText,
     this.calendarEvents,
+    this.due,
+    this.dueSource,
     this.headers,
     this.isAnswered,
     this.mailbox,
     this.receivedTls,
+    this.sealedHash,
     this.tlsVersion,
   });
 
@@ -78,6 +85,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         context: r'Message.body_text',
       ),
       calendarEvents: _$map[r'calendar_events'],
+      $class: _i6.MessageClassModel.fromJson(_$map[r'class']),
       createdAt: _$map[r'created_at'].decodeJsonDateTime(
         context: r'Message.created_at',
       ),
@@ -87,6 +95,10 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       downgradedSize: _$map[r'downgraded_size'].decodeJsonInt(
         context: r'Message.downgraded_size',
       ),
+      due: _$map[r'due'].decodeJsonNullableDateTime(context: r'Message.due'),
+      dueSource: _$map[r'due_source'] == null
+          ? null
+          : _i7.MessageDueSourceModel.fromJson(_$map[r'due_source']),
       folder: _$map[r'folder'].decodeJsonString(context: r'Message.folder'),
       hasAttachments: _$map[r'has_attachments'].decodeJsonBool(
         context: r'Message.has_attachments',
@@ -113,7 +125,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       ),
       mailbox: _$map[r'mailbox'] == null
           ? null
-          : _i6.MessageMailboxOneOfModel.fromJson(_$map[r'mailbox']),
+          : _i8.MessageMailboxOneOfModel.fromJson(_$map[r'mailbox']),
       mailboxId: _$map[r'mailbox_id'].decodeJsonInt(
         context: r'Message.mailbox_id',
       ),
@@ -131,6 +143,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       recipientsTo: _$map[r'recipients_to'],
       references: _$map[r'references'].decodeJsonString(
         context: r'Message.references',
+      ),
+      sealedHash: _$map[r'sealed_hash'].decodeJsonNullableString(
+        context: r'Message.sealed_hash',
       ),
       sender: _$map[r'sender'].decodeJsonString(context: r'Message.sender'),
       senderName: _$map[r'sender_name'].decodeJsonString(
@@ -168,11 +183,17 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i3.Object? calendarEvents;
 
+  final _i6.MessageClassModel $class;
+
   final _i3.DateTime createdAt;
 
   final _i3.DateTime? dateHeader;
 
   final _i3.int downgradedSize;
+
+  final _i3.DateTime? due;
+
+  final _i7.MessageDueSourceModel? dueSource;
 
   final _i3.String folder;
 
@@ -198,7 +219,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i3.bool isStarred;
 
-  final _i6.MessageMailboxOneOfModel? mailbox;
+  final _i8.MessageMailboxOneOfModel? mailbox;
 
   final _i3.int mailboxId;
 
@@ -215,6 +236,8 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
   final _i3.Object? recipientsTo;
 
   final _i3.String references;
+
+  final _i3.String? sealedHash;
 
   final _i3.String sender;
 
@@ -242,9 +265,12 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         calendarEvents,
         context: r'Message.calendar_events',
       ),
+    r'class': $class.toJson(),
     r'created_at': createdAt.toTimeZonedIso8601String(),
     r'date_header': dateHeader?.toTimeZonedIso8601String(),
     r'downgraded_size': downgradedSize,
+    r'due': due?.toTimeZonedIso8601String(),
+    r'due_source': dueSource?.toJson(),
     r'folder': folder,
     r'has_attachments': hasAttachments,
     if (headers != null)
@@ -273,6 +299,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       context: r'Message.recipients_to',
     ),
     r'references': references,
+    if (sealedHash != null) r'sealed_hash': sealedHash,
     r'sender': sender,
     r'sender_name': senderName,
     r'size_bytes': sizeBytes,
@@ -287,16 +314,19 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
-    const _$deepEquals = _i7.DeepCollectionEquality();
+    const _$deepEquals = _i9.DeepCollectionEquality();
     return other is Message &&
         _$deepEquals.equals(other.authResults, this.authResults) &&
         other.authVerdict == this.authVerdict &&
         other.bodyHtml == this.bodyHtml &&
         other.bodyText == this.bodyText &&
         other.calendarEvents == this.calendarEvents &&
+        other.$class == this.$class &&
         other.createdAt == this.createdAt &&
         other.dateHeader == this.dateHeader &&
         other.downgradedSize == this.downgradedSize &&
+        other.due == this.due &&
+        other.dueSource == this.dueSource &&
         other.folder == this.folder &&
         other.hasAttachments == this.hasAttachments &&
         other.headers == this.headers &&
@@ -318,6 +348,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         other.recipientsCc == this.recipientsCc &&
         other.recipientsTo == this.recipientsTo &&
         other.references == this.references &&
+        other.sealedHash == this.sealedHash &&
         other.sender == this.sender &&
         other.senderName == this.senderName &&
         other.sizeBytes == this.sizeBytes &&
@@ -329,16 +360,19 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   @_i3.override
   _i3.int get hashCode {
-    const deepEquals = _i7.DeepCollectionEquality();
+    const deepEquals = _i9.DeepCollectionEquality();
     return _i3.Object.hashAll([
       deepEquals.hash(authResults),
       authVerdict,
       bodyHtml,
       bodyText,
       calendarEvents,
+      $class,
       createdAt,
       dateHeader,
       downgradedSize,
+      due,
+      dueSource,
       folder,
       hasAttachments,
       headers,
@@ -360,6 +394,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       recipientsCc,
       recipientsTo,
       references,
+      sealedHash,
       sender,
       senderName,
       sizeBytes,
@@ -382,7 +417,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
   @_i3.override
   _i3.String uriEncode({
     required _i3.bool allowEmpty,
-    required _i8.Encoding textEncoding,
+    required _i10.Encoding textEncoding,
     _i3.bool useQueryComponent = false,
     _i3.bool allowReserved = false,
   }) {
@@ -401,9 +436,12 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.String? bodyHtml,
     _i3.String? bodyText,
     _i3.Object? calendarEvents,
+    _i6.MessageClassModel? $class,
     _i3.DateTime? createdAt,
     _i3.DateTime? dateHeader,
     _i3.int? downgradedSize,
+    _i3.DateTime? due,
+    _i7.MessageDueSourceModel? dueSource,
     _i3.String? folder,
     _i3.bool? hasAttachments,
     _i3.Object? headers,
@@ -416,7 +454,7 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.bool? isFlagged,
     _i3.bool? isRead,
     _i3.bool? isStarred,
-    _i6.MessageMailboxOneOfModel? mailbox,
+    _i8.MessageMailboxOneOfModel? mailbox,
     _i3.int? mailboxId,
     _i3.String? messageId,
     _i3.int? rawSize,
@@ -425,6 +463,7 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.Object? recipientsCc,
     _i3.Object? recipientsTo,
     _i3.String? references,
+    _i3.String? sealedHash,
     _i3.String? sender,
     _i3.String? senderName,
     _i3.int? sizeBytes,
@@ -438,9 +477,12 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.String? get bodyHtml;
   _i3.String? get bodyText;
   _i3.Object? get calendarEvents;
+  _i6.MessageClassModel get $class;
   _i3.DateTime get createdAt;
   _i3.DateTime? get dateHeader;
   _i3.int get downgradedSize;
+  _i3.DateTime? get due;
+  _i7.MessageDueSourceModel? get dueSource;
   _i3.String get folder;
   _i3.bool get hasAttachments;
   _i3.Object? get headers;
@@ -453,7 +495,7 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.bool get isFlagged;
   _i3.bool get isRead;
   _i3.bool get isStarred;
-  _i6.MessageMailboxOneOfModel? get mailbox;
+  _i8.MessageMailboxOneOfModel? get mailbox;
   _i3.int get mailboxId;
   _i3.String get messageId;
   _i3.int get rawSize;
@@ -462,6 +504,7 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.Object? get recipientsCc;
   _i3.Object? get recipientsTo;
   _i3.String get references;
+  _i3.String? get sealedHash;
   _i3.String get sender;
   _i3.String get senderName;
   _i3.int get sizeBytes;
@@ -494,6 +537,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
   _i3.Object? get calendarEvents => _value.calendarEvents;
 
   @_i3.override
+  _i6.MessageClassModel get $class => _value.$class;
+
+  @_i3.override
   _i3.DateTime get createdAt => _value.createdAt;
 
   @_i3.override
@@ -501,6 +547,12 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
 
   @_i3.override
   _i3.int get downgradedSize => _value.downgradedSize;
+
+  @_i3.override
+  _i3.DateTime? get due => _value.due;
+
+  @_i3.override
+  _i7.MessageDueSourceModel? get dueSource => _value.dueSource;
 
   @_i3.override
   _i3.String get folder => _value.folder;
@@ -539,7 +591,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
   _i3.bool get isStarred => _value.isStarred;
 
   @_i3.override
-  _i6.MessageMailboxOneOfModel? get mailbox => _value.mailbox;
+  _i8.MessageMailboxOneOfModel? get mailbox => _value.mailbox;
 
   @_i3.override
   _i3.int get mailboxId => _value.mailboxId;
@@ -564,6 +616,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
 
   @_i3.override
   _i3.String get references => _value.references;
+
+  @_i3.override
+  _i3.String? get sealedHash => _value.sealedHash;
 
   @_i3.override
   _i3.String get sender => _value.sender;
@@ -593,9 +648,12 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
     _i3.Object? bodyHtml = _sentinel,
     _i3.Object? bodyText = _sentinel,
     _i3.Object? calendarEvents = _sentinel,
+    _i3.Object? $class = _sentinel,
     _i3.Object? createdAt = _sentinel,
     _i3.Object? dateHeader = _sentinel,
     _i3.Object? downgradedSize = _sentinel,
+    _i3.Object? due = _sentinel,
+    _i3.Object? dueSource = _sentinel,
     _i3.Object? folder = _sentinel,
     _i3.Object? hasAttachments = _sentinel,
     _i3.Object? headers = _sentinel,
@@ -617,6 +675,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
     _i3.Object? recipientsCc = _sentinel,
     _i3.Object? recipientsTo = _sentinel,
     _i3.Object? references = _sentinel,
+    _i3.Object? sealedHash = _sentinel,
     _i3.Object? sender = _sentinel,
     _i3.Object? senderName = _sentinel,
     _i3.Object? sizeBytes = _sentinel,
@@ -641,6 +700,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       calendarEvents: _i3.identical(calendarEvents, _sentinel)
           ? this.calendarEvents
           : calendarEvents,
+      $class: _i3.identical($class, _sentinel)
+          ? this.$class
+          : ($class as _i6.MessageClassModel),
       createdAt: _i3.identical(createdAt, _sentinel)
           ? this.createdAt
           : (createdAt as _i3.DateTime),
@@ -650,6 +712,10 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       downgradedSize: _i3.identical(downgradedSize, _sentinel)
           ? this.downgradedSize
           : (downgradedSize as _i3.int),
+      due: _i3.identical(due, _sentinel) ? this.due : (due as _i3.DateTime?),
+      dueSource: _i3.identical(dueSource, _sentinel)
+          ? this.dueSource
+          : (dueSource as _i7.MessageDueSourceModel?),
       folder: _i3.identical(folder, _sentinel)
           ? this.folder
           : (folder as _i3.String),
@@ -682,7 +748,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
           : (isStarred as _i3.bool),
       mailbox: _i3.identical(mailbox, _sentinel)
           ? this.mailbox
-          : (mailbox as _i6.MessageMailboxOneOfModel?),
+          : (mailbox as _i8.MessageMailboxOneOfModel?),
       mailboxId: _i3.identical(mailboxId, _sentinel)
           ? this.mailboxId
           : (mailboxId as _i3.int),
@@ -707,6 +773,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       references: _i3.identical(references, _sentinel)
           ? this.references
           : (references as _i3.String),
+      sealedHash: _i3.identical(sealedHash, _sentinel)
+          ? this.sealedHash
+          : (sealedHash as _i3.String?),
       sender: _i3.identical(sender, _sentinel)
           ? this.sender
           : (sender as _i3.String),

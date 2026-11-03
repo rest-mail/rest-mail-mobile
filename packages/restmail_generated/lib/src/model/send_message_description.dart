@@ -7,22 +7,22 @@ import 'dart:core' as _i3;
 
 import 'package:collection/collection.dart' as _i6;
 import 'package:meta/meta.dart' as _i2;
-import 'package:restmail_generated/src/model/send_message_request_calendar_event_one_of_model.dart'
+import 'package:restmail_generated/src/model/send_message_description_calendar_event_one_of_model.dart'
     as _i4;
-import 'package:restmail_generated/src/model/send_message_request_list_unsubscribe_one_of_model.dart'
+import 'package:restmail_generated/src/model/send_message_description_list_unsubscribe_one_of_model.dart'
     as _i5;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
-class SendMessageRequest extends _i1.ObjectParameterEncodable
+class SendMessageDescription extends _i1.ObjectParameterEncodable
     implements _i1.UriEncodable {
-  const SendMessageRequest({
+  const SendMessageDescription({
+    required this.from,
     this.bcc,
     this.bodyHtml,
     this.bodyText,
     this.calendarEvent,
     this.cc,
-    this.from,
     this.inReplyTo,
     this.listUnsubscribe,
     this.onBehalf,
@@ -32,70 +32,70 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     this.to,
   });
 
-  factory SendMessageRequest.fromSimple(
+  factory SendMessageDescription.fromSimple(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     throw _i1.SimpleDecodingException(
-      r'Simple encoding not supported for SendMessageRequest: contains complex types',
+      r'Simple encoding not supported for SendMessageDescription: contains complex types',
     );
   }
 
-  factory SendMessageRequest.fromJson(_i3.Object? json) {
-    final _$map = json.decodeMap(context: r'SendMessageRequest');
-    return SendMessageRequest(
+  factory SendMessageDescription.fromJson(_i3.Object? json) {
+    final _$map = json.decodeMap(context: r'SendMessageDescription');
+    return SendMessageDescription(
       bcc: _$map[r'bcc'].decodeJsonNullableList<_i3.String>(
-        context: r'SendMessageRequest.bcc',
+        context: r'SendMessageDescription.bcc',
       ),
       bodyHtml: _$map[r'body_html'].decodeJsonNullableString(
-        context: r'SendMessageRequest.body_html',
+        context: r'SendMessageDescription.body_html',
       ),
       bodyText: _$map[r'body_text'].decodeJsonNullableString(
-        context: r'SendMessageRequest.body_text',
+        context: r'SendMessageDescription.body_text',
       ),
       calendarEvent: _$map[r'calendar_event'] == null
           ? null
-          : _i4.SendMessageRequestCalendarEventOneOfModel.fromJson(
+          : _i4.SendMessageDescriptionCalendarEventOneOfModel.fromJson(
               _$map[r'calendar_event'],
             ),
       cc: _$map[r'cc'].decodeJsonNullableList<_i3.String>(
-        context: r'SendMessageRequest.cc',
+        context: r'SendMessageDescription.cc',
       ),
-      from: _$map[r'from'].decodeJsonNullableString(
-        context: r'SendMessageRequest.from',
+      from: _$map[r'from'].decodeJsonString(
+        context: r'SendMessageDescription.from',
       ),
       inReplyTo: _$map[r'in_reply_to'].decodeJsonNullableString(
-        context: r'SendMessageRequest.in_reply_to',
+        context: r'SendMessageDescription.in_reply_to',
       ),
       listUnsubscribe: _$map[r'list_unsubscribe'] == null
           ? null
-          : _i5.SendMessageRequestListUnsubscribeOneOfModel.fromJson(
+          : _i5.SendMessageDescriptionListUnsubscribeOneOfModel.fromJson(
               _$map[r'list_unsubscribe'],
             ),
       onBehalf: _$map[r'on_behalf'].decodeJsonNullableBool(
-        context: r'SendMessageRequest.on_behalf',
+        context: r'SendMessageDescription.on_behalf',
       ),
       requireTls: _$map[r'require_tls'].decodeJsonNullableBool(
-        context: r'SendMessageRequest.require_tls',
+        context: r'SendMessageDescription.require_tls',
       ),
       scheduledAt: _$map[r'scheduled_at'].decodeJsonNullableDateTime(
-        context: r'SendMessageRequest.scheduled_at',
+        context: r'SendMessageDescription.scheduled_at',
       ),
       subject: _$map[r'subject'].decodeJsonNullableString(
-        context: r'SendMessageRequest.subject',
+        context: r'SendMessageDescription.subject',
       ),
       to: _$map[r'to'].decodeJsonNullableList<_i3.String>(
-        context: r'SendMessageRequest.to',
+        context: r'SendMessageDescription.to',
       ),
     );
   }
 
-  factory SendMessageRequest.fromForm(
+  factory SendMessageDescription.fromForm(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     throw _i1.FormDecodingException(
-      r'Form encoding not supported for SendMessageRequest: contains complex types',
+      r'Form encoding not supported for SendMessageDescription: contains complex types',
     );
   }
 
@@ -105,15 +105,15 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
 
   final _i3.String? bodyText;
 
-  final _i4.SendMessageRequestCalendarEventOneOfModel? calendarEvent;
+  final _i4.SendMessageDescriptionCalendarEventOneOfModel? calendarEvent;
 
   final _i3.List<_i3.String>? cc;
 
-  final _i3.String? from;
+  final _i3.String from;
 
   final _i3.String? inReplyTo;
 
-  final _i5.SendMessageRequestListUnsubscribeOneOfModel? listUnsubscribe;
+  final _i5.SendMessageDescriptionListUnsubscribeOneOfModel? listUnsubscribe;
 
   final _i3.bool? onBehalf;
 
@@ -132,7 +132,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     if (bodyText != null) r'body_text': bodyText,
     if (calendarEvent != null) r'calendar_event': calendarEvent?.toJson(),
     if (cc != null) r'cc': cc,
-    if (from != null) r'from': from,
+    r'from': from,
     if (inReplyTo != null) r'in_reply_to': inReplyTo,
     if (listUnsubscribe != null) r'list_unsubscribe': listUnsubscribe?.toJson(),
     if (onBehalf != null) r'on_behalf': onBehalf,
@@ -142,14 +142,14 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     if (to != null) r'to': to,
   };
 
-  $$SendMessageRequestCopyWith<SendMessageRequest> get copyWith =>
-      _SendMessageRequestCopyWith(this);
+  $$SendMessageDescriptionCopyWith<SendMessageDescription> get copyWith =>
+      _SendMessageDescriptionCopyWith(this);
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
     const _$deepEquals = _i6.DeepCollectionEquality();
-    return other is SendMessageRequest &&
+    return other is SendMessageDescription &&
         _$deepEquals.equals(other.bcc, this.bcc) &&
         other.bodyHtml == this.bodyHtml &&
         other.bodyText == this.bodyText &&
@@ -191,7 +191,7 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
   _i3.Map<_i3.String, _i1.PropertyValue> parameterProperties({
     _i3.bool allowEmpty = true,
   }) => throw _i1.EncodingException(
-    r'parameterProperties not supported for SendMessageRequest: contains complex types',
+    r'parameterProperties not supported for SendMessageDescription: contains complex types',
   );
 
   @_i3.override
@@ -202,24 +202,24 @@ class SendMessageRequest extends _i1.ObjectParameterEncodable
     _i3.bool allowReserved = false,
   }) {
     throw _i1.EncodingException(
-      r'Cannot uriEncode SendMessageRequest: complex types cannot be URI-encoded',
+      r'Cannot uriEncode SendMessageDescription: complex types cannot be URI-encoded',
     );
   }
 }
 
-abstract class $$SendMessageRequestCopyWith<$Res> {
-  factory $$SendMessageRequestCopyWith(SendMessageRequest value) =
-      _SendMessageRequestCopyWith<$Res>;
+abstract class $$SendMessageDescriptionCopyWith<$Res> {
+  factory $$SendMessageDescriptionCopyWith(SendMessageDescription value) =
+      _SendMessageDescriptionCopyWith<$Res>;
 
   $Res call({
     _i3.List<_i3.String>? bcc,
     _i3.String? bodyHtml,
     _i3.String? bodyText,
-    _i4.SendMessageRequestCalendarEventOneOfModel? calendarEvent,
+    _i4.SendMessageDescriptionCalendarEventOneOfModel? calendarEvent,
     _i3.List<_i3.String>? cc,
     _i3.String? from,
     _i3.String? inReplyTo,
-    _i5.SendMessageRequestListUnsubscribeOneOfModel? listUnsubscribe,
+    _i5.SendMessageDescriptionListUnsubscribeOneOfModel? listUnsubscribe,
     _i3.bool? onBehalf,
     _i3.bool? requireTls,
     _i3.DateTime? scheduledAt,
@@ -229,11 +229,11 @@ abstract class $$SendMessageRequestCopyWith<$Res> {
   _i3.List<_i3.String>? get bcc;
   _i3.String? get bodyHtml;
   _i3.String? get bodyText;
-  _i4.SendMessageRequestCalendarEventOneOfModel? get calendarEvent;
+  _i4.SendMessageDescriptionCalendarEventOneOfModel? get calendarEvent;
   _i3.List<_i3.String>? get cc;
-  _i3.String? get from;
+  _i3.String get from;
   _i3.String? get inReplyTo;
-  _i5.SendMessageRequestListUnsubscribeOneOfModel? get listUnsubscribe;
+  _i5.SendMessageDescriptionListUnsubscribeOneOfModel? get listUnsubscribe;
   _i3.bool? get onBehalf;
   _i3.bool? get requireTls;
   _i3.DateTime? get scheduledAt;
@@ -241,13 +241,13 @@ abstract class $$SendMessageRequestCopyWith<$Res> {
   _i3.List<_i3.String>? get to;
 }
 
-class _SendMessageRequestCopyWith<$Res>
-    implements $$SendMessageRequestCopyWith<$Res> {
-  _SendMessageRequestCopyWith(this._value);
+class _SendMessageDescriptionCopyWith<$Res>
+    implements $$SendMessageDescriptionCopyWith<$Res> {
+  _SendMessageDescriptionCopyWith(this._value);
 
   static const _sentinel = _i3.Object();
 
-  final SendMessageRequest _value;
+  final SendMessageDescription _value;
 
   @_i3.override
   _i3.List<_i3.String>? get bcc => _value.bcc;
@@ -259,20 +259,20 @@ class _SendMessageRequestCopyWith<$Res>
   _i3.String? get bodyText => _value.bodyText;
 
   @_i3.override
-  _i4.SendMessageRequestCalendarEventOneOfModel? get calendarEvent =>
+  _i4.SendMessageDescriptionCalendarEventOneOfModel? get calendarEvent =>
       _value.calendarEvent;
 
   @_i3.override
   _i3.List<_i3.String>? get cc => _value.cc;
 
   @_i3.override
-  _i3.String? get from => _value.from;
+  _i3.String get from => _value.from;
 
   @_i3.override
   _i3.String? get inReplyTo => _value.inReplyTo;
 
   @_i3.override
-  _i5.SendMessageRequestListUnsubscribeOneOfModel? get listUnsubscribe =>
+  _i5.SendMessageDescriptionListUnsubscribeOneOfModel? get listUnsubscribe =>
       _value.listUnsubscribe;
 
   @_i3.override
@@ -306,7 +306,7 @@ class _SendMessageRequestCopyWith<$Res>
     _i3.Object? subject = _sentinel,
     _i3.Object? to = _sentinel,
   }) {
-    return (SendMessageRequest(
+    return (SendMessageDescription(
       bcc: _i3.identical(bcc, _sentinel)
           ? this.bcc
           : (bcc as _i3.List<_i3.String>?),
@@ -318,18 +318,19 @@ class _SendMessageRequestCopyWith<$Res>
           : (bodyText as _i3.String?),
       calendarEvent: _i3.identical(calendarEvent, _sentinel)
           ? this.calendarEvent
-          : (calendarEvent as _i4.SendMessageRequestCalendarEventOneOfModel?),
+          : (calendarEvent
+                as _i4.SendMessageDescriptionCalendarEventOneOfModel?),
       cc: _i3.identical(cc, _sentinel)
           ? this.cc
           : (cc as _i3.List<_i3.String>?),
-      from: _i3.identical(from, _sentinel) ? this.from : (from as _i3.String?),
+      from: _i3.identical(from, _sentinel) ? this.from : (from as _i3.String),
       inReplyTo: _i3.identical(inReplyTo, _sentinel)
           ? this.inReplyTo
           : (inReplyTo as _i3.String?),
       listUnsubscribe: _i3.identical(listUnsubscribe, _sentinel)
           ? this.listUnsubscribe
           : (listUnsubscribe
-                as _i5.SendMessageRequestListUnsubscribeOneOfModel?),
+                as _i5.SendMessageDescriptionListUnsubscribeOneOfModel?),
       onBehalf: _i3.identical(onBehalf, _sentinel)
           ? this.onBehalf
           : (onBehalf as _i3.bool?),

@@ -2,21 +2,25 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i13;
+import 'dart:core' as _i15;
 
-import 'package:http/http.dart' as _i16;
-import 'package:restmail_generated/src/model/activate_request.dart' as _i23;
-import 'package:restmail_generated/src/model/create_grant_request.dart' as _i19;
+import 'package:http/http.dart' as _i18;
+import 'package:restmail_generated/src/model/activate_request.dart' as _i25;
+import 'package:restmail_generated/src/model/create_grant_request.dart' as _i21;
 import 'package:restmail_generated/src/model/second_factor_request.dart'
-    as _i26;
+    as _i28;
 import 'package:restmail_generated/src/model/update_server_capabilities_request.dart'
-    as _i30;
+    as _i32;
+import 'package:restmail_generated/src/model/update_server_limits_request.dart'
+    as _i35;
 import 'package:restmail_generated/src/operation/activate_grant.dart' as _i7;
 import 'package:restmail_generated/src/operation/create_grant.dart' as _i4;
 import 'package:restmail_generated/src/operation/deactivate_grant.dart' as _i8;
 import 'package:restmail_generated/src/operation/delete_grant.dart' as _i6;
 import 'package:restmail_generated/src/operation/get_server_capabilities.dart'
     as _i11;
+import 'package:restmail_generated/src/operation/get_server_limits.dart'
+    as _i13;
 import 'package:restmail_generated/src/operation/list_capabilities.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_grants.dart' as _i3;
 import 'package:restmail_generated/src/operation/list_my_grants.dart' as _i5;
@@ -25,30 +29,36 @@ import 'package:restmail_generated/src/operation/make_grant_eligible.dart'
     as _i9;
 import 'package:restmail_generated/src/operation/update_server_capabilities.dart'
     as _i12;
+import 'package:restmail_generated/src/operation/update_server_limits.dart'
+    as _i14;
 import 'package:restmail_generated/src/response_wrapper/activate_grant_response.dart'
-    as _i22;
-import 'package:restmail_generated/src/response_wrapper/create_grant_response.dart'
-    as _i18;
-import 'package:restmail_generated/src/response_wrapper/deactivate_grant_response.dart'
     as _i24;
-import 'package:restmail_generated/src/response_wrapper/delete_grant_response.dart'
-    as _i21;
-import 'package:restmail_generated/src/response_wrapper/get_server_capabilities_response.dart'
-    as _i28;
-import 'package:restmail_generated/src/response_wrapper/list_capabilities_response.dart'
-    as _i15;
-import 'package:restmail_generated/src/response_wrapper/list_grants_response.dart'
-    as _i17;
-import 'package:restmail_generated/src/response_wrapper/list_my_grants_response.dart'
+import 'package:restmail_generated/src/response_wrapper/create_grant_response.dart'
     as _i20;
+import 'package:restmail_generated/src/response_wrapper/deactivate_grant_response.dart'
+    as _i26;
+import 'package:restmail_generated/src/response_wrapper/delete_grant_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response_wrapper/get_server_capabilities_response.dart'
+    as _i30;
+import 'package:restmail_generated/src/response_wrapper/get_server_limits_response.dart'
+    as _i33;
+import 'package:restmail_generated/src/response_wrapper/list_capabilities_response.dart'
+    as _i17;
+import 'package:restmail_generated/src/response_wrapper/list_grants_response.dart'
+    as _i19;
+import 'package:restmail_generated/src/response_wrapper/list_my_grants_response.dart'
+    as _i22;
 import 'package:restmail_generated/src/response_wrapper/list_roles_response.dart'
-    as _i27;
-import 'package:restmail_generated/src/response_wrapper/make_grant_eligible_response.dart'
-    as _i25;
-import 'package:restmail_generated/src/response_wrapper/update_server_capabilities_response.dart'
     as _i29;
+import 'package:restmail_generated/src/response_wrapper/make_grant_eligible_response.dart'
+    as _i27;
+import 'package:restmail_generated/src/response_wrapper/update_server_capabilities_response.dart'
+    as _i31;
+import 'package:restmail_generated/src/response_wrapper/update_server_limits_response.dart'
+    as _i34;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i14;
+import 'package:tonik_util/tonik_util.dart' as _i16;
 
 class AdminRolesGrantsApi {
   AdminRolesGrantsApi(_i1.Server server)
@@ -77,6 +87,14 @@ class AdminRolesGrantsApi {
       _updateServerCapabilities = _i12.UpdateServerCapabilities(
         server.baseUrl,
         () => server.client,
+      ),
+      _getServerLimits = _i13.GetServerLimits(
+        server.baseUrl,
+        () => server.client,
+      ),
+      _updateServerLimits = _i14.UpdateServerLimits(
+        server.baseUrl,
+        () => server.client,
       );
 
   final _i2.ListCapabilities _listCapabilities;
@@ -100,6 +118,10 @@ class AdminRolesGrantsApi {
   final _i11.GetServerCapabilities _getServerCapabilities;
 
   final _i12.UpdateServerCapabilities _updateServerCapabilities;
+
+  final _i13.GetServerLimits _getServerLimits;
+
+  final _i14.UpdateServerLimits _updateServerLimits;
 
   /// List capabilities
   ///
@@ -201,8 +223,8 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i15.ListCapabilitiesResponse, _i16.Response>>
-  listCapabilities({_i14.TonikCancellation? cancellation}) async =>
+  _i15.Future<_i16.TonikResult<_i17.ListCapabilitiesResponse, _i18.Response>>
+  listCapabilities({_i16.TonikCancellation? cancellation}) async =>
       _listCapabilities(cancellation: cancellation);
 
   /// List grants, oldest first
@@ -320,14 +342,14 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i17.ListGrantsResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i19.ListGrantsResponse, _i18.Response>>
   listGrants({
-    _i13.String? holderKind,
-    _i13.int? holderId,
-    _i13.String? scope,
-    _i13.int? limit,
-    _i13.int? offset,
-    _i14.TonikCancellation? cancellation,
+    _i15.String? holderKind,
+    _i15.int? holderId,
+    _i15.String? scope,
+    _i15.int? limit,
+    _i15.int? offset,
+    _i16.TonikCancellation? cancellation,
   }) async => _listGrants(
     holderKind: holderKind,
     holderId: holderId,
@@ -656,10 +678,10 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i18.CreateGrantResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i20.CreateGrantResponse, _i18.Response>>
   createGrant({
-    required _i19.CreateGrantRequest body,
-    _i14.TonikCancellation? cancellation,
+    required _i21.CreateGrantRequest body,
+    _i16.TonikCancellation? cancellation,
   }) async => _createGrant(body: body, cancellation: cancellation);
 
   /// The caller's own grants
@@ -755,8 +777,8 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i20.ListMyGrantsResponse, _i16.Response>>
-  listMyGrants({_i14.TonikCancellation? cancellation}) async =>
+  _i15.Future<_i16.TonikResult<_i22.ListMyGrantsResponse, _i18.Response>>
+  listMyGrants({_i16.TonikCancellation? cancellation}) async =>
       _listMyGrants(cancellation: cancellation);
 
   /// Remove a grant
@@ -880,10 +902,10 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i21.DeleteGrantResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i23.DeleteGrantResponse, _i18.Response>>
   deleteGrant({
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i15.int id,
+    _i16.TonikCancellation? cancellation,
   }) async => _deleteGrant(id: id, cancellation: cancellation);
 
   /// Switch an eligible grant on
@@ -1189,11 +1211,11 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i22.ActivateGrantResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i24.ActivateGrantResponse, _i18.Response>>
   activateGrant({
-    required _i23.ActivateRequest body,
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i25.ActivateRequest body,
+    required _i15.int id,
+    _i16.TonikCancellation? cancellation,
   }) async => _activateGrant(body: body, id: id, cancellation: cancellation);
 
   /// Switch a grant off
@@ -1383,10 +1405,10 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i24.DeactivateGrantResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i26.DeactivateGrantResponse, _i18.Response>>
   deactivateGrant({
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i15.int id,
+    _i16.TonikCancellation? cancellation,
   }) async => _deactivateGrant(id: id, cancellation: cancellation);
 
   /// Make an active grant eligible
@@ -1672,11 +1694,11 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i25.MakeGrantEligibleResponse, _i16.Response>>
+  _i15.Future<_i16.TonikResult<_i27.MakeGrantEligibleResponse, _i18.Response>>
   makeGrantEligible({
-    required _i26.SecondFactorRequest body,
-    required _i13.int id,
-    _i14.TonikCancellation? cancellation,
+    required _i28.SecondFactorRequest body,
+    required _i15.int id,
+    _i16.TonikCancellation? cancellation,
   }) async =>
       _makeGrantEligible(body: body, id: id, cancellation: cancellation);
 
@@ -1774,8 +1796,8 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<_i14.TonikResult<_i27.ListRolesResponse, _i16.Response>>
-  listRoles({_i14.TonikCancellation? cancellation}) async =>
+  _i15.Future<_i16.TonikResult<_i29.ListRolesResponse, _i18.Response>>
+  listRoles({_i16.TonikCancellation? cancellation}) async =>
       _listRoles(cancellation: cancellation);
 
   /// The server capability ceiling
@@ -1796,6 +1818,17 @@ class AdminRolesGrantsApi {
   ///       "mailbox:session"
   ///     ],
   ///     "source": "database"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
   ///   }
   /// }
   /// ```
@@ -1854,10 +1887,10 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<
-    _i14.TonikResult<_i28.GetServerCapabilitiesResponse, _i16.Response>
+  _i15.Future<
+    _i16.TonikResult<_i30.GetServerCapabilitiesResponse, _i18.Response>
   >
-  getServerCapabilities({_i14.TonikCancellation? cancellation}) async =>
+  getServerCapabilities({_i16.TonikCancellation? cancellation}) async =>
       _getServerCapabilities(cancellation: cancellation);
 
   /// Replace the server capability ceiling
@@ -1926,6 +1959,28 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read",
+  ///     "mail:send"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "capabilities": [
+  ///     "mail:read",
+  ///     "mail:send"
+  ///   ]
+  /// }
+  /// ```
+  ///
   /// **Example** "unknown_capability" — A name outside the capability vocabulary is refused:
   /// ```json
   /// {
@@ -1960,6 +2015,17 @@ class AdminRolesGrantsApi {
   ///   "error": {
   ///     "code": "bad_request",
   ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
   ///   }
   /// }
   /// ```
@@ -2026,6 +2092,19 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to change grants"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 503 (application/json):
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
@@ -2036,11 +2115,255 @@ class AdminRolesGrantsApi {
   ///   }
   /// }
   /// ```
-  _i13.Future<
-    _i14.TonikResult<_i29.UpdateServerCapabilitiesResponse, _i16.Response>
+  _i15.Future<
+    _i16.TonikResult<_i31.UpdateServerCapabilitiesResponse, _i18.Response>
   >
   updateServerCapabilities({
-    required _i30.UpdateServerCapabilitiesRequest body,
-    _i14.TonikCancellation? cancellation,
+    required _i32.UpdateServerCapabilitiesRequest body,
+    _i16.TonikCancellation? cancellation,
   }) async => _updateServerCapabilities(body: body, cancellation: cancellation);
+
+  /// The server's limits
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "available" — A superadmin reads the server's limits:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "contact_import_max_bytes": 10485760
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "superadmin_required",
+  ///     "message": "only a superadmin can read or change the server's limits"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — A database fault is not a client error:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i15.Future<_i16.TonikResult<_i33.GetServerLimitsResponse, _i18.Response>>
+  getServerLimits({_i16.TonikCancellation? cancellation}) async =>
+      _getServerLimits(cancellation: cancellation);
+
+  /// Change the server's limits
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Request body (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
+  /// **Example** "too_small" — A limit must be at least one byte:
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 0
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
+  /// **Example** "updated" — A superadmin changes the contact import limit:
+  /// Changing it needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "updated" — A superadmin changes the contact import limit:
+  /// Changing it needs a session that signed in with a second factor.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "contact_import_max_bytes": 20971520
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — No credential is sent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "not_superadmin" — An administrator who is not superadmin is refused:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "superadmin_required",
+  ///     "message": "only a superadmin can read or change the server's limits"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "too_small" — A limit must be at least one byte:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "contact_import_max_bytes": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — The shared throttle is spent:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i15.Future<_i16.TonikResult<_i34.UpdateServerLimitsResponse, _i18.Response>>
+  updateServerLimits({
+    required _i35.UpdateServerLimitsRequest body,
+    _i16.TonikCancellation? cancellation,
+  }) async => _updateServerLimits(body: body, cancellation: cancellation);
 }

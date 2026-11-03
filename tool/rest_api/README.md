@@ -9,8 +9,8 @@ must match the contract revision before tests start. The generator's complete de
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The committed document is the exact JSON served by the `main` image of server
-revision `33715381613489b64f08fa1337ef0c7a63c1541e`, which carries the contact
-reply-time route: 191 operations. No release holds that revision yet, so
+revision `07f617c9c21a527a247b943052c1f714c33a6d11`, which carries the receipt-seal
+and contact reply-time routes: 195 operations. No release holds that revision yet, so
 `info.version` and the lock's version read `main`, and the revision and image
 digest name it. A future server pin change must update the complete document
 and checksum, then regenerate; new operations are not held to the old fixed
@@ -68,9 +68,20 @@ do not move the event stream onto it.
 Generating a package and adding a transport is not the complete client migration.
 The domain and mailbox facade batch, and the contact reply-time setting, migrate
 the operations listed in `migrated_operations.json`, including DNS and ending
-sessions. Existing screens
-reach generated operations through their unchanged facade methods. Generated
-code validates status, headers and wire fields; typed projections preserve the
+sessions.
+
+The receipt-seal facade also calls `verifyMessageSeal` through the generated
+messages API. Its three wire verdicts are separate from the reader's checking
+and unavailable states. An absent seal remains `not_sealed`; neither hash
+presence nor a failed request is an integrity verdict.
+
+The fake serves seeded server results: set `FakeMessage.sealedHash` and
+`sealMismatch` to exercise intact and mismatch receipts. Without a hash it
+reports `not_sealed`, including for pre-seal sample mail. It does not implement
+the server's hashing algorithm or claim to verify stored bytes.
+
+Existing screens reach generated operations through their unchanged facade
+methods. Generated code validates status, headers and wire fields; typed projections preserve the
 current display model, timestamp handling, quotas and setup flags.
 
 Nullable request fields follow the generated document: Tonik may serialize an
