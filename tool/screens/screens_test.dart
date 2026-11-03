@@ -118,6 +118,11 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   // Settings replaces the Mailboxes route: close 2FA, then Settings.
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Recovery email'));
+  await tester.tap(find.text('Recovery email'));
+  await _shot(tester, '05-recovery-email$suffix');
+  await tester.tap(find.byTooltip('Back'));
+  await tester.pumpAndSettle();
   await tester.tap(find.byTooltip('Back'));
   await tester.pumpAndSettle();
 
@@ -329,6 +334,8 @@ Future<void> _tour(WidgetTester tester, {required bool dark}) async {
   await tester.tap(find.byTooltip('Mailboxes'));
   await tester.pumpAndSettle();
   await tester.tap(find.byTooltip('Mailbox settings'));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Create a mailbox'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Create a mailbox'));
   await tester.pumpAndSettle();

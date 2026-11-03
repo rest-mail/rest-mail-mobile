@@ -22,6 +22,7 @@ import 'models.dart';
 import 'message_seal.dart';
 import 'push.dart';
 import 'quiet_hours.dart';
+import 'recovery_email.dart';
 import 'session.dart';
 import 'thread_due.dart';
 import 'thread_snooze.dart';
@@ -248,6 +249,58 @@ class RestmailClient {
       },
     ),
   );
+
+  /// The signed-in account's recovery email and how far it has got.
+  Future<RecoveryEmailStatus> recoveryEmail() async {
+    final response = await generatedValue(
+      wire.AuthApi(generatedSession).getRecoveryEmail(),
+    );
+    if (response is! wire.GetRecoveryEmailResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final status = response.body.body.data;
+    return RecoveryEmailStatus(email: status.email, verified: status.verified);
+  }
+
+  /// Registers [email] as the signed-in account's recovery address, proven by
+  /// its [currentPassword], and sends a verification link there. It replaces
+  /// any address already registered, clearing its verification and ending its
+  /// links. The server refuses with 403 `invalid_password`, 403
+  /// `recovery_method_frozen` for three days after an email recovery, 422 on
+  /// `email`, 429, and 503 `unavailable` when it cannot send recovery links.
+  Future<void> registerRecoveryEmail({
+    required String email,
+    required String currentPassword,
+  }) async {
+    final response = await generatedValue(
+      wire.AuthApi(generatedSession).registerRecoveryEmail(
+        body: wire.RegisterRecoveryEmailRequest(
+          currentPassword: currentPassword,
+          email: email,
+        ),
+      ),
+    );
+    if (response is! wire.RegisterRecoveryEmailResponse200) {
+      throw _unexpectedWireStatus();
+    }
+  }
+
+  /// Asks for a recovery link for the account at [email], with no session.
+  /// [email] is the account's own address, not the recovery address. The
+  /// answer is the same whether or not the address is an account with a
+  /// verified recovery email; the only refusals are for the address's form
+  /// (422), too many requests (429) and a server that cannot send links (503),
+  /// and none of those depends on the account either.
+  Future<void> requestRecoveryEmail(String email) async {
+    final response = await generatedValue(
+      wire.AuthApi(generatedPublic).requestRecoveryEmail(
+        body: wire.RequestRecoveryEmailRequest(email: email),
+      ),
+    );
+    if (response is! wire.RequestRecoveryEmailResponse200) {
+      throw _unexpectedWireStatus();
+    }
+  }
 
   /// A sign-in's answer: the session it starts, now this client's.
   LoginResult _signedIn(http.Response response) {

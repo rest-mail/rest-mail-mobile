@@ -30,6 +30,12 @@ summary. Their German, Spanish, Hindi, Nepali, Arabic, and Farsi translations ar
 machine-made and have not had human translation review. Server field errors are
 displayed unchanged at the corresponding inputs.
 
+The recovery email strings follow the server's English wording where the server
+has some, and are new English wording otherwise. Their German, Spanish, Hindi,
+Nepali, Arabic, and Farsi translations are machine-made and have not had human
+translation review. Server field errors are displayed unchanged at the
+corresponding inputs.
+
 Use `tr(context, key)` for labels and `trArgs(context, key, values)` for complete
 sentences. Theme, panel, preset, and administration metadata store explicit
 translation keys. Their persisted IDs, option values, and API values stay stable.
