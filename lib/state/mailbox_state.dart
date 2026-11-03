@@ -330,6 +330,27 @@ class MailboxState extends ChangeNotifier {
     unawaited(refreshFolders());
   }
 
+  Future<ThreadDue> setThreadDue(Message message, DateTime? due) async {
+    final rest = backend as RestBackend;
+    final saved = await rest.client.setThreadDue(
+      message.mailboxId,
+      message.threadId!,
+      due,
+    );
+    if (!_disposed && account?.id == message.mailboxId) {
+      messages = [
+        for (final current in messages)
+          if (current.mailboxId == message.mailboxId &&
+              current.threadId == saved.threadId)
+            current.copyWith(threadDue: saved)
+          else
+            current,
+      ];
+      _notify();
+    }
+    return saved;
+  }
+
   void _replace(int id, Message message) {
     final index = messages.indexWhere((m) => m.id == id);
     if (index < 0) return;

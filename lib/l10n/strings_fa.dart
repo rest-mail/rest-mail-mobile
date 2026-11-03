@@ -2,6 +2,19 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsFa = {
   'classic': {
+    'threadDue.label': 'تاریخ سررسید',
+    'threadDue.deadline': 'مهلت.',
+    'threadDue.deadlineSource': 'مهلت {source}.',
+    'threadDue.set': 'تنظیم تاریخ سررسید',
+    'threadDue.clear': 'پاک کردن تاریخ سررسید',
+    'threadDue.saving': 'در حال ذخیره…',
+    'threadDue.error': 'تاریخ سررسید ذخیره نشد',
+    'threadDue.user': 'تنظیم‌شده توسط شما',
+    'threadDue.due': 'سررسید {date}',
+    'threadDue.tomorrow': 'فردا',
+    'threadDue.pastMinutes': '{count} دقیقه از سررسید گذشته',
+    'threadDue.pastHours': '{count} ساعت از سررسید گذشته',
+    'threadDue.pastDays': '{count} روز از سررسید گذشته',
     'splash.tagline': 'در حال باز کردن ایمیل شما',
     'mail.search': 'جستجوی ایمیل',
     'mail.refresh': 'تازه‌سازی',

@@ -1,6 +1,19 @@
 /// Hindi base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsHi = {
   'classic': {
+    'threadDue.label': 'नियत तारीख',
+    'threadDue.deadline': 'समय-सीमा।',
+    'threadDue.deadlineSource': 'समय-सीमा {source}।',
+    'threadDue.set': 'नियत तारीख तय करें',
+    'threadDue.clear': 'नियत तारीख हटाएँ',
+    'threadDue.saving': 'सहेजा जा रहा है…',
+    'threadDue.error': 'नियत तारीख सहेजी नहीं जा सकी',
+    'threadDue.user': 'आपके द्वारा तय',
+    'threadDue.due': 'नियत {date}',
+    'threadDue.tomorrow': 'कल',
+    'threadDue.pastMinutes': '{count} मिनट से विलंबित',
+    'threadDue.pastHours': '{count} घंटे से विलंबित',
+    'threadDue.pastDays': '{count} दिन से विलंबित',
     'splash.tagline': 'आपका मेल खोला जा रहा है',
     'mail.search': 'मेल खोजें',
     'mail.refresh': 'रीफ़्रेश',

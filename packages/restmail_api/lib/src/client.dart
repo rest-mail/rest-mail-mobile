@@ -21,6 +21,7 @@ import 'models.dart';
 import 'message_seal.dart';
 import 'push.dart';
 import 'session.dart';
+import 'thread_due.dart';
 import 'thread_snooze.dart';
 
 /// Called whenever the session's tokens change: after sign-in, after every
@@ -2375,6 +2376,34 @@ class RestmailClient {
       algorithm: seal.algorithm.toJson(),
       sealedHash: seal.sealedHash,
       computedHash: seal.computedHash,
+    );
+  }
+
+  Future<ThreadDue> setThreadDue(
+    int accountId,
+    String threadId,
+    DateTime? due,
+  ) async {
+    final response = await generatedValue(
+      wire.MessagesApi(generatedSession).setThreadDue(
+        id: accountId,
+        threadId: threadId,
+        body: wire.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel(
+          due: due?.toUtc(),
+          dueSource: wire
+              .ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyDueSourceModel
+              .user,
+        ),
+      ),
+    );
+    if (response is! wire.SetThreadDueResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final data = response.body.body.data;
+    return ThreadDue(
+      threadId: data.threadId,
+      due: data.due,
+      source: data.dueSource?.toJson(),
     );
   }
 

@@ -117,6 +117,7 @@ class FakeRestmail {
 
   final _mailboxes = <int, FakeMailbox>{};
   final _messages = <int, FakeMessage>{};
+  final _threadDues = <(int, String), DateTime?>{};
   final _attachments = <int, FakeAttachment>{};
   final _accessTokens = <String, _Grant>{};
   final _refreshTokens = <String, _Session>{};
@@ -725,6 +726,26 @@ class FakeRestmail {
       );
     }
 
+    if ((method, path) case (
+      'POST',
+      ['api', 'v1', 'accounts', final id, 'threads', final thread, 'due'],
+    ) when _bearer(request)?.startsWith('rmk_') == true) {
+      final key = _apiKeys.values
+          .where((key) => key.secret == _bearer(request))
+          .firstOrNull;
+      if (key == null ||
+          key.revokedAt != null ||
+          (key.expiresAt != null && !_clock().isBefore(key.expiresAt!))) {
+        _fail(401, 'unauthorized', 'Invalid or expired key');
+      }
+      return _setThreadDue(
+        _Session(key.mailboxId),
+        id,
+        thread,
+        _object(bytes),
+        key: key,
+      );
+    }
     final session = _authenticate(request);
     final query = request.url.queryParameters;
     return switch ((method, path)) {
@@ -784,6 +805,11 @@ class FakeRestmail {
         ['api', 'v1', 'accounts', final id, 'threads', final thread, 'snooze'],
       ) =>
         _snoozeThread(session, id, thread, _object(bytes)),
+      (
+        'POST',
+        ['api', 'v1', 'accounts', final id, 'threads', final thread, 'due'],
+      ) =>
+        _setThreadDue(session, id, thread, _object(bytes)),
       ('GET', ['api', 'v1', 'accounts', final id, 'search']) => _page(
         _own(session, id),
         query,
@@ -929,7 +955,7 @@ class FakeRestmail {
       ('POST', ['api', 'v1', 'messages', 'draft', final id, 'send']) =>
         _sendDraft(session, _draft(session, id)),
       ('GET', ['api', 'v1', 'messages', final id]) => _json({
-        'data': _message(session, id).toJson(),
+        'data': _messageJson(_message(session, id)),
       }),
       ('PATCH', ['api', 'v1', 'messages', final id]) => _update(
         _message(session, id),
@@ -2395,6 +2421,88 @@ class FakeRestmail {
 
   // ── Messages ──────────────────────────────────────────────────────────
 
+  List<FakeMessage> _dueThread(_Session session, String id, String thread) {
+    final box = _own(session, id);
+    final messages =
+        _messages.values
+            .where(
+              (message) =>
+                  message.mailboxId == box.id &&
+                  (message.threadId ?? '${message.id}') == thread,
+            )
+            .toList()
+          ..sort(
+            (first, second) => first.receivedAt.compareTo(second.receivedAt),
+          );
+    if (messages.isEmpty) _fail(404, 'not_found', 'Thread not found');
+    return messages;
+  }
+
+  http.StreamedResponse _setThreadDue(
+    _Session session,
+    String id,
+    String thread,
+    Map<String, dynamic> body, {
+    FakeAPIKey? key,
+  }) {
+    final problems = _undeclared(body, const {'due', 'due_source'});
+    if (!body.containsKey('due')) problems['due'] = 'required';
+    if (body['due_source'] != 'user') problems['due_source'] = 'must be user';
+    final raw = body['due'];
+    DateTime? due;
+    if (raw != null) {
+      if (raw is String &&
+          RegExp(
+            r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$',
+          ).hasMatch(raw)) {
+        due = DateTime.tryParse(raw);
+        final local = DateTime.tryParse(raw.substring(0, 19));
+        if (local == null ||
+            local.toIso8601String().substring(0, 19) != raw.substring(0, 19)) {
+          due = null;
+        }
+      }
+      if (due == null) problems['due'] = 'must be an RFC 3339 date-time';
+    }
+    if (problems.isNotEmpty) _invalid(problems);
+    final messages = _dueThread(session, id, thread);
+    final box = _mailboxes[session.primary]!;
+    final target = 'mailbox:${_mailboxes[int.parse(id)]!.address}';
+    if ((key != null &&
+            !key.permissions.any(
+              (permission) =>
+                  (permission.$1 == '*' || permission.$1 == 'mail:write') &&
+                  _covers(permission.$2, target),
+            )) ||
+        !_allowsHeld(box, 'mail:write', target)) {
+      _fail(403, 'forbidden', 'Access denied');
+    }
+    for (final message in messages) {
+      message
+        ..due = due?.toUtc()
+        ..dueSource = due == null ? null : 'user';
+    }
+    _threadDues[(int.parse(id), thread)] = due?.toUtc();
+    return _json({
+      'data': {
+        'thread_id': thread,
+        'due': due?.toUtc().toIso8601String(),
+        'due_source': due == null ? null : 'user',
+      },
+    });
+  }
+
+  Map<String, Object?> _messageJson(FakeMessage message) {
+    final key = (message.mailboxId, message.threadId ?? '${message.id}');
+    return {
+      ...message.toJson(),
+      if (_threadDues.containsKey(key)) ...{
+        'due': _threadDues[key]?.toUtc().toIso8601String(),
+        'due_source': _threadDues[key] == null ? null : 'user',
+      },
+    };
+  }
+
   /// Newest first, with the server's cursor: base64 of `{"id": last}`.
   http.StreamedResponse _page(
     FakeMailbox box,
@@ -2417,7 +2525,7 @@ class FakeRestmail {
     final page = remaining.take(limit).toList();
     final hasMore = remaining.length > page.length;
     return _json({
-      'data': [for (final m in page) m.toJson()],
+      'data': [for (final m in page) _messageJson(m)],
       'pagination': {
         'cursor': hasMore
             ? base64.encode(utf8.encode(jsonEncode({'id': page.last.id})))
@@ -2537,7 +2645,7 @@ class FakeRestmail {
       'folder': 'Sent',
       'subject': sent.subject,
     });
-    return _json({'data': sent.toJson()}, status: 201);
+    return _json({'data': _messageJson(sent)}, status: 201);
   }
 
   http.StreamedResponse _send(_Session session, Map<String, dynamic> body) {
@@ -2623,7 +2731,7 @@ class FakeRestmail {
         ),
       );
     }
-    return _json({'data': sent.toJson()}, status: 201);
+    return _json({'data': _messageJson(sent)}, status: 201);
   }
 
   /// A send's list_unsubscribe, checked as the server checks it before
@@ -2776,7 +2884,7 @@ class FakeRestmail {
     );
     _fillDraft(draft, body);
     _emit(sender.id, 'folder_update', {'folder': 'Drafts'});
-    return _json({'data': draft.toJson()}, status: 201);
+    return _json({'data': _messageJson(draft)}, status: 201);
   }
 
   http.StreamedResponse _updateDraft(
@@ -2784,7 +2892,7 @@ class FakeRestmail {
     Map<String, dynamic> body,
   ) {
     _fillDraft(draft, body);
-    return _json({'data': draft.toJson()});
+    return _json({'data': _messageJson(draft)});
   }
 
   void _fillDraft(FakeMessage draft, Map<String, dynamic> body) {
@@ -2837,7 +2945,7 @@ class FakeRestmail {
     if (message.folder != before) {
       _emit(message.mailboxId, 'folder_update', {'folder': message.folder});
     }
-    return _json({'data': message.toJson()});
+    return _json({'data': _messageJson(message)});
   }
 
   /// To Trash, or gone for good if it is already there.
@@ -3905,7 +4013,7 @@ class FakeRestmail {
       _json({
         'data': [
           for (final m in _inThread(box.id, thread)..sort(_oldestFirst))
-            m.toJson(),
+            _messageJson(m),
         ],
       });
 

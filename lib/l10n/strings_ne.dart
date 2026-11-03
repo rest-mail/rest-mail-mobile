@@ -1,6 +1,19 @@
 /// Nepali base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsNe = {
   'classic': {
+    'threadDue.label': 'म्याद मिति',
+    'threadDue.deadline': 'समयसीमा।',
+    'threadDue.deadlineSource': 'समयसीमा {source}।',
+    'threadDue.set': 'म्याद मिति तोक्नुहोस्',
+    'threadDue.clear': 'म्याद मिति हटाउनुहोस्',
+    'threadDue.saving': 'सुरक्षित गरिँदै…',
+    'threadDue.error': 'म्याद मिति सुरक्षित गर्न सकिएन',
+    'threadDue.user': 'तपाईंले तोकेको',
+    'threadDue.due': 'म्याद {date}',
+    'threadDue.tomorrow': 'भोलि',
+    'threadDue.pastMinutes': '{count} मिनेटले म्याद नाघेको',
+    'threadDue.pastHours': '{count} घण्टाले म्याद नाघेको',
+    'threadDue.pastDays': '{count} दिनले म्याद नाघेको',
     'splash.tagline': 'तपाईंको मेल खोलिँदैछ',
     'mail.search': 'मेल खोज्नुहोस्',
     'mail.refresh': 'रिफ्रेस',

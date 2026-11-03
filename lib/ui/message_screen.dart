@@ -15,6 +15,7 @@ import '../util/format.dart';
 import 'attachments.dart';
 import 'compose_sheet.dart';
 import 'contact_reply_time.dart';
+import 'thread_due_control.dart';
 import 'original_forward_sheet.dart';
 import 'invitations.dart';
 import 'labels_sheet.dart';
@@ -685,6 +686,30 @@ class _MessageScreenState extends State<MessageScreen> {
                       family: family,
                     ),
                   ),
+                  if (_loaded &&
+                      _mailbox.backend is RestBackend &&
+                      m.threadId != null)
+                    ThreadDueControl(
+                      key: ValueKey('${m.mailboxId}:${m.threadId}'),
+                      message: m,
+                      onSave: (due) async {
+                        final saved = await _mailbox.setThreadDue(m, due);
+                        if (mounted && _mailbox.account?.id == m.mailboxId) {
+                          setState(() {
+                            _message = _message.copyWith(threadDue: saved);
+                            _conversation = [
+                              for (final other in _conversation)
+                                if (other.mailboxId == m.mailboxId &&
+                                    other.threadId == saved.threadId)
+                                  other.copyWith(threadDue: saved)
+                                else
+                                  other,
+                            ];
+                          });
+                        }
+                        return saved;
+                      },
+                    ),
                   if (m.labels.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 10),

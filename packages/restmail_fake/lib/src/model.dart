@@ -317,6 +317,8 @@ class FakeMessage {
   String bodyText;
   String? bodyHtml;
   String? sealedHash;
+  DateTime? due;
+  String? dueSource;
   bool sealMismatch;
   List<Map<String, String>> authResults;
   DateTime receivedAt;
@@ -389,6 +391,8 @@ class FakeMessage {
       'references': '',
       'thread_id': threadId ?? '',
       'snoozed_until': ?snoozedUntil?.toUtc().toIso8601String(),
+      'due': due?.toUtc().toIso8601String(),
+      'due_source': dueSource,
       'sender': sender,
       'sender_name': senderName ?? '',
       // Address strings, as the server sends them: it keeps no names.

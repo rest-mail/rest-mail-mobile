@@ -6,6 +6,19 @@
 /// in `voice.dart` (one import, one map entry, one `Locale`).
 const Map<String, Map<String, String>> stringsEn = {
   'classic': {
+    'threadDue.label': 'Due date',
+    'threadDue.deadline': 'Deadline.',
+    'threadDue.deadlineSource': 'Deadline {source}.',
+    'threadDue.set': 'Set due date',
+    'threadDue.clear': 'Clear due date',
+    'threadDue.saving': 'Saving…',
+    'threadDue.error': 'Could not save due date',
+    'threadDue.user': 'set by you',
+    'threadDue.due': 'due {date}',
+    'threadDue.tomorrow': 'tomorrow',
+    'threadDue.pastMinutes': 'past due {count}m',
+    'threadDue.pastHours': 'past due {count}h',
+    'threadDue.pastDays': 'past due {count}d',
     'splash.tagline': 'Opening your mail',
     'mail.search': 'Search mail',
     'mail.refresh': 'Refresh',

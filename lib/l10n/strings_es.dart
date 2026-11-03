@@ -1,6 +1,19 @@
 /// Spanish base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsEs = {
   'classic': {
+    'threadDue.label': 'Fecha de vencimiento',
+    'threadDue.deadline': 'Plazo.',
+    'threadDue.deadlineSource': 'Plazo {source}.',
+    'threadDue.set': 'Establecer fecha de vencimiento',
+    'threadDue.clear': 'Borrar fecha de vencimiento',
+    'threadDue.saving': 'Guardando…',
+    'threadDue.error': 'No se pudo guardar la fecha de vencimiento',
+    'threadDue.user': 'establecida por ti',
+    'threadDue.due': 'vence {date}',
+    'threadDue.tomorrow': 'mañana',
+    'threadDue.pastMinutes': 'venció hace {count} min',
+    'threadDue.pastHours': 'venció hace {count} h',
+    'threadDue.pastDays': 'venció hace {count} d',
     'splash.tagline': 'Abriendo tu correo',
     'mail.search': 'Buscar correo',
     'mail.refresh': 'Actualizar',

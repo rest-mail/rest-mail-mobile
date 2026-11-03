@@ -11,6 +11,13 @@
       "tests": ["thread_snooze_test.dart", "thread_snooze_flow_test.dart"]
     },
     {
+      "operationId": "setThreadDue",
+      "facade": "setThreadDue",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "ThreadDue with nullable due and source; user-set dates only",
+      "tests": ["thread_due_test.dart", "thread_due_flow_test.dart"]
+    },
+    {
       "operationId": "verifyMessageSeal",
       "facade": "verifyMessageSeal",
       "wire_responses": "generated typed DTOs",
