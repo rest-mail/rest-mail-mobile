@@ -163,6 +163,10 @@ void main() {
       expect(page.items.map((m) => m.id & 0xffffffff), [110, 105, 101]);
       expect(page.hasMore, isFalse);
       expect(page.cursor, isNull);
+      expect(
+        page.items.map((message) => message.messageClass),
+        everyElement(isNull),
+      );
       final [reply, invoice, lunch] = page.items;
       expect(lunch.subject, 'Lunch on Friday?');
       expect(lunch.sender, 'grace@example.com');

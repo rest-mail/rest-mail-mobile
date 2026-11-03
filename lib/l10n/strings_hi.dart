@@ -1,6 +1,15 @@
 /// Hindi base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsHi = {
   'classic': {
+    'messageClass.collapseLists': 'सूची वाले मेल समेटें ({count})',
+    'messageClass.showLists': 'सूची वाले मेल दिखाएँ ({count})',
+    'messageClass.list': 'सूची',
+    'messageClass.receipt': 'रसीद',
+    'messageClass.automated': 'स्वचालित',
+    'messageClass.listDescription': 'हेडर बताते हैं कि यह मेलिंग सूची से आया है। ऐसे हेडर कोई भी भेज सकता है।',
+    'messageClass.receiptDescription':
+        'आपके एक मेल नियम ने इसे रसीद के रूप में चिह्नित किया है।',
+    'messageClass.automatedDescription': 'हेडर बताते हैं कि यह स्वचालित रूप से भेजा गया था। ऐसे हेडर कोई भी भेज सकता है।',
     'threadDue.label': 'नियत तारीख',
     'threadDue.deadline': 'समय-सीमा।',
     'threadDue.deadlineSource': 'समय-सीमा {source}।',

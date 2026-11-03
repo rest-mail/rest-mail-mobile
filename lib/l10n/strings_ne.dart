@@ -1,6 +1,15 @@
 /// Nepali base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsNe = {
   'classic': {
+    'messageClass.collapseLists': 'सूचीका मेल खुम्च्याउनुहोस् ({count})',
+    'messageClass.showLists': 'सूचीका मेल देखाउनुहोस् ({count})',
+    'messageClass.list': 'सूची',
+    'messageClass.receipt': 'रसिद',
+    'messageClass.automated': 'स्वचालित',
+    'messageClass.listDescription': 'हेडरले यो मेलिङ सूचीबाट आएको जनाउँछन्। यस्ता हेडर जोसुकैले पठाउन सक्छ।',
+    'messageClass.receiptDescription':
+        'तपाईंको एउटा मेल नियमले यसलाई रसिदको रूपमा चिन्ह लगायो।',
+    'messageClass.automatedDescription': 'हेडरले यो स्वचालित रूपमा पठाइएको जनाउँछन्। यस्ता हेडर जोसुकैले पठाउन सक्छ।',
     'threadDue.label': 'म्याद मिति',
     'threadDue.deadline': 'समयसीमा।',
     'threadDue.deadlineSource': 'समयसीमा {source}।',

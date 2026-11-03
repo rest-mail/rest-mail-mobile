@@ -41,6 +41,8 @@ class MailboxScreen extends StatefulWidget {
 class _MailboxScreenState extends State<MailboxScreen> {
   final _scroll = ScrollController();
   (int?, String)? _showing;
+  bool _collapseLists = false;
+  int? _selectedMessageId;
 
   /// The inline search over the list below the header.
   final _search = TextEditingController();
@@ -251,12 +253,18 @@ class _MailboxScreenState extends State<MailboxScreen> {
             MessageRow(
               message: message,
               dense: true,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => MessageScreen(mailbox: m, message: message),
-                ),
-              ),
+              onTap: () {
+                setState(() => _selectedMessageId = message.id);
+                unawaited(
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          MessageScreen(mailbox: m, message: message),
+                    ),
+                  ),
+                );
+              },
             ),
         ],
       ],
@@ -290,6 +298,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
       }
       return;
     }
+    setState(() => _selectedMessageId = message.id);
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -331,6 +340,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
         final m = current;
         final account = app.current;
         final signedOut = account?.signedOut != null;
+        final listCount = m.messages
+            .where((message) => message.messageClass == 'newsletter')
+            .length;
         _topOnSwitch(m);
         return Scaffold(
           body: SafeArea(
@@ -348,6 +360,26 @@ class _MailboxScreenState extends State<MailboxScreen> {
                       : app.faviconHostsOf(account),
                 ),
                 if (account != null && !signedOut) _searchBar(context),
+                if (!signedOut && _search.text.trim().isEmpty && listCount > 0)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Semantics(
+                      toggled: _collapseLists,
+                      child: TextButton(
+                        onPressed: () =>
+                            setState(() => _collapseLists = !_collapseLists),
+                        child: Text(
+                          trArgs(
+                            context,
+                            _collapseLists
+                                ? 'messageClass.showLists'
+                                : 'messageClass.collapseLists',
+                            {'count': '$listCount'},
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: account != null && signedOut
                       ? _SignedOut(account: account)
@@ -399,10 +431,16 @@ class _MailboxScreenState extends State<MailboxScreen> {
     final showAttachments = prefs.isOn(listAttachmentsPanel);
     final showConversationCount = prefs.isOn(listCountPanel);
     final showFlags = prefs.isOn(listFlagPanel);
-    final entries = buildListEntries(
-      m.conversations,
-      withDays: prefs.isOn(dateSeparatorsPanel),
-    );
+    final entries = buildListEntries([
+      for (final conversation in m.conversations)
+        if (!_collapseLists ||
+            conversation.any(
+              (message) =>
+                  message.messageClass != 'newsletter' ||
+                  message.id == _selectedMessageId,
+            ))
+          conversation,
+    ], withDays: prefs.isOn(dateSeparatorsPanel));
     return RefreshIndicator(
       color: c.accent,
       onRefresh: m.refresh,

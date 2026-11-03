@@ -2,6 +2,15 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsAr = {
   'classic': {
+    'messageClass.collapseLists': 'طي بريد القوائم ({count})',
+    'messageClass.showLists': 'إظهار بريد القوائم ({count})',
+    'messageClass.list': 'قائمة',
+    'messageClass.receipt': 'إيصال',
+    'messageClass.automated': 'تلقائي',
+    'messageClass.listDescription': 'تشير الترويسات إلى أن هذا جاء عبر قائمة بريدية. يمكن لأي شخص إرسال هذه الترويسات.',
+    'messageClass.receiptDescription':
+        'وضعت إحدى قواعد بريدك علامة على هذا كإيصال.',
+    'messageClass.automatedDescription': 'تشير الترويسات إلى أن هذا أُرسل تلقائيًا. يمكن لأي شخص إرسال هذه الترويسات.',
     'threadDue.label': 'تاريخ الاستحقاق',
     'threadDue.deadline': 'الموعد النهائي.',
     'threadDue.deadlineSource': 'الموعد النهائي {source}.',

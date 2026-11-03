@@ -1,6 +1,15 @@
 /// Spanish base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsEs = {
   'classic': {
+    'messageClass.collapseLists': 'Contraer correo de listas ({count})',
+    'messageClass.showLists': 'Mostrar correo de listas ({count})',
+    'messageClass.list': 'lista',
+    'messageClass.receipt': 'recibo',
+    'messageClass.automated': 'automático',
+    'messageClass.listDescription': 'Las cabeceras indican que llegó a través de una lista de correo. Cualquiera puede enviar esas cabeceras.',
+    'messageClass.receiptDescription':
+        'Una de tus reglas de correo lo marcó como recibo.',
+    'messageClass.automatedDescription': 'Las cabeceras indican que se envió automáticamente. Cualquiera puede enviar esas cabeceras.',
     'threadDue.label': 'Fecha de vencimiento',
     'threadDue.deadline': 'Plazo.',
     'threadDue.deadlineSource': 'Plazo {source}.',

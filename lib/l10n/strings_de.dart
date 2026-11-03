@@ -1,6 +1,15 @@
 /// German base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsDe = {
   'classic': {
+    'messageClass.collapseLists': 'Listenmails einklappen ({count})',
+    'messageClass.showLists': 'Listenmails anzeigen ({count})',
+    'messageClass.list': 'Liste',
+    'messageClass.receipt': 'Beleg',
+    'messageClass.automated': 'automatisch',
+    'messageClass.listDescription': 'Die Kopfzeilen geben an, dass dies über eine Mailingliste kam. Jeder kann solche Kopfzeilen senden.',
+    'messageClass.receiptDescription':
+        'Eine deiner Mailregeln hat dies als Beleg markiert.',
+    'messageClass.automatedDescription': 'Die Kopfzeilen geben an, dass dies automatisch gesendet wurde. Jeder kann solche Kopfzeilen senden.',
     'threadDue.label': 'Fälligkeitsdatum',
     'threadDue.deadline': 'Frist.',
     'threadDue.deadlineSource': 'Frist {source}.',
