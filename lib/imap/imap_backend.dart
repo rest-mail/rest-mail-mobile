@@ -980,6 +980,21 @@ class ImapBackend implements MailBackend {
     return items..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
   });
 
+  // Snoozing is the REST Mail server's: IMAP has nothing to keep a deadline in.
+  @override
+  bool get canSnoozeThreads => false;
+
+  @override
+  Future<ThreadSnooze> snoozeThread(
+    int accountId,
+    String threadId,
+    DateTime? until,
+  ) => throw LocalizedApiException(
+    400,
+    'not_supported',
+    UiText('client.threadsCannotBeSnoozedOnThisAccount'),
+  );
+
   // ── Sending and drafts ────────────────────────────────────────────────
 
   @override

@@ -633,6 +633,16 @@ const Map<String, Map<String, String>> stringsEs = {
     'kind.video': 'Vídeo',
     'kind.archive': 'Archivo comprimido',
     'kind.file': 'Archivo',
+    'snooze.action': 'Posponer',
+    'snooze.title': 'Posponer conversación',
+    'snooze.description': 'Oculta esta conversación de las carpetas hasta la hora elegida. La búsqueda aún puede encontrarla. Las horas usan tu zona horaria local.',
+    'snooze.until': 'Pospuesta hasta {time}',
+    'snooze.returnAt': 'Regresa el',
+    'snooze.cancel': 'Cancelar posposición',
+    'snooze.done': 'Conversación pospuesta',
+    'snooze.cancelled': 'Posposición cancelada',
+    'snooze.failed': 'No se pudo posponer la conversación',
+    'snooze.future': 'Elige una hora futura',
     'trust.seal.intact':
         'Mensaje sin cambios desde que este servidor lo aceptó',
     'trust.seal.mismatch':
@@ -1737,6 +1747,8 @@ const Map<String, Map<String, String>> stringsEs = {
     'client.cannotVerbStandardFolder': 'No se puede {verb} carpeta estándar',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'Aún no se pueden responder invitaciones en esta cuenta.',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'Las conversaciones no se pueden posponer en esta cuenta.',
     'client.theSourceOfThisMessageCannotBe':
         'La fuente de este mensaje aún no se puede mostrar.',
     'client.imapHasNoContacts': 'IMAP no tiene contactos.',

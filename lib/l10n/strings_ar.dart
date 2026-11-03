@@ -622,6 +622,16 @@ const Map<String, Map<String, String>> stringsAr = {
     'kind.video': 'فيديو',
     'kind.archive': 'أرشيف',
     'kind.file': 'ملف',
+    'snooze.action': 'تأجيل',
+    'snooze.title': 'تأجيل المحادثة',
+    'snooze.description': 'إخفاء هذه المحادثة من المجلدات حتى الوقت المحدد. يظل بإمكان البحث العثور عليها. تستخدم الأوقات منطقتك الزمنية المحلية.',
+    'snooze.until': 'مؤجلة حتى {time}',
+    'snooze.returnAt': 'العودة في',
+    'snooze.cancel': 'إلغاء التأجيل',
+    'snooze.done': 'تم تأجيل المحادثة',
+    'snooze.cancelled': 'تم إلغاء التأجيل',
+    'snooze.failed': 'تعذر تأجيل المحادثة',
+    'snooze.future': 'اختر وقتًا في المستقبل',
     'trust.seal.intact': 'لم تتغير الرسالة منذ أن قبلها هذا الخادم',
     'trust.seal.mismatch': 'تغيرت الرسالة منذ أن قبلها هذا الخادم',
     'trust.seal.notSealed': 'غير مختومة',
@@ -1712,6 +1722,8 @@ const Map<String, Map<String, String>> stringsAr = {
         'لا يمكن {verb} الوصول إلى المجلد القياسي',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'لا يمكن الرد على الدعوات في هذا الحساب بعد.',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'لا يمكن تأجيل المحادثات في هذا الحساب.',
     'client.theSourceOfThisMessageCannotBe':
         'لا يمكن عرض مصدر هذه الرسالة بعد.',
     'client.imapHasNoContacts': 'IMAP ليس لديه جهات اتصال.',

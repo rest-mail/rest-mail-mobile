@@ -9,8 +9,8 @@ must match the contract revision before tests start. The generator's complete de
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The committed document is the exact JSON served by the `main` image of server
-revision `07f617c9c21a527a247b943052c1f714c33a6d11`, which carries the receipt-seal
-and contact reply-time routes: 195 operations. No release holds that revision yet, so
+revision `3a37b4103ef9abe084ddb763f7b71a5e50c8bbdd`, which carries the thread-snooze,
+receipt-seal and contact reply-time routes: 196 operations. No release holds that revision yet, so
 `info.version` and the lock's version read `main`, and the revision and image
 digest name it. A future server pin change must update the complete document
 and checksum, then regenerate; new operations are not held to the old fixed
@@ -79,6 +79,12 @@ The fake serves seeded server results: set `FakeMessage.sealedHash` and
 `sealMismatch` to exercise intact and mismatch receipts. Without a hash it
 reports `not_sealed`, including for pre-seal sample mail. It does not implement
 the server's hashing algorithm or claim to verify stored bytes.
+
+The thread-snooze facade calls `snoozeThread` through the generated messages
+API, and null cancels. The fake keeps each thread's deadline on its messages,
+hides them from folder listings and counts as the server does, and takes
+returning from its clock: `returnSnoozedThreads` does what the server's worker
+does, and the fake also does it ahead of each request.
 
 Existing screens reach generated operations through their unchanged facade
 methods. Generated code validates status, headers and wire fields; typed projections preserve the

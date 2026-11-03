@@ -21,6 +21,7 @@ import 'models.dart';
 import 'message_seal.dart';
 import 'push.dart';
 import 'session.dart';
+import 'thread_snooze.dart';
 
 /// Called whenever the session's tokens change: after sign-in, after every
 /// refresh (rest-mail rotates the refresh token each time), and with null
@@ -2381,6 +2382,33 @@ class RestmailClient {
       Message.fromJson(_data(await _authed('GET', ['messages', '$id'])));
 
   /// Every message in a conversation.
+  /// Sets or replaces [threadId]'s deadline, or with a null [until] cancels it.
+  /// The server refuses a time that is not in the future with a 422.
+  Future<ThreadSnooze> snoozeThread(
+    int accountId,
+    String threadId,
+    DateTime? until,
+  ) async {
+    final response = await generatedValue(
+      wire.MessagesApi(generatedSession).snoozeThread(
+        id: accountId,
+        threadId: threadId,
+        body: wire.ApiV1AccountsIdThreadsThreadIdSnoozePostBodyBodyModel(
+          snoozedUntil: until?.toUtc(),
+        ),
+      ),
+    );
+    if (response is! wire.SnoozeThreadResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final data = response.body.body.data;
+    return ThreadSnooze(
+      mailboxId: accountId,
+      threadId: data.threadId,
+      snoozedUntil: data.snoozedUntil,
+    );
+  }
+
   Future<List<Message>> thread(int accountId, String threadId) async => _list(
     await _authed('GET', ['accounts', '$accountId', 'threads', threadId]),
     Message.fromJson,

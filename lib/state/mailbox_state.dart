@@ -33,6 +33,15 @@ class MailboxState extends ChangeNotifier {
   StreamSubscription<MailEvent>? _events;
   bool _disposed = false;
 
+  final _threadSnoozes = StreamController<ThreadSnooze>.broadcast();
+
+  /// Every change to a snooze on the account on screen, from this device or
+  /// another, for a reader open on that thread to follow.
+  Stream<ThreadSnooze> get threadSnoozes => _threadSnoozes.stream;
+
+  /// The newest [_syncLoaded]; an older one's answer is out of date.
+  int _syncRun = 0;
+
   /// Bumped whenever the account or folder changes, so an answer that comes
   /// back for the old one is dropped rather than shown under the new name.
   int _generation = 0;
@@ -242,6 +251,25 @@ class MailboxState extends ChangeNotifier {
     }
   }
 
+  /// Sets or replaces the deadline of [message]'s thread, or with null cancels
+  /// it. The list follows what the server stored, once it has answered: a
+  /// refusal changes nothing.
+  Future<DateTime?> snoozeThread(Message message, DateTime? until) async {
+    final thread = message.threadId;
+    if (thread == null) {
+      throw const ApiException(0, 'not_found', 'This message has no thread');
+    }
+    final stored = await backend.snoozeThread(message.mailboxId, thread, until);
+    _applyThreadSnooze(
+      ThreadSnooze(
+        mailboxId: message.mailboxId,
+        threadId: stored.threadId,
+        snoozedUntil: stored.snoozedUntil,
+      ),
+    );
+    return stored.snoozedUntil;
+  }
+
   /// Puts back a message that [move] or [delete] took out of the list.
   void restore(Message message) {
     if (message.folder != folder || messages.any((m) => m.id == message.id)) {
@@ -355,6 +383,36 @@ class MailboxState extends ChangeNotifier {
     }
   }
 
+  /// Reads again as much of the folder as is on screen, and shows what the
+  /// server has now: a snoozed thread gone, a returned one back wherever its
+  /// messages belong. Nothing is cleared meanwhile, and if it fails the next
+  /// event or pull-to-refresh catches up.
+  Future<void> _syncLoaded() async {
+    final account = this.account;
+    if (account == null) return;
+    final generation = _generation, run = ++_syncRun, wanted = messages.length;
+    try {
+      final fresh = <int, Message>{};
+      String? cursor;
+      bool more;
+      do {
+        final page = await backend.messages(account.id, folder, cursor: cursor);
+        if (generation != _generation || run != _syncRun) return;
+        for (final m in page.items) {
+          fresh[m.id] = m;
+        }
+        cursor = page.cursor;
+        more = page.hasMore;
+      } while (more && cursor != null && fresh.length < wanted);
+      messages = [...fresh.values];
+      _cursor = cursor;
+      hasMore = more;
+      _notify();
+    } on ApiException {
+      // The next event or pull-to-refresh catches up.
+    }
+  }
+
   // ── Live events ───────────────────────────────────────────────────────
 
   void _listen() {
@@ -368,6 +426,12 @@ class MailboxState extends ChangeNotifier {
           onLiveChanged: (up) {
             live = up ? LiveStatus.live : LiveStatus.offline;
             _notify();
+            // A server that restarted has lost what it would have replayed,
+            // so a thread may have come back, or gone, unannounced.
+            if (up && backend.canSnoozeThreads) {
+              unawaited(refreshFolders());
+              unawaited(_syncLoaded());
+            }
           },
         )
         .listen(
@@ -394,8 +458,28 @@ class MailboxState extends ChangeNotifier {
         if (messages.length != before) _notify();
         unawaited(refreshFolders());
       case MailEventType.folderUpdate:
-        unawaited(refreshFolders());
+        if (event.threadSnooze case final snooze?) {
+          _applyThreadSnooze(snooze);
+        } else {
+          unawaited(refreshFolders());
+        }
     }
+  }
+
+  void _applyThreadSnooze(ThreadSnooze snooze) {
+    if (snooze.mailboxId != account?.id) return;
+    if (snooze.snoozedUntil != null) {
+      final left = messages
+          .where((m) => m.threadId != snooze.threadId)
+          .toList();
+      if (left.length != messages.length) {
+        messages = left;
+        _notify();
+      }
+    }
+    if (!_threadSnoozes.isClosed) _threadSnoozes.add(snooze);
+    unawaited(refreshFolders());
+    unawaited(_syncLoaded());
   }
 
   void _applyUpdate(MailEvent event) {
@@ -428,6 +512,7 @@ class MailboxState extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     unawaited(_events?.cancel());
+    unawaited(_threadSnoozes.close());
     super.dispose();
   }
 }

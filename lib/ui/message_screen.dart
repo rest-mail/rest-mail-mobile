@@ -20,6 +20,7 @@ import 'invitations.dart';
 import 'labels_sheet.dart';
 import 'mail_actions.dart';
 import 'message_source_screen.dart';
+import 'thread_snooze_sheet.dart';
 import 'widgets/avatar.dart';
 import 'widgets/common.dart';
 import 'widgets/message_body.dart';
@@ -27,7 +28,17 @@ import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
 
-enum _More { markUnread, flag, note, labels, spam, notSpam, block, source }
+enum _More {
+  markUnread,
+  flag,
+  note,
+  labels,
+  snooze,
+  spam,
+  notSpam,
+  block,
+  source,
+}
 
 /// One message, read in full, with reply, reply all and forward along the
 /// bottom. On Gmail, with its labels, and the rest of its conversation
@@ -38,6 +49,7 @@ class MessageScreen extends StatefulWidget {
     required this.mailbox,
     required this.message,
     this.others = const [],
+    this.fromFolder = false,
   });
 
   final MailboxState mailbox;
@@ -49,6 +61,11 @@ class MessageScreen extends StatefulWidget {
   /// marks read and archive, delete, spam and labels act on too, as the
   /// list showed them as one row.
   final List<Message> others;
+
+  /// Opened from a folder's list, so snoozing the thread leaves with it, as
+  /// webmail's reader closes. Search and other ways in still reach snoozed
+  /// mail, so they stay open and show the deadline.
+  final bool fromFolder;
 
   @override
   State<MessageScreen> createState() => _MessageScreenState();
@@ -62,6 +79,10 @@ class _MessageScreenState extends State<MessageScreen> {
   bool _allRecipients = false;
   ReceiptSealState? _sealState;
   String? _sealedHash;
+  StreamSubscription<ThreadSnooze>? _snoozes;
+
+  /// The snooze sheet is open, or has just answered: [_snooze] does the leaving.
+  bool _snoozing = false;
 
   /// A private note, kept on this phone, under this account and message.
   String? _note;
@@ -79,6 +100,54 @@ class _MessageScreenState extends State<MessageScreen> {
   void initState() {
     super.initState();
     unawaited(_load());
+    _snoozes = _mailbox.threadSnoozes.listen(_onThreadSnooze);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_snoozes?.cancel());
+    super.dispose();
+  }
+
+  /// The thread on screen was snoozed, returned or cancelled, here or on
+  /// another device.
+  void _onThreadSnooze(ThreadSnooze change) {
+    if (!mounted ||
+        change.mailboxId != _message.mailboxId ||
+        change.threadId != _message.threadId) {
+      return;
+    }
+    setState(
+      () => _message = _message.copyWith(snoozedUntil: change.snoozedUntil),
+    );
+    // Under a reply being written, the reader stays until that is done with.
+    if (change.snoozedUntil != null &&
+        widget.fromFolder &&
+        !_snoozing &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _snooze() async {
+    _snoozing = true;
+    final result = await showThreadSnooze(
+      context,
+      mailbox: _mailbox,
+      message: _message,
+    );
+    _snoozing = false;
+    if (!mounted) return;
+    if (result != null) {
+      setState(() => _message = _message.copyWith(snoozedUntil: result.until));
+      showToast(
+        context,
+        tr(context, result.until == null ? 'snooze.cancelled' : 'snooze.done'),
+      );
+    }
+    if (widget.fromFolder && _message.snoozedUntil != null) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -335,6 +404,8 @@ class _MessageScreenState extends State<MessageScreen> {
           await _editNote();
         case _More.labels:
           await _editLabels();
+        case _More.snooze:
+          await _snooze();
         case _More.spam:
           await _removeAndLeave(
             (message, others) =>
@@ -562,6 +633,12 @@ class _MessageScreenState extends State<MessageScreen> {
                         PopupMenuItem(
                           value: _More.labels,
                           child: Text(tr(context, 'message.labels')),
+                        ),
+                      if (_mailbox.backend.canSnoozeThreads)
+                        PopupMenuItem(
+                          value: _More.snooze,
+                          enabled: _loaded && m.threadId != null,
+                          child: Text(tr(context, 'snooze.action')),
                         ),
                       if (m.folder == StandardFolder.spam)
                         PopupMenuItem(

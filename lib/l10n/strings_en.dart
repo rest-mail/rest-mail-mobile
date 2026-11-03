@@ -639,6 +639,16 @@ const Map<String, Map<String, String>> stringsEn = {
     'kind.video': 'Video',
     'kind.archive': 'Archive',
     'kind.file': 'File',
+    'snooze.action': 'Snooze',
+    'snooze.title': 'Snooze thread',
+    'snooze.description': 'Hide this thread from folders until the chosen time. Search can still find it. Times use your local time zone.',
+    'snooze.until': 'Snoozed until {time}',
+    'snooze.returnAt': 'Return at',
+    'snooze.cancel': 'Cancel snooze',
+    'snooze.done': 'Thread snoozed',
+    'snooze.cancelled': 'Snooze cancelled',
+    'snooze.failed': 'Could not snooze thread',
+    'snooze.future': 'Choose a time in the future',
     'trust.seal.intact': 'Message unchanged since this server accepted it',
     'trust.seal.mismatch': 'Message changed since this server accepted it',
     'trust.seal.notSealed': 'Not sealed',
@@ -1735,6 +1745,8 @@ const Map<String, Map<String, String>> stringsEn = {
     'client.cannotVerbStandardFolder': 'Cannot {verb} standard folder',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'Invitations cannot be answered on this account yet.',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'Threads cannot be snoozed on this account.',
     'client.theSourceOfThisMessageCannotBe':
         'The source of this message cannot be shown yet.',
     'client.imapHasNoContacts': 'IMAP has no contacts.',

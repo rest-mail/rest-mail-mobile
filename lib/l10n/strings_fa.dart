@@ -624,6 +624,16 @@ const Map<String, Map<String, String>> stringsFa = {
     'kind.video': 'ویدیو',
     'kind.archive': 'بایگانی',
     'kind.file': 'فایل',
+    'snooze.action': 'به تعویق انداختن',
+    'snooze.title': 'به تعویق انداختن گفتگو',
+    'snooze.description': 'این گفتگو را تا زمان انتخاب‌شده از پوشه‌ها پنهان کنید. جستجو همچنان می‌تواند آن را پیدا کند. زمان‌ها به وقت محلی شما هستند.',
+    'snooze.until': 'به تعویق افتاده تا {time}',
+    'snooze.returnAt': 'بازگشت در',
+    'snooze.cancel': 'لغو تعویق',
+    'snooze.done': 'گفتگو به تعویق افتاد',
+    'snooze.cancelled': 'تعویق لغو شد',
+    'snooze.failed': 'گفتگو به تعویق نیفتاد',
+    'snooze.future': 'زمانی در آینده انتخاب کنید',
     'trust.seal.intact': 'پیام از زمان پذیرش توسط این سرور تغییری نکرده است',
     'trust.seal.mismatch': 'پیام از زمان پذیرش توسط این سرور تغییر کرده است',
     'trust.seal.notSealed': 'مهر نشده',
@@ -1712,6 +1722,8 @@ const Map<String, Map<String, String>> stringsFa = {
         'نمی‌توان پوشه استاندارد {verb} را پیدا کرد',
     'client.invitationsCannotBeAnsweredOnThisAccount':
         'هنوز نمی‌توان به دعوت‌ها در این حساب پاسخ داد.',
+    'client.threadsCannotBeSnoozedOnThisAccount':
+        'در این حساب نمی‌توان گفتگوها را به تعویق انداخت.',
     'client.theSourceOfThisMessageCannotBe':
         'منبع این پیام هنوز قابل نمایش نیست.',
     'client.imapHasNoContacts': 'IMAP هیچ مخاطبی ندارد.',

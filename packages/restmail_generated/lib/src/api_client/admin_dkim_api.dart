@@ -470,6 +470,7 @@ class AdminDkimApi {
   }) async => _deleteDkimKey(id: id, cancellation: cancellation);
 
   /// Read a domain's DKIM rotation interval
+  /// Reports the staged TXT record and publication/activation times. After the signing switch, the previous key is retained until retire_after, then revoked with an empty p=. revoked_at records when the worker requested revocation. revocation_published_at records when that record first resolved; removes_after is one TTL later, when it can be removed. These optional fields appear as each step completes. State remains retiring until removal.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -488,6 +489,28 @@ class AdminDkimApi {
   ///     "rotation_interval_days": 90,
   ///     "staged": null,
   ///     "state": "stable"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "revoked" — The previous selector is revoked for one more TTL:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "domain_id": 10,
+  ///     "previous": {
+  ///       "published_at": "2026-10-20T00:00:00Z",
+  ///       "record_name": "restmail-previous._domainkey.example.com",
+  ///       "record_value": "v=DKIM1; p=",
+  ///       "removes_after": "2026-10-21T01:00:00Z",
+  ///       "retire_after": "2026-10-21T00:00:00Z",
+  ///       "revocation_published_at": "2026-10-21T00:00:00Z",
+  ///       "revoked_at": "2026-10-21T00:00:00Z",
+  ///       "selector": "restmail-previous"
+  ///     },
+  ///     "rotation_interval_days": 90,
+  ///     "staged": null,
+  ///     "state": "retiring"
   ///   }
   /// }
   /// ```
