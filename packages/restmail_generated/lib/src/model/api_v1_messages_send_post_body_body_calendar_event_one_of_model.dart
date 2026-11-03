@@ -10,56 +10,56 @@ import 'package:restmail_generated/src/model/calendar_event.dart' as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
-sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
+sealed class $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel
     implements _i1.ParameterEncodable, _i1.UriEncodable {
-  const $RawSendMessageDescriptionCalendarEventOneOfModel();
+  const $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel();
 
-  factory $RawSendMessageDescriptionCalendarEventOneOfModel.fromSimple(
+  factory $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel.fromSimple(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     try {
-      return $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      return $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         _i4.CalendarEvent.fromSimple(value, explode: explode),
       );
     } on _i1.DecodingException catch (_) {
     } on _i3.FormatException catch (_) {}
     throw _i1.SimpleDecodingException(
-      r'Invalid simple value for $RawSendMessageDescriptionCalendarEventOneOfModel',
+      r'Invalid simple value for $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel',
     );
   }
 
-  factory $RawSendMessageDescriptionCalendarEventOneOfModel.fromForm(
+  factory $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel.fromForm(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     try {
-      return $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      return $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         _i4.CalendarEvent.fromForm(value, explode: explode),
       );
     } on _i1.DecodingException catch (_) {
     } on _i3.FormatException catch (_) {}
     throw _i1.SimpleDecodingException(
-      r'Invalid form value for $RawSendMessageDescriptionCalendarEventOneOfModel',
+      r'Invalid form value for $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel',
     );
   }
 
-  factory $RawSendMessageDescriptionCalendarEventOneOfModel.fromJson(
+  factory $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel.fromJson(
     _i3.Object? json,
   ) {
     try {
-      return $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      return $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         _i4.CalendarEvent.fromJson(json),
       );
     } on _i3.Object catch (_) {}
     throw _i1.JsonDecodingException(
-      r'Invalid JSON for $RawSendMessageDescriptionCalendarEventOneOfModel',
+      r'Invalid JSON for $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel',
     );
   }
 
   _i1.EncodingShape get currentEncodingShape {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.currentEncodingShape,
@@ -70,7 +70,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     _i3.bool allowEmpty = true,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.parameterProperties(allowEmpty: allowEmpty),
@@ -84,7 +84,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     _i3.bool literal = false,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.toSimple(
@@ -106,7 +106,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     _i3.Map<_i3.String, _i1.FormFieldEncoding> fieldEncodings = const {},
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.toForm(
@@ -126,7 +126,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     required _i3.bool allowEmpty,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.toLabel(explode: explode, allowEmpty: allowEmpty),
@@ -140,7 +140,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     required _i3.bool allowEmpty,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         value.toMatrix(paramName, explode: explode, allowEmpty: allowEmpty),
@@ -196,9 +196,9 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
     _i3.bool allowReserved = false,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent() =>
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent() =>
         throw _i1.EncodingException(
-          r'Cannot uriEncode $RawSendMessageDescriptionCalendarEventOneOfModel: variant contains complex type',
+          r'Cannot uriEncode $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel: variant contains complex type',
         ),
     };
   }
@@ -206,7 +206,7 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
   @_i3.override
   _i3.Object? toJson() {
     final (_i3.dynamic _$json, _i3.String? _$discriminator) = switch (this) {
-      $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+      $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
         :final value,
       ) =>
         (value.toJson(), null),
@@ -216,9 +216,9 @@ sealed class $RawSendMessageDescriptionCalendarEventOneOfModel
 }
 
 @_i2.immutable
-class $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent
-    extends $RawSendMessageDescriptionCalendarEventOneOfModel {
-  const $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent(
+class $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent
+    extends $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel {
+  const $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent(
     this.value,
   );
 
@@ -228,7 +228,7 @@ class $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
     return other
-            is $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent &&
+            is $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModelCalendarEvent &&
         other.value == this.value;
   }
 
@@ -236,5 +236,5 @@ class $RawSendMessageDescriptionCalendarEventOneOfModelCalendarEvent
   _i3.int get hashCode => value.hashCode;
 }
 
-typedef SendMessageDescriptionCalendarEventOneOfModel =
-    $RawSendMessageDescriptionCalendarEventOneOfModel?;
+typedef ApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel =
+    $RawApiV1MessagesSendPostBodyBodyCalendarEventOneOfModel?;

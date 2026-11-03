@@ -2,77 +2,82 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i19;
+import 'dart:core' as _i20;
 
-import 'package:http/http.dart' as _i22;
-import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_due_post_body_body_model.dart'
+import 'package:http/http.dart' as _i23;
+import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_parameters_model.dart'
     as _i28;
+import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_due_post_body_body_model.dart'
+    as _i31;
 import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_snooze_post_body_body_model.dart'
-    as _i30;
-import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i32;
-import 'package:restmail_generated/src/model/forward_body.dart' as _i43;
-import 'package:restmail_generated/src/model/import_message_body.dart' as _i25;
-import 'package:restmail_generated/src/model/send_message_description.dart'
-    as _i37;
-import 'package:restmail_generated/src/model/update_message_body.dart' as _i41;
+    as _i33;
+import 'package:restmail_generated/src/model/api_v1_messages_send_post_body_body_model.dart'
+    as _i40;
+import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i35;
+import 'package:restmail_generated/src/model/forward_body.dart' as _i46;
+import 'package:restmail_generated/src/model/import_message_body.dart' as _i26;
+import 'package:restmail_generated/src/model/update_message_body.dart' as _i44;
 import 'package:restmail_generated/src/operation/cancel_scheduled_message.dart'
-    as _i10;
-import 'package:restmail_generated/src/operation/delete_message.dart' as _i14;
-import 'package:restmail_generated/src/operation/deliver_message.dart' as _i8;
-import 'package:restmail_generated/src/operation/forward_message.dart' as _i16;
-import 'package:restmail_generated/src/operation/get_message.dart' as _i13;
-import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i17;
-import 'package:restmail_generated/src/operation/get_thread.dart' as _i5;
+    as _i11;
+import 'package:restmail_generated/src/operation/delete_message.dart' as _i15;
+import 'package:restmail_generated/src/operation/deliver_message.dart' as _i9;
+import 'package:restmail_generated/src/operation/forward_message.dart' as _i17;
+import 'package:restmail_generated/src/operation/get_message.dart' as _i14;
+import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i18;
+import 'package:restmail_generated/src/operation/get_thread.dart' as _i6;
 import 'package:restmail_generated/src/operation/import_message.dart' as _i4;
 import 'package:restmail_generated/src/operation/list_held_messages.dart'
     as _i3;
 import 'package:restmail_generated/src/operation/list_messages.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_scheduled_messages.dart'
-    as _i9;
+    as _i10;
+import 'package:restmail_generated/src/operation/list_threads.dart' as _i5;
 import 'package:restmail_generated/src/operation/release_held_message.dart'
-    as _i11;
-import 'package:restmail_generated/src/operation/send_message.dart' as _i12;
-import 'package:restmail_generated/src/operation/set_thread_due.dart' as _i6;
-import 'package:restmail_generated/src/operation/snooze_thread.dart' as _i7;
-import 'package:restmail_generated/src/operation/update_message.dart' as _i15;
+    as _i12;
+import 'package:restmail_generated/src/operation/send_message.dart' as _i13;
+import 'package:restmail_generated/src/operation/set_thread_due.dart' as _i7;
+import 'package:restmail_generated/src/operation/snooze_thread.dart' as _i8;
+import 'package:restmail_generated/src/operation/update_message.dart' as _i16;
 import 'package:restmail_generated/src/operation/verify_message_seal.dart'
-    as _i18;
+    as _i19;
 import 'package:restmail_generated/src/response_wrapper/cancel_scheduled_message_response.dart'
-    as _i34;
+    as _i37;
 import 'package:restmail_generated/src/response_wrapper/delete_message_response.dart'
-    as _i39;
-import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
-    as _i31;
-import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
     as _i42;
-import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
-    as _i38;
-import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
-    as _i44;
-import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
-    as _i26;
-import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
-    as _i24;
-import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
-    as _i23;
-import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
-    as _i21;
-import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
-    as _i33;
-import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
-    as _i35;
-import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
-    as _i36;
-import 'package:restmail_generated/src/response_wrapper/set_thread_due_response.dart'
-    as _i27;
-import 'package:restmail_generated/src/response_wrapper/snooze_thread_response.dart'
-    as _i29;
-import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
-    as _i40;
-import 'package:restmail_generated/src/response_wrapper/verify_message_seal_response.dart'
+import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
+    as _i34;
+import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
     as _i45;
+import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
+    as _i41;
+import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
+    as _i47;
+import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
+    as _i29;
+import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
+    as _i25;
+import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
+    as _i24;
+import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
+    as _i22;
+import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
+    as _i36;
+import 'package:restmail_generated/src/response_wrapper/list_threads_response.dart'
+    as _i27;
+import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
+    as _i38;
+import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
+    as _i39;
+import 'package:restmail_generated/src/response_wrapper/set_thread_due_response.dart'
+    as _i30;
+import 'package:restmail_generated/src/response_wrapper/snooze_thread_response.dart'
+    as _i32;
+import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
+    as _i43;
+import 'package:restmail_generated/src/response_wrapper/verify_message_seal_response.dart'
+    as _i48;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i20;
+import 'package:tonik_util/tonik_util.dart' as _i21;
 
 class MessagesApi {
   MessagesApi(_i1.Server server)
@@ -82,32 +87,33 @@ class MessagesApi {
         () => server.client,
       ),
       _importMessage = _i4.ImportMessage(server.baseUrl, () => server.client),
-      _getThread = _i5.GetThread(server.baseUrl, () => server.client),
-      _setThreadDue = _i6.SetThreadDue(server.baseUrl, () => server.client),
-      _snoozeThread = _i7.SnoozeThread(server.baseUrl, () => server.client),
-      _deliverMessage = _i8.DeliverMessage(server.baseUrl, () => server.client),
-      _listScheduledMessages = _i9.ListScheduledMessages(
+      _listThreads = _i5.ListThreads(server.baseUrl, () => server.client),
+      _getThread = _i6.GetThread(server.baseUrl, () => server.client),
+      _setThreadDue = _i7.SetThreadDue(server.baseUrl, () => server.client),
+      _snoozeThread = _i8.SnoozeThread(server.baseUrl, () => server.client),
+      _deliverMessage = _i9.DeliverMessage(server.baseUrl, () => server.client),
+      _listScheduledMessages = _i10.ListScheduledMessages(
         server.baseUrl,
         () => server.client,
       ),
-      _cancelScheduledMessage = _i10.CancelScheduledMessage(
+      _cancelScheduledMessage = _i11.CancelScheduledMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _releaseHeldMessage = _i11.ReleaseHeldMessage(
+      _releaseHeldMessage = _i12.ReleaseHeldMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _sendMessage = _i12.SendMessage(server.baseUrl, () => server.client),
-      _getMessage = _i13.GetMessage(server.baseUrl, () => server.client),
-      _deleteMessage = _i14.DeleteMessage(server.baseUrl, () => server.client),
-      _updateMessage = _i15.UpdateMessage(server.baseUrl, () => server.client),
-      _forwardMessage = _i16.ForwardMessage(
+      _sendMessage = _i13.SendMessage(server.baseUrl, () => server.client),
+      _getMessage = _i14.GetMessage(server.baseUrl, () => server.client),
+      _deleteMessage = _i15.DeleteMessage(server.baseUrl, () => server.client),
+      _updateMessage = _i16.UpdateMessage(server.baseUrl, () => server.client),
+      _forwardMessage = _i17.ForwardMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _getRawMessage = _i17.GetRawMessage(server.baseUrl, () => server.client),
-      _verifyMessageSeal = _i18.VerifyMessageSeal(
+      _getRawMessage = _i18.GetRawMessage(server.baseUrl, () => server.client),
+      _verifyMessageSeal = _i19.VerifyMessageSeal(
         server.baseUrl,
         () => server.client,
       );
@@ -118,33 +124,35 @@ class MessagesApi {
 
   final _i4.ImportMessage _importMessage;
 
-  final _i5.GetThread _getThread;
+  final _i5.ListThreads _listThreads;
 
-  final _i6.SetThreadDue _setThreadDue;
+  final _i6.GetThread _getThread;
 
-  final _i7.SnoozeThread _snoozeThread;
+  final _i7.SetThreadDue _setThreadDue;
 
-  final _i8.DeliverMessage _deliverMessage;
+  final _i8.SnoozeThread _snoozeThread;
 
-  final _i9.ListScheduledMessages _listScheduledMessages;
+  final _i9.DeliverMessage _deliverMessage;
 
-  final _i10.CancelScheduledMessage _cancelScheduledMessage;
+  final _i10.ListScheduledMessages _listScheduledMessages;
 
-  final _i11.ReleaseHeldMessage _releaseHeldMessage;
+  final _i11.CancelScheduledMessage _cancelScheduledMessage;
 
-  final _i12.SendMessage _sendMessage;
+  final _i12.ReleaseHeldMessage _releaseHeldMessage;
 
-  final _i13.GetMessage _getMessage;
+  final _i13.SendMessage _sendMessage;
 
-  final _i14.DeleteMessage _deleteMessage;
+  final _i14.GetMessage _getMessage;
 
-  final _i15.UpdateMessage _updateMessage;
+  final _i15.DeleteMessage _deleteMessage;
 
-  final _i16.ForwardMessage _forwardMessage;
+  final _i16.UpdateMessage _updateMessage;
 
-  final _i17.GetRawMessage _getRawMessage;
+  final _i17.ForwardMessage _forwardMessage;
 
-  final _i18.VerifyMessageSeal _verifyMessageSeal;
+  final _i18.GetRawMessage _getRawMessage;
+
+  final _i19.VerifyMessageSeal _verifyMessageSeal;
 
   /// List messages in a folder
   ///
@@ -372,14 +380,14 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i21.ListMessagesResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i22.ListMessagesResponse, _i23.Response>>
   listMessages({
-    required _i19.int id,
-    required _i19.String folder,
-    _i19.int? limit,
-    _i19.String? cursor,
-    _i19.bool? includeImapDeleted,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    required _i20.String folder,
+    _i20.int? limit,
+    _i20.String? cursor,
+    _i20.bool? includeImapDeleted,
+    _i21.TonikCancellation? cancellation,
   }) async => _listMessages(
     id: id,
     folder: folder,
@@ -486,10 +494,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i23.ListHeldMessagesResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i24.ListHeldMessagesResponse, _i23.Response>>
   listHeldMessages({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _listHeldMessages(id: id, cancellation: cancellation);
 
   /// Store a message the account already has
@@ -1041,12 +1049,329 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i24.ImportMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i25.ImportMessageResponse, _i23.Response>>
   importMessage({
-    required _i25.ImportMessageBody body,
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i26.ImportMessageBody body,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _importMessage(body: body, id: id, cancellation: cancellation);
+
+  /// List an account's threads in a state
+  /// state=awaiting answers the threads whose last message came from this account, across folders, the most recent first. It is derived from the account's messages on every read, with no setting and no model: a draft, a scheduled send and a deleted or trashed message do not count, and a later message in the thread or a reply to the last one ends the wait. Any state other than awaiting is 422. A snoozed thread stays in this list with its deadline on last_message, because snoozing hides a thread from folder listings only.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "empty" — An account with no thread waiting on a reply:
+  /// Production routes load real credential and holder ceilings and map fixed message rows. Controlled SQL proves the wiring, the cursor and the bound; separate PostgreSQL tests prove the derivation, its folders and its account isolation.
+  ///
+  /// ```json
+  /// {
+  ///   "data": [],
+  ///   "pagination": {
+  ///     "has_more": false
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "first_page" — The newest waiting thread and a cursor to the next page:
+  /// Production routes load real credential and holder ceilings and map fixed message rows. Controlled SQL proves the wiring, the cursor and the bound; separate PostgreSQL tests prove the derivation, its folders and its account isolation.
+  ///
+  /// ```json
+  /// {
+  ///   "data": [
+  ///     {
+  ///       "awaiting_since": "2026-10-20T02:00:00Z",
+  ///       "last_message": {
+  ///         "awaiting_since": "2026-10-20T02:00:00Z",
+  ///         "body_text": "Any news?",
+  ///         "class": "person",
+  ///         "created_at": "2026-10-20T00:00:00Z",
+  ///         "date_header": null,
+  ///         "downgraded_size": 0,
+  ///         "folder": "Sent",
+  ///         "has_attachments": false,
+  ///         "id": 72,
+  ///         "in_reply_to": "",
+  ///         "is_deleted": false,
+  ///         "is_draft": false,
+  ///         "is_dsn": false,
+  ///         "is_flagged": false,
+  ///         "is_read": true,
+  ///         "is_starred": false,
+  ///         "mailbox_id": 1,
+  ///         "message_id": "<message-72@example.com>",
+  ///         "raw_size": 0,
+  ///         "received_at": "2026-10-20T02:00:00Z",
+  ///         "recipients_cc": [],
+  ///         "recipients_to": [
+  ///           "recipient@example.net"
+  ///         ],
+  ///         "references": "",
+  ///         "sender": "linked@example.com",
+  ///         "sender_name": "Linked",
+  ///         "size_bytes": 18,
+  ///         "subject": "Any news?",
+  ///         "thread_id": "<thread-72@example.com>",
+  ///         "updated_at": "2026-10-20T00:00:00Z"
+  ///       },
+  ///       "thread_id": "<thread-72@example.com>"
+  ///     }
+  ///   ],
+  ///   "pagination": {
+  ///     "cursor": "eyJyZWNlaXZlZF9hdCI6IjIwMjYtMTAtMjBUMDI6MDA6MDBaIiwiaWQiOjcyfQ==",
+  ///     "has_more": true
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "found" — Threads whose last message came from this account, the most recent first:
+  /// Production routes load real credential and holder ceilings and map fixed message rows. Controlled SQL proves the wiring, the cursor and the bound; separate PostgreSQL tests prove the derivation, its folders and its account isolation.
+  ///
+  /// ```json
+  /// {
+  ///   "data": [
+  ///     {
+  ///       "awaiting_since": "2026-10-20T02:00:00Z",
+  ///       "last_message": {
+  ///         "awaiting_since": "2026-10-20T02:00:00Z",
+  ///         "body_text": "Any news?",
+  ///         "class": "person",
+  ///         "created_at": "2026-10-20T00:00:00Z",
+  ///         "date_header": null,
+  ///         "downgraded_size": 0,
+  ///         "folder": "Sent",
+  ///         "has_attachments": false,
+  ///         "id": 72,
+  ///         "in_reply_to": "",
+  ///         "is_deleted": false,
+  ///         "is_draft": false,
+  ///         "is_dsn": false,
+  ///         "is_flagged": false,
+  ///         "is_read": true,
+  ///         "is_starred": false,
+  ///         "mailbox_id": 1,
+  ///         "message_id": "<message-72@example.com>",
+  ///         "raw_size": 0,
+  ///         "received_at": "2026-10-20T02:00:00Z",
+  ///         "recipients_cc": [],
+  ///         "recipients_to": [
+  ///           "recipient@example.net"
+  ///         ],
+  ///         "references": "",
+  ///         "sender": "linked@example.com",
+  ///         "sender_name": "Linked",
+  ///         "size_bytes": 18,
+  ///         "subject": "Any news?",
+  ///         "thread_id": "<thread-72@example.com>",
+  ///         "updated_at": "2026-10-20T00:00:00Z"
+  ///       },
+  ///       "thread_id": "<thread-72@example.com>"
+  ///     },
+  ///     {
+  ///       "awaiting_since": "2026-10-20T01:00:00Z",
+  ///       "last_message": {
+  ///         "awaiting_since": "2026-10-20T01:00:00Z",
+  ///         "body_text": "Any news?",
+  ///         "class": "person",
+  ///         "created_at": "2026-10-20T00:00:00Z",
+  ///         "date_header": null,
+  ///         "downgraded_size": 0,
+  ///         "folder": "Sent",
+  ///         "has_attachments": false,
+  ///         "id": 71,
+  ///         "in_reply_to": "",
+  ///         "is_deleted": false,
+  ///         "is_draft": false,
+  ///         "is_dsn": false,
+  ///         "is_flagged": false,
+  ///         "is_read": true,
+  ///         "is_starred": false,
+  ///         "mailbox_id": 1,
+  ///         "message_id": "<message-71@example.com>",
+  ///         "raw_size": 0,
+  ///         "received_at": "2026-10-20T01:00:00Z",
+  ///         "recipients_cc": [],
+  ///         "recipients_to": [
+  ///           "recipient@example.net"
+  ///         ],
+  ///         "references": "",
+  ///         "sender": "linked@example.com",
+  ///         "sender_name": "Linked",
+  ///         "size_bytes": 18,
+  ///         "subject": "Any news?",
+  ///         "thread_id": "<thread-71@example.com>",
+  ///         "updated_at": "2026-10-20T00:00:00Z"
+  ///       },
+  ///       "thread_id": "<thread-71@example.com>"
+  ///     }
+  ///   ],
+  ///   "pagination": {
+  ///     "has_more": false
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "next_page" — The page after a cursor, the last one:
+  /// Production routes load real credential and holder ceilings and map fixed message rows. Controlled SQL proves the wiring, the cursor and the bound; separate PostgreSQL tests prove the derivation, its folders and its account isolation.
+  ///
+  /// ```json
+  /// {
+  ///   "data": [
+  ///     {
+  ///       "awaiting_since": "2026-10-20T01:00:00Z",
+  ///       "last_message": {
+  ///         "awaiting_since": "2026-10-20T01:00:00Z",
+  ///         "body_text": "Any news?",
+  ///         "class": "person",
+  ///         "created_at": "2026-10-20T00:00:00Z",
+  ///         "date_header": null,
+  ///         "downgraded_size": 0,
+  ///         "folder": "Sent",
+  ///         "has_attachments": false,
+  ///         "id": 71,
+  ///         "in_reply_to": "",
+  ///         "is_deleted": false,
+  ///         "is_draft": false,
+  ///         "is_dsn": false,
+  ///         "is_flagged": false,
+  ///         "is_read": true,
+  ///         "is_starred": false,
+  ///         "mailbox_id": 1,
+  ///         "message_id": "<message-71@example.com>",
+  ///         "raw_size": 0,
+  ///         "received_at": "2026-10-20T01:00:00Z",
+  ///         "recipients_cc": [],
+  ///         "recipients_to": [
+  ///           "recipient@example.net"
+  ///         ],
+  ///         "references": "",
+  ///         "sender": "linked@example.com",
+  ///         "sender_name": "Linked",
+  ///         "size_bytes": 18,
+  ///         "subject": "Any news?",
+  ///         "thread_id": "<thread-71@example.com>",
+  ///         "updated_at": "2026-10-20T00:00:00Z"
+  ///       },
+  ///       "thread_id": "<thread-71@example.com>"
+  ///     }
+  ///   ],
+  ///   "pagination": {
+  ///     "has_more": false
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "write_only":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "key_wrong_scope":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "target_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i20.Future<_i21.TonikResult<_i27.ListThreadsResponse, _i23.Response>>
+  listThreads({
+    required _i20.int id,
+    required _i28.ApiV1AccountsIdThreadsParametersModel state,
+    _i20.int? limit,
+    _i20.String? cursor,
+    _i21.TonikCancellation? cancellation,
+  }) async => _listThreads(
+    id: id,
+    state: state,
+    limit: limit,
+    cursor: cursor,
+    cancellation: cancellation,
+  );
 
   /// Get all messages in a thread
   ///
@@ -1270,16 +1595,16 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i26.GetThreadResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i29.GetThreadResponse, _i23.Response>>
   getThread({
-    required _i19.int id,
-    required _i19.String threadId,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    required _i20.String threadId,
+    _i21.TonikCancellation? cancellation,
   }) async =>
       _getThread(id: id, threadId: threadId, cancellation: cancellation);
 
   /// Set or clear a thread's due date
-  /// Stores an account-scoped user-set due date without changing message order or folders. Send an RFC 3339 due date-time, or null to clear both due and due_source. due_source must be user; rule and parsed are reserved for future work. Unknown threads and threads outside this account are 404.
+  /// Stores an account-scoped user-set due date without changing message order or folders. Send an RFC 3339 due date-time, or null to clear both due and due_source. due_source must be user. Reads may also report rule or parsed, but nothing writes those yet. A parsed date is only a suggestion and never changes message order or folders; send its due with due_source user to accept it. Unknown threads and threads outside this account are 404.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -1622,12 +1947,12 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i27.SetThreadDueResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i30.SetThreadDueResponse, _i23.Response>>
   setThreadDue({
-    required _i28.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel body,
-    required _i19.int id,
-    required _i19.String threadId,
-    _i20.TonikCancellation? cancellation,
+    required _i31.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel body,
+    required _i20.int id,
+    required _i20.String threadId,
+    _i21.TonikCancellation? cancellation,
   }) async => _setThreadDue(
     body: body,
     id: id,
@@ -1959,12 +2284,12 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i29.SnoozeThreadResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i32.SnoozeThreadResponse, _i23.Response>>
   snoozeThread({
-    required _i30.ApiV1AccountsIdThreadsThreadIdSnoozePostBodyBodyModel body,
-    required _i19.int id,
-    required _i19.String threadId,
-    _i20.TonikCancellation? cancellation,
+    required _i33.ApiV1AccountsIdThreadsThreadIdSnoozePostBodyBodyModel body,
+    required _i20.int id,
+    required _i20.String threadId,
+    _i21.TonikCancellation? cancellation,
   }) async => _snoozeThread(
     body: body,
     id: id,
@@ -1973,7 +2298,7 @@ class MessagesApi {
   );
 
   /// Deliver a message into a mailbox (protocol gateways)
-  /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota. A missing mailbox is 404; a failed mailbox lookup is 500, never a missing recipient.
+  /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota. A missing mailbox is 404; a failed mailbox lookup is 500, never a missing recipient. Stored text must not contain NUL (U+0000), including strings and object keys anywhere in recipients_to or recipients_cc and the decoded raw_message octets; a refusal is 422 validation_failed naming the field, before any write. raw_message is a standard padded base64 string (format: byte), not unencoded message text. An omitted or empty folder means INBOX; otherwise The name is valid UTF-8 of at most 255 bytes, neither blank nor beginning or ending with a space, with no control character and no ".."; a "/" is the hierarchy delimiter IMAP clients show. Any other name is 422.
   ///
   /// Request body (application/json):
   /// **Example** "address_empty" — The address is empty:
@@ -1985,9 +2310,40 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "address_nul" — Address nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "address": "before\u0000after"
+  /// }
+  /// ```
+  ///
   /// **Example** "body_array" — The body is not a JSON object:
   /// ```json
   /// []
+  /// ```
+  ///
+  /// **Example** "body_html_nul" — Body html nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "body_html": "before\u0000after",
+  ///   "mailbox_id": 900100
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_text_nul" — Body text nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "body_text": "before\u0000after",
+  ///   "mailbox_id": 900100
+  /// }
+  /// ```
+  ///
+  /// **Example** "client_ip_nul" — Client ip nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "client_ip": "before\u0000after",
+  ///   "mailbox_id": 900100
+  /// }
   /// ```
   ///
   /// **Example** "deferred" — The pipeline defers the message:
@@ -2010,6 +2366,14 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "folder_blank" — Folder blank is refused before storage:
+  /// ```json
+  /// {
+  ///   "folder": " ",
+  ///   "mailbox_id": 900100
+  /// }
+  /// ```
+  ///
   /// **Example** "folder_invalid" — The folder name is refused:
   /// A name the folder rule refuses is 422 on folder, behind the gateway's own check.
   ///
@@ -2020,6 +2384,22 @@ class MessagesApi {
   ///   "folder": " Archive",
   ///   "sender": "sender@example.net",
   ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "helo_name_nul" — Helo name nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "helo_name": "before\u0000after",
+  ///   "mailbox_id": 900100
+  /// }
+  /// ```
+  ///
+  /// **Example** "in_reply_to_nul" — In reply to nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "in_reply_to": "before\u0000after",
+  ///   "mailbox_id": 900100
   /// }
   /// ```
   ///
@@ -2047,6 +2427,14 @@ class MessagesApi {
   ///
   /// ```
   /// {
+  /// ```
+  ///
+  /// **Example** "message_id_nul" — Message id nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "message_id": "before\u0000after"
+  /// }
   /// ```
   ///
   /// **Example** "no_mailbox" — No mailbox has that address:
@@ -2078,6 +2466,22 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "raw_message_invalid" — Raw message invalid is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "raw_message": "a"
+  /// }
+  /// ```
+  ///
+  /// **Example** "raw_message_nul" — Raw message nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "raw_message": "U3ViamVjdDogSGVsbG8NCg0KYmVmb3JlAGFmdGVy"
+  /// }
+  /// ```
+  ///
   /// **Example** "recipient_missing" — The body names no mailbox:
   /// Neither mailbox_id nor address is there.
   ///
@@ -2088,6 +2492,42 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "recipients_cc_nul" — Recipients cc nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "recipients_cc": "before\u0000after"
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipients_nested_nul" — Recipients nested nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "recipients_to": [
+  ///     {
+  ///       "name": "before\u0000after"
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipients_to_nul" — Recipients to nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "recipients_to": "before\u0000after"
+  /// }
+  /// ```
+  ///
+  /// **Example** "references_nul" — References nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "references": "before\u0000after"
+  /// }
+  /// ```
+  ///
   /// **Example** "rejected" — The pipeline rejects the message:
   /// ```json
   /// {
@@ -2095,6 +2535,38 @@ class MessagesApi {
   ///   "body_text": "Hello",
   ///   "sender": "sender@example.net",
   ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "sender_name_nul" — Sender name nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "sender_name": "before\u0000after"
+  /// }
+  /// ```
+  ///
+  /// **Example** "sender_nul" — Sender nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "sender": "before\u0000after"
+  /// }
+  /// ```
+  ///
+  /// **Example** "subject_nul" — Subject nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "subject": "before\u0000after"
+  /// }
+  /// ```
+  ///
+  /// **Example** "tls_version_nul" — Tls version nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "mailbox_id": 900100,
+  ///   "tls_version": "before\u0000after"
   /// }
   /// ```
   ///
@@ -2211,6 +2683,21 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "address_nul" — Address nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "address": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "body_array" — The body is not a JSON object:
   /// ```json
   /// {
@@ -2219,6 +2706,66 @@ class MessagesApi {
   ///     "details": {
   ///       "fields": {
   ///         "body": "the body is not a JSON object"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_html_nul" — Body html nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body_html": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "body_text_nul" — Body text nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "body_text": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "client_ip_nul" — Client ip nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "client_ip": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "folder_blank" — Folder blank is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "folder": "required"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
@@ -2243,6 +2790,36 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "helo_name_nul" — Helo name nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "helo_name": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "in_reply_to_nul" — In reply to nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "in_reply_to": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "mailbox_id_zero" — The mailbox id is zero:
   /// Zero names no mailbox, so the body names none.
   ///
@@ -2260,6 +2837,51 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "message_id_nul" — Message id nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "message_id": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "raw_message_invalid" — Raw message invalid is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "raw_message": "must be a base64 string"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "raw_message_nul" — Raw message nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "raw_message": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "recipient_missing" — The body names no mailbox:
   /// Neither mailbox_id nor address is there.
   ///
@@ -2270,6 +2892,126 @@ class MessagesApi {
   ///     "details": {
   ///       "fields": {
   ///         "address": "mailbox_id or address required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipients_cc_nul" — Recipients cc nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "recipients_cc": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipients_nested_nul" — Recipients nested nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "recipients_to": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipients_to_nul" — Recipients to nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "recipients_to": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "references_nul" — References nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "references": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "sender_name_nul" — Sender name nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "sender_name": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "sender_nul" — Sender nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "sender": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "subject_nul" — Subject nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "subject": "must not contain a NUL byte"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "tls_version_nul" — Tls version nul is refused before storage:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "tls_version": "must not contain a NUL byte"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
@@ -2309,10 +3051,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i31.DeliverMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i34.DeliverMessageResponse, _i23.Response>>
   deliverMessage({
-    required _i32.DeliverMessageBody body,
-    _i20.TonikCancellation? cancellation,
+    required _i35.DeliverMessageBody body,
+    _i21.TonikCancellation? cancellation,
   }) async => _deliverMessage(body: body, cancellation: cancellation);
 
   /// List the messages waiting to be sent
@@ -2447,10 +3189,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<
-    _i20.TonikResult<_i33.ListScheduledMessagesResponse, _i22.Response>
+  _i20.Future<
+    _i21.TonikResult<_i36.ListScheduledMessagesResponse, _i23.Response>
   >
-  listScheduledMessages({_i20.TonikCancellation? cancellation}) async =>
+  listScheduledMessages({_i21.TonikCancellation? cancellation}) async =>
       _listScheduledMessages(cancellation: cancellation);
 
   /// Cancel a scheduled message
@@ -2554,12 +3296,12 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<
-    _i20.TonikResult<_i34.CancelScheduledMessageResponse, _i22.Response>
+  _i20.Future<
+    _i21.TonikResult<_i37.CancelScheduledMessageResponse, _i23.Response>
   >
   cancelScheduledMessage({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _cancelScheduledMessage(id: id, cancellation: cancellation);
 
   /// Release held mail with a two-factor session
@@ -2707,14 +3449,14 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i35.ReleaseHeldMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i38.ReleaseHeldMessageResponse, _i23.Response>>
   releaseHeldMessage({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _releaseHeldMessage(id: id, cancellation: cancellation);
 
   /// Send a message
-  /// Sent at once (201), or with scheduled_at stored and sent then (202); the outbound pipeline may discard it (200). Sending from your own mailbox requires mail:send. From another mailbox requires mail:send_as on that mailbox. Set on_behalf to true to require mail:send_on_behalf instead: From stays the represented mailbox and RFC 5322 Sender is the authenticated account's own address. Read access grants neither mode. Both modes audit the real account, credential and represented mailbox.
+  /// Sent at once (201), or with scheduled_at stored and sent then (202); the outbound pipeline may discard it (200). to needs at least one address. from, to, cc and bcc are described as bare addresses, internationalized or not; the handler also accepts an RFC 5322 display name around one. scheduled_at must be at least a minute ahead and within a year; null or omitted sends at once. Sending from your own mailbox requires mail:send. From another mailbox requires mail:send_as on that mailbox. Set on_behalf to true to require mail:send_on_behalf instead: From stays the represented mailbox and RFC 5322 Sender is the authenticated account's own address. Read access grants neither mode. Both modes audit the real account, credential and represented mailbox.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -2841,6 +3583,66 @@ class MessagesApi {
   ///   "subject": "Hello",
   ///   "to": [
   ///     "recipient@example.net"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_malformed":
+  /// Refused while binding, before the sender is looked up. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "scheduled_at": "tomorrow",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_past":
+  /// A date-time less than a minute ahead. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "scheduled_at": "2020-01-02T03:04:05Z",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_too_far":
+  /// A date-time more than a year ahead. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "scheduled_at": "2099-01-01T10:00:00Z",
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test"
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_wrong_type":
+  /// Refused while binding, before the sender is looked up. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
+  ///   "from": "admin@restmail.test",
+  ///   "scheduled_at": 12345,
+  ///   "subject": "Hello",
+  ///   "to": [
+  ///     "admin@restmail.test"
   ///   ]
   /// }
   /// ```
@@ -3161,6 +3963,64 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "scheduled_at_malformed":
+  /// Refused while binding, before the sender is looked up. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "scheduled_at": "must be a date-time"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_past":
+  /// A date-time less than a minute ahead. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "message": "scheduled_at must be at least a minute in the future"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_too_far":
+  /// A date-time more than a year ahead. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "message": "scheduled_at must be within a year"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "scheduled_at_wrong_type":
+  /// Refused while binding, before the sender is looked up. The coverage run holds scheduled_at at null, so this named example proves what that takes away.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "scheduled_at": "must be a date-time"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "unsubscribe_not_allowed":
   /// A schema-valid request from admin@restmail.test, whose domain has transactional sending policy, is refused by that stored policy. This is not schema invalidity.
   ///
@@ -3205,10 +4065,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i36.SendMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i39.SendMessageResponse, _i23.Response>>
   sendMessage({
-    required _i37.SendMessageDescription body,
-    _i20.TonikCancellation? cancellation,
+    required _i40.ApiV1MessagesSendPostBodyBodyModel body,
+    _i21.TonikCancellation? cancellation,
   }) async => _sendMessage(body: body, cancellation: cancellation);
 
   /// Get a message by ID
@@ -3558,10 +4418,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i38.GetMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i41.GetMessageResponse, _i23.Response>>
   getMessage({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _getMessage(id: id, cancellation: cancellation);
 
   /// Delete a message
@@ -3676,11 +4536,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i39.DeleteMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i42.DeleteMessageResponse, _i23.Response>>
   deleteMessage({
-    required _i19.int id,
-    _i19.String? permanent,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i20.String? permanent,
+    _i21.TonikCancellation? cancellation,
   }) async =>
       _deleteMessage(id: id, permanent: permanent, cancellation: cancellation);
 
@@ -3947,11 +4807,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i40.UpdateMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i43.UpdateMessageResponse, _i23.Response>>
   updateMessage({
-    required _i41.UpdateMessageBody body,
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i44.UpdateMessageBody body,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _updateMessage(body: body, id: id, cancellation: cancellation);
 
   /// Forward a message
@@ -4266,11 +5126,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i42.ForwardMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i45.ForwardMessageResponse, _i23.Response>>
   forwardMessage({
-    required _i43.ForwardBody body,
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i46.ForwardBody body,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _forwardMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get the raw RFC 2822 message source
@@ -4400,10 +5260,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i44.GetRawMessageResponse, _i22.Response>>
+  _i20.Future<_i21.TonikResult<_i47.GetRawMessageResponse, _i23.Response>>
   getRawMessage({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _getRawMessage(id: id, cancellation: cancellation);
 
   /// Verify a message's receipt seal
@@ -4467,6 +5327,17 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// Response 403 (application/json):
+  /// **Example** "setup_required" — A session still in setup cannot read a receipt seal:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "setup_required",
+  ///     "message": "Finish setting up this account first: a new password and two-factor authentication"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 404 (application/json):
   /// **Example** "missing":
   /// ```json
@@ -4474,6 +5345,17 @@ class MessagesApi {
   ///   "error": {
   ///     "code": "message_not_found",
   ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
   ///   }
   /// }
   /// ```
@@ -4493,9 +5375,44 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i19.Future<_i20.TonikResult<_i45.VerifyMessageSealResponse, _i22.Response>>
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// A signed-in account reaches a message lookup that fails in storage; private dependency errors are not returned.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i20.Future<_i21.TonikResult<_i48.VerifyMessageSealResponse, _i23.Response>>
   verifyMessageSeal({
-    required _i19.int id,
-    _i20.TonikCancellation? cancellation,
+    required _i20.int id,
+    _i21.TonikCancellation? cancellation,
   }) async => _verifyMessageSeal(id: id, cancellation: cancellation);
 }

@@ -18,6 +18,24 @@ class MailboxState extends ChangeNotifier {
   Account? account;
   List<Folder> folders = const [];
   String folder = StandardFolder.inbox;
+  bool showingWaiting = false;
+
+  bool get canListWaiting => backend is AwaitingThreadsBackend;
+
+  Future<void> showWaiting() async {
+    if (!canListWaiting || showingWaiting) return;
+    showingWaiting = true;
+    messages = const [];
+    await _loadFirstPage();
+  }
+
+  Future<Paged<Message>> _messagePage(int accountId, {String? cursor}) =>
+      showingWaiting
+      ? (backend as AwaitingThreadsBackend).awaitingThreads(
+          accountId,
+          cursor: cursor,
+        )
+      : backend.messages(accountId, folder, cursor: cursor);
 
   List<Message> messages = const [];
   bool hasMore = false;
@@ -100,6 +118,7 @@ class MailboxState extends ChangeNotifier {
   }) async {
     if (next.id == account?.id) return selectFolder(folder);
     account = next;
+    showingWaiting = false;
     this.folder = folder;
     folders = const [];
     messages = const [];
@@ -108,7 +127,8 @@ class MailboxState extends ChangeNotifier {
   }
 
   Future<void> selectFolder(String name) async {
-    if (name == folder) return;
+    if (name == folder && !showingWaiting) return;
+    showingWaiting = false;
     folder = name;
     messages = const [];
     await _loadFirstPage();
@@ -184,7 +204,7 @@ class MailboxState extends ChangeNotifier {
     loadingMore = true;
     _notify();
     try {
-      final page = await backend.messages(account.id, folder, cursor: cursor);
+      final page = await _messagePage(account.id, cursor: cursor);
       if (generation != _generation) return;
       final known = {for (final m in messages) m.id};
       messages = [
@@ -368,7 +388,7 @@ class MailboxState extends ChangeNotifier {
     error = null;
     _notify();
     try {
-      final page = await backend.messages(account.id, folder);
+      final page = await _messagePage(account.id);
       if (generation != _generation) return;
       messages = page.items;
       _cursor = page.cursor;
@@ -387,11 +407,12 @@ class MailboxState extends ChangeNotifier {
   /// Fetches the newest page and merges it in at the top, keeping whatever
   /// older pages were already scrolled through.
   Future<void> _mergeNewest() async {
+    if (showingWaiting) return _syncLoaded();
     final account = this.account;
     if (account == null) return;
     final generation = _generation;
     try {
-      final page = await backend.messages(account.id, folder);
+      final page = await _messagePage(account.id);
       if (generation != _generation) return;
       final fresh = {for (final m in page.items) m.id};
       messages = [
@@ -417,7 +438,7 @@ class MailboxState extends ChangeNotifier {
       String? cursor;
       bool more;
       do {
-        final page = await backend.messages(account.id, folder, cursor: cursor);
+        final page = await _messagePage(account.id, cursor: cursor);
         if (generation != _generation || run != _syncRun) return;
         for (final m in page.items) {
           fresh[m.id] = m;
@@ -467,6 +488,11 @@ class MailboxState extends ChangeNotifier {
   }
 
   void _onEvent(MailEvent event) {
+    if (showingWaiting && event.type != MailEventType.folderUpdate) {
+      unawaited(_syncLoaded());
+      unawaited(refreshFolders());
+      return;
+    }
     switch (event.type) {
       case MailEventType.newMessage:
         if (event.folder == folder) unawaited(_mergeNewest());
@@ -489,7 +515,7 @@ class MailboxState extends ChangeNotifier {
 
   void _applyThreadSnooze(ThreadSnooze snooze) {
     if (snooze.mailboxId != account?.id) return;
-    if (snooze.snoozedUntil != null) {
+    if (snooze.snoozedUntil != null && !showingWaiting) {
       final left = messages
           .where((m) => m.threadId != snooze.threadId)
           .toList();

@@ -48,6 +48,9 @@ webmail uses, not IMAP.
   then sends one summary of what arrived. The app does not filter notifications.
 - Snoozing a thread on a REST Mail account: it leaves its folders until a chosen
   time and comes back by itself on every device. Search still finds it.
+- Waiting chips in message lists, search and the reader on REST Mail accounts:
+  the server says when you sent last and nobody has replied. The Waiting filter
+  below search lists these threads across folders, including snoozed threads.
 - A due date on a thread on a REST Mail account, shown in the reader with where
   it came from. A date read from the message text is only a suggestion to accept
   or dismiss. It never warns, reorders a list or files mail.

@@ -10,56 +10,56 @@ import 'package:restmail_generated/src/model/list_unsubscribe.dart' as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
 @_i2.immutable
-sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
+sealed class $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel
     implements _i1.ParameterEncodable, _i1.UriEncodable {
-  const $RawSendMessageDescriptionListUnsubscribeOneOfModel();
+  const $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel();
 
-  factory $RawSendMessageDescriptionListUnsubscribeOneOfModel.fromSimple(
+  factory $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel.fromSimple(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     try {
-      return $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      return $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         _i4.ListUnsubscribe.fromSimple(value, explode: explode),
       );
     } on _i1.DecodingException catch (_) {
     } on _i3.FormatException catch (_) {}
     throw _i1.SimpleDecodingException(
-      r'Invalid simple value for $RawSendMessageDescriptionListUnsubscribeOneOfModel',
+      r'Invalid simple value for $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel',
     );
   }
 
-  factory $RawSendMessageDescriptionListUnsubscribeOneOfModel.fromForm(
+  factory $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel.fromForm(
     _i3.String? value, {
     required _i3.bool explode,
   }) {
     try {
-      return $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      return $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         _i4.ListUnsubscribe.fromForm(value, explode: explode),
       );
     } on _i1.DecodingException catch (_) {
     } on _i3.FormatException catch (_) {}
     throw _i1.SimpleDecodingException(
-      r'Invalid form value for $RawSendMessageDescriptionListUnsubscribeOneOfModel',
+      r'Invalid form value for $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel',
     );
   }
 
-  factory $RawSendMessageDescriptionListUnsubscribeOneOfModel.fromJson(
+  factory $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel.fromJson(
     _i3.Object? json,
   ) {
     try {
-      return $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      return $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         _i4.ListUnsubscribe.fromJson(json),
       );
     } on _i3.Object catch (_) {}
     throw _i1.JsonDecodingException(
-      r'Invalid JSON for $RawSendMessageDescriptionListUnsubscribeOneOfModel',
+      r'Invalid JSON for $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel',
     );
   }
 
   _i1.EncodingShape get currentEncodingShape {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.currentEncodingShape,
@@ -70,7 +70,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     _i3.bool allowEmpty = true,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.parameterProperties(allowEmpty: allowEmpty),
@@ -84,7 +84,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     _i3.bool literal = false,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.toSimple(
@@ -106,7 +106,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     _i3.Map<_i3.String, _i1.FormFieldEncoding> fieldEncodings = const {},
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.toForm(
@@ -126,7 +126,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     required _i3.bool allowEmpty,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.toLabel(explode: explode, allowEmpty: allowEmpty),
@@ -140,7 +140,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     required _i3.bool allowEmpty,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         value.toMatrix(paramName, explode: explode, allowEmpty: allowEmpty),
@@ -196,9 +196,9 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
     _i3.bool allowReserved = false,
   }) {
     return switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe() =>
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe() =>
         throw _i1.EncodingException(
-          r'Cannot uriEncode $RawSendMessageDescriptionListUnsubscribeOneOfModel: variant contains complex type',
+          r'Cannot uriEncode $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel: variant contains complex type',
         ),
     };
   }
@@ -206,7 +206,7 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
   @_i3.override
   _i3.Object? toJson() {
     final (_i3.dynamic _$json, _i3.String? _$discriminator) = switch (this) {
-      $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+      $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
         :final value,
       ) =>
         (value.toJson(), null),
@@ -216,9 +216,9 @@ sealed class $RawSendMessageDescriptionListUnsubscribeOneOfModel
 }
 
 @_i2.immutable
-class $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe
-    extends $RawSendMessageDescriptionListUnsubscribeOneOfModel {
-  const $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe(
+class $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe
+    extends $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel {
+  const $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe(
     this.value,
   );
 
@@ -228,7 +228,7 @@ class $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe
   _i3.bool operator ==(_i3.Object other) {
     if (_i3.identical(this, other)) return true;
     return other
-            is $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe &&
+            is $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModelListUnsubscribe &&
         other.value == this.value;
   }
 
@@ -236,5 +236,5 @@ class $RawSendMessageDescriptionListUnsubscribeOneOfModelListUnsubscribe
   _i3.int get hashCode => value.hashCode;
 }
 
-typedef SendMessageDescriptionListUnsubscribeOneOfModel =
-    $RawSendMessageDescriptionListUnsubscribeOneOfModel?;
+typedef ApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel =
+    $RawApiV1MessagesSendPostBodyBodyListUnsubscribeOneOfModel?;

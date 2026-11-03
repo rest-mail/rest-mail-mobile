@@ -4,6 +4,13 @@
   "meaning": "Existing UI facades call generated wire operations. This ledger is source migration evidence, not runtime/permission certification.",
   "operations": [
     {
+      "operationId": "listThreads",
+      "facade": "awaitingThreads",
+      "wire_responses": "generated ListAwaitingThread DTO",
+      "ui_projection": "Paged<Message>; last_message with awaiting_since, no total",
+      "tests": ["thread_awaiting_test.dart", "thread_awaiting_flow_test.dart"]
+    },
+    {
       "operationId": "getQuietHours",
       "facade": "quietHours",
       "wire_responses": "generated Setting DTO",

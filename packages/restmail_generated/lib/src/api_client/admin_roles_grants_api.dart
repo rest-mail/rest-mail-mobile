@@ -2243,6 +2243,15 @@ class AdminRolesGrantsApi {
   /// }
   /// ```
   ///
+  /// **Example** "storage_unavailable":
+  /// A signed-in administrator with a second factor reaches a server-limits transaction that cannot start; private storage errors are not returned.
+  ///
+  /// ```json
+  /// {
+  ///   "contact_import_max_bytes": 20971520
+  /// }
+  /// ```
+  ///
   /// **Example** "too_small" — A limit must be at least one byte:
   /// ```json
   /// {
@@ -2347,6 +2356,19 @@ class AdminRolesGrantsApi {
   ///   "error": {
   ///     "code": "rate_limited",
   ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// A signed-in administrator with a second factor reaches a server-limits transaction that cannot start; private storage errors are not returned.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
   ///   }
   /// }
   /// ```

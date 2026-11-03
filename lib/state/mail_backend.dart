@@ -5,6 +5,10 @@ import '../l10n/localized_error.dart';
 
 import 'package:restmail_api/restmail_api.dart';
 
+abstract interface class AwaitingThreadsBackend {
+  Future<Paged<Message>> awaitingThreads(int accountId, {String? cursor});
+}
+
 /// Where one signed-in account's mail comes from. [MailboxState] and the
 /// screens see only this, so one app can show a rest-mail server's mail and,
 /// an IMAP provider's ([ImapBackend], rest-mail-mobile#36).
@@ -247,7 +251,8 @@ abstract interface class OriginalForwardBackend {
 }
 
 /// A rest-mail server, over its REST API.
-class RestBackend implements MailBackend, OriginalForwardBackend {
+class RestBackend
+    implements MailBackend, OriginalForwardBackend, AwaitingThreadsBackend {
   RestBackend(this.client);
 
   final RestmailClient client;
@@ -319,6 +324,10 @@ class RestBackend implements MailBackend, OriginalForwardBackend {
     SearchQuery query, {
     String? cursor,
   }) => client.search(accountId, query, cursor: cursor);
+
+  @override
+  Future<Paged<Message>> awaitingThreads(int accountId, {String? cursor}) =>
+      client.awaitingThreads(accountId, cursor: cursor);
 
   @override
   Future<Message> updateMessage(

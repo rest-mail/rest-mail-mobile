@@ -49,6 +49,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     required this.updatedAt,
     this.authResults,
     this.authVerdict,
+    this.awaitingSince,
     this.bodyHtml,
     this.bodyText,
     this.calendarEvents,
@@ -81,6 +82,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       authVerdict: _$map[r'auth_verdict'] == null
           ? null
           : _i5.MessageAuthVerdictModel.fromJson(_$map[r'auth_verdict']),
+      awaitingSince: _$map[r'awaiting_since'].decodeJsonNullableDateTime(
+        context: r'Message.awaiting_since',
+      ),
       bodyHtml: _$map[r'body_html'].decodeJsonNullableString(
         context: r'Message.body_html',
       ),
@@ -189,6 +193,8 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i5.MessageAuthVerdictModel? authVerdict;
 
+  final _i3.DateTime? awaitingSince;
+
   final _i3.String? bodyHtml;
 
   final _i3.String? bodyText;
@@ -276,6 +282,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     if (authResults != null)
       r'auth_results': authResults?.map((e) => e.toJson()).toList(),
     if (authVerdict != null) r'auth_verdict': authVerdict?.toJson(),
+    r'awaiting_since': awaitingSince?.toTimeZonedIso8601String(),
     if (bodyHtml != null) r'body_html': bodyHtml,
     if (bodyText != null) r'body_text': bodyText,
     if (calendarEvents != null)
@@ -339,6 +346,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     return other is Message &&
         _$deepEquals.equals(other.authResults, this.authResults) &&
         other.authVerdict == this.authVerdict &&
+        other.awaitingSince == this.awaitingSince &&
         other.bodyHtml == this.bodyHtml &&
         other.bodyText == this.bodyText &&
         other.calendarEvents == this.calendarEvents &&
@@ -388,6 +396,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     return _i3.Object.hashAll([
       deepEquals.hash(authResults),
       authVerdict,
+      awaitingSince,
       bodyHtml,
       bodyText,
       calendarEvents,
@@ -460,6 +469,7 @@ abstract class $$MessageCopyWith<$Res> {
   $Res call({
     _i3.List<_i4.AuthResult>? authResults,
     _i5.MessageAuthVerdictModel? authVerdict,
+    _i3.DateTime? awaitingSince,
     _i3.String? bodyHtml,
     _i3.String? bodyText,
     _i3.Object? calendarEvents,
@@ -504,6 +514,7 @@ abstract class $$MessageCopyWith<$Res> {
   });
   _i3.List<_i4.AuthResult>? get authResults;
   _i5.MessageAuthVerdictModel? get authVerdict;
+  _i3.DateTime? get awaitingSince;
   _i3.String? get bodyHtml;
   _i3.String? get bodyText;
   _i3.Object? get calendarEvents;
@@ -559,6 +570,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
 
   @_i3.override
   _i5.MessageAuthVerdictModel? get authVerdict => _value.authVerdict;
+
+  @_i3.override
+  _i3.DateTime? get awaitingSince => _value.awaitingSince;
 
   @_i3.override
   _i3.String? get bodyHtml => _value.bodyHtml;
@@ -687,6 +701,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
   $Res call({
     _i3.Object? authResults = _sentinel,
     _i3.Object? authVerdict = _sentinel,
+    _i3.Object? awaitingSince = _sentinel,
     _i3.Object? bodyHtml = _sentinel,
     _i3.Object? bodyText = _sentinel,
     _i3.Object? calendarEvents = _sentinel,
@@ -736,6 +751,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       authVerdict: _i3.identical(authVerdict, _sentinel)
           ? this.authVerdict
           : (authVerdict as _i5.MessageAuthVerdictModel?),
+      awaitingSince: _i3.identical(awaitingSince, _sentinel)
+          ? this.awaitingSince
+          : (awaitingSince as _i3.DateTime?),
       bodyHtml: _i3.identical(bodyHtml, _sentinel)
           ? this.bodyHtml
           : (bodyHtml as _i3.String?),
