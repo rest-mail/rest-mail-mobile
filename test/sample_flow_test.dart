@@ -42,6 +42,11 @@ void main() {
     await tester.tap(find.text('Re: sync latency on flaky networks'));
     await tester.pumpAndSettle();
     // Below the body, so possibly under the fold of the test's screen.
+    await tester.scrollUntilVisible(
+      find.text('backoff-bench.pdf'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('backoff-bench.pdf', skipOffstage: false), findsOneWidget);
 
     await tester.tap(find.text('Reply'));

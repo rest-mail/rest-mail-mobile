@@ -1,6 +1,7 @@
 import 'auth_results.dart';
 import 'calendar.dart';
 import 'session.dart';
+import 'thread_due.dart';
 
 /// The person a session belongs to.
 class User {
@@ -370,6 +371,8 @@ class Message {
     this.inReplyTo,
     this.references,
     this.threadId,
+    this.due,
+    this.dueSource,
     this.senderName,
     this.to = const [],
     this.cc = const [],
@@ -398,6 +401,8 @@ class Message {
     inReplyTo: _optionalString(json['in_reply_to']),
     references: _optionalString(json['references']),
     threadId: _optionalString(json['thread_id']),
+    due: _optionalTime(json['due'])?.toUtc(),
+    dueSource: _optionalString(json['due_source']),
     sender: json['sender'] as String? ?? '',
     senderName: _optionalString(json['sender_name']),
     to: Recipient.listFromJson(json['recipients_to']),
@@ -432,6 +437,8 @@ class Message {
   final String? inReplyTo;
   final String? references;
   final String? threadId;
+  final DateTime? due;
+  final String? dueSource;
   final String sender;
   final String? senderName;
   final List<Recipient> to;
@@ -490,6 +497,7 @@ class Message {
     String? folder,
     List<String>? labels,
     Object? snoozedUntil = _unchanged,
+    ThreadDue? threadDue,
   }) => Message(
     id: id,
     mailboxId: mailboxId,
@@ -498,6 +506,8 @@ class Message {
     inReplyTo: inReplyTo,
     references: references,
     threadId: threadId,
+    due: threadDue == null ? due : threadDue.due,
+    dueSource: threadDue == null ? dueSource : threadDue.source,
     sender: sender,
     senderName: senderName,
     to: to,

@@ -1,6 +1,19 @@
 /// German base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsDe = {
   'classic': {
+    'threadDue.label': 'Fälligkeitsdatum',
+    'threadDue.deadline': 'Frist.',
+    'threadDue.deadlineSource': 'Frist {source}.',
+    'threadDue.set': 'Fälligkeitsdatum festlegen',
+    'threadDue.clear': 'Fälligkeitsdatum löschen',
+    'threadDue.saving': 'Wird gespeichert…',
+    'threadDue.error': 'Fälligkeitsdatum konnte nicht gespeichert werden',
+    'threadDue.user': 'von dir festgelegt',
+    'threadDue.due': 'fällig {date}',
+    'threadDue.tomorrow': 'morgen',
+    'threadDue.pastMinutes': 'seit {count} Min. überfällig',
+    'threadDue.pastHours': 'seit {count} Std. überfällig',
+    'threadDue.pastDays': 'seit {count} T. überfällig',
     'splash.tagline': 'Ihre Post wird geöffnet',
     'mail.search': 'Mail suchen',
     'mail.refresh': 'Aktualisieren',

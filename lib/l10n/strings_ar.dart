@@ -2,6 +2,19 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsAr = {
   'classic': {
+    'threadDue.label': 'تاريخ الاستحقاق',
+    'threadDue.deadline': 'الموعد النهائي.',
+    'threadDue.deadlineSource': 'الموعد النهائي {source}.',
+    'threadDue.set': 'تعيين تاريخ الاستحقاق',
+    'threadDue.clear': 'مسح تاريخ الاستحقاق',
+    'threadDue.saving': 'جارٍ الحفظ…',
+    'threadDue.error': 'تعذر حفظ تاريخ الاستحقاق',
+    'threadDue.user': 'حددته أنت',
+    'threadDue.due': 'مستحق {date}',
+    'threadDue.tomorrow': 'غدًا',
+    'threadDue.pastMinutes': 'متأخر {count} دقيقة',
+    'threadDue.pastHours': 'متأخر {count} ساعة',
+    'threadDue.pastDays': 'متأخر {count} يوم',
     'splash.tagline': 'جارٍ فتح بريدك',
     'mail.search': 'البحث في البريد',
     'mail.refresh': 'تحديث',
