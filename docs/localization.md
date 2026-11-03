@@ -15,6 +15,10 @@ The thread-snooze and thread-due-date strings follow the webmail English wording
 Their German, Spanish, Hindi, Nepali, Arabic, and Farsi translations are
 machine-made and have not had human translation review.
 
+The message-class labels, explanations, and list-collapse controls also follow
+webmail's English wording. Their German, Spanish, Hindi, Nepali, Arabic, and
+Farsi translations are machine-made and have not had human translation review.
+
 Use `tr(context, key)` for labels and `trArgs(context, key, values)` for complete
 sentences. Theme, panel, preset, and administration metadata store explicit
 translation keys. Their persisted IDs, option values, and API values stay stable.

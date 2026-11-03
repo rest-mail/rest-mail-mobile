@@ -7,6 +7,7 @@ import '../../theme/packs.dart';
 import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import 'avatar.dart';
+import 'message_class_label.dart';
 
 /// A message in a list: who, when, what, and a taste of the body. Unread
 /// ones are heavier, plus whatever the active pack's unread axis adds.
@@ -52,6 +53,7 @@ class MessageRow extends StatelessWidget {
     final attachment = showAttachment && message.hasAttachments;
     final showTheCount = showCount && count > 1;
     final side = BorderSide(color: c.line);
+    final classKeys = messageClassKeys(message.messageClass);
     return Semantics(
       button: true,
       label: [
@@ -62,6 +64,8 @@ class MessageRow extends StatelessWidget {
         if (showTheCount)
           trArgs(context, 'ui.countMessages', {'count': (count).toString()}),
         subject,
+        if (classKeys != null) tr(context, classKeys.$1),
+        if (classKeys != null) tr(context, classKeys.$2),
         timeLabel(message.date),
         if (message.hasAttachments) tr(context, 'messagerow.hasAttachments'),
       ].join('. '),
@@ -160,6 +164,13 @@ class MessageRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        if (classKeys != null)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 6),
+                            child: MessageClassLabel(
+                              messageClass: message.messageClass,
+                            ),
+                          ),
                         if (showFlag && message.isFlagged)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),

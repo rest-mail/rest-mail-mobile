@@ -2,6 +2,15 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsFa = {
   'classic': {
+    'messageClass.collapseLists': 'جمع کردن ایمیل‌های فهرست ({count})',
+    'messageClass.showLists': 'نمایش ایمیل‌های فهرست ({count})',
+    'messageClass.list': 'فهرست',
+    'messageClass.receipt': 'رسید',
+    'messageClass.automated': 'خودکار',
+    'messageClass.listDescription': 'سرآیندها نشان می‌دهند که این پیام از یک فهرست پستی آمده است. هر کسی می‌تواند این سرآیندها را بفرستد.',
+    'messageClass.receiptDescription':
+        'یکی از قوانین ایمیل شما این پیام را به‌عنوان رسید علامت زده است.',
+    'messageClass.automatedDescription': 'سرآیندها نشان می‌دهند که این پیام به‌صورت خودکار فرستاده شده است. هر کسی می‌تواند این سرآیندها را بفرستد.',
     'threadDue.label': 'تاریخ سررسید',
     'threadDue.deadline': 'مهلت.',
     'threadDue.deadlineSource': 'مهلت {source}.',

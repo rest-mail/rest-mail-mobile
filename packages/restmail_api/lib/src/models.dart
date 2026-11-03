@@ -391,6 +391,7 @@ class Message {
     this.sealedHash,
     this.authResults = const [],
     this.snoozedUntil,
+    this.messageClass,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -426,6 +427,7 @@ class Message {
     ],
     calendarEvents: CalendarInvite.listFromJson(json['calendar_events']),
     snoozedUntil: _optionalTime(json['snoozed_until']),
+    messageClass: json['class'] is String ? json['class'] as String : null,
   );
 
   final int id;
@@ -474,6 +476,7 @@ class Message {
   /// When its thread returns to its folders, while the thread is snoozed. Only
   /// search and direct reads can see a snoozed message.
   final DateTime? snoozedUntil;
+  final String? messageClass;
 
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
@@ -528,6 +531,7 @@ class Message {
     calendarEvents: calendarEvents,
     sealedHash: sealedHash,
     authResults: authResults,
+    messageClass: messageClass,
     snoozedUntil: identical(snoozedUntil, _unchanged)
         ? this.snoozedUntil
         : snoozedUntil as DateTime?,

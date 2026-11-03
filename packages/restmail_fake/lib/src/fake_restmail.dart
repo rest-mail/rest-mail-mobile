@@ -273,6 +273,7 @@ class FakeRestmail {
     String body = '',
     List<FakeAttachment> attachments = const [],
     String? threadId,
+    String messageClass = 'person',
   }) {
     final box = _mailboxAt(to);
     if (box == null) throw ArgumentError.value(to, 'to', 'No such mailbox');
@@ -288,6 +289,7 @@ class FakeRestmail {
         attachments: attachments,
         receivedAt: _clock(),
         threadId: threadId,
+        messageClass: messageClass,
       ),
     );
     _announce(message);

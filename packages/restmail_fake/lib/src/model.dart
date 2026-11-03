@@ -295,11 +295,13 @@ class FakeMessage {
     this.sealMismatch = false,
     this.authResults = const [],
     this.threadId,
+    this.messageClass = 'person',
   });
 
   /// Given by the fake when the message is stored, unless a test names it: a
   /// reply joins the thread of the message it answers.
   String? threadId;
+  String messageClass;
 
   /// When its thread returns, while the thread is snoozed. The fake keeps this
   /// the same on every message of a thread.
@@ -390,6 +392,7 @@ class FakeMessage {
       'in_reply_to': inReplyTo ?? '',
       'references': '',
       'thread_id': threadId ?? '',
+      'class': messageClass,
       'snoozed_until': ?snoozedUntil?.toUtc().toIso8601String(),
       'due': due?.toUtc().toIso8601String(),
       'due_source': dueSource,

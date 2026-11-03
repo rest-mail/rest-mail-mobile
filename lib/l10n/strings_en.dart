@@ -6,6 +6,15 @@
 /// in `voice.dart` (one import, one map entry, one `Locale`).
 const Map<String, Map<String, String>> stringsEn = {
   'classic': {
+    'messageClass.collapseLists': 'Collapse list mail ({count})',
+    'messageClass.showLists': 'Show list mail ({count})',
+    'messageClass.list': 'list',
+    'messageClass.receipt': 'receipt',
+    'messageClass.automated': 'automated',
+    'messageClass.listDescription': 'The headers say this came through a mailing list. Anyone can send those headers.',
+    'messageClass.receiptDescription':
+        'One of your mail rules marked this as a receipt.',
+    'messageClass.automatedDescription': 'The headers say this was sent automatically. Anyone can send those headers.',
     'threadDue.label': 'Due date',
     'threadDue.deadline': 'Deadline.',
     'threadDue.deadlineSource': 'Deadline {source}.',
