@@ -2596,6 +2596,38 @@ class RestmailClient {
     Message.fromJson,
   );
 
+  Future<Paged<Message>> awaitingThreads(
+    int accountId, {
+    int limit = 50,
+    String? cursor,
+  }) async {
+    final response = await generatedValue(
+      wire.MessagesApi(generatedSession).listThreads(
+        id: accountId,
+        state: wire.ApiV1AccountsIdThreadsParametersModel.awaiting,
+        limit: limit,
+        cursor: cursor,
+      ),
+    );
+    if (response is! wire.ListThreadsResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final body = response.body.body;
+    final pagination = body.pagination?.toJson() as Map<String, dynamic>?;
+    return Paged(
+      [
+        for (final thread in body.data)
+          Message.fromJson({
+            ...thread.lastMessage.toJson() as Map<String, dynamic>,
+            'thread_id': thread.threadId,
+            'awaiting_since': thread.awaitingSince.toUtc().toIso8601String(),
+          }),
+      ],
+      cursor: pagination?['cursor'] as String?,
+      hasMore: pagination?['has_more'] == true,
+    );
+  }
+
   Future<Paged<Message>> search(
     int accountId,
     SearchQuery query, {

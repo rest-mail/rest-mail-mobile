@@ -1,5 +1,9 @@
 # App localization
 
+The waiting-thread strings follow webmail's wording and rounded minute, hour,
+day and week durations. The German, Spanish, Hindi, Nepali, Arabic and Farsi
+translations are machine-made and have not had human translation review.
+
 The seven language packs in `lib/l10n/strings_*.dart` own app-authored UI text.
 The expanded catalog includes theme names and descriptions, presets, panels,
 settings, security flows, administration, statuses, dialogs, accessibility labels,

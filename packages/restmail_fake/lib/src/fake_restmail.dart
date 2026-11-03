@@ -931,6 +931,8 @@ class FakeRestmail {
           query,
           (m) => m.folder == folder && m.snoozedUntil == null,
         ),
+      ('GET', ['api', 'v1', 'accounts', final id, 'threads']) =>
+        _awaitingThreads(_own(session, id), query),
       ('GET', ['api', 'v1', 'accounts', final id, 'threads', final thread]) =>
         _threadMessages(_own(session, id), thread),
       (
@@ -3075,11 +3077,84 @@ class FakeRestmail {
     return found;
   }
 
+  List<FakeMessage> _awaitingMessages(FakeMailbox box) {
+    final counted =
+        _messages.values
+            .where(
+              (message) =>
+                  message.mailboxId == box.id &&
+                  !message.isDraft &&
+                  message.folder != 'Drafts' &&
+                  message.folder != 'Trash',
+            )
+            .toList()
+          ..sort((first, second) {
+            final byTime = second.receivedAt.compareTo(first.receivedAt);
+            return byTime != 0 ? byTime : second.id.compareTo(first.id);
+          });
+    final seen = <String>{};
+    return [
+      for (final message in counted)
+        if (seen.add(message.threadId ?? '${message.id}') &&
+            message.sender.toLowerCase() == box.address.toLowerCase() &&
+            !counted.any(
+              (reply) =>
+                  reply.inReplyTo == message.messageId &&
+                  (reply.receivedAt.isAfter(message.receivedAt) ||
+                      (reply.receivedAt == message.receivedAt &&
+                          reply.id > message.id)),
+            ))
+          message,
+    ];
+  }
+
+  http.StreamedResponse _awaitingThreads(
+    FakeMailbox box,
+    Map<String, String> query,
+  ) {
+    if (query['state'] != 'awaiting') {
+      _fail(422, 'validation_failed', 'State must be awaiting');
+    }
+    final all = _awaitingMessages(box);
+    final before = _cursorId(query['cursor']);
+    final remaining = before == null
+        ? all
+        : all.where((message) => message.id < before).toList();
+    final limit = (int.tryParse(query['limit'] ?? '') ?? 50).clamp(1, 100);
+    final page = remaining.take(limit).toList();
+    final hasMore = remaining.length > page.length;
+    return _json({
+      'data': [
+        for (final message in page)
+          {
+            'thread_id': message.threadId,
+            'awaiting_since': message.receivedAt.toUtc().toIso8601String(),
+            'last_message': {
+              ..._messageJson(message),
+              'is_dsn': false,
+              'downgraded_size': 0,
+            },
+          },
+      ],
+      'pagination': {
+        'has_more': hasMore,
+        'cursor': hasMore
+            ? base64.encode(utf8.encode(jsonEncode({'id': page.last.id})))
+            : null,
+      },
+    });
+  }
+
   Map<String, Object?> _messageJson(FakeMessage message) {
     final key = (message.mailboxId, message.threadId ?? '${message.id}');
     final stored = _threadDues[key];
+    final waiting = _awaitingMessages(
+      _mailboxes[message.mailboxId]!,
+    ).where((last) => last.threadId == message.threadId).firstOrNull;
     return {
       ...message.toJson(),
+      if (waiting != null)
+        'awaiting_since': waiting.receivedAt.toUtc().toIso8601String(),
       if (stored != null) ...{
         'due': stored.due?.toIso8601String(),
         'due_source': stored.source,

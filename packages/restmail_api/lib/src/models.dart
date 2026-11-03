@@ -371,6 +371,7 @@ class Message {
     this.inReplyTo,
     this.references,
     this.threadId,
+    this.awaitingSince,
     this.due,
     this.dueSource,
     this.senderName,
@@ -402,6 +403,7 @@ class Message {
     inReplyTo: _optionalString(json['in_reply_to']),
     references: _optionalString(json['references']),
     threadId: _optionalString(json['thread_id']),
+    awaitingSince: _optionalTime(json['awaiting_since'])?.toUtc(),
     due: _optionalTime(json['due'])?.toUtc(),
     dueSource: _optionalString(json['due_source']),
     sender: json['sender'] as String? ?? '',
@@ -439,6 +441,7 @@ class Message {
   final String? inReplyTo;
   final String? references;
   final String? threadId;
+  final DateTime? awaitingSince;
   final DateTime? due;
   final String? dueSource;
   final String sender;
@@ -500,6 +503,7 @@ class Message {
     String? folder,
     List<String>? labels,
     Object? snoozedUntil = _unchanged,
+    Object? awaitingSince = _unchanged,
     ThreadDue? threadDue,
   }) => Message(
     id: id,
@@ -509,6 +513,9 @@ class Message {
     inReplyTo: inReplyTo,
     references: references,
     threadId: threadId,
+    awaitingSince: identical(awaitingSince, _unchanged)
+        ? this.awaitingSince
+        : awaitingSince as DateTime?,
     due: threadDue == null ? due : threadDue.due,
     dueSource: threadDue == null ? dueSource : threadDue.source,
     sender: sender,

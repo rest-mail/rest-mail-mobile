@@ -9,9 +9,9 @@ must match the contract revision before tests start. The generator's complete de
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The committed document is the exact JSON served by the `main` image of server
-revision `39483178c1084aeb70004c7c935018989543b69f`, which carries the thread-snooze,
-receipt-seal, contact reply-time, received DMARC report and quiet-hours routes:
-200 operations. No release holds that revision yet, so
+revision `d8b3fe4ce7e444e5e4000e3225fa3a4787d068ea`, which also carries the waiting-thread
+list and optional `Message.awaiting_since`: 201 operations. The captured JSON
+has a terminating newline, as the previous pin did. No release holds that revision yet, so
 `info.version` and the lock's version read `main`, and the revision and image
 digest name it. A future server pin change must update the complete document
 and checksum, then regenerate; new operations are not held to the old fixed
@@ -32,6 +32,8 @@ python3 tool/rest_api/generate.py --check
 
 The GitHub `Generated REST client` job regenerates in a temporary directory,
 compares all output files and analyzes the generated package. The explicit
+generation step formats the output with the pinned Dart SDK before comparison,
+including Tonik's otherwise unformatted barrel file. The explicit
 workflow bootstrap switch resolves the generator lock for a deliberate version
 change; normal generation enforces the committed lock.
 
@@ -100,6 +102,13 @@ API, and null cancels. The fake keeps each thread's deadline on its messages,
 hides them from folder listings and counts as the server does, and takes
 returning from its clock: `returnSnoozedThreads` does what the server's worker
 does, and the fake also does it ahead of each request.
+
+The waiting-thread facade calls `listThreads` with `state=awaiting`, carrying
+the cursor and mapping each thread's last message and `awaiting_since` into a
+message row. There is no total. Folder, search and detail responses use the
+optional field directly; absence and null both mean no chip. The client never
+decides whether a sender is this account. The fake models its own stored messages
+for deterministic app tests, including replies and snoozed waiting threads.
 
 The received DMARC report facades call `listDmarcReports` and `getDmarcReport`
 through the generated domain mail policy API. The server leaves a page's total

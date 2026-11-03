@@ -36,6 +36,14 @@ const Map<String, Map<String, String>> stringsEs = {
     'recover.emailSubmit': 'Enviarme un enlace',
     'recover.emailSent': 'Si esta cuenta tiene un correo de recuperación verificado, se enviará un enlace de recuperación.',
     'recover.emailUnavailable': 'Este servidor no puede enviar enlaces de recuperación. Usa tu app de autenticación y un código de recuperación, o pregunta a tu administrador.',
+    'awaiting.label': 'En espera',
+    'awaiting.minutes': 'esperando {count} min',
+    'awaiting.hours': 'esperando {count} h',
+    'awaiting.days': 'esperando {count} d',
+    'awaiting.weeks': 'esperando {count} sem',
+    'awaiting.explanation':
+        'El último mensaje de este hilo es tuyo: está esperando una respuesta.',
+    'awaiting.empty': 'Ningún hilo está esperando una respuesta.',
     'quietHours.title': 'Horario de silencio de las notificaciones',
     'quietHours.help': 'Desactivado por defecto. El correo sigue llegando. Las notificaciones push esperan hasta que termine el horario de silencio; entonces un resumen indica cuántos mensajes llegaron.',
     'quietHours.toggle':

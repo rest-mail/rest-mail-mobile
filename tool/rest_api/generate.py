@@ -122,6 +122,7 @@ def generate(pin, write=False, bootstrap=False):
         generated = output / package
         if not (generated / "pubspec.yaml").is_file():
             raise ValueError("Tonik produced no package")
+        subprocess.run(["dart", "format", str(generated)], check=True)
         expected = files(generated)
         changes = differences(expected, files(target))
         if write:

@@ -6,7 +6,7 @@ import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
-import 'package:restmail_generated/src/model/quiet_hours_body_enabled_model2.dart'
+import 'package:restmail_generated/src/model/quiet_hours_body_enabled_model.dart'
     as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
@@ -34,7 +34,7 @@ class QuietHoursBodyModel2 extends _i1.ObjectParameterEncodable
     return QuietHoursBodyModel2(
       enabled: _$map[r'enabled'] == null
           ? null
-          : _i4.QuietHoursBodyEnabledModel2.fromJson(_$map[r'enabled']),
+          : _i4.QuietHoursBodyEnabledModel.fromJson(_$map[r'enabled']),
       end: _$map[r'end'],
       start: _$map[r'start'],
       timeZone: _$map[r'time_zone'],
@@ -50,7 +50,7 @@ class QuietHoursBodyModel2 extends _i1.ObjectParameterEncodable
     );
   }
 
-  final _i4.QuietHoursBodyEnabledModel2? enabled;
+  final _i4.QuietHoursBodyEnabledModel? enabled;
 
   final _i3.Object? end;
 
@@ -117,12 +117,12 @@ abstract class $$QuietHoursBodyModel2CopyWith<$Res> {
       _QuietHoursBodyModel2CopyWith<$Res>;
 
   $Res call({
-    _i4.QuietHoursBodyEnabledModel2? enabled,
+    _i4.QuietHoursBodyEnabledModel? enabled,
     _i3.Object? end,
     _i3.Object? start,
     _i3.Object? timeZone,
   });
-  _i4.QuietHoursBodyEnabledModel2? get enabled;
+  _i4.QuietHoursBodyEnabledModel? get enabled;
   _i3.Object? get end;
   _i3.Object? get start;
   _i3.Object? get timeZone;
@@ -137,7 +137,7 @@ class _QuietHoursBodyModel2CopyWith<$Res>
   final QuietHoursBodyModel2 _value;
 
   @_i3.override
-  _i4.QuietHoursBodyEnabledModel2? get enabled => _value.enabled;
+  _i4.QuietHoursBodyEnabledModel? get enabled => _value.enabled;
 
   @_i3.override
   _i3.Object? get end => _value.end;
@@ -158,7 +158,7 @@ class _QuietHoursBodyModel2CopyWith<$Res>
     return (QuietHoursBodyModel2(
       enabled: _i3.identical(enabled, _sentinel)
           ? this.enabled
-          : (enabled as _i4.QuietHoursBodyEnabledModel2?),
+          : (enabled as _i4.QuietHoursBodyEnabledModel?),
       end: _i3.identical(end, _sentinel) ? this.end : end,
       start: _i3.identical(start, _sentinel) ? this.start : start,
       timeZone: _i3.identical(timeZone, _sentinel) ? this.timeZone : timeZone,

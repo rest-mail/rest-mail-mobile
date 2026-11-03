@@ -8,6 +8,7 @@ import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import 'avatar.dart';
 import 'message_class_label.dart';
+import 'waiting_chip.dart';
 
 /// A message in a list: who, when, what, and a taste of the body. Unread
 /// ones are heavier, plus whatever the active pack's unread axis adds.
@@ -27,7 +28,7 @@ class MessageRow extends StatelessWidget {
   final Message message;
   final VoidCallback onTap;
 
-  /// One line of preview and no badges, for search results.
+  /// One line of preview, for search results.
   final bool dense;
 
   /// How many messages the row's conversation has, shown when more than one.
@@ -218,6 +219,11 @@ class MessageRow extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (message.awaitingSince != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: WaitingChip(since: message.awaitingSince),
+                      ),
                     if (!dense &&
                         (attachment ||
                             (unread && v.unread == UnreadSignal.dot)))

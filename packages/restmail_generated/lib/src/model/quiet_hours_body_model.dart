@@ -6,7 +6,7 @@ import 'dart:convert' as _i5;
 import 'dart:core' as _i3;
 
 import 'package:meta/meta.dart' as _i2;
-import 'package:restmail_generated/src/model/quiet_hours_body_enabled_model.dart'
+import 'package:restmail_generated/src/model/quiet_hours_body_enabled_model2.dart'
     as _i4;
 import 'package:tonik_util/tonik_util.dart' as _i1;
 
@@ -29,7 +29,7 @@ class QuietHoursBodyModel extends _i1.ObjectParameterEncodable
     return QuietHoursBodyModel(
       enabled: _$map[r'enabled'] == null
           ? null
-          : _i4.QuietHoursBodyEnabledModel.fromJson(_$map[r'enabled']),
+          : _i4.QuietHoursBodyEnabledModel2.fromJson(_$map[r'enabled']),
     );
   }
 
@@ -42,7 +42,7 @@ class QuietHoursBodyModel extends _i1.ObjectParameterEncodable
     );
   }
 
-  final _i4.QuietHoursBodyEnabledModel? enabled;
+  final _i4.QuietHoursBodyEnabledModel2? enabled;
 
   @_i3.override
   _i3.Object? toJson() => {if (enabled != null) r'enabled': enabled?.toJson()};
@@ -85,8 +85,8 @@ abstract class $$QuietHoursBodyModelCopyWith<$Res> {
   factory $$QuietHoursBodyModelCopyWith(QuietHoursBodyModel value) =
       _QuietHoursBodyModelCopyWith<$Res>;
 
-  $Res call({_i4.QuietHoursBodyEnabledModel? enabled});
-  _i4.QuietHoursBodyEnabledModel? get enabled;
+  $Res call({_i4.QuietHoursBodyEnabledModel2? enabled});
+  _i4.QuietHoursBodyEnabledModel2? get enabled;
 }
 
 class _QuietHoursBodyModelCopyWith<$Res>
@@ -98,14 +98,14 @@ class _QuietHoursBodyModelCopyWith<$Res>
   final QuietHoursBodyModel _value;
 
   @_i3.override
-  _i4.QuietHoursBodyEnabledModel? get enabled => _value.enabled;
+  _i4.QuietHoursBodyEnabledModel2? get enabled => _value.enabled;
 
   @_i3.override
   $Res call({_i3.Object? enabled = _sentinel}) {
     return (QuietHoursBodyModel(
       enabled: _i3.identical(enabled, _sentinel)
           ? this.enabled
-          : (enabled as _i4.QuietHoursBodyEnabledModel?),
+          : (enabled as _i4.QuietHoursBodyEnabledModel2?),
     ) as $Res);
   }
 }

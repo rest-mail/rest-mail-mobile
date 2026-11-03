@@ -28,6 +28,7 @@ import 'widgets/message_body.dart';
 import 'widgets/trust_receipt.dart';
 import 'widgets/trust_badge.dart';
 import 'widgets/message_row.dart';
+import 'widgets/waiting_chip.dart';
 
 enum _More {
   markUnread,
@@ -709,6 +710,11 @@ class _MessageScreenState extends State<MessageScreen> {
                         }
                         return saved;
                       },
+                    ),
+                  if (m.awaitingSince != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: WaitingChip(since: m.awaitingSince),
                     ),
                   if (m.labels.isNotEmpty)
                     Padding(

@@ -35,6 +35,13 @@ const Map<String, Map<String, String>> stringsAr = {
     'recover.emailSent':
         'إذا كان لهذا الحساب بريد استرداد تم التحقق منه، فسيُرسل رابط استرداد.',
     'recover.emailUnavailable': 'لا يستطيع هذا الخادم إرسال روابط الاسترداد. استخدم تطبيق المصادقة ورمز استرداد، أو اسأل المسؤول.',
+    'awaiting.label': 'بانتظار الرد',
+    'awaiting.minutes': 'ينتظر منذ {count} د',
+    'awaiting.hours': 'ينتظر منذ {count} س',
+    'awaiting.days': 'ينتظر منذ {count} يوم',
+    'awaiting.weeks': 'ينتظر منذ {count} أسبوع',
+    'awaiting.explanation': 'آخر رسالة في هذه المحادثة منك — وهي بانتظار الرد.',
+    'awaiting.empty': 'لا توجد محادثات بانتظار الرد.',
     'quietHours.title': 'ساعات هدوء الإشعارات',
     'quietHours.help': 'معطلة افتراضيًا. يستمر وصول البريد. تنتظر إشعارات الدفع حتى تنتهي ساعات الهدوء، ثم يخبرك ملخص واحد بعدد الرسائل التي وصلت.',
     'quietHours.toggle': 'تأجيل الإشعارات خلال ساعات الهدوء',

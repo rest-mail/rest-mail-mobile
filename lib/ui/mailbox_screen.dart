@@ -40,7 +40,7 @@ class MailboxScreen extends StatefulWidget {
 
 class _MailboxScreenState extends State<MailboxScreen> {
   final _scroll = ScrollController();
-  (int?, String)? _showing;
+  (int?, String, bool)? _showing;
   bool _collapseLists = false;
   int? _selectedMessageId;
 
@@ -90,6 +90,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
   }
 
   void _searchChanged(String text) {
+    if (_mailbox.showingWaiting) {
+      unawaited(_mailbox.selectFolder(_mailbox.folder));
+    }
     _searchDebounce?.cancel();
     _searchRuns++;
     if (text.trim().isEmpty) {
@@ -112,6 +115,9 @@ class _MailboxScreenState extends State<MailboxScreen> {
     final account = _mailbox.account;
     final query = text.trim();
     if (account == null || query.isEmpty) return;
+    if (_mailbox.showingWaiting) {
+      unawaited(_mailbox.selectFolder(_mailbox.folder));
+    }
     _searchDebounce?.cancel();
     final run = ++_searchRuns;
     setState(() {
@@ -274,8 +280,17 @@ class _MailboxScreenState extends State<MailboxScreen> {
   /// A different folder or account starts at the top, not wherever the last
   /// one was scrolled to.
   void _topOnSwitch(MailboxState m) {
-    final showing = (m.account?.id, m.folder);
+    final showing = (m.account?.id, m.folder, m.showingWaiting);
     if (showing == _showing) return;
+    if (_showing != null &&
+        (_showing!.$1 != showing.$1 || _showing!.$2 != showing.$2)) {
+      _searchDebounce?.cancel();
+      _searchRuns++;
+      _search.clear();
+      _searching = false;
+      _searchResults = null;
+      _searchError = null;
+    }
     _showing = showing;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) _scroll.jumpTo(0);
@@ -286,7 +301,8 @@ class _MailboxScreenState extends State<MailboxScreen> {
   Future<void> _open(List<Message> conversation) async {
     final m = _mailbox;
     final message = conversation.first;
-    if (m.folder == StandardFolder.drafts || message.isDraft) {
+    if ((!m.showingWaiting && m.folder == StandardFolder.drafts) ||
+        message.isDraft) {
       try {
         final draft = await m.backend.message(message.id);
         if (!mounted) return;
@@ -306,7 +322,7 @@ class _MailboxScreenState extends State<MailboxScreen> {
           mailbox: m,
           message: message,
           others: conversation.sublist(1),
-          fromFolder: true,
+          fromFolder: !m.showingWaiting,
         ),
       ),
     );
@@ -360,6 +376,25 @@ class _MailboxScreenState extends State<MailboxScreen> {
                       : app.faviconHostsOf(account),
                 ),
                 if (account != null && !signedOut) _searchBar(context),
+                if (!signedOut && m.canListWaiting)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 12),
+                      child: FilterChip(
+                        label: Text(tr(context, 'awaiting.label')),
+                        selected: m.showingWaiting,
+                        onSelected: (selected) {
+                          _clearSearch();
+                          unawaited(
+                            selected
+                                ? m.showWaiting()
+                                : m.selectFolder(m.folder),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 if (!signedOut && _search.text.trim().isEmpty && listCount > 0)
                   Align(
                     alignment: AlignmentDirectional.centerStart,
@@ -559,7 +594,9 @@ class _Header extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              folderLabelOf(context, m.folder),
+                              m.showingWaiting
+                                  ? tr(context, 'awaiting.label')
+                                  : folderLabelOf(context, m.folder),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: rmText(
@@ -649,7 +686,11 @@ class _Footer extends StatelessWidget {
     }
     final label = folderLabelOf(context, m.folder);
     final String text;
-    if (m.messages.isEmpty) {
+    if (m.showingWaiting && m.messages.isEmpty) {
+      text = tr(context, 'awaiting.empty');
+    } else if (m.showingWaiting) {
+      return const SizedBox(height: 24);
+    } else if (m.messages.isEmpty) {
       text = trArgs(context, 'mailbox.nothingInLabel', {
         'label': (label).toString(),
       });

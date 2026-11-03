@@ -6,6 +6,8 @@ import 'dart:convert' as _i7;
 import 'dart:core' as _i3;
 
 import 'package:http/http.dart' as _i5;
+import 'package:restmail_generated/src/model/api_v1_messages_send_post_body_body_model.dart'
+    as _i6;
 import 'package:restmail_generated/src/model/data_message.dart' as _i10;
 import 'package:restmail_generated/src/model/data_scheduled_message.dart'
     as _i12;
@@ -13,8 +15,6 @@ import 'package:restmail_generated/src/model/data_send_discarded.dart' as _i8;
 import 'package:restmail_generated/src/model/error_response.dart' as _i14;
 import 'package:restmail_generated/src/model/forward_refusal_response.dart'
     as _i19;
-import 'package:restmail_generated/src/model/send_message_description.dart'
-    as _i6;
 import 'package:restmail_generated/src/operation/http_operation.dart' as _i1;
 import 'package:restmail_generated/src/response/api_v1_messages_send_post200_response.dart'
     as _i9;
@@ -46,7 +46,7 @@ final class SendMessage extends _i1.HttpOperation<_i2.SendMessageResponse> {
   SendMessage(super.baseUrl, super.clientAccessor);
 
   _i3.Future<_i4.TonikResult<_i2.SendMessageResponse, _i5.Response>> call({
-    required _i6.SendMessageDescription body,
+    required _i6.ApiV1MessagesSendPostBodyBodyModel body,
     _i4.TonikCancellation? cancellation,
   }) {
     return this.execute(
@@ -66,7 +66,7 @@ final class SendMessage extends _i1.HttpOperation<_i2.SendMessageResponse> {
     return [r'api', r'v1', r'messages', r'send'];
   }
 
-  _i3.Object? _data({required _i6.SendMessageDescription body}) {
+  _i3.Object? _data({required _i6.ApiV1MessagesSendPostBodyBodyModel body}) {
     return _i7.utf8.encode(_i7.jsonEncode(body.toJson()));
   }
 
