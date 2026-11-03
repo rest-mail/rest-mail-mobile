@@ -6,19 +6,39 @@ import '../l10n/voice.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
 
+/// A date parsed from the message text is only a suggestion until someone
+/// accepts it. Only `parsed` is: a `rule` date behaves like a `user` date.
+bool isThreadDueSuggestion(String? source) => source == 'parsed';
+
+String _elapsedLabel(
+  BuildContext context,
+  Duration elapsed, {
+  required String minutesKey,
+  required String hoursKey,
+  required String daysKey,
+}) {
+  final minutes = (elapsed.inMilliseconds / 60000).round();
+  final hours = (elapsed.inMilliseconds / 3600000).round();
+  final (key, count) = minutes < 60
+      ? (minutesKey, minutes)
+      : hours < 48
+      ? (hoursKey, hours)
+      : (daysKey, (hours / 24).round());
+  return trArgs(context, key, {'count': '$count'});
+}
+
 String threadDueLabel(BuildContext context, DateTime due, {DateTime? now}) {
   final current = now ?? DateTime.now();
   final local = due.toLocal();
   final difference = due.difference(current);
   if (difference.isNegative) {
-    final minutes = (-difference.inMilliseconds / 60000).round();
-    final hours = (-difference.inMilliseconds / 3600000).round();
-    final (key, count) = minutes < 60
-        ? ('threadDue.pastMinutes', minutes)
-        : hours < 48
-        ? ('threadDue.pastHours', hours)
-        : ('threadDue.pastDays', (hours / 24).round());
-    return trArgs(context, key, {'count': '$count'});
+    return _elapsedLabel(
+      context,
+      -difference,
+      minutesKey: 'threadDue.pastMinutes',
+      hoursKey: 'threadDue.pastHours',
+      daysKey: 'threadDue.pastDays',
+    );
   }
   final today = current.toLocal();
   final hours = (difference.inMilliseconds / 3600000).round();
@@ -37,6 +57,27 @@ String threadDueLabel(BuildContext context, DateTime due, {DateTime? now}) {
   return trArgs(context, 'threadDue.due', {'date': label});
 }
 
+/// A suggestion is not a deadline, so a past date says how long ago it was and
+/// never "past due".
+String threadDueSuggestionLabel(
+  BuildContext context,
+  DateTime due, {
+  DateTime? now,
+}) {
+  final current = now ?? DateTime.now();
+  final difference = due.difference(current);
+  final when = difference.isNegative
+      ? _elapsedLabel(
+          context,
+          -difference,
+          minutesKey: 'threadDue.agoMinutes',
+          hoursKey: 'threadDue.agoHours',
+          daysKey: 'threadDue.agoDays',
+        )
+      : threadDueLabel(context, due, now: current);
+  return trArgs(context, 'threadDue.suggested', {'when': when});
+}
+
 class ThreadDueControl extends StatefulWidget {
   const ThreadDueControl({
     super.key,
@@ -52,7 +93,11 @@ class ThreadDueControl extends StatefulWidget {
 }
 
 class _ThreadDueControlState extends State<ThreadDueControl> {
-  late DateTime? _value = _localInput(widget.message.due);
+  // The picker holds the person's own date. It never starts on a suggestion,
+  // because setting that would accept it, with its seconds cut off, by accident.
+  late DateTime? _value = isThreadDueSuggestion(widget.message.dueSource)
+      ? null
+      : _localInput(widget.message.due);
   late DateTime? _due = widget.message.due;
   late String? _source = widget.message.dueSource;
   bool _pending = false;
@@ -108,7 +153,7 @@ class _ThreadDueControlState extends State<ThreadDueControl> {
       setState(() {
         _due = saved.due;
         _source = saved.source;
-        if (due == null) _value = null;
+        _value = _localInput(saved.due);
       });
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error);
@@ -117,13 +162,18 @@ class _ThreadDueControlState extends State<ThreadDueControl> {
     }
   }
 
+  String? _sourceLabel(BuildContext context) => switch (_source) {
+    'user' => tr(context, 'threadDue.user'),
+    'rule' => tr(context, 'threadDue.rule'),
+    'parsed' => tr(context, 'threadDue.parsed'),
+    final other => other,
+  };
+
   @override
   Widget build(BuildContext context) {
     final due = _due;
-    final source = _source;
-    final sourceLabel = source == 'user'
-        ? tr(context, 'threadDue.user')
-        : source;
+    final sourceLabel = _sourceLabel(context);
+    final suggestion = due != null && isThreadDueSuggestion(_source);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -131,7 +181,11 @@ class _ThreadDueControlState extends State<ThreadDueControl> {
         children: [
           if (due != null) ...[
             Tooltip(
-              message: sourceLabel == null
+              message: suggestion
+                  ? trArgs(context, 'threadDue.suggestionSource', {
+                      'source': ?sourceLabel,
+                    })
+                  : sourceLabel == null
                   ? tr(context, 'threadDue.deadline')
                   : trArgs(context, 'threadDue.deadlineSource', {
                       'source': sourceLabel,
@@ -139,9 +193,16 @@ class _ThreadDueControlState extends State<ThreadDueControl> {
               child: Semantics(
                 liveRegion: true,
                 child: Text(
-                  [threadDueLabel(context, due), ?sourceLabel].join(' · '),
+                  [
+                    suggestion
+                        ? threadDueSuggestionLabel(context, due)
+                        : threadDueLabel(context, due),
+                    ?sourceLabel,
+                  ].join(' · '),
                   style: TextStyle(
-                    color: due.isBefore(DateTime.now())
+                    color: suggestion
+                        ? context.rm.ink2
+                        : due.isBefore(DateTime.now())
                         ? context.rm.danger
                         : Theme.of(context).colorScheme.primary,
                   ),
@@ -172,10 +233,21 @@ class _ThreadDueControlState extends State<ThreadDueControl> {
                   tr(context, _pending ? 'threadDue.saving' : 'threadDue.set'),
                 ),
               ),
+              if (suggestion)
+                TextButton(
+                  // The suggested instant itself, not the picker's minutes.
+                  onPressed: _pending ? null : () => _save(due),
+                  child: Text(tr(context, 'threadDue.accept')),
+                ),
               if (due != null)
                 TextButton(
                   onPressed: _pending ? null : () => _save(null),
-                  child: Text(tr(context, 'threadDue.clear')),
+                  child: Text(
+                    tr(
+                      context,
+                      suggestion ? 'threadDue.dismiss' : 'threadDue.clear',
+                    ),
+                  ),
                 ),
             ],
           ),

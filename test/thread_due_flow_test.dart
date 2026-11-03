@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:restmail/app.dart';
 import 'package:restmail/state/app_state.dart';
 import 'package:restmail/state/storage.dart';
+import 'package:restmail/theme/tokens.dart';
 import 'package:restmail/ui/thread_due_control.dart';
 import 'package:restmail_api/restmail_api.dart';
 import 'package:restmail_fake/restmail_fake.dart';
@@ -64,6 +65,9 @@ void main() {
     bool pending = false,
     bool thread = true,
     String? source = 'user',
+    DateTime? seedDue,
+    String? seedSource,
+    bool newerThread = false,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -87,6 +91,21 @@ void main() {
             )
             .threadId =
         'due-thread';
+    if (newerThread) {
+      fake.deliver(
+        to: FakeAccounts.email,
+        from: 'sender@example.test',
+        subject: 'Newer fixture',
+      );
+    }
+    if (seedDue != null) {
+      fake.seedThreadDue(
+        address: FakeAccounts.email,
+        threadId: 'due-thread',
+        due: seedDue,
+        source: seedSource!,
+      );
+    }
     final gate = _DueGate(fake.client)
       ..status = status
       ..hold = pending ? Completer<void>() : null;
@@ -332,5 +351,365 @@ void main() {
     );
     expect(find.textContaining('set by you'), findsNothing);
     await fixture.close();
+  });
+
+  group('dates the person did not set', () {
+    // Ten days out, so it reads as a future date whenever this runs, and with
+    // seconds and microseconds a minute-precision picker could not keep.
+    DateTime suggestedInstant() {
+      final later = DateTime.now().toUtc().add(const Duration(days: 10));
+      return DateTime.utc(
+        later.year,
+        later.month,
+        later.day,
+        10,
+        0,
+        37,
+        250,
+        123,
+      );
+    }
+
+    Finder button(String label) => find.widgetWithText(TextButton, label);
+
+    VoidCallback? pressable(WidgetTester tester, String label) =>
+        tester.widget<TextButton>(button(label)).onPressed;
+
+    Color? colorOf(WidgetTester tester, String text) =>
+        tester.widget<Text>(find.textContaining(text)).style?.color;
+
+    RmColors tokens(WidgetTester tester) =>
+        tester.element(find.byType(ThreadDueControl)).rm;
+
+    testWidgets('a parsed date shows as a suggestion with its source', (
+      tester,
+    ) async {
+      final fixture = await open(
+        tester,
+        seedDue: suggestedInstant(),
+        seedSource: 'parsed',
+      );
+      expect(
+        find.textContaining(
+          RegExp(r'^suggested: due .* · parsed from the message text$'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byTooltip(
+          'Suggested date parsed from the message text. It is not a deadline until you accept it.',
+        ),
+        findsOneWidget,
+      );
+      expect(colorOf(tester, 'suggested'), tokens(tester).ink2);
+      expect(button('Accept suggestion'), findsOneWidget);
+      expect(button('Dismiss suggestion'), findsOneWidget);
+      expect(button('Clear due date'), findsNothing);
+      expect(fixture.gate.calls, isEmpty);
+      await fixture.close();
+    });
+
+    testWidgets('a past parsed date stays neutral and can still be accepted', (
+      tester,
+    ) async {
+      final past = DateTime.now().toUtc().subtract(const Duration(days: 3));
+      final fixture = await open(tester, seedDue: past, seedSource: 'parsed');
+      expect(
+        find.text('suggested: 3d ago · parsed from the message text'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('past due'), findsNothing);
+      expect(colorOf(tester, 'suggested'), tokens(tester).ink2);
+      expect(colorOf(tester, 'suggested'), isNot(tokens(tester).danger));
+      await tester.tap(button('Accept suggestion'));
+      await tester.pumpAndSettle();
+      expect(find.text('past due 3d · set by you'), findsOneWidget);
+      expect(colorOf(tester, 'past due'), tokens(tester).danger);
+      await fixture.close();
+    });
+
+    testWidgets(
+      'accept sends the exact instant, the server records user, and nothing moves',
+      (tester) async {
+        final instant = suggestedInstant();
+        final fixture = await open(
+          tester,
+          seedDue: instant,
+          seedSource: 'parsed',
+        );
+        final order = fixture.app.mailbox!.messages
+            .map((message) => message.id)
+            .toList();
+        await tester.tap(button('Accept suggestion'));
+        await tester.pumpAndSettle();
+        expect(fixture.gate.calls.single['due_source'], 'user');
+        expect(
+          DateTime.parse(fixture.gate.calls.single['due'] as String),
+          instant,
+        );
+        expect(fixture.message.due, instant);
+        expect(fixture.message.dueSource, 'user');
+        expect(find.textContaining('suggested'), findsNothing);
+        expect(find.textContaining('set by you'), findsOneWidget);
+        expect(find.byTooltip('Deadline set by you.'), findsOneWidget);
+        expect(button('Accept suggestion'), findsNothing);
+        expect(button('Dismiss suggestion'), findsNothing);
+        expect(button('Clear due date'), findsOneWidget);
+        expect(
+          fixture.app.mailbox!.messages.every(
+            (message) => message.due == instant && message.dueSource == 'user',
+          ),
+          isTrue,
+        );
+        expect(
+          fixture.app.mailbox!.messages.map((message) => message.id),
+          order,
+        );
+        expect(fixture.message.folder, 'INBOX');
+        await fixture.close();
+      },
+    );
+
+    testWidgets('dismiss clears the suggestion and offers nothing to clear', (
+      tester,
+    ) async {
+      final fixture = await open(
+        tester,
+        seedDue: suggestedInstant(),
+        seedSource: 'parsed',
+      );
+      await tester.tap(button('Dismiss suggestion'));
+      await tester.pumpAndSettle();
+      expect(fixture.gate.calls.single, {'due': null, 'due_source': 'user'});
+      expect(fixture.message.due, isNull);
+      expect(fixture.message.dueSource, isNull);
+      expect(find.textContaining('suggested'), findsNothing);
+      expect(find.textContaining('parsed from'), findsNothing);
+      expect(button('Accept suggestion'), findsNothing);
+      expect(button('Dismiss suggestion'), findsNothing);
+      expect(button('Clear due date'), findsNothing);
+      expect(
+        fixture.app.mailbox!.messages.every(
+          (message) => message.due == null && message.dueSource == null,
+        ),
+        isTrue,
+      );
+      await fixture.close();
+    });
+
+    testWidgets(
+      'the picker starts empty on a suggestion, and a chosen date is the person\'s own',
+      (tester) async {
+        final instant = suggestedInstant();
+        final fixture = await open(
+          tester,
+          seedDue: instant,
+          seedSource: 'parsed',
+        );
+        expect(find.text('Due date'), findsOneWidget);
+        expect(pressable(tester, 'Set due date'), isNull);
+        await tester.tap(find.byKey(const ValueKey('threadDue.choose')));
+        await tester.pumpAndSettle();
+        expect(
+          DateUtils.isSameDay(
+            tester
+                .widget<DatePickerDialog>(find.byType(DatePickerDialog))
+                .initialDate,
+            DateTime.now(),
+          ),
+          isTrue,
+        );
+        await tester.tap(find.text('Cancel').last);
+        await tester.pumpAndSettle();
+        expect(find.text('Due date'), findsOneWidget);
+        expect(pressable(tester, 'Set due date'), isNull);
+        expect(fixture.gate.calls, isEmpty);
+
+        await choose(tester);
+        await tester.tap(find.text('Set due date'));
+        await tester.pumpAndSettle();
+        final saved = DateTime.parse(
+          fixture.gate.calls.single['due'] as String,
+        );
+        expect(fixture.gate.calls.single['due_source'], 'user');
+        expect(saved, isNot(instant));
+        expect(saved.second, 0);
+        expect(DateUtils.isSameDay(saved.toLocal(), DateTime.now()), isTrue);
+        expect(fixture.message.dueSource, 'user');
+        expect(find.textContaining('suggested'), findsNothing);
+        await fixture.close();
+      },
+    );
+
+    for (final (action, status, message) in [
+      ('Accept suggestion', 403, 'Refused due date'),
+      ('Accept suggestion', 404, 'Could not save due date'),
+      ('Accept suggestion', 422, 'Refused due date'),
+      ('Dismiss suggestion', 403, 'Refused due date'),
+      ('Dismiss suggestion', 404, 'Could not save due date'),
+    ]) {
+      testWidgets('HTTP $status on $action keeps the suggestion offered', (
+        tester,
+      ) async {
+        final instant = suggestedInstant();
+        final fixture = await open(
+          tester,
+          seedDue: instant,
+          seedSource: 'parsed',
+          status: status,
+        );
+        await tester.tap(button(action));
+        await tester.pumpAndSettle();
+        expect(find.text(message), findsOneWidget);
+        expect(find.textContaining('suggested'), findsOneWidget);
+        expect(find.textContaining('set by you'), findsNothing);
+        expect(colorOf(tester, 'suggested'), tokens(tester).ink2);
+        expect(find.text('Read this message'), findsOneWidget);
+        expect(fixture.message.due, instant);
+        expect(fixture.message.dueSource, 'parsed');
+        expect(pressable(tester, 'Accept suggestion'), isNotNull);
+        expect(pressable(tester, 'Dismiss suggestion'), isNotNull);
+        expect(pressable(tester, 'Set due date'), isNull);
+        await fixture.close();
+      });
+    }
+
+    testWidgets('a pending accept disables every control', (tester) async {
+      final fixture = await open(
+        tester,
+        seedDue: suggestedInstant(),
+        seedSource: 'parsed',
+        pending: true,
+      );
+      await tester.tap(button('Accept suggestion'));
+      await tester.pump();
+      expect(find.text('Saving…'), findsOneWidget);
+      expect(pressable(tester, 'Accept suggestion'), isNull);
+      expect(pressable(tester, 'Dismiss suggestion'), isNull);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('threadDue.choose')),
+            )
+            .onPressed,
+        isNull,
+      );
+      await fixture.close();
+    });
+
+    testWidgets(
+      'a suggestion with the soonest date on the oldest thread stays in place and off the list',
+      (tester) async {
+        final fixture = await open(
+          tester,
+          seedDue: DateTime.now().toUtc().add(const Duration(hours: 1)),
+          seedSource: 'parsed',
+          newerThread: true,
+        );
+        final subjects = fixture.app.mailbox!.messages
+            .map((message) => message.subject)
+            .toList();
+        expect(subjects, ['Newer fixture', 'Sibling fixture', 'Due fixture']);
+        expect(fixture.app.mailbox!.folder, 'INBOX');
+        expect(fixture.message.folder, 'INBOX');
+        Navigator.of(tester.element(find.byType(ThreadDueControl))).pop();
+        await tester.pumpAndSettle();
+        expect(find.text('Newer fixture'), findsWidgets);
+        expect(find.textContaining('suggested'), findsNothing);
+        expect(find.textContaining('parsed from'), findsNothing);
+        expect(fixture.gate.calls, isEmpty);
+        await fixture.close();
+      },
+    );
+
+    testWidgets('a rule date shows its source and can be cleared', (
+      tester,
+    ) async {
+      final fixture = await open(
+        tester,
+        seedDue: suggestedInstant(),
+        seedSource: 'rule',
+      );
+      expect(
+        find.textContaining(RegExp(r'^due .* · set by a rule$')),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Deadline set by a rule.'), findsOneWidget);
+      expect(find.textContaining('suggested'), findsNothing);
+      expect(button('Accept suggestion'), findsNothing);
+      expect(button('Dismiss suggestion'), findsNothing);
+      await tester.tap(button('Clear due date'));
+      await tester.pumpAndSettle();
+      expect(fixture.gate.calls.single, {'due': null, 'due_source': 'user'});
+      expect(fixture.message.due, isNull);
+      expect(fixture.message.dueSource, isNull);
+      expect(find.textContaining('set by a rule'), findsNothing);
+      await fixture.close();
+    });
+
+    testWidgets('a rule date can be changed, and the change is the person\'s', (
+      tester,
+    ) async {
+      final fixture = await open(
+        tester,
+        seedDue: suggestedInstant(),
+        seedSource: 'rule',
+      );
+      expect(find.textContaining(RegExp(r'^Due date: ')), findsOneWidget);
+      expect(pressable(tester, 'Set due date'), isNotNull);
+      await choose(tester);
+      await tester.tap(find.text('Set due date'));
+      await tester.pumpAndSettle();
+      expect(fixture.gate.calls.single['due_source'], 'user');
+      expect(fixture.message.dueSource, 'user');
+      expect(find.textContaining('set by you'), findsOneWidget);
+      expect(find.textContaining('set by a rule'), findsNothing);
+      await fixture.close();
+    });
+
+    testWidgets('a past rule date warns as a deadline does', (tester) async {
+      final fixture = await open(
+        tester,
+        seedDue: DateTime.now().toUtc().subtract(const Duration(days: 3)),
+        seedSource: 'rule',
+      );
+      expect(find.text('past due 3d · set by a rule'), findsOneWidget);
+      expect(colorOf(tester, 'past due'), tokens(tester).danger);
+      await fixture.close();
+    });
+
+    testWidgets('a plain user date keeps its controls and warning', (
+      tester,
+    ) async {
+      final fixture = await open(
+        tester,
+        due: DateTime.now().toUtc().subtract(const Duration(days: 3)),
+      );
+      expect(find.text('past due 3d · set by you'), findsOneWidget);
+      expect(colorOf(tester, 'past due'), tokens(tester).danger);
+      expect(find.byTooltip('Deadline set by you.'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^Due date: ')), findsOneWidget);
+      expect(pressable(tester, 'Set due date'), isNotNull);
+      expect(pressable(tester, 'Clear due date'), isNotNull);
+      expect(find.textContaining('suggested'), findsNothing);
+      expect(button('Accept suggestion'), findsNothing);
+      expect(button('Dismiss suggestion'), findsNothing);
+      await fixture.close();
+    });
+
+    testWidgets('a past suggestion label rounds as a past deadline does', (
+      tester,
+    ) async {
+      final now = DateTime(2026, 11, 3, 10);
+      final fixture = await open(tester);
+      final context = tester.element(find.byType(ThreadDueControl));
+      String label(Duration offset) =>
+          threadDueSuggestionLabel(context, now.add(offset), now: now);
+      expect(label(const Duration(seconds: -30)), 'suggested: 1m ago');
+      expect(label(const Duration(minutes: -60)), 'suggested: 1h ago');
+      expect(label(const Duration(hours: -48)), 'suggested: 2d ago');
+      expect(label(const Duration(days: 1)), 'suggested: due tomorrow');
+      await fixture.close();
+    });
   });
 }

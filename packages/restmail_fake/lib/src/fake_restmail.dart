@@ -119,7 +119,7 @@ class FakeRestmail {
 
   final _mailboxes = <int, FakeMailbox>{};
   final _messages = <int, FakeMessage>{};
-  final _threadDues = <(int, String), DateTime?>{};
+  final _threadDues = <(int, String), ({DateTime? due, String? source})>{};
   final _attachments = <int, FakeAttachment>{};
   final _accessTokens = <String, _Grant>{};
   final _refreshTokens = <String, _Session>{};
@@ -217,6 +217,27 @@ class FakeRestmail {
       for (final m in _messages.values)
         if (m.mailboxId == box.id && m.folder == folder) m,
     ];
+  }
+
+  /// Stores a `rule` or `parsed` date on [threadId], as the server's own writers
+  /// would. The API refuses both sources and nothing on the real server writes
+  /// them yet, so a test has no other way to reach them.
+  void seedThreadDue({
+    required String address,
+    required String threadId,
+    required DateTime due,
+    required String source,
+  }) {
+    if (source != 'rule' && source != 'parsed') {
+      throw ArgumentError.value(source, 'source', 'must be rule or parsed');
+    }
+    final box = _mailboxAt(address);
+    if (box == null) {
+      throw ArgumentError.value(address, 'address', 'no mailbox');
+    }
+    if (_storeThreadDue(box.id, threadId, due.toUtc(), source) == 0) {
+      throw ArgumentError.value(threadId, 'threadId', 'no thread');
+    }
   }
 
   /// Messages waiting for the server to send them, for a test to check.
@@ -2613,12 +2634,12 @@ class FakeRestmail {
         !_allowsHeld(box, 'mail:write', target)) {
       _fail(403, 'forbidden', 'Access denied');
     }
-    for (final message in messages) {
-      message
-        ..due = due?.toUtc()
-        ..dueSource = due == null ? null : 'user';
-    }
-    _threadDues[(int.parse(id), thread)] = due?.toUtc();
+    _storeThreadDue(
+      messages.first.mailboxId,
+      thread,
+      due?.toUtc(),
+      due == null ? null : 'user',
+    );
     return _json({
       'data': {
         'thread_id': thread,
@@ -2628,13 +2649,37 @@ class FakeRestmail {
     });
   }
 
+  /// Writes a thread's date and source, and returns how many messages it holds.
+  int _storeThreadDue(
+    int mailboxId,
+    String thread,
+    DateTime? due,
+    String? source,
+  ) {
+    var found = 0;
+    for (final message in _messages.values) {
+      if (message.mailboxId == mailboxId &&
+          (message.threadId ?? '${message.id}') == thread) {
+        message
+          ..due = due
+          ..dueSource = source;
+        found++;
+      }
+    }
+    if (found > 0) {
+      _threadDues[(mailboxId, thread)] = (due: due, source: source);
+    }
+    return found;
+  }
+
   Map<String, Object?> _messageJson(FakeMessage message) {
     final key = (message.mailboxId, message.threadId ?? '${message.id}');
+    final stored = _threadDues[key];
     return {
       ...message.toJson(),
-      if (_threadDues.containsKey(key)) ...{
-        'due': _threadDues[key]?.toUtc().toIso8601String(),
-        'due_source': _threadDues[key] == null ? null : 'user',
+      if (stored != null) ...{
+        'due': stored.due?.toIso8601String(),
+        'due_source': stored.source,
       },
     };
   }
