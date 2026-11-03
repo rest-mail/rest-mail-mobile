@@ -237,4 +237,168 @@ void main() {
       }
     },
   );
+
+  group('seeded sources', () {
+    final instant = DateTime.utc(2026, 12, 1, 10, 0, 37, 250, 123);
+
+    void seed(String source) => fake.seedThreadDue(
+      address: FakeAccounts.email,
+      threadId: message.threadId!,
+      due: instant,
+      source: source,
+    );
+
+    for (final source in ['parsed', 'rule']) {
+      test(
+        '$source reaches detail, folder, thread, search and later messages without filing or reordering',
+        () async {
+          final second = fake.deliver(
+            to: FakeAccounts.email,
+            from: 'sender@example.test',
+            subject: 'same thread',
+            threadId: message.threadId,
+          )..folder = 'Archive';
+          final before = (await client.messages(
+            account,
+            'INBOX',
+          )).items.map((item) => item.id).toList();
+          seed(source);
+          final later = fake.deliver(
+            to: FakeAccounts.email,
+            from: 'sender@example.test',
+            subject: 'later',
+            threadId: message.threadId,
+          );
+          for (final read in [
+            await client.message(message.id),
+            await client.message(second.id),
+            await client.message(later.id),
+            ...await client.thread(account, message.threadId!),
+            (await client.search(
+              account,
+              SearchQuery(text: 'same thread'),
+            )).items.single,
+          ]) {
+            expect(read.due, instant);
+            expect(read.dueSource, source);
+          }
+          expect(
+            (await client.messages(
+              account,
+              'INBOX',
+            )).items.map((item) => item.id).where(before.contains),
+            before,
+          );
+          expect(message.folder, 'INBOX');
+          expect(second.folder, 'Archive');
+        },
+      );
+    }
+
+    test('accepting keeps the exact instant and records user', () async {
+      seed('parsed');
+      final saved = await client.setThreadDue(
+        account,
+        message.threadId!,
+        instant,
+      );
+      expect(saved.due, instant);
+      expect(saved.source, 'user');
+      final read = await client.message(message.id);
+      expect(read.due, instant);
+      expect(read.dueSource, 'user');
+    });
+
+    test('dismissing leaves no date and no source', () async {
+      seed('parsed');
+      final saved = await client.setThreadDue(account, message.threadId!, null);
+      expect(saved.due, isNull);
+      expect(saved.source, isNull);
+      final read = await client.message(message.id);
+      expect(read.due, isNull);
+      expect(read.dueSource, isNull);
+    });
+
+    test('refusals leave a suggestion unchanged', () async {
+      seed('parsed');
+      final transport = fake.client;
+      addTearDown(transport.close);
+      final response = await transport.post(
+        Uri.parse(
+          'https://${fake.host}/api/v1/accounts/$account/threads/${message.threadId}/due',
+        ),
+        headers: {
+          'authorization': 'Bearer ${client.tokens!.accessToken}',
+          'content-type': 'application/json',
+        },
+        body: '{"due":"2027-01-01T10:00:00Z","due_source":"parsed"}',
+      );
+      expect(response.statusCode, 422);
+      final key = await client.createAPIKey(
+        account,
+        name: 'read only',
+        password: FakeAccounts.password,
+        permissions: [
+          APIKeyPermission(
+            capability: 'mail:read',
+            scope: 'mailbox:${FakeAccounts.email}',
+          ),
+        ],
+      );
+      final readOnly = await transport.post(
+        Uri.parse(
+          'https://${fake.host}/api/v1/accounts/$account/threads/${message.threadId}/due',
+        ),
+        headers: {
+          'authorization': 'Bearer ${key.token}',
+          'content-type': 'application/json',
+        },
+        body: '{"due":null,"due_source":"user"}',
+      );
+      expect(readOnly.statusCode, 403);
+      final read = await client.message(message.id);
+      expect(read.due, instant);
+      expect(read.dueSource, 'parsed');
+    });
+
+    test('seeding stays in its own account and thread', () async {
+      final other = fake.deliver(
+        to: FakeAccounts.adminEmail,
+        from: 'sender@example.test',
+        subject: 'other account',
+        threadId: message.threadId,
+      );
+      final elsewhere = fake.deliver(
+        to: FakeAccounts.email,
+        from: 'sender@example.test',
+        subject: 'other thread',
+      );
+      seed('parsed');
+      expect(other.due, isNull);
+      expect(elsewhere.due, isNull);
+      expect((await client.message(elsewhere.id)).dueSource, isNull);
+    });
+
+    test('seeding takes only rule or parsed, on a thread that exists', () {
+      expect(() => seed('user'), throwsArgumentError);
+      expect(
+        () => fake.seedThreadDue(
+          address: FakeAccounts.email,
+          threadId: 'unknown',
+          due: instant,
+          source: 'parsed',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => fake.seedThreadDue(
+          address: 'nobody@example.test',
+          threadId: message.threadId!,
+          due: instant,
+          source: 'parsed',
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
 }

@@ -11,7 +11,8 @@ The receipt-seal strings follow the webmail English wording. Their German,
 Spanish, Hindi, Nepali, Arabic, and Farsi translations are machine-made and
 have not had human translation review.
 
-The thread-snooze and thread-due-date strings follow the webmail English wording.
+The thread-snooze and thread-due-date strings, including the due-date suggestion,
+its sources and its accept and dismiss actions, follow the webmail English wording.
 Their German, Spanish, Hindi, Nepali, Arabic, and Farsi translations are
 machine-made and have not had human translation review.
 
