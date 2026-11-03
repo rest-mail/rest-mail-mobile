@@ -22,6 +22,7 @@ import 'admin/admin_screen.dart';
 import 'app_passwords_screen.dart';
 import 'contact_reply_time.dart';
 import 'quiet_hours_screen.dart';
+import 'recovery_email_screen.dart';
 import 'mail_rules_screen.dart';
 import 'api_keys_screen.dart';
 import 'two_factor_screen.dart';
@@ -350,6 +351,20 @@ class _MailboxSettingsScreenState extends State<MailboxSettingsScreen> {
                               onTap: () => _push(
                                 context,
                                 TwoFactorScreen(account: session),
+                              ),
+                            ),
+                          if (session != null &&
+                              session.signedOut == null &&
+                              account.isPrimary)
+                            RmRow(
+                              label: tr(context, 'recoveryEmail.title'),
+                              subtitle: tr(
+                                context,
+                                'recoveryEmail.settingsHint',
+                              ),
+                              onTap: () => _push(
+                                context,
+                                RecoveryEmailScreen(client: session.client),
                               ),
                             ),
                           if (session != null)

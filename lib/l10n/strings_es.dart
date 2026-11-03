@@ -1,6 +1,41 @@
 /// Spanish base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsEs = {
   'classic': {
+    'recoveryEmail.title': 'Correo de recuperación',
+    'recoveryEmail.settingsHint':
+        'Una dirección fuera de este servidor para una contraseña olvidada',
+    'recoveryEmail.help': 'Si olvidas tu contraseña, se puede enviar un enlace privado a una dirección fuera de este servidor. Configúrala mientras aún puedas iniciar sesión: una dirección indicada por primera vez durante el bloqueo no cuenta. Tu app de autenticación y tus códigos de recuperación siguen funcionando.',
+    'recoveryEmail.state': 'Estado',
+    'recoveryEmail.stateNone': 'Ninguno',
+    'recoveryEmail.statePending': 'Pendiente de verificación',
+    'recoveryEmail.stateVerified': 'Verificado',
+    'recoveryEmail.address': 'Dirección de correo de recuperación',
+    'recoveryEmail.currentPassword': 'Contraseña actual',
+    'recoveryEmail.send': 'Enviar enlace de verificación',
+    'recoveryEmail.change': 'Cambiar dirección',
+    'recoveryEmail.resend': 'Enviar un enlace nuevo o cambiar la dirección',
+    'recoveryEmail.check': 'Comprobar de nuevo',
+    'recoveryEmail.changeNote': 'Cambiar la dirección anula su verificación y termina los enlaces anteriores. La nueva dirección no puede recuperar tu cuenta hasta que la verifiques.',
+    'recoveryEmail.pendingHelp': 'Abre el enlace enviado a {address} en un navegador, en cualquier dispositivo, en un plazo de 15 minutos. Esta dirección no puede recuperar tu cuenta hasta que se verifique.',
+    'recoveryEmail.verifiedHelp': 'Esta dirección puede recibir un enlace para elegir una contraseña nueva. Después sigues iniciando sesión con tu segundo factor, y la dirección no se puede cambiar durante tres días tras usar un enlace.',
+    'recoveryEmail.sent': 'Enlace de verificación enviado. La dirección no puede recuperar tu cuenta hasta que se verifique.',
+    'recoveryEmail.loading': 'Cargando el correo de recuperación...',
+    'recoveryEmail.loadFailed': 'No se pudo cargar tu correo de recuperación.',
+    'recoveryEmail.retry': 'Intentar de nuevo',
+    'recoveryEmail.wrongPassword': 'La contraseña actual es incorrecta.',
+    'recoveryEmail.frozen': 'Los cambios de la dirección de recuperación quedan bloqueados durante tres días tras una recuperación por correo.',
+    'recoveryEmail.tooMany':
+        'Demasiadas solicitudes. Inténtalo de nuevo en {minutes} min.',
+    'recoveryEmail.unsupported':
+        'Este servidor no ofrece correo de recuperación.',
+    'recover.useCodes':
+        'Usar en su lugar la app de autenticación y un código de recuperación',
+    'recover.useEmail': 'Usar en su lugar un enlace al correo de recuperación',
+    'recover.emailIntro': 'Introduce la dirección de esta cuenta, no la de recuperación. Solo se envía un enlace a un correo de recuperación verificado antes de perder el acceso.',
+    'recover.emailNote': 'El enlace funciona una vez, dura 15 minutos y se abre en un navegador. Una nueva solicitud lo reemplaza. Tu segundo factor sigue aplicándose al iniciar sesión.',
+    'recover.emailSubmit': 'Enviarme un enlace',
+    'recover.emailSent': 'Si esta cuenta tiene un correo de recuperación verificado, se enviará un enlace de recuperación.',
+    'recover.emailUnavailable': 'Este servidor no puede enviar enlaces de recuperación. Usa tu app de autenticación y un código de recuperación, o pregunta a tu administrador.',
     'quietHours.title': 'Horario de silencio de las notificaciones',
     'quietHours.help': 'Desactivado por defecto. El correo sigue llegando. Las notificaciones push esperan hasta que termine el horario de silencio; entonces un resumen indica cuántos mensajes llegaron.',
     'quietHours.toggle':
@@ -80,7 +115,7 @@ const Map<String, Map<String, String>> stringsEs = {
     'signIn.otherMail': 'Otro correo (IMAP)',
     'signIn.forgot': '¿Olvidaste la contraseña?',
     'recover.title': 'Restablecer contraseña',
-    'recover.intro': 'Usa un código de tu app de autenticación y uno de los códigos de recuperación que guardaste al configurarla. Sin inicio de sesión en dos pasos, pide a tu administrador que restablezca la contraseña.',
+    'recover.intro': 'Usa un código de tu app de autenticación y uno de los códigos de recuperación que guardaste al configurarla. Sin ellos, prueba un enlace al correo de recuperación o pregunta a tu administrador.',
     'recover.newPassword': 'Nueva contraseña',
     'recover.passwordNote': 'Al menos 12 caracteres. Tus otras sesiones y contraseñas de aplicación dejan de funcionar.',
     'recover.submit': 'Restablecer contraseña',

@@ -1,6 +1,43 @@
 /// German base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsDe = {
   'classic': {
+    'recoveryEmail.title': 'Wiederherstellungs-E-Mail',
+    'recoveryEmail.settingsHint':
+        'Eine Adresse außerhalb dieses Servers für ein vergessenes Passwort',
+    'recoveryEmail.help': 'Wenn Sie Ihr Passwort vergessen, kann ein privater Link an eine Adresse außerhalb dieses Servers gehen. Richten Sie sie ein, solange Sie sich noch anmelden können: Eine erst während der Aussperrung angegebene Adresse zählt nicht. Ihr Authenticator und Ihre Wiederherstellungscodes funktionieren weiterhin.',
+    'recoveryEmail.state': 'Status',
+    'recoveryEmail.stateNone': 'Keine',
+    'recoveryEmail.statePending': 'Wartet auf Bestätigung',
+    'recoveryEmail.stateVerified': 'Bestätigt',
+    'recoveryEmail.address': 'Adresse für die Wiederherstellung',
+    'recoveryEmail.currentPassword': 'Aktuelles Passwort',
+    'recoveryEmail.send': 'Bestätigungslink senden',
+    'recoveryEmail.change': 'Adresse ändern',
+    'recoveryEmail.resend': 'Neuen Link senden oder Adresse ändern',
+    'recoveryEmail.check': 'Erneut prüfen',
+    'recoveryEmail.changeNote': 'Eine Änderung der Adresse hebt ihre Bestätigung auf und beendet frühere Links. Die neue Adresse kann Ihr Konto erst wiederherstellen, wenn Sie sie bestätigt haben.',
+    'recoveryEmail.pendingHelp': 'Öffnen Sie den an {address} gesendeten Link innerhalb von 15 Minuten in einem Browser, auf einem beliebigen Gerät. Bis zur Bestätigung kann diese Adresse Ihr Konto nicht wiederherstellen.',
+    'recoveryEmail.verifiedHelp': 'Diese Adresse kann einen Link erhalten, um ein neues Passwort zu wählen. Danach melden Sie sich weiterhin mit Ihrem zweiten Faktor an, und die Adresse kann drei Tage nach Verwendung eines Links nicht geändert werden.',
+    'recoveryEmail.sent': 'Bestätigungslink gesendet. Bis zur Bestätigung kann die Adresse Ihr Konto nicht wiederherstellen.',
+    'recoveryEmail.loading': 'Wiederherstellungs-E-Mail wird geladen...',
+    'recoveryEmail.loadFailed':
+        'Ihre Wiederherstellungs-E-Mail konnte nicht geladen werden.',
+    'recoveryEmail.retry': 'Erneut versuchen',
+    'recoveryEmail.wrongPassword': 'Das aktuelle Passwort ist falsch.',
+    'recoveryEmail.frozen': 'Änderungen der Wiederherstellungsadresse sind nach einer Wiederherstellung per E-Mail drei Tage lang gesperrt.',
+    'recoveryEmail.tooMany':
+        'Zu viele Anfragen. Versuchen Sie es in {minutes} Min. erneut.',
+    'recoveryEmail.unsupported':
+        'Dieser Server bietet keine Wiederherstellungs-E-Mail an.',
+    'recover.useCodes':
+        'Stattdessen Authenticator und Wiederherstellungscode verwenden',
+    'recover.useEmail':
+        'Stattdessen Link per Wiederherstellungs-E-Mail verwenden',
+    'recover.emailIntro': 'Geben Sie die Adresse dieses Kontos ein, nicht die Wiederherstellungsadresse. Ein Link geht nur an eine Wiederherstellungs-E-Mail, die bestätigt wurde, bevor Sie den Zugang verloren haben.',
+    'recover.emailNote': 'Der Link funktioniert einmal, gilt 15 Minuten und öffnet sich in einem Browser. Eine neue Anfrage ersetzt ihn. Bei der Anmeldung gilt Ihr zweiter Faktor weiterhin.',
+    'recover.emailSubmit': 'Link per E-Mail senden',
+    'recover.emailSent': 'Wenn dieses Konto eine bestätigte Wiederherstellungs-E-Mail hat, wird ein Wiederherstellungslink gesendet.',
+    'recover.emailUnavailable': 'Dieser Server kann keine Wiederherstellungslinks senden. Verwenden Sie Ihren Authenticator und einen Wiederherstellungscode, oder fragen Sie Ihren Administrator.',
     'quietHours.title': 'Ruhezeiten für Benachrichtigungen',
     'quietHours.help': 'Standardmäßig aus. E-Mails kommen weiterhin an. Push-Benachrichtigungen warten bis zum Ende der Ruhezeit. Dann zeigt eine Zusammenfassung, wie viele Nachrichten eingegangen sind.',
     'quietHours.toggle': 'Benachrichtigungen während der Ruhezeit zurückhalten',
@@ -78,7 +115,7 @@ const Map<String, Map<String, String>> stringsDe = {
     'signIn.otherMail': 'Andere Mail (IMAP)',
     'signIn.forgot': 'Passwort vergessen?',
     'recover.title': 'Passwort zurücksetzen',
-    'recover.intro': 'Mit einem Code aus Ihrer Authenticator-App und einem der Wiederherstellungscodes, die Sie bei der Einrichtung gespeichert haben. Ohne Zwei-Faktor-Anmeldung setzt Ihr Administrator das Passwort zurück.',
+    'recover.intro': 'Mit einem Code aus Ihrer Authenticator-App und einem der Wiederherstellungscodes, die Sie bei der Einrichtung gespeichert haben. Ohne diese versuchen Sie einen Link per Wiederherstellungs-E-Mail oder fragen Ihren Administrator.',
     'recover.newPassword': 'Neues Passwort',
     'recover.passwordNote': 'Mindestens 12 Zeichen. Ihre anderen Sitzungen und App-Passwörter funktionieren danach nicht mehr.',
     'recover.submit': 'Passwort zurücksetzen',

@@ -34,6 +34,14 @@ webmail uses, not IMAP.
 - How quickly a contact usually replies, beside the contact, for a REST Mail
   account that opts in. It's off by default, and the server works it out from
   that account's own mail.
+- A recovery email in each REST Mail account's settings: an address outside
+  the server, shown as none, waiting for verification or verified. Adding or
+  changing it needs the current password, and it is verified at a link the
+  server mails there, which opens in a browser. On **Forgot password?**,
+  **Use a recovery email link instead** asks the server to send a reset link
+  there; the authenticator and recovery code stay. The answer is the same for
+  every address, so it does not reveal whether one has a recovery email. The
+  server has no way to remove an address.
 - Notification quiet hours in each REST Mail account's settings: on or off,
   local start and end times, and an IANA time zone, initially the device's zone.
   Mail still arrives. The server holds notifications until quiet hours end,

@@ -206,6 +206,67 @@ class FakeRestmail {
   /// one more is answered each 15 minutes.
   final _recoverRefusals = <String, ({int count, DateTime last})>{};
 
+  /// By mailbox, its external recovery address.
+  final _recoveryEmails = <int, _RecoveryEmail>{};
+
+  /// By token, the recovery email links not yet used or replaced.
+  final _recoveryLinks = <String, _RecoveryLink>{};
+
+  /// By address, what each may still ask for: five, then one per 15 minutes,
+  /// spent whatever the address is.
+  final _recoveryLinkBudget = <String, ({double left, DateTime at})>{};
+  var _nextRecoveryLink = 1;
+
+  /// False is a server with no HTTPS `RESTMAIL_RECOVERY_EMAIL_BASE_URL`: it
+  /// answers 503 to registering an address and to asking for a link.
+  bool recoveryEmailConfigured = true;
+
+  /// False is a server older than recovery email: its routes answer 404.
+  bool recoveryEmailRoutes = true;
+
+  final _recoveryMail = <FakeRecoveryMail>[];
+
+  /// The links the server has put in its outbound queue, oldest first.
+  List<FakeRecoveryMail> get recoveryMail => List.unmodifiable(_recoveryMail);
+
+  /// Gives [account] a recovery address already at [verified], as if it had
+  /// registered one before.
+  void setRecoveryEmail(
+    String account,
+    String address, {
+    bool verified = true,
+  }) {
+    _recoveryEmails[_mailboxAt(account)!.id] = _RecoveryEmail(address)
+      ..verified = verified;
+  }
+
+  /// Disables [account], as an administrator does: its sessions end.
+  void disableAccount(String account) {
+    _mailboxAt(account)!.active = false;
+    revokeSessionsOf(account);
+  }
+
+  /// Holds [account]'s recovery address for [length], as a link used to
+  /// recover the account does for three days.
+  void freezeRecoveryEmail(String account, Duration length) {
+    _recoveryEmails[_mailboxAt(account)!.id]!.frozenUntil = _clock().add(
+      length,
+    );
+  }
+
+  /// [account]'s recovery address, for a test to check.
+  ({String address, bool verified, DateTime? frozenUntil})? recoveryEmailOf(
+    String account,
+  ) {
+    final method = _recoveryEmails[_mailboxAt(account)?.id];
+    if (method == null) return null;
+    return (
+      address: method.address,
+      verified: method.verified,
+      frozenUntil: method.frozenUntil,
+    );
+  }
+
   /// A client that talks to this fake; hand it to a `RestmailClient`.
   http.Client get client => MockClient.streaming(_handle);
 
@@ -695,6 +756,31 @@ class FakeRestmail {
           actorId: _mailboxAt(email)?.id,
           () => _recover(body),
         );
+      case (
+            _,
+            ['api', 'v1', 'auth', 'recover', 'email', ...] ||
+                ['api', 'v1', 'auth', 'recovery-email', ...],
+          )
+          when !recoveryEmailRoutes:
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('404 page not found\n')),
+          404,
+          headers: {'content-type': 'text/plain; charset=utf-8'},
+        );
+      case ('POST', ['api', 'v1', 'auth', 'recover', 'email']):
+        return _requestRecoveryEmail(request, _object(bytes));
+      case ('POST', ['api', 'v1', 'auth', 'recover', 'email', 'redeem']):
+        return _redeemRecoveryEmail(request, _object(bytes));
+      case ('POST', ['api', 'v1', 'auth', 'recovery-email', 'verify']):
+        return _verifyRecoveryEmail(request, _object(bytes));
+      case ('GET', ['api', 'v1', 'auth', 'recovery-email']):
+        return _recoveryEmailStatus(_authenticate(request));
+      case ('POST', ['api', 'v1', 'auth', 'recovery-email']):
+        return _registerRecoveryEmail(
+          request,
+          _authenticate(request),
+          _object(bytes),
+        );
       case ('POST', ['api', 'v1', 'auth', 'logout']):
         // As on the server, the session's push devices end with it.
         if (_refreshTokens.remove(_object(bytes)['refresh_token'])
@@ -1154,6 +1240,7 @@ class FakeRestmail {
     }
     box.recoveryCode = null;
     box.password = password;
+    _forgetRecoveryLinks(box.id);
     box.mustChangePassword = false;
     revokeSessionsOf(box.address);
     _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
@@ -1162,6 +1249,322 @@ class FakeRestmail {
       native: client == 'native',
     );
   }
+
+  /// The binding REST Mail does before these handlers run: closed bodies, all
+  /// the problems together, in its words.
+  Map<String, String> _bindRecoveryBody(
+    Map<String, dynamic> body,
+    Map<String, ({int? min, int? max, bool email})> fields,
+  ) {
+    final problems = _undeclared(body, fields.keys.toSet());
+    fields.forEach((name, rule) {
+      final value = body[name];
+      if (!body.containsKey(name)) {
+        problems[name] = 'required';
+      } else if (value is! String) {
+        problems[name] = 'must be a string';
+      } else if (rule.min case final min? when value.runes.length < min) {
+        problems[name] =
+            'must be at least $min ${min == 1 ? 'character' : 'characters'}';
+      } else if (rule.max case final max? when value.runes.length > max) {
+        problems[name] = 'must be at most $max characters';
+      } else if (rule.email && !_bareAddress(value)) {
+        problems[name] = 'must be a valid email';
+      }
+    });
+    return problems;
+  }
+
+  void _requireRecoveryEmailConfigured() {
+    if (recoveryEmailConfigured) return;
+    _fail(
+      503,
+      'unavailable',
+      'Email recovery requires an HTTPS RESTMAIL_RECOVERY_EMAIL_BASE_URL',
+    );
+  }
+
+  /// Recovery addresses never sit on a domain this server hosts, and a domain
+  /// added later ends the address's use.
+  bool _recoveryAddressExternal(String address) =>
+      !_domains.containsKey(address.split('@').last.toLowerCase());
+
+  String _mintRecoveryLink(FakeMailbox box, String mode, String to) {
+    final token = 'recovery-link-${_nextRecoveryLink++}';
+    _recoveryLinks[token] = _RecoveryLink(
+      box.id,
+      mode,
+      _clock().add(const Duration(minutes: 15)),
+    );
+    _recoveryMail.add(
+      FakeRecoveryMail(
+        to: to,
+        mode: mode,
+        token: token,
+        link: 'https://$host/api/v1/auth/recovery-email/link?mode=$mode#$token',
+      ),
+    );
+    return token;
+  }
+
+  void _forgetRecoveryLinks(int mailboxId, {String? mode}) =>
+      _recoveryLinks.removeWhere(
+        (_, link) =>
+            link.mailboxId == mailboxId && (mode == null || link.mode == mode),
+      );
+
+  /// A link of [mode] that may still be used: unknown, used, expired and
+  /// wrong-purpose links all get the same refusal.
+  ({FakeMailbox box, _RecoveryEmail method}) _spendRecoveryLink(
+    String token,
+    String mode,
+  ) {
+    Never refuse() => _fail(
+      401,
+      'invalid_token',
+      'the token is not valid: unknown, already used, or expired',
+    );
+    final link = _recoveryLinks[token];
+    if (link == null ||
+        link.mode != mode ||
+        !_clock().isBefore(link.expiresAt)) {
+      refuse();
+    }
+    final box = _mailboxes[link.mailboxId];
+    final method = _recoveryEmails[link.mailboxId];
+    if (box == null ||
+        !box.active ||
+        method == null ||
+        !_recoveryAddressExternal(method.address) ||
+        (mode == 'recover' && !method.verified)) {
+      refuse();
+    }
+    _recoveryLinks.remove(token);
+    return (box: box, method: method);
+  }
+
+  /// GET /api/v1/auth/recovery-email. Empty when none is registered; an
+  /// address whose domain has since become hosted here no longer counts as
+  /// verified.
+  http.StreamedResponse _recoveryEmailStatus(_Session session) {
+    final method = _recoveryEmails[session.primary];
+    return _json({
+      'data': {
+        'email': method?.address ?? '',
+        'verified':
+            method != null &&
+            method.verified &&
+            _recoveryAddressExternal(method.address),
+      },
+    });
+  }
+
+  /// POST /api/v1/auth/recovery-email, in the handler's order. A replacement
+  /// starts pending and ends the links before it.
+  http.StreamedResponse _registerRecoveryEmail(
+    http.BaseRequest request,
+    _Session session,
+    Map<String, dynamic> body,
+  ) {
+    final box = _mailboxes[session.primary]!;
+    return _audited(
+      request,
+      'auth.recovery_email.register',
+      actorKind: 'account',
+      actorName: box.address,
+      actorId: box.id,
+      () {
+        _spendSignInBudget();
+        final problems = _bindRecoveryBody(body, const {
+          'email': (min: null, max: 255, email: true),
+          'current_password': (min: 1, max: null, email: false),
+        });
+        if (problems.isNotEmpty) _invalid(problems);
+        final address = (body['email'] as String).toLowerCase();
+        _requireRecoveryEmailConfigured();
+        if (body['current_password'] != box.password) {
+          _fail(403, 'invalid_password', 'Current password is incorrect');
+        }
+        if (!_recoveryAddressExternal(address) ||
+            address == box.address.toLowerCase()) {
+          _invalid({'email': "must be outside this server's hosted domains"});
+        }
+        final frozenUntil = _recoveryEmails[box.id]?.frozenUntil;
+        if (frozenUntil != null && frozenUntil.isAfter(_clock())) {
+          _fail(
+            403,
+            'recovery_method_frozen',
+            'recovery address changes are frozen for three days after email '
+                'recovery',
+          );
+        }
+        _forgetRecoveryLinks(box.id);
+        _recoveryEmails[box.id] = _RecoveryEmail(address);
+        _mintRecoveryLink(box, 'verify', address);
+        return _json({
+          'data': {
+            'message':
+                'Verification link sent. The address cannot recover your '
+                'account until verified.',
+          },
+        });
+      },
+    );
+  }
+
+  /// POST /api/v1/auth/recovery-email/verify, what the link's page sends.
+  http.StreamedResponse _verifyRecoveryEmail(
+    http.BaseRequest request,
+    Map<String, dynamic> body,
+  ) => _audited(
+    request,
+    'auth.recovery_email.verify',
+    actorKind: 'account',
+    actorName: _recoveryLinkOwner(body)?.address ?? '',
+    actorId: _recoveryLinkOwner(body)?.id,
+    () {
+      _spendSignInBudget();
+      final problems = _bindRecoveryBody(body, const {
+        'token': (min: 1, max: 128, email: false),
+      });
+      if (problems.isNotEmpty) _invalid(problems);
+      final spent = _spendRecoveryLink(body['token'] as String, 'verify');
+      spent.method.verified = true;
+      return _json({
+        'data': {'message': 'Recovery email verified.'},
+      });
+    },
+  );
+
+  FakeMailbox? _recoveryLinkOwner(Map<String, dynamic> body) =>
+      _mailboxes[_recoveryLinks[body['token']]?.mailboxId];
+
+  /// POST /api/v1/auth/recover/email. The same answer for an unknown, a
+  /// disabled, an unverified and a verified account, and each spends the same
+  /// per-address budget. Only the last gets a link, replacing an earlier one.
+  /// Asking proves no identity, so a sent link records no actor, and an answer
+  /// that sent nothing records nothing.
+  http.StreamedResponse _requestRecoveryEmail(
+    http.BaseRequest request,
+    Map<String, dynamic> body,
+  ) {
+    var sent = false;
+    return _audited(
+      request,
+      'auth.recovery_email.issue',
+      actorKind: 'anonymous',
+      actorName: '',
+      recordSuccess: () => sent,
+      () {
+        _spendSignInBudget();
+        final problems = _bindRecoveryBody(body, const {
+          'email': (min: null, max: 255, email: true),
+        });
+        if (problems.isNotEmpty) _invalid(problems);
+        final address = (body['email'] as String).toLowerCase();
+        _takeRecoveryLinkBudget(address);
+        _requireRecoveryEmailConfigured();
+        final box = _mailboxAt(address);
+        final method = _recoveryEmails[box?.id];
+        if (box != null &&
+            box.active &&
+            method != null &&
+            method.verified &&
+            _recoveryAddressExternal(method.address)) {
+          _forgetRecoveryLinks(box.id, mode: 'recover');
+          _mintRecoveryLink(box, 'recover', method.address);
+          sent = true;
+        }
+        return _json({
+          'data': {
+            'message':
+                'If this account has a verified recovery email, a recovery '
+                'link will be sent.',
+          },
+        });
+      },
+    );
+  }
+
+  void _takeRecoveryLinkBudget(String address) {
+    const burst = 5.0;
+    const refill = Duration(minutes: 15);
+    final now = _clock();
+    final before = _recoveryLinkBudget[address];
+    final left = before == null
+        ? burst
+        : min(
+            burst,
+            before.left +
+                now.difference(before.at).inMilliseconds /
+                    refill.inMilliseconds,
+          );
+    if (left < 1) {
+      _recoveryLinkBudget[address] = (left: left, at: now);
+      final wait = ((1 - left) * refill.inSeconds).ceil();
+      throw _Reply(
+        _json(
+          {
+            'error': {
+              'code': 'rate_limited',
+              'message':
+                  'Too many recovery requests for this address; try again '
+                  'later',
+            },
+          },
+          status: 429,
+          headers: {'retry-after': '${max(1, wait)}'},
+        ),
+      );
+    }
+    _recoveryLinkBudget[address] = (left: left - 1, at: now);
+  }
+
+  /// POST /api/v1/auth/recover/email/redeem, what the link's page sends. It
+  /// sets the password, ends the sessions and app passwords, and freezes the
+  /// address for three days. It does not sign in, and the authenticator stays.
+  http.StreamedResponse _redeemRecoveryEmail(
+    http.BaseRequest request,
+    Map<String, dynamic> body,
+  ) => _audited(
+    request,
+    'auth.recovery_email.redeem',
+    actorKind: 'account',
+    actorName: _recoveryLinkOwner(body)?.address ?? '',
+    actorId: _recoveryLinkOwner(body)?.id,
+    () {
+      _spendSignInBudget();
+      final problems = _bindRecoveryBody(body, const {
+        'token': (min: 1, max: 128, email: false),
+        'new_password': (min: 12, max: 72, email: false),
+      });
+      if (problems.isNotEmpty) _invalid(problems);
+      final password = body['new_password'] as String;
+      if (utf8.encode(password).length > 72) {
+        _invalid({
+          'new_password': 'must be at least 12 characters and at most 72 bytes',
+        });
+      }
+      final (:box, :method) = _spendRecoveryLink(
+        body['token'] as String,
+        'recover',
+      );
+      box
+        ..password = password
+        ..mustChangePassword = false;
+      revokeSessionsOf(box.address);
+      _appPasswords.removeWhere((_, p) => p.mailboxId == box.id);
+      _forgetRecoveryLinks(box.id);
+      method.frozenUntil = _clock().add(const Duration(hours: 72));
+      return _json({
+        'data': {
+          'message':
+              'Password changed. Sign in again with the new password and your '
+              'existing second factor.',
+        },
+      });
+    },
+  );
 
   /// [_audited], for a request made by a mailbox's session.
   http.StreamedResponse _auditedBy(
@@ -4303,6 +4706,7 @@ class FakeRestmail {
     required String actorKind,
     required String actorName,
     int? actorId,
+    bool Function()? recordSuccess,
   }) {
     http.StreamedResponse response;
     try {
@@ -4311,6 +4715,9 @@ class FakeRestmail {
       response = reply.response;
     }
     final status = response.statusCode;
+    if (status < 400 && recordSuccess != null && !recordSuccess()) {
+      return response;
+    }
     _record(
       FakeAuditEntry(
         seq: (_audit.lastOrNull?.seq ?? 0) + 1,
@@ -4627,6 +5034,7 @@ class FakeRestmail {
         box
           ..password = next
           ..mustChangePassword = false;
+        _forgetRecoveryLinks(box.id);
         // Every session of the account ends, this one included, and every
         // app password goes: whoever knew the old password could have made
         // one.
@@ -7254,6 +7662,7 @@ class FakeRestmail {
         );
       }
       box.password = password;
+      _forgetRecoveryLinks(box.id);
       // A new password ends the mailbox's sessions, and revokes its app
       // passwords: whoever knew the old one could have made one.
       revokeSessionsOf(box.address);
@@ -7501,6 +7910,24 @@ class FakeRestmail {
     );
     return _json({'data': _aliasJson(alias)}, status: 201);
   }
+}
+
+/// An account's external recovery address.
+class _RecoveryEmail {
+  _RecoveryEmail(this.address);
+
+  final String address;
+  bool verified = false;
+  DateTime? frozenUntil;
+}
+
+/// A single-use link's token: `verify` or `recover`.
+class _RecoveryLink {
+  _RecoveryLink(this.mailboxId, this.mode, this.expiresAt);
+
+  final int mailboxId;
+  final String mode;
+  final DateTime expiresAt;
 }
 
 class _Session {

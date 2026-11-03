@@ -68,6 +68,26 @@ class FakeMailbox {
 }
 
 /// A domain the fake serves.
+/// A recovery email link the server put in its outbound queue.
+class FakeRecoveryMail {
+  const FakeRecoveryMail({
+    required this.to,
+    required this.mode,
+    required this.token,
+    required this.link,
+  });
+
+  /// The recovery address, never the account's own.
+  final String to;
+
+  /// `verify` or `recover`.
+  final String mode;
+
+  /// The link's secret, which the real link carries in its fragment.
+  final String token;
+  final String link;
+}
+
 class FakeDomain {
   FakeDomain({required this.id, required this.name, this.active = true});
 

@@ -8,10 +8,12 @@ import '../state/app_scope.dart';
 import '../theme/tokens.dart';
 import 'widgets/common.dart';
 
-/// A forgotten password reset on [server] with a code from the account's
-/// authenticator and one of its recovery codes, both; then the account is
-/// signed in. An account without two-factor sign-in has no way back here:
-/// its administrator resets it. REST Mail only.
+/// A forgotten password reset on [server], one of two ways. A code from the
+/// account's authenticator and one of its recovery codes, both, reset it here
+/// and sign the account in. Or a link goes to the recovery email the account
+/// verified beforehand, and the password is chosen in a browser. Asking for
+/// the link shows the same answer whatever the address, because the server
+/// gives one. Without either, its administrator resets it. REST Mail only.
 class RecoverAccountScreen extends StatefulWidget {
   const RecoverAccountScreen({super.key, required this.server, this.email});
 
@@ -27,15 +29,19 @@ class _RecoverAccountScreenState extends State<RecoverAccountScreen> {
   final _code = TextEditingController();
   final _recovery = TextEditingController();
   final _password = TextEditingController();
+  bool _byEmail = false;
   bool _busy = false;
+  bool _linkRequested = false;
   String? _error;
+  String? _emailError;
 
   bool get _ready =>
       !_busy &&
       _email.text.trim().isNotEmpty &&
-      _code.text.trim().isNotEmpty &&
-      _recovery.text.trim().isNotEmpty &&
-      _password.text.isNotEmpty;
+      (_byEmail ||
+          _code.text.trim().isNotEmpty &&
+              _recovery.text.trim().isNotEmpty &&
+              _password.text.isNotEmpty);
 
   @override
   void dispose() {
@@ -46,7 +52,59 @@ class _RecoverAccountScreenState extends State<RecoverAccountScreen> {
     super.dispose();
   }
 
-  void _changed(String _) => setState(() => _error = null);
+  void _changed(String _) => setState(() {
+    _error = null;
+    _emailError = null;
+    _linkRequested = false;
+  });
+
+  void _choose(bool byEmail) => setState(() {
+    _byEmail = byEmail;
+    _error = null;
+    _emailError = null;
+    _linkRequested = false;
+  });
+
+  /// Every outcome here depends only on the address's form and the server,
+  /// never on whether the address is an account: what shows must stay so.
+  Future<void> _requestLink() async {
+    if (!_ready) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _emailError = null;
+      _linkRequested = false;
+    });
+    try {
+      await AppScope.read(
+        context,
+      ).requestRecoveryEmail(server: widget.server, email: _email.text.trim());
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _linkRequested = true;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _emailError = e.fields['email'];
+        if (_emailError != null) return;
+        _error = switch (e) {
+          ApiException(statusCode: 429, :final retryAfter?) => trArgs(
+            context,
+            'recoveryEmail.tooMany',
+            {'minutes': '${(retryAfter.inSeconds / 60).ceil()}'},
+          ),
+          ApiException(statusCode: 404 || 503) => tr(
+            context,
+            'recover.emailUnavailable',
+          ),
+          _ => describeError(context, e, host: widget.server.host),
+        };
+      });
+    }
+  }
 
   Future<void> _reset() async {
     if (!_ready) return;
@@ -104,7 +162,10 @@ class _RecoverAccountScreenState extends State<RecoverAccountScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                   children: [
                     Text(
-                      tr(context, 'recover.intro'),
+                      tr(
+                        context,
+                        _byEmail ? 'recover.emailIntro' : 'recover.intro',
+                      ),
                       style: rmText(15, color: c.ink2, height: 1.45),
                     ),
                     const SizedBox(height: 22),
@@ -122,68 +183,107 @@ class _RecoverAccountScreenState extends State<RecoverAccountScreen> {
                       ],
                       onChanged: _changed,
                       style: rmText(16, color: c.ink),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'you@example.com',
+                        errorText: _emailError,
+                        errorMaxLines: 3,
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    SectionLabel(tr(context, 'signIn.twoFactorCode')),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _code,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.oneTimeCode],
-                      autocorrect: false,
-                      onChanged: _changed,
-                      style: rmText(16, color: c.ink, tracking: 0.08),
-                      decoration: InputDecoration(
-                        hintText: tr(context, 'signIn.codeHint'),
+                    if (_byEmail) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        tr(context, 'recover.emailNote'),
+                        style: rmText(12.5, color: c.ink3, height: 1.4),
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    SectionLabel(tr(context, 'signIn.recoveryCode')),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _recovery,
-                      textInputAction: TextInputAction.next,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      onChanged: _changed,
-                      style: rmText(16, color: c.ink, tracking: 0.08),
-                      decoration: InputDecoration(
-                        hintText: tr(context, 'signIn.recoveryHint'),
+                    ] else ...[
+                      const SizedBox(height: 22),
+                      SectionLabel(tr(context, 'signIn.twoFactorCode')),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _code,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        autocorrect: false,
+                        onChanged: _changed,
+                        style: rmText(16, color: c.ink, tracking: 0.08),
+                        decoration: InputDecoration(
+                          hintText: tr(context, 'signIn.codeHint'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    SectionLabel(tr(context, 'recover.newPassword')),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _password,
-                      obscureText: true,
-                      autofillHints: const [AutofillHints.newPassword],
-                      textInputAction: TextInputAction.done,
-                      onChanged: _changed,
-                      onSubmitted: (_) => unawaited(_reset()),
-                      style: rmText(16, color: c.ink),
-                      decoration: InputDecoration(
-                        hintText: tr(context, 'recover.newPassword'),
+                      const SizedBox(height: 22),
+                      SectionLabel(tr(context, 'signIn.recoveryCode')),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _recovery,
+                        textInputAction: TextInputAction.next,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        onChanged: _changed,
+                        style: rmText(16, color: c.ink, tracking: 0.08),
+                        decoration: InputDecoration(
+                          hintText: tr(context, 'signIn.recoveryHint'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      tr(context, 'recover.passwordNote'),
-                      style: rmText(12.5, color: c.ink3, height: 1.4),
-                    ),
+                      const SizedBox(height: 22),
+                      SectionLabel(tr(context, 'recover.newPassword')),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _password,
+                        obscureText: true,
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.done,
+                        onChanged: _changed,
+                        onSubmitted: (_) => unawaited(_reset()),
+                        style: rmText(16, color: c.ink),
+                        decoration: InputDecoration(
+                          hintText: tr(context, 'recover.newPassword'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        tr(context, 'recover.passwordNote'),
+                        style: rmText(12.5, color: c.ink3, height: 1.4),
+                      ),
+                    ],
+                    if (_linkRequested) ...[
+                      const SizedBox(height: 16),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          tr(context, 'recover.emailSent'),
+                          style: rmText(14, color: c.ink, height: 1.45),
+                        ),
+                      ),
+                    ],
                     if (error != null) ...[
                       const SizedBox(height: 16),
                       ErrorText(error),
                     ],
                     const SizedBox(height: 26),
                     RmPrimaryButton(
-                      label: tr(context, 'recover.submit'),
+                      label: tr(
+                        context,
+                        _byEmail ? 'recover.emailSubmit' : 'recover.submit',
+                      ),
                       busy: _busy,
-                      onPressed: _ready ? () => unawaited(_reset()) : null,
+                      onPressed: !_ready
+                          ? null
+                          : () =>
+                                unawaited(_byEmail ? _requestLink() : _reset()),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton(
+                        onPressed: _busy ? null : () => _choose(!_byEmail),
+                        child: Text(
+                          tr(
+                            context,
+                            _byEmail ? 'recover.useCodes' : 'recover.useEmail',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
                   ],
                 ),

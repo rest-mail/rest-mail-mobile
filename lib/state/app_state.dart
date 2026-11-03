@@ -358,6 +358,20 @@ class AppState extends ChangeNotifier {
     ),
   );
 
+  /// Asks [server] to send a recovery link for the account at [email]. The
+  /// answer says nothing about the account, so this returns nothing.
+  Future<void> requestRecoveryEmail({
+    required Uri server,
+    required String email,
+  }) async {
+    final candidate = probe(server);
+    try {
+      await candidate.requestRecoveryEmail(email);
+    } finally {
+      candidate.close();
+    }
+  }
+
   Future<void> _signInWith(
     Uri server,
     Future<LoginResult> Function(RestmailClient candidate) signIn,
