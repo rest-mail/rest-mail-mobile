@@ -1,3 +1,4 @@
+import 'auth_results.dart';
 import 'calendar.dart';
 import 'session.dart';
 
@@ -384,6 +385,8 @@ class Message {
     this.labels = const [],
     this.headers = const {},
     this.calendarEvents = const [],
+    this.sealedHash,
+    this.authResults = const [],
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
@@ -410,6 +413,11 @@ class Message {
     receivedAt: _time(json['received_at']),
     dateHeader: _optionalTime(json['date_header']),
     headers: _headerMap(json['headers']),
+    sealedHash: _optionalString(json['sealed_hash']),
+    authResults: [
+      for (final result in (json['auth_results'] as List? ?? const []))
+        AuthCheck.fromStored(result as Map<String, dynamic>),
+    ],
     calendarEvents: CalendarInvite.listFromJson(json['calendar_events']),
   );
 
@@ -451,6 +459,8 @@ class Message {
   /// The calendar events its iCalendar parts carry: an invitation, its
   /// update or its cancellation. Empty for most mail.
   final List<CalendarInvite> calendarEvents;
+  final String? sealedHash;
+  final List<AuthCheck> authResults;
 
   /// When the message says it was written, else when it arrived.
   DateTime get date => dateHeader ?? receivedAt;
@@ -499,6 +509,8 @@ class Message {
     labels: labels ?? this.labels,
     headers: headers,
     calendarEvents: calendarEvents,
+    sealedHash: sealedHash,
+    authResults: authResults,
   );
 }
 

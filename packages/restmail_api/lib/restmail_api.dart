@@ -20,5 +20,6 @@ export 'src/filter_models.dart';
 export 'src/forward.dart';
 export 'src/grants_models.dart';
 export 'src/models.dart';
+export 'src/message_seal.dart';
 export 'src/push.dart';
 export 'src/session.dart';

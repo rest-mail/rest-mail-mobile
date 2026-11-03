@@ -2,62 +2,72 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i16;
+import 'dart:core' as _i18;
 
-import 'package:http/http.dart' as _i19;
-import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i25;
-import 'package:restmail_generated/src/model/forward_body.dart' as _i36;
-import 'package:restmail_generated/src/model/import_message_body.dart' as _i22;
-import 'package:restmail_generated/src/model/send_message_request.dart' as _i30;
-import 'package:restmail_generated/src/model/update_message_body.dart' as _i34;
+import 'package:http/http.dart' as _i21;
+import 'package:restmail_generated/src/model/api_v1_accounts_id_threads_thread_id_due_post_body_body_model.dart'
+    as _i27;
+import 'package:restmail_generated/src/model/deliver_message_body.dart' as _i29;
+import 'package:restmail_generated/src/model/forward_body.dart' as _i40;
+import 'package:restmail_generated/src/model/import_message_body.dart' as _i24;
+import 'package:restmail_generated/src/model/send_message_description.dart'
+    as _i34;
+import 'package:restmail_generated/src/model/update_message_body.dart' as _i38;
 import 'package:restmail_generated/src/operation/cancel_scheduled_message.dart'
-    as _i8;
-import 'package:restmail_generated/src/operation/delete_message.dart' as _i12;
-import 'package:restmail_generated/src/operation/deliver_message.dart' as _i6;
-import 'package:restmail_generated/src/operation/forward_message.dart' as _i14;
-import 'package:restmail_generated/src/operation/get_message.dart' as _i11;
-import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i15;
+    as _i9;
+import 'package:restmail_generated/src/operation/delete_message.dart' as _i13;
+import 'package:restmail_generated/src/operation/deliver_message.dart' as _i7;
+import 'package:restmail_generated/src/operation/forward_message.dart' as _i15;
+import 'package:restmail_generated/src/operation/get_message.dart' as _i12;
+import 'package:restmail_generated/src/operation/get_raw_message.dart' as _i16;
 import 'package:restmail_generated/src/operation/get_thread.dart' as _i5;
 import 'package:restmail_generated/src/operation/import_message.dart' as _i4;
 import 'package:restmail_generated/src/operation/list_held_messages.dart'
     as _i3;
 import 'package:restmail_generated/src/operation/list_messages.dart' as _i2;
 import 'package:restmail_generated/src/operation/list_scheduled_messages.dart'
-    as _i7;
+    as _i8;
 import 'package:restmail_generated/src/operation/release_held_message.dart'
-    as _i9;
-import 'package:restmail_generated/src/operation/send_message.dart' as _i10;
-import 'package:restmail_generated/src/operation/update_message.dart' as _i13;
+    as _i10;
+import 'package:restmail_generated/src/operation/send_message.dart' as _i11;
+import 'package:restmail_generated/src/operation/set_thread_due.dart' as _i6;
+import 'package:restmail_generated/src/operation/update_message.dart' as _i14;
+import 'package:restmail_generated/src/operation/verify_message_seal.dart'
+    as _i17;
 import 'package:restmail_generated/src/response_wrapper/cancel_scheduled_message_response.dart'
-    as _i27;
-import 'package:restmail_generated/src/response_wrapper/delete_message_response.dart'
-    as _i32;
-import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
-    as _i24;
-import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
-    as _i35;
-import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
     as _i31;
-import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
-    as _i37;
-import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
-    as _i23;
-import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
-    as _i21;
-import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
-    as _i20;
-import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
-    as _i18;
-import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
-    as _i26;
-import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
+import 'package:restmail_generated/src/response_wrapper/delete_message_response.dart'
+    as _i36;
+import 'package:restmail_generated/src/response_wrapper/deliver_message_response.dart'
     as _i28;
+import 'package:restmail_generated/src/response_wrapper/forward_message_response.dart'
+    as _i39;
+import 'package:restmail_generated/src/response_wrapper/get_message_response.dart'
+    as _i35;
+import 'package:restmail_generated/src/response_wrapper/get_raw_message_response.dart'
+    as _i41;
+import 'package:restmail_generated/src/response_wrapper/get_thread_response.dart'
+    as _i25;
+import 'package:restmail_generated/src/response_wrapper/import_message_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response_wrapper/list_held_messages_response.dart'
+    as _i22;
+import 'package:restmail_generated/src/response_wrapper/list_messages_response.dart'
+    as _i20;
+import 'package:restmail_generated/src/response_wrapper/list_scheduled_messages_response.dart'
+    as _i30;
+import 'package:restmail_generated/src/response_wrapper/release_held_message_response.dart'
+    as _i32;
 import 'package:restmail_generated/src/response_wrapper/send_message_response.dart'
-    as _i29;
-import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
     as _i33;
+import 'package:restmail_generated/src/response_wrapper/set_thread_due_response.dart'
+    as _i26;
+import 'package:restmail_generated/src/response_wrapper/update_message_response.dart'
+    as _i37;
+import 'package:restmail_generated/src/response_wrapper/verify_message_seal_response.dart'
+    as _i42;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i17;
+import 'package:tonik_util/tonik_util.dart' as _i19;
 
 class MessagesApi {
   MessagesApi(_i1.Server server)
@@ -68,28 +78,33 @@ class MessagesApi {
       ),
       _importMessage = _i4.ImportMessage(server.baseUrl, () => server.client),
       _getThread = _i5.GetThread(server.baseUrl, () => server.client),
-      _deliverMessage = _i6.DeliverMessage(server.baseUrl, () => server.client),
-      _listScheduledMessages = _i7.ListScheduledMessages(
+      _setThreadDue = _i6.SetThreadDue(server.baseUrl, () => server.client),
+      _deliverMessage = _i7.DeliverMessage(server.baseUrl, () => server.client),
+      _listScheduledMessages = _i8.ListScheduledMessages(
         server.baseUrl,
         () => server.client,
       ),
-      _cancelScheduledMessage = _i8.CancelScheduledMessage(
+      _cancelScheduledMessage = _i9.CancelScheduledMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _releaseHeldMessage = _i9.ReleaseHeldMessage(
+      _releaseHeldMessage = _i10.ReleaseHeldMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _sendMessage = _i10.SendMessage(server.baseUrl, () => server.client),
-      _getMessage = _i11.GetMessage(server.baseUrl, () => server.client),
-      _deleteMessage = _i12.DeleteMessage(server.baseUrl, () => server.client),
-      _updateMessage = _i13.UpdateMessage(server.baseUrl, () => server.client),
-      _forwardMessage = _i14.ForwardMessage(
+      _sendMessage = _i11.SendMessage(server.baseUrl, () => server.client),
+      _getMessage = _i12.GetMessage(server.baseUrl, () => server.client),
+      _deleteMessage = _i13.DeleteMessage(server.baseUrl, () => server.client),
+      _updateMessage = _i14.UpdateMessage(server.baseUrl, () => server.client),
+      _forwardMessage = _i15.ForwardMessage(
         server.baseUrl,
         () => server.client,
       ),
-      _getRawMessage = _i15.GetRawMessage(server.baseUrl, () => server.client);
+      _getRawMessage = _i16.GetRawMessage(server.baseUrl, () => server.client),
+      _verifyMessageSeal = _i17.VerifyMessageSeal(
+        server.baseUrl,
+        () => server.client,
+      );
 
   final _i2.ListMessages _listMessages;
 
@@ -99,25 +114,29 @@ class MessagesApi {
 
   final _i5.GetThread _getThread;
 
-  final _i6.DeliverMessage _deliverMessage;
+  final _i6.SetThreadDue _setThreadDue;
 
-  final _i7.ListScheduledMessages _listScheduledMessages;
+  final _i7.DeliverMessage _deliverMessage;
 
-  final _i8.CancelScheduledMessage _cancelScheduledMessage;
+  final _i8.ListScheduledMessages _listScheduledMessages;
 
-  final _i9.ReleaseHeldMessage _releaseHeldMessage;
+  final _i9.CancelScheduledMessage _cancelScheduledMessage;
 
-  final _i10.SendMessage _sendMessage;
+  final _i10.ReleaseHeldMessage _releaseHeldMessage;
 
-  final _i11.GetMessage _getMessage;
+  final _i11.SendMessage _sendMessage;
 
-  final _i12.DeleteMessage _deleteMessage;
+  final _i12.GetMessage _getMessage;
 
-  final _i13.UpdateMessage _updateMessage;
+  final _i13.DeleteMessage _deleteMessage;
 
-  final _i14.ForwardMessage _forwardMessage;
+  final _i14.UpdateMessage _updateMessage;
 
-  final _i15.GetRawMessage _getRawMessage;
+  final _i15.ForwardMessage _forwardMessage;
+
+  final _i16.GetRawMessage _getRawMessage;
+
+  final _i17.VerifyMessageSeal _verifyMessageSeal;
 
   /// List messages in a folder
   ///
@@ -142,6 +161,7 @@ class MessagesApi {
   ///           "uid": "event-1"
   ///         }
   ///       ],
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": "2026-10-20T00:00:00Z",
   ///       "downgraded_size": 0,
@@ -185,6 +205,7 @@ class MessagesApi {
   ///       "updated_at": "2026-10-20T00:00:00Z"
   ///     },
   ///     {
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
   ///       "downgraded_size": 0,
@@ -214,6 +235,7 @@ class MessagesApi {
   ///     },
   ///     {
   ///       "body_text": "Plain delivery",
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
   ///       "downgraded_size": 0,
@@ -342,13 +364,13 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i18.ListMessagesResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i20.ListMessagesResponse, _i21.Response>>
   listMessages({
-    required _i16.int id,
-    required _i16.String folder,
-    _i16.int? limit,
-    _i16.String? cursor,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    required _i18.String folder,
+    _i18.int? limit,
+    _i18.String? cursor,
+    _i19.TonikCancellation? cancellation,
   }) async => _listMessages(
     id: id,
     folder: folder,
@@ -454,10 +476,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i20.ListHeldMessagesResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i22.ListHeldMessagesResponse, _i21.Response>>
   listHeldMessages({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _listHeldMessages(id: id, cancellation: cancellation);
 
   /// Store a message the account already has
@@ -780,11 +802,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i21.ImportMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i23.ImportMessageResponse, _i21.Response>>
   importMessage({
-    required _i22.ImportMessageBody body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i24.ImportMessageBody body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _importMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get all messages in a thread
@@ -804,6 +826,7 @@ class MessagesApi {
   ///   "data": [
   ///     {
   ///       "body_text": "Plain delivery",
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
   ///       "downgraded_size": 0,
@@ -833,6 +856,7 @@ class MessagesApi {
   ///       "updated_at": "2026-10-20T00:00:00Z"
   ///     },
   ///     {
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": null,
   ///       "downgraded_size": 0,
@@ -868,6 +892,7 @@ class MessagesApi {
   ///           "uid": "event-1"
   ///         }
   ///       ],
+  ///       "class": "person",
   ///       "created_at": "2026-10-20T00:00:00Z",
   ///       "date_header": "2026-10-20T00:00:00Z",
   ///       "downgraded_size": 0,
@@ -1006,13 +1031,370 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i23.GetThreadResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i25.GetThreadResponse, _i21.Response>>
   getThread({
-    required _i16.int id,
-    required _i16.String threadId,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    required _i18.String threadId,
+    _i19.TonikCancellation? cancellation,
   }) async =>
       _getThread(id: id, threadId: threadId, cancellation: cancellation);
+
+  /// Set or clear a thread's due date
+  /// Stores an account-scoped user-set due date without changing message order or folders. Send an RFC 3339 due date-time, or null to clear both due and due_source. due_source must be user; rule and parsed are reserved for future work. Unknown threads and threads outside this account are 404.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Request body (application/json):
+  /// **Example** "clear":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": null,
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_id":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "key_read":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_date":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "tomorrow",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```
+  /// {
+  /// ```
+  ///
+  /// **Example** "no_grants":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "request_too_large":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "set":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "source_parsed":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "parsed"
+  /// }
+  /// ```
+  ///
+  /// **Example** "source_rule":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "rule"
+  /// }
+  /// ```
+  ///
+  /// **Example** "thread_missing":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "due": null,
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// **Example** "write_unavailable":
+  /// ```json
+  /// {
+  ///   "due": "2026-12-01T10:00:00Z",
+  ///   "due_source": "user"
+  /// }
+  /// ```
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "clear":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "due": null,
+  ///     "due_source": null,
+  ///     "thread_id": "<due/2026@example.net>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "set":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "due": "2026-12-01T10:00:00Z",
+  ///     "due_source": "user",
+  ///     "thread_id": "<due/2026@example.net>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 400 (application/json):
+  /// **Example** "malformed_json":
+  /// The wire body is the raw truncated JSON byte {, with application/json content type. The route and Vertrag transport hook send those exact bytes rather than JSON-quoting them.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "bad_request",
+  ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "key_read":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "no_grants":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Account not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "thread_missing":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "not_found",
+  ///     "message": "Thread not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// Real transport and path binding are exercised. The JSON body is valid; invalid-body flags do not describe path validation. The test cap is512 bytes; oversize hook sends513 bytes.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "malformed_date":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "due": "must be a valid date-time"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "source_parsed":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "due_source": "must be one of \"user\""
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "source_rule":
+  /// Production routes enforce live account access and mail:write, validate the user source and persist account/thread state. Separate PostgreSQL tests prove durability, isolation, unchanged order and folders.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "due_source": "must be one of \"user\""
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "write_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i18.Future<_i19.TonikResult<_i26.SetThreadDueResponse, _i21.Response>>
+  setThreadDue({
+    required _i27.ApiV1AccountsIdThreadsThreadIdDuePostBodyBodyModel body,
+    required _i18.int id,
+    required _i18.String threadId,
+    _i19.TonikCancellation? cancellation,
+  }) async => _setThreadDue(
+    body: body,
+    id: id,
+    threadId: threadId,
+    cancellation: cancellation,
+  );
 
   /// Deliver a message into a mailbox (protocol gateways)
   /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota. A missing mailbox is 404; a failed mailbox lookup is 500, never a missing recipient.
@@ -1118,6 +1500,7 @@ class MessagesApi {
   /// ```json
   /// {
   ///   "data": {
+  ///     "class": "person",
   ///     "created_at": "2026-10-20T00:00:00Z",
   ///     "date_header": "2026-10-20T00:00:00Z",
   ///     "downgraded_size": 137,
@@ -1250,10 +1633,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i24.DeliverMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i28.DeliverMessageResponse, _i21.Response>>
   deliverMessage({
-    required _i25.DeliverMessageBody body,
-    _i17.TonikCancellation? cancellation,
+    required _i29.DeliverMessageBody body,
+    _i19.TonikCancellation? cancellation,
   }) async => _deliverMessage(body: body, cancellation: cancellation);
 
   /// List the messages waiting to be sent
@@ -1388,10 +1771,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<
-    _i17.TonikResult<_i26.ListScheduledMessagesResponse, _i19.Response>
+  _i18.Future<
+    _i19.TonikResult<_i30.ListScheduledMessagesResponse, _i21.Response>
   >
-  listScheduledMessages({_i17.TonikCancellation? cancellation}) async =>
+  listScheduledMessages({_i19.TonikCancellation? cancellation}) async =>
       _listScheduledMessages(cancellation: cancellation);
 
   /// Cancel a scheduled message
@@ -1495,12 +1878,12 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<
-    _i17.TonikResult<_i27.CancelScheduledMessageResponse, _i19.Response>
+  _i18.Future<
+    _i19.TonikResult<_i31.CancelScheduledMessageResponse, _i21.Response>
   >
   cancelScheduledMessage({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _cancelScheduledMessage(id: id, cancellation: cancellation);
 
   /// Release held mail with a two-factor session
@@ -1648,10 +2031,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i28.ReleaseHeldMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i32.ReleaseHeldMessageResponse, _i21.Response>>
   releaseHeldMessage({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _releaseHeldMessage(id: id, cancellation: cancellation);
 
   /// Send a message
@@ -1689,6 +2072,8 @@ class MessagesApi {
   /// ```
   ///
   /// **Example** "from_missing":
+  /// The description requires from, as the handler does after authentication and before sender lookup. Its existing validation order and field error are unchanged.
+  ///
   /// ```json
   /// {
   ///   "body_text": "Sent through the REST API.",
@@ -1836,6 +2221,8 @@ class MessagesApi {
   /// ```
   ///
   /// **Example** "unsubscribe_not_allowed":
+  /// A schema-valid request from admin@restmail.test, whose domain has transactional sending policy, is refused by that stored policy. This is not schema invalidity.
+  ///
   /// ```json
   /// {
   ///   "body_text": "Sent through the REST API.",
@@ -1880,6 +2267,7 @@ class MessagesApi {
   /// {
   ///   "data": {
   ///     "body_text": "Sent through the REST API.",
+  ///     "class": "person",
   ///     "created_at": "2026-10-21T12:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 297,
@@ -1902,6 +2290,7 @@ class MessagesApi {
   ///       "recipient@example.net"
   ///     ],
   ///     "references": "",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
   ///     "sender": "shared@restmail.test",
   ///     "sender_name": "",
   ///     "size_bytes": 31,
@@ -1917,6 +2306,7 @@ class MessagesApi {
   /// {
   ///   "data": {
   ///     "body_text": "Sent through the REST API.",
+  ///     "class": "person",
   ///     "created_at": "2026-10-21T12:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 297,
@@ -1939,6 +2329,7 @@ class MessagesApi {
   ///       "recipient@example.net"
   ///     ],
   ///     "references": "",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
   ///     "sender": "shared@restmail.test",
   ///     "sender_name": "",
   ///     "size_bytes": 31,
@@ -1954,6 +2345,7 @@ class MessagesApi {
   /// {
   ///   "data": {
   ///     "body_text": "Sent through the REST API.",
+  ///     "class": "person",
   ///     "created_at": "2026-10-21T12:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 297,
@@ -1977,6 +2369,7 @@ class MessagesApi {
   ///       "someone@imap.restmail.test"
   ///     ],
   ///     "references": "",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
   ///     "sender": "admin@restmail.test",
   ///     "sender_name": "",
   ///     "size_bytes": 31,
@@ -2076,6 +2469,8 @@ class MessagesApi {
   ///
   /// Response 422 (application/json):
   /// **Example** "from_missing":
+  /// The description requires from, as the handler does after authentication and before sender lookup. Its existing validation order and field error are unchanged.
+  ///
   /// ```json
   /// {
   ///   "error": {
@@ -2091,6 +2486,8 @@ class MessagesApi {
   /// ```
   ///
   /// **Example** "unsubscribe_not_allowed":
+  /// A schema-valid request from admin@restmail.test, whose domain has transactional sending policy, is refused by that stored policy. This is not schema invalidity.
+  ///
   /// ```json
   /// {
   ///   "error": {
@@ -2132,10 +2529,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i29.SendMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i33.SendMessageResponse, _i21.Response>>
   sendMessage({
-    required _i30.SendMessageRequest body,
-    _i17.TonikCancellation? cancellation,
+    required _i34.SendMessageDescription body,
+    _i19.TonikCancellation? cancellation,
   }) async => _sendMessage(body: body, cancellation: cancellation);
 
   /// Get a message by ID
@@ -2147,6 +2544,102 @@ class MessagesApi {
   /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
   ///
   /// Response 200 (application/json):
+  /// **Example** "classification_newsletter":
+  /// Classification is derived from the stored headers, with no delivery changes. Only newsletter is list-shaped; person is never hidden. Commercial receipts without list signals use notification when automated, otherwise person.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_html": "<p>Hello café</p>",
+  ///     "body_text": "Hello café",
+  ///     "class": "newsletter",
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 0,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": true,
+  ///     "headers": {
+  ///       "List-Id": [
+  ///         "<news.example.test>"
+  ///       ]
+  ///     },
+  ///     "id": 101,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": false,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "received_tls": true,
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender café",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject café",
+  ///     "thread_id": "",
+  ///     "tls_version": "TLS1.3",
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "classification_notification":
+  /// Classification is derived from the stored headers, with no delivery changes. Only newsletter is list-shaped; person is never hidden. Commercial receipts without list signals use notification when automated, otherwise person.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_html": "<p>Hello café</p>",
+  ///     "body_text": "Hello café",
+  ///     "class": "notification",
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 0,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": true,
+  ///     "headers": {
+  ///       "Auto-Submitted": [
+  ///         "auto-generated"
+  ///       ]
+  ///     },
+  ///     "id": 102,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": false,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "received_tls": true,
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender café",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject café",
+  ///     "thread_id": "",
+  ///     "tls_version": "TLS1.3",
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "found":
   /// The production message lookup, credential verification and current holder ceilings are used. Controlled SQL proves wiring, not PostgreSQL semantics or audit persistence. JSON omits raw source and unloaded mailboxes; the source route preserves every octet, repeated headers, CRLF, UTF-8 and a leading dot.
   ///
@@ -2155,6 +2648,7 @@ class MessagesApi {
   ///   "data": {
   ///     "body_html": "<p>Hello café</p>",
   ///     "body_text": "Hello café",
+  ///     "class": "person",
   ///     "created_at": "2026-10-20T00:00:00Z",
   ///     "date_header": null,
   ///     "downgraded_size": 0,
@@ -2297,10 +2791,10 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i31.GetMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i35.GetMessageResponse, _i21.Response>>
   getMessage({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _getMessage(id: id, cancellation: cancellation);
 
   /// Delete a message
@@ -2415,11 +2909,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i32.DeleteMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i36.DeleteMessageResponse, _i21.Response>>
   deleteMessage({
-    required _i16.int id,
-    _i16.String? permanent,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i18.String? permanent,
+    _i19.TonikCancellation? cancellation,
   }) async =>
       _deleteMessage(id: id, permanent: permanent, cancellation: cancellation);
 
@@ -2525,6 +3019,7 @@ class MessagesApi {
   /// {
   ///   "data": {
   ///     "calendar_events": [],
+  ///     "class": "person",
   ///     "created_at": "2026-10-20T00:00:00Z",
   ///     "date_header": "2026-10-20T00:00:00Z",
   ///     "downgraded_size": 137,
@@ -2552,6 +3047,7 @@ class MessagesApi {
   ///       "recipient@example.com"
   ///     ],
   ///     "references": "",
+  ///     "sealed_hash": "00ced91ef87007eb619fe4d649ec941257846db0f6aa30fcea744c76902a3eea",
   ///     "sender": "sender@example.net",
   ///     "sender_name": "Sender",
   ///     "size_bytes": 80,
@@ -2684,11 +3180,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i33.UpdateMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i37.UpdateMessageResponse, _i21.Response>>
   updateMessage({
-    required _i34.UpdateMessageBody body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i38.UpdateMessageBody body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _updateMessage(body: body, id: id, cancellation: cancellation);
 
   /// Forward a message
@@ -2715,6 +3211,18 @@ class MessagesApi {
   /// **Example** "body_array" — The body is not a JSON object:
   /// ```json
   /// []
+  /// ```
+  ///
+  /// **Example** "capability_removed":
+  /// Message 12 belongs to the signed-in account 1 (admin@restmail.test). It is a draft for draft operations. The server capability ceiling permits mailbox:session but not mail:write or mail:read. The account can know its own mailbox exists, so refusal is 403, not a foreign-resource 404.
+  ///
+  /// ```json
+  /// {
+  ///   "from": "admin@restmail.test",
+  ///   "to": [
+  ///     "recipient@example.net"
+  ///   ]
+  /// }
   /// ```
   ///
   /// **Example** "discarded" — The outbound pipeline discards it:
@@ -2888,6 +3396,19 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// Response 403 (application/json):
+  /// **Example** "capability_removed":
+  /// Message 12 belongs to the signed-in account 1 (admin@restmail.test). It is a draft for draft operations. The server capability ceiling permits mailbox:session but not mail:write or mail:read. The account can know its own mailbox exists, so refusal is 403, not a foreign-resource 404.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Access denied"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 404 (application/json):
   /// **Example** "missing" — No such message:
   /// ```json
@@ -2978,11 +3499,11 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i35.ForwardMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i39.ForwardMessageResponse, _i21.Response>>
   forwardMessage({
-    required _i36.ForwardBody body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i40.ForwardBody body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _forwardMessage(body: body, id: id, cancellation: cancellation);
 
   /// Get the raw RFC 2822 message source
@@ -3112,9 +3633,102 @@ class MessagesApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i37.GetRawMessageResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i41.GetRawMessageResponse, _i21.Response>>
   getRawMessage({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _getRawMessage(id: id, cancellation: cancellation);
+
+  /// Verify a message's receipt seal
+  /// Compares the stored receipt seal with the current source, headers and bodies, without changing the seal. intact means unchanged since this server accepted it, not who wrote it or whether it is safe. not_sealed is distinct from mismatch; historical messages are never backfilled. Uses the same mail:read authorization as reading the message. See docs/message-seals.md for the streaming restmail-seal-v1 algorithm and byte framing.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  /// - HTTP Basic: A mailbox's address and one of its app passwords, as HTTP Basic. Accepted only by the operations that list it.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "intact":
+  /// Receipt integrity is independent of sender authentication and does not establish safety. Source and stored display fields are checked; no historical backfill.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "algorithm": "restmail-seal-v1",
+  ///     "computed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
+  ///     "state": "intact"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "mismatch":
+  /// Receipt integrity is independent of sender authentication and does not establish safety. Source and stored display fields are checked; no historical backfill.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "algorithm": "restmail-seal-v1",
+  ///     "computed_hash": "6f04bba035151f7cb8ee4cf1102126d259979e7822f364143192e2339ab31259",
+  ///     "sealed_hash": "c8df0e809a88268049a3d046bf4c17819b16cbf2e5d3845e15368a251710bfb2",
+  ///     "state": "mismatch"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "not_sealed":
+  /// Receipt integrity is independent of sender authentication and does not establish safety. Source and stored display fields are checked; no historical backfill.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "algorithm": "restmail-seal-v1",
+  ///     "state": "not_sealed"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "message_not_found",
+  ///     "message": "Message not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  _i18.Future<_i19.TonikResult<_i42.VerifyMessageSealResponse, _i21.Response>>
+  verifyMessageSeal({
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
+  }) async => _verifyMessageSeal(id: id, cancellation: cancellation);
 }

@@ -2205,6 +2205,15 @@ class AuthApi {
   /// }
   /// ```
   ///
+  /// **Example** "storage_unavailable":
+  /// HTTP Basic authentication succeeds for admin@restmail.test with fixture-password; the subsequent protocol account read fails. A credential-verification fault would instead answer 503.
+  ///
+  /// ```json
+  /// {
+  ///   "protocol": "imap"
+  /// }
+  /// ```
+  ///
   /// **Example** "unauthenticated" — No credential is sent:
   /// ```json
   /// {
@@ -2324,6 +2333,19 @@ class AuthApi {
   ///   "error": {
   ///     "code": "rate_limited",
   ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// HTTP Basic authentication succeeds for admin@restmail.test with fixture-password; the subsequent protocol account read fails. A credential-verification fault would instead answer 503.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Failed to load the account"
   ///   }
   /// }
   /// ```
@@ -2940,6 +2962,17 @@ class AuthApi {
   ///   "data": {
   ///     "email": "backup@external.test",
   ///     "verified": true
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
   ///   }
   /// }
   /// ```
@@ -3810,6 +3843,13 @@ class AuthApi {
   /// grant_type=client_credentials&client_id=9Hm3yU1cNp5Q&client_secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&scope=mail:read
   /// ```
   ///
+  /// **Example** "storage_unavailable":
+  /// The client-secret lookup fails. The OAuth error retains Cache-Control: no-store and Pragma: no-cache.
+  ///
+  /// ```
+  /// grant_type=client_credentials&client_id=9Hm3yU1cNp5Q&client_secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  /// ```
+  ///
   /// **Example** "unsupported_grant":
   /// ```
   /// grant_type=password&client_id=9Hm3yU1cNp5Q&client_secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -3891,6 +3931,17 @@ class AuthApi {
   ///     "code": "rate_limited",
   ///     "message": "Too many requests; please slow down"
   ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// The client-secret lookup fails. The OAuth error retains Cache-Control: no-store and Pragma: no-cache.
+  ///
+  /// ```json
+  /// {
+  ///   "error": "server_error",
+  ///   "error_description": "Could not verify client credentials"
   /// }
   /// ```
   _i25.Future<

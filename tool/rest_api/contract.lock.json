@@ -3,11 +3,11 @@
   "server": {
     "repository": "rest-mail/rest-mail-server",
     "version": "main",
-    "revision": "33715381613489b64f08fa1337ef0c7a63c1541e",
+    "revision": "07f617c9c21a527a247b943052c1f714c33a6d11",
     "document": "api_contract/openapi.json",
-    "sha256": "8e8cdefbdbcda1e9a14a756c57e9cb1f6a087a947cdc9e4adcef45856964e196",
+    "sha256": "82e924e4fe5f4df7b8afa42980b1b5fbf0fc495cd9467ad7199b6210398a501f",
     "source": "GET /api/docs/openapi.json on the pinned image with APNs configured",
-    "image": "ghcr.io/rest-mail/api@sha256:56df7af047f97e48ec356c0cfe791499644cd3d011a77ec230a240c46fcb8657"
+    "image": "ghcr.io/rest-mail/api@sha256:e755a7d45f7cfaff2d08c8ade46c508551644dc894345ac436b54d9a4ed79e93"
   },
   "generator": {
     "package": "tonik",

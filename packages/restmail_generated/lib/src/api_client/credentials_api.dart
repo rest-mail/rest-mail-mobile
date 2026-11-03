@@ -1069,6 +1069,17 @@ class CredentialsApi {
   /// }
   /// ```
   ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 403 (application/json):
   /// **Example** "setup_required" — A session still in setup cannot use this route:
   /// ```json
@@ -1118,6 +1129,19 @@ class CredentialsApi {
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 503 (application/json):
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
@@ -1135,7 +1159,7 @@ class CredentialsApi {
   }) async => _listClientSecrets(id: id, cancellation: cancellation);
 
   /// Make a scoped OAuth client secret
-  /// Requires a human session signed in with a second factor, the current password, and mailbox:manage on the account. Returns client_id and client_secret once; stores only the secret hash. Permissions must be within both the creator's and the account's live grants. The client-secret tier accepts mail:read, mail:write, mail:send and mail:receive; domains:read, mailboxes:read and pipelines:read/write/delete require a domain scope. It rejects all other capabilities, including account/credential creation, granting, password/2FA, audit, retention and server-ceiling controls. expires_at defaults to 90 days. Credential creation is audited as client_secrets.create with actor and credential id. Client secrets exchange at /api/v1/oauth/token; they are never accepted as bearer API keys or mail-client passwords.
+  /// Requires a human session signed in with a second factor, the current password, and mailbox:manage on the account. Returns client_id and client_secret once; stores only the secret hash. Permissions must be within both the creator's and the account's live grants. The client-secret tier accepts mail:read, mail:write, mail:send and mail:receive; domains:read, accounts:read and pipelines:read/write/delete require a domain scope. It rejects all other capabilities, including account/credential creation, granting, password/2FA, audit, retention and server-ceiling controls. expires_at defaults to 90 days. Credential creation is audited as client_secrets.create with actor and credential id. Client secrets exchange at /api/v1/oauth/token; they are never accepted as bearer API keys or mail-client passwords.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -1237,6 +1261,22 @@ class CredentialsApi {
   /// }
   /// ```
   ///
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "name": "Invoice robot",
+  ///   "password": "current-password",
+  ///   "permissions": [
+  ///     {
+  ///       "capability": "pipelines:write",
+  ///       "scope": "domain:example.test"
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  ///
   /// **Example** "tier_refused" — Account creation is beyond the client-secret tier:
   /// ```json
   /// {
@@ -1244,7 +1284,21 @@ class CredentialsApi {
   ///   "password": "current-password",
   ///   "permissions": [
   ///     {
-  ///       "capability": "mailboxes:write",
+  ///       "capability": "accounts:write",
+  ///       "scope": "domain:example.test"
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "name": "Invoice robot",
+  ///   "password": "current-password",
+  ///   "permissions": [
+  ///     {
+  ///       "capability": "pipelines:write",
   ///       "scope": "domain:example.test"
   ///     }
   ///   ]
@@ -1284,6 +1338,17 @@ class CredentialsApi {
   ///   "error": {
   ///     "code": "bad_request",
   ///     "message": "Invalid request body"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
   ///   }
   /// }
   /// ```
@@ -1378,6 +1443,19 @@ class CredentialsApi {
   /// }
   /// ```
   ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 503 (application/json):
   /// **Example** "session_unavailable" — The current-session lookup fails:
   /// ```json
@@ -1401,6 +1479,17 @@ class CredentialsApi {
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
   /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
   ///
   /// Response 403 (application/json):
   /// **Example** "setup_required" — A session still in setup cannot use this route:
@@ -1447,6 +1536,19 @@ class CredentialsApi {
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "storage_unavailable":
+  /// An authenticated human session with a second factor reaches unavailable storage; the account lookup fails, or the server-ceiling transaction cannot start.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
   ///   }
   /// }
   /// ```

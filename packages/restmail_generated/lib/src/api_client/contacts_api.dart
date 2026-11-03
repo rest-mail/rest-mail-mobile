@@ -1115,7 +1115,7 @@ class ContactsApi {
   }) async => _blockSender(body: body, id: id, cancellation: cancellation);
 
   /// Bulk import contacts
-  /// As many contacts as fit the API's request size limit. Every entry is checked first, and contacts the account already has are skipped.
+  /// As many contacts as fit the server's contact import limit, 10 MiB unless an administrator changes it. Every entry is checked first, and contacts the account already has are skipped.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -1196,7 +1196,7 @@ class ContactsApi {
   /// ```
   ///
   /// **Example** "request_too_large":
-  /// The configured route cap is512 bytes; the route and Vertrag transport hook send513 bytes to exercise its real body guard.
+  /// The file is larger than the server's contact import limit, which an administrator sets (updateServerLimits).
   ///
   /// ```json
   /// {
@@ -1306,7 +1306,7 @@ class ContactsApi {
   ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large":
-  /// The configured route cap is512 bytes; the route and Vertrag transport hook send513 bytes to exercise its real body guard.
+  /// The file is larger than the server's contact import limit, which an administrator sets (updateServerLimits).
   ///
   /// ```json
   /// {
@@ -1449,7 +1449,7 @@ class ContactsApi {
   ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large":
-  /// The configured route cap is512 bytes; the route and Vertrag transport hook send513 bytes to exercise its real body guard.
+  /// The file is larger than the server's contact import limit, which an administrator sets (updateServerLimits).
   ///
   /// ```json
   /// {

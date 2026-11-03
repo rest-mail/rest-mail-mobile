@@ -18,6 +18,7 @@ import 'forward.dart';
 import 'grants_models.dart';
 import 'generated_transport.dart';
 import 'models.dart';
+import 'message_seal.dart';
 import 'push.dart';
 import 'session.dart';
 
@@ -2299,6 +2300,26 @@ class RestmailClient {
       query: {'limit': '$limit', 'cursor': ?cursor},
     ),
   );
+
+  Future<MessageSeal> verifyMessageSeal(int id) async {
+    final response = await generatedValue(
+      wire.MessagesApi(generatedSession).verifyMessageSeal(id: id),
+    );
+    if (response is! wire.VerifyMessageSealResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final seal = response.body.body.data;
+    return MessageSeal(
+      state: switch (seal.state) {
+        wire.MessageSealStateModel.intact => MessageSealState.intact,
+        wire.MessageSealStateModel.mismatch => MessageSealState.mismatch,
+        wire.MessageSealStateModel.notSealed => MessageSealState.notSealed,
+      },
+      algorithm: seal.algorithm.toJson(),
+      sealedHash: seal.sealedHash,
+      computedHash: seal.computedHash,
+    );
+  }
 
   Future<Message> message(int id) async =>
       Message.fromJson(_data(await _authed('GET', ['messages', '$id'])));

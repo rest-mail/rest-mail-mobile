@@ -633,6 +633,14 @@ const Map<String, Map<String, String>> stringsEs = {
     'kind.video': 'Vídeo',
     'kind.archive': 'Archivo comprimido',
     'kind.file': 'Archivo',
+    'trust.seal.intact':
+        'Mensaje sin cambios desde que este servidor lo aceptó',
+    'trust.seal.mismatch':
+        'Mensaje modificado desde que este servidor lo aceptó',
+    'trust.seal.notSealed': 'Sin sello',
+    'trust.seal.checking': 'Comprobando el sello de recepción',
+    'trust.seal.unavailable': 'No se pudo comprobar el sello de recepción',
+    'trust.seal.detail': 'Un sello de recepción solo comprueba si ha habido cambios desde que este servidor aceptó el mensaje; no identifica al autor ni demuestra que el contenido sea seguro.',
     'trust.verification': 'Verificación del remitente: {label}',
     'trust.signed': 'firmado',
     'trust.signed.detail':

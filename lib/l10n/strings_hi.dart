@@ -616,6 +616,14 @@ const Map<String, Map<String, String>> stringsHi = {
     'kind.video': 'वीडियो',
     'kind.archive': 'संग्रह फ़ाइल',
     'kind.file': 'फ़ाइल',
+    'trust.seal.intact':
+        'इस सर्वर द्वारा स्वीकार किए जाने के बाद से संदेश अपरिवर्तित है',
+    'trust.seal.mismatch':
+        'इस सर्वर द्वारा स्वीकार किए जाने के बाद से संदेश बदल गया है',
+    'trust.seal.notSealed': 'सील नहीं है',
+    'trust.seal.checking': 'प्राप्ति सील की जाँच हो रही है',
+    'trust.seal.unavailable': 'प्राप्ति सील की जाँच नहीं हो सकी',
+    'trust.seal.detail': 'प्राप्ति सील केवल इस सर्वर द्वारा संदेश स्वीकार किए जाने के बाद हुए बदलावों की जाँच करती है; यह लेखक की पहचान नहीं करती और न ही यह साबित करती है कि सामग्री सुरक्षित है।',
     'trust.verification': 'प्रेषक सत्यापन: {label}',
     'trust.signed': 'हस्ताक्षरित',
     'trust.signed.detail':

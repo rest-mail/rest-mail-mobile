@@ -639,6 +639,12 @@ const Map<String, Map<String, String>> stringsEn = {
     'kind.video': 'Video',
     'kind.archive': 'Archive',
     'kind.file': 'File',
+    'trust.seal.intact': 'Message unchanged since this server accepted it',
+    'trust.seal.mismatch': 'Message changed since this server accepted it',
+    'trust.seal.notSealed': 'Not sealed',
+    'trust.seal.checking': 'Checking receipt seal',
+    'trust.seal.unavailable': 'Receipt seal could not be checked',
+    'trust.seal.detail': 'A receipt seal only checks for changes since this server accepted the message; it does not identify the author or establish that the content is safe.',
     'trust.verification': 'Sender verification: {label}',
     'trust.signed': 'signed',
     'trust.signed.detail':

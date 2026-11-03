@@ -634,6 +634,14 @@ const Map<String, Map<String, String>> stringsDe = {
     'kind.video': 'Video',
     'kind.archive': 'Archiv',
     'kind.file': 'Datei',
+    'trust.seal.intact':
+        'Nachricht seit der Annahme durch diesen Server unverändert',
+    'trust.seal.mismatch':
+        'Nachricht seit der Annahme durch diesen Server geändert',
+    'trust.seal.notSealed': 'Nicht versiegelt',
+    'trust.seal.checking': 'Empfangssiegel wird geprüft',
+    'trust.seal.unavailable': 'Empfangssiegel konnte nicht geprüft werden',
+    'trust.seal.detail': 'Ein Empfangssiegel prüft nur auf Änderungen seit der Annahme der Nachricht durch diesen Server; es identifiziert weder den Verfasser noch belegt es, dass der Inhalt sicher ist.',
     'trust.verification': 'Absenderprüfung: {label}',
     'trust.signed': 'signiert',
     'trust.signed.detail':

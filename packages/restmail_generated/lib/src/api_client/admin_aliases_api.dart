@@ -464,7 +464,7 @@ class AdminAliasesApi {
   ///
   /// Response 403 (application/json):
   /// **Example** "destination_mailbox_scope" — An individual destination mailbox grant cannot administer aliases:
-  /// Alias configuration belongs to the source domain. Holding mailboxes:read for this individual destination mailbox does not grant domain administration.
+  /// Alias configuration belongs to the source domain. Holding accounts:read for this individual destination mailbox does not grant domain administration.
   ///
   /// ```json
   /// {

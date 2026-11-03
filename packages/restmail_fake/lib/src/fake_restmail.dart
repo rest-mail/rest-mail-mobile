@@ -888,6 +888,9 @@ class FakeRestmail {
       }),
       ('GET', ['api', 'v1', 'attachments', final id]) => _download(session, id),
       ('GET', ['api', 'v1', 'messages', final id, 'raw']) => _raw(session, id),
+      ('GET', ['api', 'v1', 'messages', final id, 'seal']) => _messageSeal(
+        _message(session, id),
+      ),
       ('GET', ['api', 'v1', 'accounts', final id, 'calendar-events']) =>
         _calendarEvents(session, id),
       ('POST', ['api', 'v1', 'messages', final id, 'calendar-reply']) =>
@@ -3746,6 +3749,26 @@ class FakeRestmail {
       _fail(404, 'not_found', 'Message not found');
     }
     return message;
+  }
+
+  http.StreamedResponse _messageSeal(FakeMessage message) {
+    final hash = message.sealedHash;
+    return _json({
+      'data': {
+        'algorithm': 'restmail-seal-v1',
+        'state': hash == null || hash.isEmpty
+            ? 'not_sealed'
+            : message.sealMismatch
+            ? 'mismatch'
+            : 'intact',
+        if (hash != null && hash.isNotEmpty) ...{
+          'sealed_hash': hash,
+          'computed_hash': message.sealMismatch
+              ? (hash == 'f' * 64 ? '0' * 64 : 'f' * 64)
+              : hash,
+        },
+      },
+    });
   }
 
   FakeMessage _draft(_Session session, String id) {
