@@ -378,12 +378,14 @@ class MessagesApi {
     required _i19.String folder,
     _i19.int? limit,
     _i19.String? cursor,
+    _i19.bool? includeImapDeleted,
     _i20.TonikCancellation? cancellation,
   }) async => _listMessages(
     id: id,
     folder: folder,
     limit: limit,
     cursor: cursor,
+    includeImapDeleted: includeImapDeleted,
     cancellation: cancellation,
   );
 
@@ -491,7 +493,7 @@ class MessagesApi {
   }) async => _listHeldMessages(id: id, cancellation: cancellation);
 
   /// Store a message the account already has
-  /// Stores original message octets, folder, supported system flags and required internal_date without delivery rules or push notifications. Requires mail:import on the destination, which every account holds on its own mailbox. A message whose Message-ID and exact octets are already in that account and folder is skipped without changing its flags or date; the same Message-ID with different octets is stored as another message. Messages without Message-ID use a deterministic SHA-256 import identity; the raw source remains unchanged. Every attempt is audited; successful imports and skips also receive a transactional messages.import audit entry. The decoded message is bounded by SMTP_MAX_MESSAGE_SIZE (10 MiB by default); the general API body limit may be stricter. Deleted-state and keyword flags are unsupported and refused rather than hidden or discarded.
+  /// Stores original message octets, folder, supported system flags and required internal_date without delivery rules or push notifications. Requires mail:import on the destination, which every account holds on its own mailbox. A message whose Message-ID and exact octets are already in that account and folder is skipped without changing its flags or date; the same Message-ID with different octets is stored as another message. Messages without Message-ID use a deterministic SHA-256 import identity; the raw source remains unchanged. Every attempt is audited; successful imports and skips also receive a transactional messages.import audit entry. The decoded message is bounded by SMTP_MAX_MESSAGE_SIZE (10 MiB by default); the general API body limit may be stricter. Deleted state and up to 100 case-insensitive keywords of 1–255 ASCII bytes are preserved. Keywords must be RFC 3501 atoms without backslash. Deleted messages use IMAP deletion state, not API tombstones; EXPUNGE removes them.
   ///
   /// Security:
   /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
@@ -550,6 +552,18 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "deleted":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "\\Deleted"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
   /// **Example** "invalid_id":
   /// ```json
   /// {
@@ -558,6 +572,42 @@ class MessagesApi {
   ///     "\\Answered",
   ///     "\\Flagged",
   ///     "\\Draft"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_keyword":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "bad]keyword"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "keyword_too_long":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
+  /// **Example** "keywords":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "$Custom"
   ///   ],
   ///   "folder": "Archive",
   ///   "internal_date": "2020-01-02T03:04:05Z",
@@ -634,6 +684,118 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "too_many_keywords":
+  /// ```json
+  /// {
+  ///   "flags": [
+  ///     "$keyword0",
+  ///     "$keyword1",
+  ///     "$keyword2",
+  ///     "$keyword3",
+  ///     "$keyword4",
+  ///     "$keyword5",
+  ///     "$keyword6",
+  ///     "$keyword7",
+  ///     "$keyword8",
+  ///     "$keyword9",
+  ///     "$keyword10",
+  ///     "$keyword11",
+  ///     "$keyword12",
+  ///     "$keyword13",
+  ///     "$keyword14",
+  ///     "$keyword15",
+  ///     "$keyword16",
+  ///     "$keyword17",
+  ///     "$keyword18",
+  ///     "$keyword19",
+  ///     "$keyword20",
+  ///     "$keyword21",
+  ///     "$keyword22",
+  ///     "$keyword23",
+  ///     "$keyword24",
+  ///     "$keyword25",
+  ///     "$keyword26",
+  ///     "$keyword27",
+  ///     "$keyword28",
+  ///     "$keyword29",
+  ///     "$keyword30",
+  ///     "$keyword31",
+  ///     "$keyword32",
+  ///     "$keyword33",
+  ///     "$keyword34",
+  ///     "$keyword35",
+  ///     "$keyword36",
+  ///     "$keyword37",
+  ///     "$keyword38",
+  ///     "$keyword39",
+  ///     "$keyword40",
+  ///     "$keyword41",
+  ///     "$keyword42",
+  ///     "$keyword43",
+  ///     "$keyword44",
+  ///     "$keyword45",
+  ///     "$keyword46",
+  ///     "$keyword47",
+  ///     "$keyword48",
+  ///     "$keyword49",
+  ///     "$keyword50",
+  ///     "$keyword51",
+  ///     "$keyword52",
+  ///     "$keyword53",
+  ///     "$keyword54",
+  ///     "$keyword55",
+  ///     "$keyword56",
+  ///     "$keyword57",
+  ///     "$keyword58",
+  ///     "$keyword59",
+  ///     "$keyword60",
+  ///     "$keyword61",
+  ///     "$keyword62",
+  ///     "$keyword63",
+  ///     "$keyword64",
+  ///     "$keyword65",
+  ///     "$keyword66",
+  ///     "$keyword67",
+  ///     "$keyword68",
+  ///     "$keyword69",
+  ///     "$keyword70",
+  ///     "$keyword71",
+  ///     "$keyword72",
+  ///     "$keyword73",
+  ///     "$keyword74",
+  ///     "$keyword75",
+  ///     "$keyword76",
+  ///     "$keyword77",
+  ///     "$keyword78",
+  ///     "$keyword79",
+  ///     "$keyword80",
+  ///     "$keyword81",
+  ///     "$keyword82",
+  ///     "$keyword83",
+  ///     "$keyword84",
+  ///     "$keyword85",
+  ///     "$keyword86",
+  ///     "$keyword87",
+  ///     "$keyword88",
+  ///     "$keyword89",
+  ///     "$keyword90",
+  ///     "$keyword91",
+  ///     "$keyword92",
+  ///     "$keyword93",
+  ///     "$keyword94",
+  ///     "$keyword95",
+  ///     "$keyword96",
+  ///     "$keyword97",
+  ///     "$keyword98",
+  ///     "$keyword99",
+  ///     "$keyword100"
+  ///   ],
+  ///   "folder": "Archive",
+  ///   "internal_date": "2020-01-02T03:04:05Z",
+  ///   "raw_message": "TWVzc2FnZS1JRDogPGhpc3RvcnlAZXhhbXBsZS50ZXN0Pg0KRnJvbTogT3JpZ2luYWwgPG9sZEBleGFtcGxlLnRlc3Q+DQpTdWJqZWN0OiBvcmlnaW5hbA0KDQpoaXN0b3J5DQo="
+  /// }
+  /// ```
+  ///
   /// **Example** "unauthenticated":
   /// ```json
   /// {
@@ -666,6 +828,30 @@ class MessagesApi {
   ///
   /// Response 200 (application/json):
   /// **Example** "created":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "folder": "Archive",
+  ///     "id": 41,
+  ///     "imported": true,
+  ///     "message_id": "<history@example.test>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "deleted":
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "folder": "Archive",
+  ///     "id": 41,
+  ///     "imported": true,
+  ///     "message_id": "<history@example.test>"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "keywords":
   /// ```json
   /// {
   ///   "data": {
@@ -772,6 +958,51 @@ class MessagesApi {
   ///       }
   ///     },
   ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_keyword":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "flags": "invalid keyword: expected an RFC 3501 atom without backslash"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "keyword_too_long":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "flags": "keyword must contain 1 to 255 ASCII bytes"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "too_many_keywords":
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "flags": "at most 100 keywords per message"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
   ///   }
   /// }
   /// ```
@@ -1745,6 +1976,15 @@ class MessagesApi {
   /// Machine to machine: no user token. The inbound pipeline decides: 201 with the message made, 200 processed when it quarantined or discarded it, 550 rejected, 451 deferred, 422 mailbox_full over quota. A missing mailbox is 404; a failed mailbox lookup is 500, never a missing recipient.
   ///
   /// Request body (application/json):
+  /// **Example** "address_empty" — The address is empty:
+  /// An empty address names no mailbox, so the body names none.
+  ///
+  /// ```json
+  /// {
+  ///   "address": ""
+  /// }
+  /// ```
+  ///
   /// **Example** "body_array" — The body is not a JSON object:
   /// ```json
   /// []
@@ -1793,6 +2033,15 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "mailbox_id_zero" — The mailbox id is zero:
+  /// Zero names no mailbox, so the body names none.
+  ///
+  /// ```json
+  /// {
+  ///   "mailbox_id": 0
+  /// }
+  /// ```
+  ///
   /// **Example** "malformed_json" — The body is not JSON:
   /// The wire body is the raw truncated JSON byte {, with application/json content type: it is refused before anything else is read.
   ///
@@ -1810,12 +2059,31 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "no_mailbox_by_id" — No mailbox has that id:
+  /// A well-formed id that names nothing is 404, as an address that names nothing is.
+  ///
+  /// ```json
+  /// {
+  ///   "mailbox_id": 2147483647
+  /// }
+  /// ```
+  ///
   /// **Example** "processed" — The inbound pipeline quarantines or discards it:
   /// ```json
   /// {
   ///   "address": "admin@restmail.test",
   ///   "body_text": "Hello",
   ///   "sender": "sender@example.net",
+  ///   "subject": "Hello"
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipient_missing" — The body names no mailbox:
+  /// Neither mailbox_id nor address is there.
+  ///
+  /// ```json
+  /// {
+  ///   "body_text": "Hello",
   ///   "subject": "Hello"
   /// }
   /// ```
@@ -1902,6 +2170,18 @@ class MessagesApi {
   /// }
   /// ```
   ///
+  /// **Example** "no_mailbox_by_id" — No mailbox has that id:
+  /// A well-formed id that names nothing is 404, as an address that names nothing is.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "mailbox_not_found",
+  ///     "message": "Mailbox not found"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// Response 413 (application/json):
   /// **Example** "request_too_large" — The request exceeds the transport body cap:
   /// ```json
@@ -1914,6 +2194,23 @@ class MessagesApi {
   /// ```
   ///
   /// Response 422 (application/json):
+  /// **Example** "address_empty" — The address is empty:
+  /// An empty address names no mailbox, so the body names none.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "address": "mailbox_id or address required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
   /// **Example** "body_array" — The body is not a JSON object:
   /// ```json
   /// {
@@ -1939,6 +2236,40 @@ class MessagesApi {
   ///     "details": {
   ///       "fields": {
   ///         "folder": "must not begin or end with a space"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "mailbox_id_zero" — The mailbox id is zero:
+  /// Zero names no mailbox, so the body names none.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "address": "mailbox_id or address required"
+  ///       }
+  ///     },
+  ///     "message": "Request body failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "recipient_missing" — The body names no mailbox:
+  /// Neither mailbox_id nor address is there.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "address": "mailbox_id or address required"
   ///       }
   ///     },
   ///     "message": "Request body failed validation"
@@ -2890,7 +3221,7 @@ class MessagesApi {
   ///
   /// Response 200 (application/json):
   /// **Example** "classification_newsletter":
-  /// Classification is derived from the stored headers, with no delivery changes. Only newsletter is list-shaped; person is never hidden. Commercial receipts without list signals use notification when automated, otherwise person.
+  /// Classification is derived on read from the stored headers and any class a Sieve rule recorded at delivery. Only newsletter is list-shaped; person is never hidden. Without a rule, receipts are not told apart: they use newsletter when list-shaped, notification when automated, otherwise person.
   ///
   /// ```json
   /// {
@@ -2938,7 +3269,7 @@ class MessagesApi {
   /// ```
   ///
   /// **Example** "classification_notification":
-  /// Classification is derived from the stored headers, with no delivery changes. Only newsletter is list-shaped; person is never hidden. Commercial receipts without list signals use notification when automated, otherwise person.
+  /// Classification is derived on read from the stored headers and any class a Sieve rule recorded at delivery. Only newsletter is list-shaped; person is never hidden. Without a rule, receipts are not told apart: they use newsletter when list-shaped, notification when automated, otherwise person.
   ///
   /// ```json
   /// {
@@ -2967,6 +3298,97 @@ class MessagesApi {
   ///     "mailbox_id": 1,
   ///     "message_id": "<message@example.net>",
   ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "received_tls": true,
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender café",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject café",
+  ///     "thread_id": "",
+  ///     "tls_version": "TLS1.3",
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "classification_receipt_rule":
+  /// A Sieve rule added the $receipt keyword at delivery, and that wins over the list header. No header says a message is a receipt, so this is the only way mail gets this class. A receipt never collapses.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_html": "<p>Hello café</p>",
+  ///     "body_text": "Hello café",
+  ///     "class": "receipt",
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 0,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": true,
+  ///     "headers": {
+  ///       "List-Id": [
+  ///         "<shop.example.test>"
+  ///       ]
+  ///     },
+  ///     "id": 103,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": false,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 137,
+  ///     "received_at": "2026-10-20T00:00:00Z",
+  ///     "received_tls": true,
+  ///     "recipients_cc": [],
+  ///     "recipients_to": [
+  ///       "recipient@example.com"
+  ///     ],
+  ///     "references": "",
+  ///     "sender": "sender@example.net",
+  ///     "sender_name": "Sender café",
+  ///     "size_bytes": 80,
+  ///     "subject": "Subject café",
+  ///     "thread_id": "",
+  ///     "tls_version": "TLS1.3",
+  ///     "updated_at": "2026-10-20T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "classification_source_headers":
+  /// Delivery stored the source and no decoded headers, so the class comes from the source header section, unfolded, without reading the body.
+  ///
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "body_html": "<p>Hello café</p>",
+  ///     "body_text": "Hello café",
+  ///     "class": "newsletter",
+  ///     "created_at": "2026-10-20T00:00:00Z",
+  ///     "date_header": null,
+  ///     "downgraded_size": 0,
+  ///     "folder": "INBOX",
+  ///     "has_attachments": true,
+  ///     "id": 104,
+  ///     "in_reply_to": "",
+  ///     "is_deleted": false,
+  ///     "is_draft": false,
+  ///     "is_dsn": false,
+  ///     "is_flagged": false,
+  ///     "is_read": false,
+  ///     "is_starred": false,
+  ///     "mailbox_id": 1,
+  ///     "message_id": "<message@example.net>",
+  ///     "raw_size": 78,
   ///     "received_at": "2026-10-20T00:00:00Z",
   ///     "received_tls": true,
   ///     "recipients_cc": [],

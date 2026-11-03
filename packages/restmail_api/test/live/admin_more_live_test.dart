@@ -313,6 +313,11 @@ void main() {
         expect(await client().deliveryLog(), isA<OffsetPage<QueueEntry>>());
         expect(await client().pipelineLog(), isA<OffsetPage<MessageTrace>>());
         expect(await client().tlsReports(), isA<OffsetPage<TlsReport>>());
+        final dmarc = await client().dmarcReports();
+        for (final report in dmarc.items) {
+          expect((await client().dmarcReport(report.id)).id, report.id);
+        }
+        await expectLater(client().dmarcReport(999999), refused(404));
         final analytics = await client().pipelineAnalytics(
           since: DateTime.now().subtract(const Duration(hours: 1)),
         );

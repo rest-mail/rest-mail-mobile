@@ -952,10 +952,20 @@ class SystemApi {
   );
 
   /// Prometheus metrics exposition
+  /// No credentials are required, but METRICS_ALLOWED_CIDRS restricts the source network. Unset or empty, it allows loopback, RFC1918 and IPv6 unique-local networks. The TCP peer is used unless it is in PROXY_PROTOCOL_TRUSTED_CIDRS; only then is X-Forwarded-For honored. An allowed caller receives 200 on a successful scrape, or a sanitized JSON 500 if collection fails. A disallowed or undeterminable source receives plain-text 404 before any metrics are collected. The API route is always registered: there is no API metrics-off setting. Setting SMTP_METRICS_PORT, IMAP_METRICS_PORT or POP3_METRICS_PORT to 0 disables only that gateway's metrics listener, not this route.
+  ///
+  /// Response 404 (text/plain):
+  /// **Example** "outside_allowlist" — A disallowed or undeterminable source cannot discover metrics:
+  /// The effective source is outside METRICS_ALLOWED_CIDRS or cannot be determined. The middleware answers before collection, even if the database is unavailable. An untrusted peer cannot bypass the gate with forwarded headers; a trusted proxy's X-Forwarded-For origin is checked instead. The live run cannot change its TCP source or the server's network configuration to establish this precondition.
+  ///
+  /// ```
+  /// 404 page not found
+  ///
+  /// ```
   ///
   /// Response 500 (application/json):
   /// **Example** "internal_error" — A scrape that cannot read the database fails without detail:
-  /// Fault precondition: the database refuses queries, so the DKIM key-age collector cannot read the key inventory and the scrape fails. The public response does not disclose the collector's error.
+  /// The source is allowlisted, but the database refuses queries, so the DKIM key-age collector cannot read the key inventory and the scrape fails. The public response does not disclose the collector's error.
   ///
   /// ```json
   /// {

@@ -41,6 +41,7 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
     required _i3.String folder,
     _i3.int? limit,
     _i3.String? cursor,
+    _i3.bool? includeImapDeleted,
     _i4.TonikCancellation? cancellation,
   }) {
     return this.execute(
@@ -48,7 +49,11 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
       prepare: () => _i1.HttpOperationRequest(
         method: 'GET',
         path: _path(id: id, folder: folder),
-        query: _queryParameters(limit: limit, cursor: cursor),
+        query: _queryParameters(
+          limit: limit,
+          cursor: cursor,
+          includeImapDeleted: includeImapDeleted,
+        ),
         data: _data(),
         options: _options(),
       ),
@@ -75,7 +80,11 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
     return null;
   }
 
-  _i3.String? _queryParameters({_i3.int? limit, _i3.String? cursor}) {
+  _i3.String? _queryParameters({
+    _i3.int? limit,
+    _i3.String? cursor,
+    _i3.bool? includeImapDeleted,
+  }) {
     final _$entries = <_i4.ParameterEntry>[];
     if (limit != null) {
       _$entries.addAll(
@@ -91,6 +100,16 @@ final class ListMessages extends _i1.HttpOperation<_i2.ListMessagesResponse> {
       _$entries.addAll(
         cursor.toForm(
           r'cursor',
+          explode: true,
+          allowEmpty: false,
+          textEncoding: _i6.utf8,
+        ),
+      );
+    }
+    if (includeImapDeleted != null) {
+      _$entries.addAll(
+        includeImapDeleted.toForm(
+          r'include_imap_deleted',
           explode: true,
           allowEmpty: false,
           textEncoding: _i6.utf8,

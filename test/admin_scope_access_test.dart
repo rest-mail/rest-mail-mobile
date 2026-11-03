@@ -26,6 +26,8 @@ void main() {
         AdminSection.domains,
         AdminSection.mailboxes,
         AdminSection.aliases,
+        // The server reads a domain's own DMARC reports at its scope.
+        AdminSection.dmarcReports,
       ]);
       expect(root.any, isTrue);
       expect(root.canWrite(AdminSection.domains), isFalse);
@@ -120,6 +122,23 @@ void main() {
     expect(domain.canWrite(AdminSection.mtaSts), isTrue);
     expect(domain.canDelete(AdminSection.suppressions), isTrue);
     expect(domain.canWrite(AdminSection.relay), isFalse);
+  });
+
+  test('DMARC reports open at a domain scope, not at a mailbox scope', () {
+    final domain = at('domain:a.test', {'domains:read'});
+    expect(AdminAccess(domain).canRead(AdminSection.dmarcReports), isTrue);
+    expect(AdminAccess(domain).sections, contains(AdminSection.dmarcReports));
+    expect(AdminAccess(domain).canRead(AdminSection.tlsReports), isFalse);
+    expect(
+      AdminAccess(at('mailbox:x@a.test', {'domains:read'}))
+          .canRead(AdminSection.dmarcReports),
+      isFalse,
+    );
+    expect(
+      AdminAccess(at('domain:a.test', {'domains:write'}))
+          .canRead(AdminSection.dmarcReports),
+      isFalse,
+    );
   });
 
   test('DKIM collection remains global while per-domain reads and writes are scoped', () {

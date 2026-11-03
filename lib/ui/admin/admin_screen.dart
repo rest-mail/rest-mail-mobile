@@ -18,6 +18,7 @@ import 'permissions_screen.dart';
 import 'pipeline_log_screen.dart';
 import 'pipelines_screen.dart';
 import 'queue_screen.dart';
+import 'dmarc_reports_screen.dart';
 import 'tls_reports_screen.dart';
 import 'trace_screen.dart';
 
@@ -43,6 +44,7 @@ class AdministrationScreen extends StatelessWidget {
     AdminSection.pipelineLog => PipelineLogScreen(account: account),
     AdminSection.pipelineAnalytics => PipelineAnalyticsScreen(account: account),
     AdminSection.tlsReports => TlsReportsScreen(account: account),
+    AdminSection.dmarcReports => DmarcReportsScreen(account: account),
     AdminSection.audit => AuditScreen(account: account),
     AdminSection.dkim => DkimScreen(account: account),
     AdminSection.certificates => CertificatesScreen(account: account),

@@ -9,8 +9,8 @@ must match the contract revision before tests start. The generator's complete de
 resolution is committed in `pubspec.lock`. Do not edit `restmail_generated`.
 
 The committed document is the exact JSON served by the `main` image of server
-revision `3a37b4103ef9abe084ddb763f7b71a5e50c8bbdd`, which carries the thread-snooze,
-receipt-seal and contact reply-time routes: 196 operations. No release holds that revision yet, so
+revision `1f199b8ab9d6bc601571d3d56da14cea0d8d3112`, which carries the thread-snooze,
+receipt-seal, contact reply-time and received DMARC report routes: 198 operations. No release holds that revision yet, so
 `info.version` and the lock's version read `main`, and the revision and image
 digest name it. A future server pin change must update the complete document
 and checksum, then regenerate; new operations are not held to the old fixed
@@ -85,6 +85,11 @@ API, and null cancels. The fake keeps each thread's deadline on its messages,
 hides them from folder listings and counts as the server does, and takes
 returning from its clock: `returnSnoozedThreads` does what the server's worker
 does, and the fake also does it ahead of each request.
+
+The received DMARC report facades call `listDmarcReports` and `getDmarcReport`
+through the generated domain mail policy API. The server leaves a page's total
+out when it is zero, so the facade counts what it was given. The fake answers
+with the server's shape, including that, and scopes reports as the server does.
 
 Existing screens reach generated operations through their unchanged facade
 methods. Generated code validates status, headers and wire fields; typed projections preserve the

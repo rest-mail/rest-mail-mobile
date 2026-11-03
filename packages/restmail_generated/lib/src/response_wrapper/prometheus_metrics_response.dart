@@ -7,8 +7,10 @@ import 'dart:core' as _i3;
 import 'package:meta/meta.dart' as _i1;
 import 'package:restmail_generated/src/response/metrics_get200_response.dart'
     as _i2;
-import 'package:restmail_generated/src/response/metrics_get500_response.dart'
+import 'package:restmail_generated/src/response/metrics_get404_response.dart'
     as _i4;
+import 'package:restmail_generated/src/response/metrics_get500_response.dart'
+    as _i5;
 
 sealed class PrometheusMetricsResponse {
   const PrometheusMetricsResponse();
@@ -31,10 +33,26 @@ class PrometheusMetricsResponse200 extends PrometheusMetricsResponse {
 }
 
 @_i1.immutable
+class PrometheusMetricsResponse404 extends PrometheusMetricsResponse {
+  const PrometheusMetricsResponse404({required this.body});
+
+  final _i4.MetricsGet404Response body;
+
+  @_i3.override
+  _i3.bool operator ==(_i3.Object other) {
+    if (_i3.identical(this, other)) return true;
+    return other is PrometheusMetricsResponse404 && other.body == this.body;
+  }
+
+  @_i3.override
+  _i3.int get hashCode => body.hashCode;
+}
+
+@_i1.immutable
 class PrometheusMetricsResponse500 extends PrometheusMetricsResponse {
   const PrometheusMetricsResponse500({required this.body});
 
-  final _i4.MetricsGet500Response body;
+  final _i5.MetricsGet500Response body;
 
   @_i3.override
   _i3.bool operator ==(_i3.Object other) {

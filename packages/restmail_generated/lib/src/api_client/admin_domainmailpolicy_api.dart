@@ -2,141 +2,521 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:core' as _i16;
+import 'dart:core' as _i18;
 
-import 'package:http/http.dart' as _i19;
+import 'package:http/http.dart' as _i21;
 import 'package:restmail_generated/src/model/add_sender_rule_request.dart'
-    as _i21;
-import 'package:restmail_generated/src/model/api_v1_admin_tls_reports_parameters_model.dart'
-    as _i36;
-import 'package:restmail_generated/src/model/set_mtasts_body.dart' as _i28;
-import 'package:restmail_generated/src/model/set_relay_body.dart' as _i32;
-import 'package:restmail_generated/src/operation/add_to_allowlist.dart' as _i3;
-import 'package:restmail_generated/src/operation/add_to_blocklist.dart' as _i6;
-import 'package:restmail_generated/src/operation/clear_suppression.dart'
-    as _i14;
-import 'package:restmail_generated/src/operation/delete_mta_sts_policy.dart'
-    as _i10;
-import 'package:restmail_generated/src/operation/get_domain_relay.dart' as _i11;
-import 'package:restmail_generated/src/operation/get_mta_sts_policy.dart'
-    as _i8;
-import 'package:restmail_generated/src/operation/list_allowlist.dart' as _i2;
-import 'package:restmail_generated/src/operation/list_blocklist.dart' as _i5;
-import 'package:restmail_generated/src/operation/list_suppressions.dart'
-    as _i13;
-import 'package:restmail_generated/src/operation/list_tls_reports.dart' as _i15;
-import 'package:restmail_generated/src/operation/remove_from_allowlist.dart'
-    as _i4;
-import 'package:restmail_generated/src/operation/remove_from_blocklist.dart'
-    as _i7;
-import 'package:restmail_generated/src/operation/set_domain_relay.dart' as _i12;
-import 'package:restmail_generated/src/operation/set_mta_sts_policy.dart'
-    as _i9;
-import 'package:restmail_generated/src/response_wrapper/add_to_allowlist_response.dart'
-    as _i20;
-import 'package:restmail_generated/src/response_wrapper/add_to_blocklist_response.dart'
-    as _i24;
-import 'package:restmail_generated/src/response_wrapper/clear_suppression_response.dart'
-    as _i34;
-import 'package:restmail_generated/src/response_wrapper/delete_mta_sts_policy_response.dart'
-    as _i29;
-import 'package:restmail_generated/src/response_wrapper/get_domain_relay_response.dart'
-    as _i30;
-import 'package:restmail_generated/src/response_wrapper/get_mta_sts_policy_response.dart'
-    as _i26;
-import 'package:restmail_generated/src/response_wrapper/list_allowlist_response.dart'
-    as _i18;
-import 'package:restmail_generated/src/response_wrapper/list_blocklist_response.dart'
-    as _i23;
-import 'package:restmail_generated/src/response_wrapper/list_suppressions_response.dart'
-    as _i33;
-import 'package:restmail_generated/src/response_wrapper/list_tls_reports_response.dart'
-    as _i35;
-import 'package:restmail_generated/src/response_wrapper/remove_from_allowlist_response.dart'
-    as _i22;
-import 'package:restmail_generated/src/response_wrapper/remove_from_blocklist_response.dart'
     as _i25;
-import 'package:restmail_generated/src/response_wrapper/set_domain_relay_response.dart'
-    as _i31;
-import 'package:restmail_generated/src/response_wrapper/set_mta_sts_policy_response.dart'
+import 'package:restmail_generated/src/model/api_v1_admin_tls_reports_parameters_model.dart'
+    as _i40;
+import 'package:restmail_generated/src/model/set_mtasts_body.dart' as _i32;
+import 'package:restmail_generated/src/model/set_relay_body.dart' as _i36;
+import 'package:restmail_generated/src/operation/add_to_allowlist.dart' as _i5;
+import 'package:restmail_generated/src/operation/add_to_blocklist.dart' as _i8;
+import 'package:restmail_generated/src/operation/clear_suppression.dart'
+    as _i16;
+import 'package:restmail_generated/src/operation/delete_mta_sts_policy.dart'
+    as _i12;
+import 'package:restmail_generated/src/operation/get_dmarc_report.dart' as _i3;
+import 'package:restmail_generated/src/operation/get_domain_relay.dart' as _i13;
+import 'package:restmail_generated/src/operation/get_mta_sts_policy.dart'
+    as _i10;
+import 'package:restmail_generated/src/operation/list_allowlist.dart' as _i4;
+import 'package:restmail_generated/src/operation/list_blocklist.dart' as _i7;
+import 'package:restmail_generated/src/operation/list_dmarc_reports.dart'
+    as _i2;
+import 'package:restmail_generated/src/operation/list_suppressions.dart'
+    as _i15;
+import 'package:restmail_generated/src/operation/list_tls_reports.dart' as _i17;
+import 'package:restmail_generated/src/operation/remove_from_allowlist.dart'
+    as _i6;
+import 'package:restmail_generated/src/operation/remove_from_blocklist.dart'
+    as _i9;
+import 'package:restmail_generated/src/operation/set_domain_relay.dart' as _i14;
+import 'package:restmail_generated/src/operation/set_mta_sts_policy.dart'
+    as _i11;
+import 'package:restmail_generated/src/response_wrapper/add_to_allowlist_response.dart'
+    as _i24;
+import 'package:restmail_generated/src/response_wrapper/add_to_blocklist_response.dart'
+    as _i28;
+import 'package:restmail_generated/src/response_wrapper/clear_suppression_response.dart'
+    as _i38;
+import 'package:restmail_generated/src/response_wrapper/delete_mta_sts_policy_response.dart'
+    as _i33;
+import 'package:restmail_generated/src/response_wrapper/get_dmarc_report_response.dart'
+    as _i22;
+import 'package:restmail_generated/src/response_wrapper/get_domain_relay_response.dart'
+    as _i34;
+import 'package:restmail_generated/src/response_wrapper/get_mta_sts_policy_response.dart'
+    as _i30;
+import 'package:restmail_generated/src/response_wrapper/list_allowlist_response.dart'
+    as _i23;
+import 'package:restmail_generated/src/response_wrapper/list_blocklist_response.dart'
     as _i27;
+import 'package:restmail_generated/src/response_wrapper/list_dmarc_reports_response.dart'
+    as _i20;
+import 'package:restmail_generated/src/response_wrapper/list_suppressions_response.dart'
+    as _i37;
+import 'package:restmail_generated/src/response_wrapper/list_tls_reports_response.dart'
+    as _i39;
+import 'package:restmail_generated/src/response_wrapper/remove_from_allowlist_response.dart'
+    as _i26;
+import 'package:restmail_generated/src/response_wrapper/remove_from_blocklist_response.dart'
+    as _i29;
+import 'package:restmail_generated/src/response_wrapper/set_domain_relay_response.dart'
+    as _i35;
+import 'package:restmail_generated/src/response_wrapper/set_mta_sts_policy_response.dart'
+    as _i31;
 import 'package:restmail_generated/src/server/server.dart' as _i1;
-import 'package:tonik_util/tonik_util.dart' as _i17;
+import 'package:tonik_util/tonik_util.dart' as _i19;
 
 class AdminDomainmailpolicyApi {
   AdminDomainmailpolicyApi(_i1.Server server)
-    : _listAllowlist = _i2.ListAllowlist(server.baseUrl, () => server.client),
-      _addToAllowlist = _i3.AddToAllowlist(server.baseUrl, () => server.client),
-      _removeFromAllowlist = _i4.RemoveFromAllowlist(
+    : _listDmarcReports = _i2.ListDmarcReports(
         server.baseUrl,
         () => server.client,
       ),
-      _listBlocklist = _i5.ListBlocklist(server.baseUrl, () => server.client),
-      _addToBlocklist = _i6.AddToBlocklist(server.baseUrl, () => server.client),
-      _removeFromBlocklist = _i7.RemoveFromBlocklist(
+      _getDmarcReport = _i3.GetDmarcReport(server.baseUrl, () => server.client),
+      _listAllowlist = _i4.ListAllowlist(server.baseUrl, () => server.client),
+      _addToAllowlist = _i5.AddToAllowlist(server.baseUrl, () => server.client),
+      _removeFromAllowlist = _i6.RemoveFromAllowlist(
         server.baseUrl,
         () => server.client,
       ),
-      _getMtaStsPolicy = _i8.GetMtaStsPolicy(
+      _listBlocklist = _i7.ListBlocklist(server.baseUrl, () => server.client),
+      _addToBlocklist = _i8.AddToBlocklist(server.baseUrl, () => server.client),
+      _removeFromBlocklist = _i9.RemoveFromBlocklist(
         server.baseUrl,
         () => server.client,
       ),
-      _setMtaStsPolicy = _i9.SetMtaStsPolicy(
+      _getMtaStsPolicy = _i10.GetMtaStsPolicy(
         server.baseUrl,
         () => server.client,
       ),
-      _deleteMtaStsPolicy = _i10.DeleteMtaStsPolicy(
+      _setMtaStsPolicy = _i11.SetMtaStsPolicy(
         server.baseUrl,
         () => server.client,
       ),
-      _getDomainRelay = _i11.GetDomainRelay(
+      _deleteMtaStsPolicy = _i12.DeleteMtaStsPolicy(
         server.baseUrl,
         () => server.client,
       ),
-      _setDomainRelay = _i12.SetDomainRelay(
+      _getDomainRelay = _i13.GetDomainRelay(
         server.baseUrl,
         () => server.client,
       ),
-      _listSuppressions = _i13.ListSuppressions(
+      _setDomainRelay = _i14.SetDomainRelay(
         server.baseUrl,
         () => server.client,
       ),
-      _clearSuppression = _i14.ClearSuppression(
+      _listSuppressions = _i15.ListSuppressions(
         server.baseUrl,
         () => server.client,
       ),
-      _listTlsReports = _i15.ListTlsReports(
+      _clearSuppression = _i16.ClearSuppression(
+        server.baseUrl,
+        () => server.client,
+      ),
+      _listTlsReports = _i17.ListTlsReports(
         server.baseUrl,
         () => server.client,
       );
 
-  final _i2.ListAllowlist _listAllowlist;
+  final _i2.ListDmarcReports _listDmarcReports;
 
-  final _i3.AddToAllowlist _addToAllowlist;
+  final _i3.GetDmarcReport _getDmarcReport;
 
-  final _i4.RemoveFromAllowlist _removeFromAllowlist;
+  final _i4.ListAllowlist _listAllowlist;
 
-  final _i5.ListBlocklist _listBlocklist;
+  final _i5.AddToAllowlist _addToAllowlist;
 
-  final _i6.AddToBlocklist _addToBlocklist;
+  final _i6.RemoveFromAllowlist _removeFromAllowlist;
 
-  final _i7.RemoveFromBlocklist _removeFromBlocklist;
+  final _i7.ListBlocklist _listBlocklist;
 
-  final _i8.GetMtaStsPolicy _getMtaStsPolicy;
+  final _i8.AddToBlocklist _addToBlocklist;
 
-  final _i9.SetMtaStsPolicy _setMtaStsPolicy;
+  final _i9.RemoveFromBlocklist _removeFromBlocklist;
 
-  final _i10.DeleteMtaStsPolicy _deleteMtaStsPolicy;
+  final _i10.GetMtaStsPolicy _getMtaStsPolicy;
 
-  final _i11.GetDomainRelay _getDomainRelay;
+  final _i11.SetMtaStsPolicy _setMtaStsPolicy;
 
-  final _i12.SetDomainRelay _setDomainRelay;
+  final _i12.DeleteMtaStsPolicy _deleteMtaStsPolicy;
 
-  final _i13.ListSuppressions _listSuppressions;
+  final _i13.GetDomainRelay _getDomainRelay;
 
-  final _i14.ClearSuppression _clearSuppression;
+  final _i14.SetDomainRelay _setDomainRelay;
 
-  final _i15.ListTlsReports _listTlsReports;
+  final _i15.ListSuppressions _listSuppressions;
+
+  final _i16.ClearSuppression _clearSuppression;
+
+  final _i17.ListTlsReports _listTlsReports;
+
+  /// List received DMARC aggregate reports
+  /// Domain-scoped administrators read only their own domains' reports and pagination totals. Installation-wide access requires domains:read at *. Domain and reporter filters intersect that scope. Reports are received by mail, not by this API.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "available" — available:
+  /// ```json
+  /// {
+  ///   "data": [],
+  ///   "pagination": {
+  ///     "has_more": false
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "received" — received:
+  /// ```json
+  /// {
+  ///   "data": [
+  ///     {
+  ///       "domain_id": 1,
+  ///       "end_date": "2026-11-02T23:59:59Z",
+  ///       "id": 1,
+  ///       "policy_published": {
+  ///         "domain": "a.test",
+  ///         "p": "none"
+  ///       },
+  ///       "received_at": "2026-11-03T00:00:00Z",
+  ///       "records": [
+  ///         {
+  ///           "auth_results": {
+  ///             "dkim": [
+  ///               {
+  ///                 "domain": "a.test",
+  ///                 "result": "pass",
+  ///                 "selector": "mail"
+  ///               }
+  ///             ]
+  ///           },
+  ///           "identifiers": {
+  ///             "header_from": "a.test"
+  ///           },
+  ///           "row": {
+  ///             "count": 12,
+  ///             "policy_evaluated": {
+  ///               "disposition": "none",
+  ///               "dkim": "pass",
+  ///               "spf": "fail"
+  ///             },
+  ///             "source_ip": "192.0.2.1"
+  ///           }
+  ///         }
+  ///       ],
+  ///       "report_id": "daily-1",
+  ///       "reporter": "reporter.test",
+  ///       "reporting_org": "Reporter",
+  ///       "start_date": "2026-11-02T00:00:00Z"
+  ///     }
+  ///   ],
+  ///   "pagination": {
+  ///     "has_more": false,
+  ///     "total": 1
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — unauthenticated:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "required_capability" — required capability:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Insufficient permissions"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// A current session sends Content-Length above APIMaxBodyBytes, including on this GET. The focused Vertrag test supplies a real oversized body; no typed body is declared.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_domain" — invalid domain:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "domain_id": "must be a non-negative integer"
+  ///       }
+  ///     },
+  ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_limit" — invalid limit:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "limit": "must be an integer"
+  ///       }
+  ///     },
+  ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Example** "invalid_reporter" — invalid reporter:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "reporter": "must be at most 255 characters"
+  ///       }
+  ///     },
+  ///     "message": "Query parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — The list dependency fails:
+  /// Session and permission checks pass, but the list dependency fails. The production handler and error writer produce this refusal without exposing dependency details.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// The database-backed current-session lookup fails. The production session-cache builder and stale-session middleware produce this refusal.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i18.Future<_i19.TonikResult<_i20.ListDmarcReportsResponse, _i21.Response>>
+  listDmarcReports({
+    _i18.int? domainId,
+    _i18.String? reporter,
+    _i18.int? limit,
+    _i18.int? offset,
+    _i19.TonikCancellation? cancellation,
+  }) async => _listDmarcReports(
+    domainId: domainId,
+    reporter: reporter,
+    limit: limit,
+    offset: offset,
+    cancellation: cancellation,
+  );
+
+  /// Read a received DMARC aggregate report
+  /// Requires domains:read for the report's domain. A missing report and a report outside the caller's domain scope both return 404.
+  ///
+  /// Security:
+  /// - API Key (cookie): httpOnly session cookie set by POST /api/v1/auth/login and /api/v1/auth/refresh. State-changing requests (POST/PUT/PATCH/DELETE) additionally require the double-submit CSRF header.
+  /// - HTTP Bearer: JWT access token as an Authorization: Bearer header. Exempt from the CSRF check.
+  /// - HTTP Bearer: A scoped API key (rmk_...) as an Authorization: Bearer header, allowed only where both the key's permissions and its owner's live grants cover the capability at the target. Exempt from the CSRF check.
+  ///
+  /// Response 200 (application/json):
+  /// **Example** "received" — received:
+  /// ```json
+  /// {
+  ///   "data": {
+  ///     "domain_id": 1,
+  ///     "end_date": "2026-11-02T23:59:59Z",
+  ///     "id": 1,
+  ///     "policy_published": {
+  ///       "domain": "a.test",
+  ///       "p": "none"
+  ///     },
+  ///     "received_at": "2026-11-03T00:00:00Z",
+  ///     "records": [
+  ///       {
+  ///         "auth_results": {
+  ///           "dkim": [
+  ///             {
+  ///               "domain": "a.test",
+  ///               "result": "pass",
+  ///               "selector": "mail"
+  ///             }
+  ///           ]
+  ///         },
+  ///         "identifiers": {
+  ///           "header_from": "a.test"
+  ///         },
+  ///         "row": {
+  ///           "count": 12,
+  ///           "policy_evaluated": {
+  ///             "disposition": "none",
+  ///             "dkim": "pass",
+  ///             "spf": "fail"
+  ///           },
+  ///           "source_ip": "192.0.2.1"
+  ///         }
+  ///       }
+  ///     ],
+  ///     "report_id": "daily-1",
+  ///     "reporter": "reporter.test",
+  ///     "reporting_org": "Reporter",
+  ///     "start_date": "2026-11-02T00:00:00Z"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 401 (application/json):
+  /// **Example** "unauthenticated" — unauthenticated:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unauthorized",
+  ///     "message": "Missing authorization header"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 403 (application/json):
+  /// **Example** "required_capability" — required capability:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "forbidden",
+  ///     "message": "Insufficient permissions"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 404 (application/json):
+  /// **Example** "missing" — missing:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "dmarc_report_not_found",
+  ///     "message": "DMARC report not found"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 413 (application/json):
+  /// **Example** "request_too_large" — The request exceeds the transport body cap:
+  /// A current session sends Content-Length above APIMaxBodyBytes, including on this GET. The focused Vertrag test supplies a real oversized body; no typed body is declared.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "request_too_large",
+  ///     "message": "Request body too large"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 422 (application/json):
+  /// **Example** "invalid_id" — invalid id:
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "validation_failed",
+  ///     "details": {
+  ///       "fields": {
+  ///         "id": "must be at least 1"
+  ///       }
+  ///     },
+  ///     "message": "Path parameters failed validation"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 429 (application/json):
+  /// **Example** "rate_limited" — Refused API keys exhaust the per-IP budget:
+  /// Repeated refused API keys from one address spend the refusal budget of the API-key authentication middleware, which answers 429 with a positive Retry-After before the handler runs.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "rate_limited",
+  ///     "message": "Too many requests; please slow down"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 500 (application/json):
+  /// **Example** "internal_error" — The list dependency fails:
+  /// Session and permission checks pass, but the list dependency fails. The production handler and error writer produce this refusal without exposing dependency details.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "internal_error",
+  ///     "message": "Internal server error"
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Response 503 (application/json):
+  /// **Example** "session_unavailable" — The current-session lookup fails:
+  /// The database-backed current-session lookup fails. The production session-cache builder and stale-session middleware produce this refusal.
+  ///
+  /// ```json
+  /// {
+  ///   "error": {
+  ///     "code": "unavailable",
+  ///     "message": "Could not verify the session"
+  ///   }
+  /// }
+  /// ```
+  _i18.Future<_i19.TonikResult<_i22.GetDmarcReportResponse, _i21.Response>>
+  getDmarcReport({
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
+  }) async => _getDmarcReport(id: id, cancellation: cancellation);
 
   /// List allowlist entries for a domain
   ///
@@ -246,10 +626,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i18.ListAllowlistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i23.ListAllowlistResponse, _i21.Response>>
   listAllowlist({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _listAllowlist(id: id, cancellation: cancellation);
 
   /// Add an allowlist entry
@@ -513,11 +893,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i20.AddToAllowlistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i24.AddToAllowlistResponse, _i21.Response>>
   addToAllowlist({
-    required _i21.AddSenderRuleRequest body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i25.AddSenderRuleRequest body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _addToAllowlist(body: body, id: id, cancellation: cancellation);
 
   /// Remove an allowlist entry
@@ -625,11 +1005,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i22.RemoveFromAllowlistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i26.RemoveFromAllowlistResponse, _i21.Response>>
   removeFromAllowlist({
-    required _i16.int id,
-    required _i16.int eid,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    required _i18.int eid,
+    _i19.TonikCancellation? cancellation,
   }) async =>
       _removeFromAllowlist(id: id, eid: eid, cancellation: cancellation);
 
@@ -741,10 +1121,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i23.ListBlocklistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i27.ListBlocklistResponse, _i21.Response>>
   listBlocklist({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _listBlocklist(id: id, cancellation: cancellation);
 
   /// Add a blocklist entry
@@ -1008,11 +1388,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i24.AddToBlocklistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i28.AddToBlocklistResponse, _i21.Response>>
   addToBlocklist({
-    required _i21.AddSenderRuleRequest body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i25.AddSenderRuleRequest body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _addToBlocklist(body: body, id: id, cancellation: cancellation);
 
   /// Remove a blocklist entry
@@ -1120,11 +1500,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i25.RemoveFromBlocklistResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i29.RemoveFromBlocklistResponse, _i21.Response>>
   removeFromBlocklist({
-    required _i16.int id,
-    required _i16.int eid,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    required _i18.int eid,
+    _i19.TonikCancellation? cancellation,
   }) async =>
       _removeFromBlocklist(id: id, eid: eid, cancellation: cancellation);
 
@@ -1270,10 +1650,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i26.GetMtaStsPolicyResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i30.GetMtaStsPolicyResponse, _i21.Response>>
   getMtaStsPolicy({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _getMtaStsPolicy(id: id, cancellation: cancellation);
 
   /// Create or update the MTA-STS policy for a domain
@@ -1564,11 +1944,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i27.SetMtaStsPolicyResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i31.SetMtaStsPolicyResponse, _i21.Response>>
   setMtaStsPolicy({
-    required _i28.SetMtastsBody body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i32.SetMtastsBody body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _setMtaStsPolicy(body: body, id: id, cancellation: cancellation);
 
   /// Delete the MTA-STS policy for a domain
@@ -1682,10 +2062,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i29.DeleteMtaStsPolicyResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i33.DeleteMtaStsPolicyResponse, _i21.Response>>
   deleteMtaStsPolicy({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _deleteMtaStsPolicy(id: id, cancellation: cancellation);
 
   /// Get the domain’s outbound transport
@@ -1817,10 +2197,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i30.GetDomainRelayResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i34.GetDomainRelayResponse, _i21.Response>>
   getDomainRelay({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _getDomainRelay(id: id, cancellation: cancellation);
 
   /// Set the domain’s outbound transport
@@ -2091,11 +2471,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i31.SetDomainRelayResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i35.SetDomainRelayResponse, _i21.Response>>
   setDomainRelay({
-    required _i32.SetRelayBody body,
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i36.SetRelayBody body,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _setDomainRelay(body: body, id: id, cancellation: cancellation);
 
   /// List a domain’s suppressed recipients
@@ -2206,10 +2586,10 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i33.ListSuppressionsResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i37.ListSuppressionsResponse, _i21.Response>>
   listSuppressions({
-    required _i16.int id,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    _i19.TonikCancellation? cancellation,
   }) async => _listSuppressions(id: id, cancellation: cancellation);
 
   /// Clear a suppression
@@ -2317,11 +2697,11 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i34.ClearSuppressionResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i38.ClearSuppressionResponse, _i21.Response>>
   clearSuppression({
-    required _i16.int id,
-    required _i16.int sid,
-    _i17.TonikCancellation? cancellation,
+    required _i18.int id,
+    required _i18.int sid,
+    _i19.TonikCancellation? cancellation,
   }) async => _clearSuppression(id: id, sid: sid, cancellation: cancellation);
 
   /// List received TLS-RPT reports
@@ -2440,14 +2820,14 @@ class AdminDomainmailpolicyApi {
   ///   }
   /// }
   /// ```
-  _i16.Future<_i17.TonikResult<_i35.ListTlsReportsResponse, _i19.Response>>
+  _i18.Future<_i19.TonikResult<_i39.ListTlsReportsResponse, _i21.Response>>
   listTlsReports({
-    _i16.int? domainId,
-    _i16.int? limit,
-    _i16.int? offset,
-    _i36.ApiV1AdminTlsReportsParametersModel? policyType,
-    _i16.String? reportingOrg,
-    _i17.TonikCancellation? cancellation,
+    _i18.int? domainId,
+    _i18.int? limit,
+    _i18.int? offset,
+    _i40.ApiV1AdminTlsReportsParametersModel? policyType,
+    _i18.String? reportingOrg,
+    _i19.TonikCancellation? cancellation,
   }) async => _listTlsReports(
     domainId: domainId,
     limit: limit,

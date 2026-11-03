@@ -55,7 +55,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     this.due,
     this.dueSource,
     this.headers,
+    this.imapDeleted,
     this.isAnswered,
+    this.keywords,
     this.mailbox,
     this.receivedTls,
     this.sealedHash,
@@ -106,6 +108,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       ),
       headers: _$map[r'headers'],
       id: _$map[r'id'].decodeJsonInt(context: r'Message.id'),
+      imapDeleted: _$map[r'imap_deleted'].decodeJsonNullableBool(
+        context: r'Message.imap_deleted',
+      ),
       inReplyTo: _$map[r'in_reply_to'].decodeJsonString(
         context: r'Message.in_reply_to',
       ),
@@ -123,6 +128,9 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       isRead: _$map[r'is_read'].decodeJsonBool(context: r'Message.is_read'),
       isStarred: _$map[r'is_starred'].decodeJsonBool(
         context: r'Message.is_starred',
+      ),
+      keywords: _$map[r'keywords'].decodeJsonNullableList<_i3.String>(
+        context: r'Message.keywords',
       ),
       mailbox: _$map[r'mailbox'] == null
           ? null
@@ -207,6 +215,8 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
 
   final _i3.int id;
 
+  final _i3.bool? imapDeleted;
+
   final _i3.String inReplyTo;
 
   final _i3.bool? isAnswered;
@@ -222,6 +232,8 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
   final _i3.bool isRead;
 
   final _i3.bool isStarred;
+
+  final _i3.List<_i3.String>? keywords;
 
   final _i8.MessageMailboxOneOfModel? mailbox;
 
@@ -282,6 +294,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     if (headers != null)
       r'headers': _i1.encodeUnknownJson(headers, context: r'Message.headers'),
     r'id': id,
+    if (imapDeleted != null) r'imap_deleted': imapDeleted,
     r'in_reply_to': inReplyTo,
     if (isAnswered != null) r'is_answered': isAnswered,
     r'is_deleted': isDeleted,
@@ -290,6 +303,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
     r'is_flagged': isFlagged,
     r'is_read': isRead,
     r'is_starred': isStarred,
+    if (keywords != null) r'keywords': keywords,
     if (mailbox != null) r'mailbox': mailbox?.toJson(),
     r'mailbox_id': mailboxId,
     r'message_id': messageId,
@@ -338,6 +352,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         other.hasAttachments == this.hasAttachments &&
         other.headers == this.headers &&
         other.id == this.id &&
+        other.imapDeleted == this.imapDeleted &&
         other.inReplyTo == this.inReplyTo &&
         other.isAnswered == this.isAnswered &&
         other.isDeleted == this.isDeleted &&
@@ -346,6 +361,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
         other.isFlagged == this.isFlagged &&
         other.isRead == this.isRead &&
         other.isStarred == this.isStarred &&
+        _$deepEquals.equals(other.keywords, this.keywords) &&
         other.mailbox == this.mailbox &&
         other.mailboxId == this.mailboxId &&
         other.messageId == this.messageId &&
@@ -385,6 +401,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       hasAttachments,
       headers,
       id,
+      imapDeleted,
       inReplyTo,
       isAnswered,
       isDeleted,
@@ -393,6 +410,7 @@ class Message extends _i1.ObjectParameterEncodable implements _i1.UriEncodable {
       isFlagged,
       isRead,
       isStarred,
+      deepEquals.hash(keywords),
       mailbox,
       mailboxId,
       messageId,
@@ -455,6 +473,7 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.bool? hasAttachments,
     _i3.Object? headers,
     _i3.int? id,
+    _i3.bool? imapDeleted,
     _i3.String? inReplyTo,
     _i3.bool? isAnswered,
     _i3.bool? isDeleted,
@@ -463,6 +482,7 @@ abstract class $$MessageCopyWith<$Res> {
     _i3.bool? isFlagged,
     _i3.bool? isRead,
     _i3.bool? isStarred,
+    _i3.List<_i3.String>? keywords,
     _i8.MessageMailboxOneOfModel? mailbox,
     _i3.int? mailboxId,
     _i3.String? messageId,
@@ -497,6 +517,7 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.bool get hasAttachments;
   _i3.Object? get headers;
   _i3.int get id;
+  _i3.bool? get imapDeleted;
   _i3.String get inReplyTo;
   _i3.bool? get isAnswered;
   _i3.bool get isDeleted;
@@ -505,6 +526,7 @@ abstract class $$MessageCopyWith<$Res> {
   _i3.bool get isFlagged;
   _i3.bool get isRead;
   _i3.bool get isStarred;
+  _i3.List<_i3.String>? get keywords;
   _i8.MessageMailboxOneOfModel? get mailbox;
   _i3.int get mailboxId;
   _i3.String get messageId;
@@ -578,6 +600,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
   _i3.int get id => _value.id;
 
   @_i3.override
+  _i3.bool? get imapDeleted => _value.imapDeleted;
+
+  @_i3.override
   _i3.String get inReplyTo => _value.inReplyTo;
 
   @_i3.override
@@ -600,6 +625,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
 
   @_i3.override
   _i3.bool get isStarred => _value.isStarred;
+
+  @_i3.override
+  _i3.List<_i3.String>? get keywords => _value.keywords;
 
   @_i3.override
   _i8.MessageMailboxOneOfModel? get mailbox => _value.mailbox;
@@ -672,6 +700,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
     _i3.Object? hasAttachments = _sentinel,
     _i3.Object? headers = _sentinel,
     _i3.Object? id = _sentinel,
+    _i3.Object? imapDeleted = _sentinel,
     _i3.Object? inReplyTo = _sentinel,
     _i3.Object? isAnswered = _sentinel,
     _i3.Object? isDeleted = _sentinel,
@@ -680,6 +709,7 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
     _i3.Object? isFlagged = _sentinel,
     _i3.Object? isRead = _sentinel,
     _i3.Object? isStarred = _sentinel,
+    _i3.Object? keywords = _sentinel,
     _i3.Object? mailbox = _sentinel,
     _i3.Object? mailboxId = _sentinel,
     _i3.Object? messageId = _sentinel,
@@ -739,6 +769,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
           : (hasAttachments as _i3.bool),
       headers: _i3.identical(headers, _sentinel) ? this.headers : headers,
       id: _i3.identical(id, _sentinel) ? this.id : (id as _i3.int),
+      imapDeleted: _i3.identical(imapDeleted, _sentinel)
+          ? this.imapDeleted
+          : (imapDeleted as _i3.bool?),
       inReplyTo: _i3.identical(inReplyTo, _sentinel)
           ? this.inReplyTo
           : (inReplyTo as _i3.String),
@@ -761,6 +794,9 @@ class _MessageCopyWith<$Res> implements $$MessageCopyWith<$Res> {
       isStarred: _i3.identical(isStarred, _sentinel)
           ? this.isStarred
           : (isStarred as _i3.bool),
+      keywords: _i3.identical(keywords, _sentinel)
+          ? this.keywords
+          : (keywords as _i3.List<_i3.String>?),
       mailbox: _i3.identical(mailbox, _sentinel)
           ? this.mailbox
           : (mailbox as _i8.MessageMailboxOneOfModel?),
