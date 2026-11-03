@@ -151,6 +151,17 @@
         "contacts_test.dart",
         "contact_reply_time_flow_test.dart"
       ]
+    },
+    {
+      "operationId": "updateAPIKey",
+      "facade": "updateAPIKey",
+      "wire_responses": "generated typed DTOs",
+      "ui_projection": "typed field mapping to APIKey in client.dart",
+      "tests": [
+        "client_test.dart",
+        "api_keys_test.dart",
+        "api_keys_flow_test.dart"
+      ]
     }
   ]
 }

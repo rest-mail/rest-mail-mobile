@@ -49,6 +49,28 @@ String _keyError(BuildContext context, ApiException error, String host) {
   };
 }
 
+/// What a refused change to a key's permissions means, in the words of the
+/// admin screen. `forbidden` is how the server refuses permissions over the
+/// ceiling, but other checks answer with it too, so it keeps the server's own
+/// message, which cannot name the wrong cause.
+String _editKeyError(
+  BuildContext context,
+  ApiException error,
+  String host,
+) => switch (error.code) {
+  _ when error.fields.isNotEmpty => _keyError(context, error, host),
+  'recent_two_factor_required' => tr(
+    context,
+    'apikeys.yourTwoFactorSignInIsNo',
+  ),
+  'two_factor_required' => tr(context, 'apikeys.thisChangeNeedsASessionSigned'),
+  'reauth_required' => tr(context, 'apikeys.enterYourCurrentPasswordToChange'),
+  'invalid_password' => tr(context, 'apikeys.thatIsNotYourCurrentPassword'),
+  'not_found' => tr(context, 'apikeys.thisAPIKeyNoLongerExists'),
+  'forbidden' => error.message,
+  _ => _keyError(context, error, host),
+};
+
 Future<void> _signInAgain(BuildContext context, RestAccount account) =>
     Navigator.push<void>(
       context,
@@ -78,6 +100,7 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
   ApiException? _error;
   var _loading = true;
   final _revoking = <int>{};
+  var _loadRun = 0;
 
   RestAccount get _account => _currentSession(context, widget.account);
 
@@ -88,17 +111,20 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
   }
 
   Future<void> _load() async {
+    // Only the newest answer counts: one asked before a save may arrive after
+    // it, and would put the old permissions back.
+    final run = ++_loadRun;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final items = await _account.client.apiKeys(widget.mailbox.id);
-      if (mounted) setState(() => _items = items);
+      if (mounted && run == _loadRun) setState(() => _items = items);
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error);
+      if (mounted && run == _loadRun) setState(() => _error = error);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && run == _loadRun) setState(() => _loading = false);
     }
   }
 
@@ -111,6 +137,37 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
       ),
     );
     if (mounted) await _load();
+  }
+
+  Future<void> _edit(APIKey key) async {
+    final saved = await Navigator.push<APIKey>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditAPIKeyScreen(
+          account: _account,
+          mailbox: widget.mailbox,
+          apiKey: key,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (saved != null) {
+      // What the server stored, at once, so a list that then fails to reload
+      // is still right.
+      setState(
+        () => _items = [
+          for (final item in _items ?? const <APIKey>[])
+            item.id == saved.id ? saved : item,
+        ],
+      );
+      showToast(
+        context,
+        trArgs(context, 'apikeys.savedThePermissionsOfName', {
+          'name': saved.name,
+        }),
+      );
+    }
+    await _load();
   }
 
   Future<void> _revoke(APIKey key) async {
@@ -237,13 +294,31 @@ class _APIKeysScreenState extends State<APIKeysScreen> {
                                       for (final permission in key.permissions)
                                         '${permission.capability} · ${permission.scope}',
                                     ].join('\n'),
-                                    trailing: TextButton(
-                                      onPressed: _revoking.contains(key.id)
-                                          ? null
-                                          : () => unawaited(_revoke(key)),
-                                      child: Text(
-                                        tr(context, 'apikeys.revoke'),
-                                      ),
+                                    onTap: _revoking.contains(key.id)
+                                        ? null
+                                        : () => unawaited(_edit(key)),
+                                    trailing: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: _revoking.contains(key.id)
+                                              ? null
+                                              : () => unawaited(_edit(key)),
+                                          child: Text(
+                                            tr(context, 'folders.edit'),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: _revoking.contains(key.id)
+                                              ? null
+                                              : () => unawaited(_revoke(key)),
+                                          child: Text(
+                                            tr(context, 'apikeys.revoke'),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                               ],
@@ -300,6 +375,26 @@ class _PermissionInput {
   _PermissionInput(String address)
     : target = TextEditingController(text: address);
 
+  /// A permission a key already holds. The server stores only these three
+  /// forms. Anything else shows as a mailbox, which the server refuses if it is
+  /// saved unchanged, and never as everywhere, which would widen the key.
+  factory _PermissionInput.held(APIKeyPermission permission) {
+    final stored = permission.scope;
+    final scope = stored == '*'
+        ? _Scope.all
+        : stored.startsWith(_Scope.domain.prefix)
+        ? _Scope.domain
+        : _Scope.mailbox;
+    final target = scope == _Scope.all
+        ? ''
+        : stored.startsWith(scope.prefix)
+        ? stored.substring(scope.prefix.length)
+        : stored;
+    return _PermissionInput(target)
+      ..capability = permission.capability
+      ..scope = scope;
+  }
+
   String capability = 'mail:read';
   _Scope scope = _Scope.mailbox;
   final TextEditingController target;
@@ -310,6 +405,8 @@ class _PermissionInput {
         ? '*'
         : '${scope.prefix}${target.text.trim().toLowerCase()}',
   );
+
+  bool get isComplete => scope == _Scope.all || target.text.trim().isNotEmpty;
 }
 
 class CreateAPIKeyScreen extends StatefulWidget {
@@ -340,10 +437,7 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
       _name.text.trim().isNotEmpty &&
       _password.text.isNotEmpty &&
       (_days != 0 || _customExpiry != null) &&
-      _permissions.every(
-        (item) =>
-            item.scope == _Scope.all || item.target.text.trim().isNotEmpty,
-      );
+      _permissions.every((item) => item.isComplete);
 
   @override
   void dispose() {
@@ -464,7 +558,20 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                     tr(context, 'apikeys.eachCapabilityAppliesOnlyAtTheScope'),
                     style: rmText(13, color: c.ink3),
                   ),
-                  for (var i = 0; i < _permissions.length; i++) _permission(i),
+                  for (final (i, item) in _permissions.indexed)
+                    _PermissionFields(
+                      key: ObjectKey(item),
+                      item: item,
+                      index: i,
+                      mailbox: widget.mailbox,
+                      enabled: !_busy,
+                      onChanged: () => setState(() => _error = null),
+                      onRemove: _permissions.length > 1
+                          ? () => setState(() {
+                              _permissions.removeAt(i).target.dispose();
+                            })
+                          : null,
+                    ),
                   TextButton.icon(
                     onPressed: _busy || _permissions.length >= 64
                         ? null
@@ -561,11 +668,34 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
       ),
     );
   }
+}
 
-  Widget _permission(int index) {
-    final item = _permissions[index];
+/// One permission's capability and scope, on the forms that make and change a
+/// key.
+class _PermissionFields extends StatelessWidget {
+  const _PermissionFields({
+    super.key,
+    required this.item,
+    required this.index,
+    required this.mailbox,
+    required this.enabled,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final _PermissionInput item;
+  final int index;
+  final Account mailbox;
+  final bool enabled;
+  final VoidCallback onChanged;
+
+  /// Null when this is the only permission: a key needs at least one.
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final remove = onRemove;
     return Padding(
-      key: ObjectKey(item),
       padding: const EdgeInsets.only(top: 16),
       child: Column(
         children: [
@@ -577,16 +707,18 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                 'value': (index + 1).toString(),
               }),
             ),
+            // A key can hold a capability this list doesn't name. It stays
+            // on offer until it is changed.
             items: [
-              for (final capability in _capabilities)
+              for (final capability in {..._capabilities, item.capability})
                 DropdownMenuItem(value: capability, child: Text(capability)),
             ],
-            onChanged: _busy
-                ? null
-                : (value) => setState(() {
+            onChanged: enabled
+                ? (value) {
                     if (value != null) item.capability = value;
-                    _error = null;
-                  }),
+                    onChanged();
+                  }
+                : null,
           ),
           DropdownButtonFormField<_Scope>(
             isExpanded: true,
@@ -601,18 +733,18 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                   child: Text(tr(context, scope.label)),
                 ),
             ],
-            onChanged: _busy
-                ? null
-                : (scope) => setState(() {
+            onChanged: enabled
+                ? (scope) {
                     if (scope == null) return;
                     item.scope = scope;
                     item.target.text = scope == _Scope.mailbox
-                        ? widget.mailbox.address
+                        ? mailbox.address
                         : scope == _Scope.domain
-                        ? widget.mailbox.address.split('@').last
+                        ? mailbox.address.split('@').last
                         : '';
-                    _error = null;
-                  }),
+                    onChanged();
+                  }
+                : null,
           ),
           if (item.scope != _Scope.all)
             TextField(
@@ -624,18 +756,195 @@ class _CreateAPIKeyScreenState extends State<CreateAPIKeyScreen> {
                     ? tr(context, 'apikeys.mailboxAddress')
                     : tr(context, 'admin.tlsreports.domainName'),
               ),
-              onChanged: (_) => setState(() => _error = null),
+              onChanged: (_) => onChanged(),
             ),
-          if (_permissions.length > 1)
+          if (remove != null)
             TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => setState(() {
-                      _permissions.removeAt(index).target.dispose();
-                    }),
+              onPressed: enabled ? remove : null,
               child: Text(tr(context, 'apikeys.removePermission')),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Changes what a key may do. The secret is never here: the list does not carry
+/// it, and this form sends only the permissions and the current password.
+/// Pops with the key as the server stored it.
+class EditAPIKeyScreen extends StatefulWidget {
+  const EditAPIKeyScreen({
+    super.key,
+    required this.account,
+    required this.mailbox,
+    required this.apiKey,
+  });
+
+  final RestAccount account;
+  final Account mailbox;
+  final APIKey apiKey;
+
+  @override
+  State<EditAPIKeyScreen> createState() => _EditAPIKeyScreenState();
+}
+
+class _EditAPIKeyScreenState extends State<EditAPIKeyScreen> {
+  final _password = TextEditingController();
+  late final _permissions = [
+    for (final permission in widget.apiKey.permissions)
+      _PermissionInput.held(permission),
+  ];
+  var _busy = false;
+  ApiException? _error;
+
+  bool get _ready =>
+      !_busy &&
+      _password.text.isNotEmpty &&
+      _permissions.isNotEmpty &&
+      _permissions.every((item) => item.isComplete);
+
+  @override
+  void dispose() {
+    _password.clear();
+    _password.dispose();
+    for (final permission in _permissions) {
+      permission.target.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_ready) return;
+    final password = _password.text;
+    _password.clear();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final account = _currentSession(context, widget.account);
+      final saved = await account.client.updateAPIKey(
+        widget.mailbox.id,
+        widget.apiKey.id,
+        password: password,
+        permissions: [for (final item in _permissions) item.permission],
+      );
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) Navigator.pop(context, saved);
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = error;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.rm;
+    final error = _error;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            RmTopBar(
+              title: trArgs(context, 'apikeys.permissionsOfName', {
+                'name': widget.apiKey.name,
+              }),
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(22),
+                children: [
+                  Text(
+                    trArgs(context, 'apikeys.ownerAddress', {
+                      'address': widget.mailbox.address,
+                    }),
+                    style: rmText(14, color: c.ink, weight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    tr(context, 'apikeys.theNewPermissionsReplaceTheOnes'),
+                    style: rmText(14, color: c.ink2, height: 1.45),
+                  ),
+                  for (final (i, item) in _permissions.indexed)
+                    _PermissionFields(
+                      key: ObjectKey(item),
+                      item: item,
+                      index: i,
+                      mailbox: widget.mailbox,
+                      enabled: !_busy,
+                      onChanged: () => setState(() => _error = null),
+                      onRemove: _permissions.length > 1
+                          ? () => setState(() {
+                              _permissions.removeAt(i).target.dispose();
+                              _error = null;
+                            })
+                          : null,
+                    ),
+                  TextButton.icon(
+                    onPressed: _busy || _permissions.length >= 64
+                        ? null
+                        : () => setState(() {
+                            _permissions.add(
+                              _PermissionInput(widget.mailbox.address),
+                            );
+                            _error = null;
+                          }),
+                    icon: const Icon(Icons.add),
+                    label: Text(tr(context, 'apikeys.addPermission')),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    tr(context, 'apikeys.aKeyCanHoldOnlyWhatBoth'),
+                    style: rmText(13, color: c.ink3),
+                  ),
+                  const SizedBox(height: 22),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    autofillHints: const [AutofillHints.password],
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'apikeys.currentPassword'),
+                      helperText: widget.account.address,
+                    ),
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    tr(context, 'apikeys.changingAKeyRequiresARecentSignIn'),
+                    style: rmText(13, color: c.ink3),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _editKeyError(context, error, widget.account.host),
+                      style: rmText(14, color: c.danger),
+                    ),
+                    if (error.code == 'two_factor_required' ||
+                        error.code == 'recent_two_factor_required')
+                      TextButton(
+                        onPressed: () =>
+                            unawaited(_signInAgain(context, widget.account)),
+                        child: Text(tr(context, 'twoFactor.signInAgain')),
+                      ),
+                  ],
+                  const SizedBox(height: 24),
+                  RmPrimaryButton(
+                    label: tr(context, 'common.save'),
+                    busy: _busy,
+                    onPressed: _ready ? () => unawaited(_save()) : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

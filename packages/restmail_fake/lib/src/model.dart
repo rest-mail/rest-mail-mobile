@@ -573,7 +573,8 @@ class FakeAPIKey {
   final String secret;
 
   /// Capability and scope pairs, scopes in lower case, without duplicates.
-  final List<(String, String)> permissions;
+  /// Changing them leaves the secret, name and expiry as they are.
+  List<(String, String)> permissions;
   final DateTime createdAt;
   final DateTime? expiresAt;
   DateTime? lastUsedAt;

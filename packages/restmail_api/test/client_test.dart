@@ -969,6 +969,138 @@ void main() {
     }
   });
 
+  group('changing an API key', () {
+    const permissions = [
+      APIKeyPermission(capability: 'mail:send', scope: 'domain:example.com'),
+    ];
+    final stored = {
+      'id': 12,
+      'name': 'n8n',
+      'kind': 'api_key',
+      'public_id': 'ak9Lm2Qx7Pz',
+      'created_at': '2026-10-20T08:00:00Z',
+      'last_used_at': null,
+      'expires_at': '2027-01-18T08:00:00Z',
+      'permissions': [
+        {'capability': 'mail:send', 'scope': 'domain:example.com'},
+      ],
+    };
+
+    test('sends only the password and permissions, and returns the key as the '
+        'server stored it', () async {
+      late http.Request sent;
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient((request) async {
+          sent = request;
+          return _json({'data': stored});
+        }),
+      );
+
+      final key = await client.updateAPIKey(
+        7,
+        12,
+        password: 'current password',
+        permissions: permissions,
+      );
+
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/api/v1/accounts/7/api-keys/12');
+      expect(jsonDecode(sent.body), {
+        'password': 'current password',
+        'permissions': [
+          {'capability': 'mail:send', 'scope': 'domain:example.com'},
+        ],
+      });
+      expect(key.id, 12);
+      expect(key.name, 'n8n');
+      expect(key.kind, 'api_key');
+      expect(key.publicId, 'ak9Lm2Qx7Pz');
+      expect(key.createdAt.toUtc(), DateTime.utc(2026, 10, 20, 8));
+      expect(key.lastUsedAt, isNull);
+      expect(key.expiresAt?.toUtc(), DateTime.utc(2027, 1, 18, 8));
+      expect(key.permissions, permissions);
+    });
+
+    for (final (status, code) in [
+      (403, 'recent_two_factor_required'),
+      (403, 'two_factor_required'),
+      (403, 'reauth_required'),
+      (403, 'invalid_password'),
+      (403, 'forbidden'),
+      (404, 'not_found'),
+    ]) {
+      test('$code is the request\'s own refusal: no refresh, and the '
+          'session stays', () async {
+        final seen = <String>[];
+        final changes = <SessionTokens?>[];
+        final client = RestmailClient(
+          server: _server,
+          tokens: _tokens('1'),
+          onTokensChanged: changes.add,
+          httpClient: MockClient((request) async {
+            seen.add('${request.method} ${request.url.path}');
+            return _json({
+              'error': {'code': code, 'message': 'The server says no'},
+            }, status: status);
+          }),
+        );
+
+        await expectLater(
+          client.updateAPIKey(
+            7,
+            12,
+            password: 'wrong',
+            permissions: permissions,
+          ),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', status)
+                .having((e) => e.code, 'code', code)
+                .having((e) => e.message, 'message', 'The server says no'),
+          ),
+        );
+
+        expect(seen, ['PATCH /api/v1/accounts/7/api-keys/12']);
+        expect(changes, isEmpty);
+        expect(client.tokens?.accessToken, 'access-1');
+      });
+    }
+
+    test('a validation refusal carries its fields', () async {
+      final client = RestmailClient(
+        server: _server,
+        tokens: _tokens('1'),
+        httpClient: MockClient(
+          (request) async => _json({
+            'error': {
+              'code': 'validation_failed',
+              'message': 'Request body failed validation',
+              'details': {
+                'fields': {'permissions': 'contains an unknown capability'},
+              },
+            },
+          }, status: 422),
+        ),
+      );
+
+      await expectLater(
+        client.updateAPIKey(
+          7,
+          12,
+          password: 'current password',
+          permissions: permissions,
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.fields, 'fields', {
+            'permissions': 'contains an unknown capability',
+          }),
+        ),
+      );
+    });
+  });
+
   group('push devices', () {
     test('lists, registers and removes this session\'s devices', () async {
       final sent = <http.Request>[];

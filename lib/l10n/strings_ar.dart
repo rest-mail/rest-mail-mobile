@@ -1470,6 +1470,20 @@ const Map<String, Map<String, String>> stringsAr = {
     'apikeys.copyAPIKey': 'نسخ مفتاح API',
     'apikeys.useThisKeyAsABearerCredential':
         'استخدم هذا المفتاح كبيانات اعتماد Bearer في رأس التفويض.',
+    'apikeys.permissionsOfName': 'صلاحيات «{name}»',
+    'apikeys.ownerAddress': 'المالك: {address}',
+    'apikeys.theNewPermissionsReplaceTheOnes': 'تحل الصلاحيات الجديدة محل الصلاحيات أدناه وتسري على الطلب التالي للمفتاح. يبقى سره واسمه وتاريخ انتهائه كما هي، فلا يلزم تغيير أي شيء يستخدم المفتاح.',
+    'apikeys.aKeyCanHoldOnlyWhatBoth': 'لا يمكن للمفتاح أن يحمل إلا ما تملكه أنت ومالكه الآن، لذا يجب إزالة أي صلاحية فقدها أي منكما قبل حفظ المفتاح.',
+    'apikeys.changingAKeyRequiresARecentSignIn': 'يتطلب تغيير صلاحيات المفتاح تسجيل دخول حديثًا بعامل ثانٍ وكلمة مرورك الحالية.',
+    'apikeys.savedThePermissionsOfName':
+        'تم حفظ صلاحيات «{name}». لم يتغير سره.',
+    'apikeys.yourTwoFactorSignInIsNo': 'لم يعد تسجيل دخولك بعاملين حديثًا بما يكفي لهذا التغيير. سجّل الدخول مرة أخرى باستخدام رمزك، ثم أعد إجراء التغيير.',
+    'apikeys.thisChangeNeedsASessionSigned': 'يحتاج هذا التغيير إلى جلسة مسجلة الدخول بالمصادقة الثنائية. سجّل الدخول مرة أخرى باستخدام رمزك، ثم أعد إجراء التغيير.',
+    'apikeys.enterYourCurrentPasswordToChange':
+        'أدخل كلمة مرورك الحالية لتغيير صلاحيات هذا المفتاح.',
+    'apikeys.thatIsNotYourCurrentPassword': 'هذه ليست كلمة مرورك الحالية. أدخل كلمة المرور التي تسجل الدخول بها، وليس كلمة مرور مالك المفتاح.',
+    'apikeys.thisAPIKeyNoLongerExists':
+        'مفتاح API هذا لم يعد موجودًا، أو لا يمكنك إدارة حسابه. لم يتغير شيء.',
     'apppasswords.whateverSignsInWithItStopsWorking': 'أي شيء يسجل الدخول به يتوقف عن العمل فورًا، بما في ذلك تطبيقات البريد المتصلة. لا يمكن التراجع عن ذلك.',
     'apppasswords.appPasswords': 'كلمات مرور التطبيق',
     'apppasswords.anAppPasswordLetsAMailApp': 'كلمة مرور التطبيق تسمح لتطبيق بريد مثل Thunderbird أو Mail على iPhone، أو لأتمتة، بتسجيل الدخول إلى {address} بدون استخدام كلمة مرورك. يمكن إبطال كل واحدة منها على حدة. يجب على الحساب الذي يستخدم تسجيل الدخول بعاملين استخدام واحدة فقط عبر IMAP وSMTP: يتم رفض كلمته الخاصة هناك.',

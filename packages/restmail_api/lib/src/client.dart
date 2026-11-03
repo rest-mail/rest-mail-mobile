@@ -518,6 +518,7 @@ class RestmailClient {
   late final _domainApi = wire.AdminDomainsApi(generatedSession);
   late final _mailboxApi = wire.AdminMailboxesApi(generatedSession);
   late final _contactsApi = wire.ContactsApi(generatedSession);
+  late final _credentialsApi = wire.CredentialsApi(generatedSession);
 
   /// Needs `domains:read`. The generated operation owns path/query encoding
   /// and response validation; the existing UI receives its display projection.
@@ -2092,10 +2093,10 @@ class RestmailClient {
 
   // ── API keys ─────────────────────────────────────────────────────────
   //
-  // For the session's own account, or one it manages. Creating and revoking
-  // need a two-factor sign-in, and creating the session's current password
-  // too: the server answers 403 otherwise, a refusal of the request, not of
-  // the session, so it never renews or ends it.
+  // For the session's own account, or one it manages. Creating, changing and
+  // revoking need a two-factor sign-in, and creating and changing the
+  // session's current password too: the server answers 403 otherwise, a
+  // refusal of the request, not of the session, so it never renews or ends it.
 
   /// The account's API keys: metadata only, never a token.
   Future<List<APIKey>> apiKeys(int accountId) async => _list(
@@ -2141,6 +2142,61 @@ class RestmailClient {
       'api-keys',
       '$credentialId',
     ]);
+  }
+
+  /// Replaces what an API key may do with [permissions] (1 to 64), and returns
+  /// the key as the server stored it. Its token, name and expiry stay as they
+  /// are, so nothing using the key has to change.
+  ///
+  /// The server asks what making a key asks: a two-factor sign-in, recent as
+  /// well (403 `two_factor_required`, `recent_two_factor_required`), the
+  /// session's current [password] (403 `reauth_required`, `invalid_password`),
+  /// and permissions within what the session and the account both hold (403
+  /// `forbidden`). A key that is gone or out of reach is 404 `not_found`, and
+  /// 429 means sign-in's budget, which this shares, is spent. When two people
+  /// change one key the last to save wins: the server has no version check.
+  Future<APIKey> updateAPIKey(
+    int accountId,
+    int credentialId, {
+    required String password,
+    required List<APIKeyPermission> permissions,
+  }) async {
+    final response = await generatedValue(
+      _credentialsApi.updateApiKey(
+        id: accountId,
+        credentialId: credentialId,
+        body: wire.UpdateApiKeyBody(
+          password: password,
+          permissions: [
+            for (final permission in permissions)
+              wire.ApiKeyPermission(
+                capability: permission.capability,
+                scope: permission.scope,
+              ),
+          ],
+        ),
+      ),
+    );
+    if (response is! wire.UpdateApiKeyResponse200) {
+      throw _unexpectedWireStatus();
+    }
+    final key = response.body.body.data;
+    return APIKey(
+      id: key.id,
+      name: key.name,
+      kind: key.kind,
+      publicId: key.publicId,
+      createdAt: key.createdAt,
+      lastUsedAt: key.lastUsedAt,
+      expiresAt: key.expiresAt,
+      permissions: [
+        for (final permission in key.permissions)
+          APIKeyPermission(
+            capability: permission.capability,
+            scope: permission.scope,
+          ),
+      ],
+    );
   }
 
   // ── Mail rules ───────────────────────────────────────────────────────
