@@ -302,6 +302,20 @@ class RestmailClient {
     }
   }
 
+  /// Chooses the invited account's first password. Its temporary session can
+  /// only finish authenticator setup; keep the final sign-in after setup.
+  /// Invalid/expired secrets are 401; 422 fields and 429 pacing are preserved.
+  Future<LoginResult> acceptInvitation({
+    required String token,
+    required String password,
+  }) async => _signedIn(
+    await _send(
+      'POST',
+      _uri(['auth', 'invitation']),
+      body: {'token': token, 'password': password, 'client': 'native'},
+    ),
+  );
+
   /// A sign-in's answer: the session it starts, now this client's.
   LoginResult _signedIn(http.Response response) {
     _throwIfError(response);
@@ -802,6 +816,20 @@ class RestmailClient {
     if (response is! wire.EndMailboxSessionsResponse204) {
       throw _unexpectedWireStatus();
     }
+  }
+
+  /// Issues a 15-minute first-password invitation for an active account that
+  /// has never held credentials. Reissuing invalidates the previous secret.
+  /// Needs live `accounts:write` at this mailbox's scope and a fresh second
+  /// factor. 409 `account_not_invitable` is not a reset: an account that has
+  /// ever held credentials cannot be invited. 503 `unavailable` when the
+  /// server has no authenticator enrollment or encryption key.
+  Future<AccountInvitation> inviteAccount(int id) async {
+    final response = await generatedValue(_mailboxApi.inviteAccount(id: id));
+    if (response is! wire.InviteAccountResponse201) {
+      throw _unexpectedWireStatus();
+    }
+    return AccountInvitation.fromWire(response.body.body.data);
   }
 
   /// Deletes the mailbox and its mail. Needs `mailboxes:delete`.

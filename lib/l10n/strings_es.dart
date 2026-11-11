@@ -1,6 +1,18 @@
 /// Spanish base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsEs = {
   'classic': {
+    'invitation.acceptTitle': 'Usar una invitación',
+    'invitation.acceptIntro': 'Introduce la invitación de tu administrador y elige una contraseña de 12 a 72 bytes. Después configura tu autenticador y guarda sus códigos de recuperación.',
+    'invitation.token': 'Código de invitación',
+    'invitation.issueTitle': 'Invitar a elegir una contraseña',
+    'invitation.issueIntro': 'Para una cuenta activa que nunca ha tenido credenciales de acceso. Comparte el código en privado con su titular. Caduca a los 15 minutos. Una nueva invitación sustituye a la anterior. La persona titular elige una contraseña y configura un autenticador con Usar una invitación en la pantalla de inicio de sesión de este servidor.',
+    'invitation.notInvitable': 'Solo se puede invitar a una cuenta activa que nunca haya tenido credenciales de acceso. Esto no restablece una cuenta existente.',
+    'invitation.expires': 'Caduca {date}',
+    'invitation.show': 'Mostrar código de invitación',
+    'invitation.copy': 'Copiar código de invitación',
+    'invitation.copied': 'Código de invitación copiado',
+    'invitation.generate': 'Generar invitación',
+    'invitation.invalidToken': 'Esta invitación no es válida, ha caducado o ya se ha usado. Pide una nueva a tu administrador.',
     'recoveryEmail.title': 'Correo de recuperación',
     'recoveryEmail.settingsHint':
         'Una dirección fuera de este servidor para una contraseña olvidada',

@@ -12,6 +12,7 @@ import '../../theme/tokens.dart';
 import '../../util/format.dart';
 import '../widgets/common.dart';
 import 'admin_widgets.dart';
+import 'invitation_screen.dart';
 
 String _storage(BuildContext context, AdminMailbox box) => box.quotaBytes > 0
     ? trArgs(context, 'ui.valueOfValue2', {
@@ -477,6 +478,29 @@ class _AdminMailboxScreenState extends State<AdminMailboxScreen> {
                 const SizedBox(height: 22),
                 RmGroup(
                   children: [
+                    // The server's gate: live accounts:write at this
+                    // mailbox. It also asks for a fresh second factor.
+                    if (box.active &&
+                        widget.account.capabilities.allows(
+                          'accounts:write',
+                          scope: CapabilityScope.mailbox(box.address),
+                        ))
+                      RmRow(
+                        label: tr(context, 'invitation.issueTitle'),
+                        onTap: _busy
+                            ? null
+                            : () => unawaited(
+                                Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => InvitationScreen(
+                                      account: widget.account,
+                                      mailbox: box,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      ),
                     RmRow(
                       label: tr(context, 'admin.mailboxes.setANewPassword'),
                       onTap: _busy ? null : () => unawaited(_newPassword()),

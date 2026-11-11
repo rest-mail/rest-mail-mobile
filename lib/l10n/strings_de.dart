@@ -1,6 +1,18 @@
 /// German base pack. See `strings_en.dart` for how these are resolved.
 const Map<String, Map<String, String>> stringsDe = {
   'classic': {
+    'invitation.acceptTitle': 'Einladung verwenden',
+    'invitation.acceptIntro': 'Geben Sie die Einladung Ihres Administrators ein und wählen Sie ein Passwort mit 12–72 Bytes. Richten Sie danach Ihren Authenticator ein und speichern Sie die Wiederherstellungscodes.',
+    'invitation.token': 'Einladungscode',
+    'invitation.issueTitle': 'Zum Festlegen eines Passworts einladen',
+    'invitation.issueIntro': 'Für ein aktives Konto, das noch nie Anmeldedaten hatte. Teilen Sie den Code nur privat mit seiner Inhaberin oder seinem Inhaber. Er läuft nach 15 Minuten ab. Eine neue Einladung ersetzt die vorherige. Die Person wählt ein Passwort und richtet einen Authenticator über „Einladung verwenden“ auf dem Anmeldebildschirm dieses Servers ein.',
+    'invitation.notInvitable': 'Nur ein aktives Konto, das noch nie Anmeldedaten hatte, kann eingeladen werden. Ein bestehendes Konto wird dadurch nicht zurückgesetzt.',
+    'invitation.expires': 'Läuft ab {date}',
+    'invitation.show': 'Einladungscode anzeigen',
+    'invitation.copy': 'Einladungscode kopieren',
+    'invitation.copied': 'Einladungscode kopiert',
+    'invitation.generate': 'Einladung erstellen',
+    'invitation.invalidToken': 'Diese Einladung ist ungültig, abgelaufen oder bereits verwendet. Bitten Sie Ihren Administrator um eine neue.',
     'recoveryEmail.title': 'Wiederherstellungs-E-Mail',
     'recoveryEmail.settingsHint':
         'Eine Adresse außerhalb dieses Servers für ein vergessenes Passwort',

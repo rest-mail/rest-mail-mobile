@@ -300,6 +300,23 @@ class AdminQuotaUsage {
   final DateTime? updatedAt;
 }
 
+/// A first-password invitation. The token is returned only when it is issued.
+class AccountInvitation {
+  const AccountInvitation({required this.token, required this.expiresAt});
+
+  factory AccountInvitation.fromWire(wire.InvitationResponse value) =>
+      AccountInvitation(
+        token: value.token,
+        expiresAt: value.expiresAt.toLocal(),
+      );
+
+  final String token;
+  final DateTime expiresAt;
+
+  @override
+  String toString() => 'AccountInvitation(expiresAt: $expiresAt)';
+}
+
 /// A mailbox, as an admin sees it.
 class AdminMailbox {
   const AdminMailbox({

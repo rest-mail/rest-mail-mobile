@@ -47,9 +47,11 @@ class ServerSetupScreen extends StatefulWidget {
     required this.server,
     this.address,
     this.password,
+    this.invitation = false,
   });
 
   final Uri server;
+  final bool invitation;
 
   /// The sign-in from the installer's QR code, filled in.
   final String? address;
@@ -82,6 +84,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
   );
   late final _password = TextEditingController(text: widget.password);
   final _code = TextEditingController();
+  final _invitation = TextEditingController();
   var _needsCode = false;
   var _owed = <SetupStep>[];
 
@@ -100,6 +103,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       _address,
       _password,
       _code,
+      _invitation,
       _newPassword,
       _repeatPassword,
     ]) {
@@ -142,6 +146,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       // stays: say which, and let them try again.
       'invalid_totp' => tr(context, 'signIn.badCode'),
       'invalid_password' => tr(context, 'setup.notCurrentPassword'),
+      'invalid_token' => tr(context, 'invitation.invalidToken'),
       _ => describeError(context, e, host: widget.server.host),
     };
   }
@@ -170,11 +175,18 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   Future<void> _signIn() => _run(() async {
     try {
-      final result = await _admin.login(
-        email: _address.text.trim(),
-        password: _password.text,
-        totpCode: _needsCode ? _code.text.trim() : null,
-      );
+      final result = widget.invitation
+          ? await _admin.acceptInvitation(
+              token: _invitation.text.trim(),
+              password: _password.text,
+            )
+          : await _admin.login(
+              email: _address.text.trim(),
+              password: _password.text,
+              totpCode: _needsCode ? _code.text.trim() : null,
+            );
+      _invitation.clear();
+      _address.text = result.user.email;
       _code.clear();
       _owed = result.setupRequired;
       await _advance(result);
@@ -265,7 +277,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
                   children: [
-                    _Progress(step: _step),
+                    if (!widget.invitation) _Progress(step: _step),
                     const SizedBox(height: 18),
                     Text(intro, style: rmText(15, color: c.ink2, height: 1.45)),
                     ...fields,
@@ -285,61 +297,97 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     );
   }
 
-  _StepView _signInStep(RmColors c) => (
-    trArgs(context, 'setup.title', {'host': widget.server.host}),
-    tr(context, 'setup.signInIntro'),
-    [
-      if (sampleMode) ...[
-        const SizedBox(height: 14),
-        _SampleHint(
-          trArgs(
-            context,
-            'serversetup.sampleServerAdminEmailPasswordBootstrapPasswordCodesTotpCode',
-            {
-              'adminEmail': (FakeAccounts.adminEmail).toString(),
-              'bootstrapPassword': (FakeAccounts.bootstrapPassword).toString(),
-              'totpCode': (FakeAccounts.totpCode).toString(),
-            },
+  _StepView _signInStep(RmColors c) => widget.invitation
+      ? (
+          tr(context, 'invitation.acceptTitle'),
+          tr(context, 'invitation.acceptIntro'),
+          [
+            const SizedBox(height: 22),
+            SectionLabel(tr(context, 'invitation.token')),
+            const SizedBox(height: 8),
+            _field(_invitation, obscure: true, autocorrect: false),
+            const SizedBox(height: 22),
+            SectionLabel(tr(context, 'recover.newPassword')),
+            const SizedBox(height: 8),
+            _field(
+              _password,
+              obscure: true,
+              autofill: const [AutofillHints.newPassword],
+            ),
+            const SizedBox(height: 22),
+            SectionLabel(tr(context, 'setup.repeatPassword')),
+            const SizedBox(height: 8),
+            _field(
+              _repeatPassword,
+              obscure: true,
+              autofill: const [AutofillHints.newPassword],
+            ),
+          ],
+          _primary(
+            tr(context, 'signIn.continue'),
+            _signIn,
+            ready:
+                _invitation.text.trim().isNotEmpty &&
+                _password.text.length >= 12 &&
+                _password.text == _repeatPassword.text,
           ),
-        ),
-      ],
-      const SizedBox(height: 18),
-      RmOutlineButton(
-        label: tr(context, 'setup.scan'),
-        onPressed: _busy ? null : () => unawaited(_scan()),
-      ),
-      const SizedBox(height: 22),
-      SectionLabel(tr(context, 'signIn.email')),
-      const SizedBox(height: 8),
-      _field(
-        _address,
-        autocorrect: false,
-        email: true,
-        autofill: const [AutofillHints.email],
-      ),
-      const SizedBox(height: 22),
-      SectionLabel(tr(context, 'signIn.password')),
-      const SizedBox(height: 8),
-      _field(
-        _password,
-        obscure: true,
-        hint: tr(context, 'setup.fromInstaller'),
-        autofill: const [AutofillHints.password],
-        onSubmitted: _signIn,
-      ),
-      if (_needsCode) ...[
-        const SizedBox(height: 22),
-        SectionLabel(tr(context, 'signIn.twoFactorCode')),
-        const SizedBox(height: 8),
-        _codeField(onSubmitted: _signIn),
-      ],
-    ],
-    _primary(
-      tr(context, 'signIn.continue'),
-      _signIn,
-      ready: _address.text.contains('@') && _password.text.isNotEmpty,
-    ),
-  );
+        )
+      : (
+          trArgs(context, 'setup.title', {'host': widget.server.host}),
+          tr(context, 'setup.signInIntro'),
+          [
+            if (sampleMode) ...[
+              const SizedBox(height: 14),
+              _SampleHint(
+                trArgs(
+                  context,
+                  'serversetup.sampleServerAdminEmailPasswordBootstrapPasswordCodesTotpCode',
+                  {
+                    'adminEmail': (FakeAccounts.adminEmail).toString(),
+                    'bootstrapPassword': (FakeAccounts.bootstrapPassword)
+                        .toString(),
+                    'totpCode': (FakeAccounts.totpCode).toString(),
+                  },
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            RmOutlineButton(
+              label: tr(context, 'setup.scan'),
+              onPressed: _busy ? null : () => unawaited(_scan()),
+            ),
+            const SizedBox(height: 22),
+            SectionLabel(tr(context, 'signIn.email')),
+            const SizedBox(height: 8),
+            _field(
+              _address,
+              autocorrect: false,
+              email: true,
+              autofill: const [AutofillHints.email],
+            ),
+            const SizedBox(height: 22),
+            SectionLabel(tr(context, 'signIn.password')),
+            const SizedBox(height: 8),
+            _field(
+              _password,
+              obscure: true,
+              hint: tr(context, 'setup.fromInstaller'),
+              autofill: const [AutofillHints.password],
+              onSubmitted: _signIn,
+            ),
+            if (_needsCode) ...[
+              const SizedBox(height: 22),
+              SectionLabel(tr(context, 'signIn.twoFactorCode')),
+              const SizedBox(height: 8),
+              _codeField(onSubmitted: _signIn),
+            ],
+          ],
+          _primary(
+            tr(context, 'signIn.continue'),
+            _signIn,
+            ready: _address.text.contains('@') && _password.text.isNotEmpty,
+          ),
+        );
 
   _StepView _authenticatorStep(RmColors c) {
     final enrollment = _enrollment;
