@@ -427,6 +427,23 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       Center(
                         child: TextButton(
                           onPressed: () => unawaited(
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ServerSetupScreen(
+                                  server: server,
+                                  invitation: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: Text(tr(context, 'invitation.acceptTitle')),
+                        ),
+                      ),
+                    if (_server case final server? when _provider == null)
+                      Center(
+                        child: TextButton(
+                          onPressed: () => unawaited(
                             Navigator.push(
                               context,
                               MaterialPageRoute<void>(

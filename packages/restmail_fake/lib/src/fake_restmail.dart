@@ -74,6 +74,7 @@ class FakeRestmail {
     this.pushPlatforms = const {'apns'},
     this.maxForwardMessageBytes = 10 * 1024 * 1024,
     this.discardForwards = false,
+    this.invitationsAvailable = true,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     _load();
@@ -84,6 +85,8 @@ class FakeRestmail {
   /// The full forwarded MIME cap and an explicit outbound-discard fixture.
   final int maxForwardMessageBytes;
   final bool discardForwards;
+  final bool invitationsAvailable;
+  final _invitations = <int, (String, DateTime)>{};
 
   /// Requests to any other host fail as if it could not be reached.
   final String host;
@@ -745,6 +748,8 @@ class FakeRestmail {
         );
       case ('POST', ['api', 'v1', 'auth', 'refresh']):
         return _refresh(_object(bytes));
+      case ('POST', ['api', 'v1', 'auth', 'invitation']):
+        return _acceptInvitation(_object(bytes));
       case ('POST', ['api', 'v1', 'auth', 'recover']):
         final body = _object(bytes);
         final email = '${body['email'] ?? ''}';
@@ -1567,6 +1572,54 @@ class FakeRestmail {
       });
     },
   );
+
+  http.StreamedResponse _acceptInvitation(Map<String, dynamic> body) {
+    _spendSignInBudget();
+    final password = body['password'];
+    final token = body['token'];
+    final client = body['client'];
+    final invalid = <String, String>{
+      if (password is! String ||
+          utf8.encode(password).length < 12 ||
+          utf8.encode(password).length > 72)
+        'password': 'must be between 12 and 72 bytes',
+      if (client != null && client != '' && client != 'native')
+        'client': 'must be "native" or omitted',
+    };
+    if (invalid.isNotEmpty) {
+      _fail(
+        422,
+        'validation_failed',
+        'Request body failed validation',
+        fields: invalid,
+      );
+    }
+    if (!invitationsAvailable) {
+      _fail(
+        503,
+        'unavailable',
+        'Invitations require authenticator enrollment and server encryption to be enabled',
+      );
+    }
+    final entry = _invitations.entries
+        .where((e) => e.value.$1 == token)
+        .firstOrNull;
+    final box = entry == null ? null : _mailboxes[entry.key];
+    if (entry == null ||
+        !_clock().isBefore(entry.value.$2) ||
+        box == null ||
+        !box.active ||
+        box.hasEverHadCredentials) {
+      _fail(401, 'invalid_token', 'Invalid or expired token');
+    }
+    _invitations.remove(entry.key);
+    box
+      ..password = password as String
+      ..mustChangePassword = false
+      ..owesTwoFactor = true;
+    revokeSessionsOf(box.address);
+    return _issue(_Session(box.id), native: client == 'native');
+  }
 
   /// [_audited], for a request made by a mailbox's session.
   http.StreamedResponse _auditedBy(
@@ -5356,6 +5409,59 @@ class FakeRestmail {
       case ('PATCH', ['mailboxes', final id]):
         need('mailboxes:write');
         return _updateMailbox(id, _object(bytes));
+      case ('POST', ['mailboxes', final id, 'invitation']):
+        final session = _authenticate(request);
+        final target = _adminMailbox(id);
+        if (!_allowsHeld(
+          _mailboxes[session.primary]!,
+          'accounts:write',
+          'mailbox:${target.address}',
+        )) {
+          _fail(403, 'forbidden', 'Insufficient permissions');
+        }
+        // As REST Mail: an invitation is a credential, so it takes a
+        // second factor proven within the last 15 minutes.
+        final proved = session.twoFactorAt;
+        if (!session.twoFactor) {
+          _fail(
+            403,
+            'two_factor_required',
+            'This action needs a session signed in with two-factor authentication: sign in again with your code',
+          );
+        }
+        if (proved == null ||
+            proved.isAfter(_clock()) ||
+            _clock().difference(proved) > _freshTwoFactorWindow) {
+          _fail(
+            403,
+            'recent_two_factor_required',
+            'Sign in again with two-factor authentication: a recent second factor is required',
+          );
+        }
+        if (!invitationsAvailable) {
+          _fail(
+            503,
+            'unavailable',
+            'Invitations require authenticator enrollment and server encryption to be enabled',
+          );
+        }
+        if (!target.active || target.hasEverHadCredentials) {
+          _fail(
+            409,
+            'account_not_invitable',
+            'only an active account that has never held credentials can be invited',
+          );
+        }
+        final token = _token('invitation');
+        final expires = _clock().add(const Duration(minutes: 15));
+        _invitations[target.id] = (token, expires);
+        return _json(
+          {
+            'data': {'token': token, 'expires_at': _time(expires)},
+          },
+          status: 201,
+          headers: {'cache-control': 'no-store'},
+        );
       case ('DELETE', ['mailboxes', final id, 'sessions']):
         need('mailboxes:write');
         revokeSessionsOf(_adminMailbox(id).address);

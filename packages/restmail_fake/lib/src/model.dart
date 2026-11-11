@@ -12,7 +12,8 @@ class FakeMailbox {
     this.totpCode,
     this.recoveryCode,
     this.quotaBytes = 5 * 1024 * 1024 * 1024,
-  }) : _password = password;
+  }) : _password = password,
+       _everHadCredentials = password != null || totpCode != null;
 
   final int id;
   final String address;
@@ -22,15 +23,19 @@ class FakeMailbox {
   String displayName;
   String? _password;
   String? _importedPasswordHash;
+  bool _everHadCredentials;
+  bool get hasEverHadCredentials => _everHadCredentials;
 
   String? get password => _password;
 
   set password(String? value) {
+    if (value != null) _everHadCredentials = true;
     _password = value;
     _importedPasswordHash = null;
   }
 
   void importPasswordHash(String value) {
+    _everHadCredentials = true;
     _importedPasswordHash = normalizeImportedPasswordHash(value);
     _password = null;
   }

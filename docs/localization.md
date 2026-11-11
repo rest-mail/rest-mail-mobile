@@ -66,3 +66,7 @@ review of dynamic helpers and non-widget text paths. CI's
 named UI fields, and constructor defaults. It does not translate or inspect
 runtime content. Catalog parity/placeholder tests, metadata coverage tests, and
 German, Arabic, and Farsi screen tests complement that guard.
+
+The account invitation strings are new English wording that follows the server's
+invitation rules. Their German, Spanish, Hindi, Nepali, Arabic and Farsi
+translations are machine-made and have not had human translation review.

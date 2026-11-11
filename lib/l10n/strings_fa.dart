@@ -2,6 +2,18 @@
 /// Keep keys and placeholders in sync with `strings_en.dart`.
 const Map<String, Map<String, String>> stringsFa = {
   'classic': {
+    'invitation.acceptTitle': 'استفاده از دعوت‌نامه',
+    'invitation.acceptIntro': 'دعوت‌نامه‌ای را که مدیر فرستاده وارد کنید و گذرواژه‌ای ۱۲ تا ۷۲ بایتی انتخاب کنید. سپس برنامهٔ احراز هویت را راه‌اندازی کنید و کدهای بازیابی آن را ذخیره کنید.',
+    'invitation.token': 'کد دعوت',
+    'invitation.issueTitle': 'دعوت برای انتخاب گذرواژه',
+    'invitation.issueIntro': 'برای حساب فعالی که هرگز اطلاعات ورود نداشته است. کد را فقط به‌صورت خصوصی با صاحب آن به اشتراک بگذارید. پس از ۱۵ دقیقه منقضی می‌شود. دعوت جدید جایگزین دعوت قبلی می‌شود. صاحب حساب با استفاده از دعوت‌نامه در صفحهٔ ورود این سرور گذرواژه انتخاب می‌کند و برنامهٔ احراز هویت را راه‌اندازی می‌کند.',
+    'invitation.notInvitable': 'فقط حساب فعالی که هرگز اطلاعات ورود نداشته است قابل دعوت است. این کار حساب موجود را بازنشانی نمی‌کند.',
+    'invitation.expires': 'انقضا {date}',
+    'invitation.show': 'نمایش کد دعوت',
+    'invitation.copy': 'کپی کد دعوت',
+    'invitation.copied': 'کد دعوت کپی شد',
+    'invitation.generate': 'ایجاد دعوت',
+    'invitation.invalidToken': 'این دعوت نامعتبر، منقضی یا قبلاً استفاده شده است. از مدیر خود دعوت جدیدی بخواهید.',
     'recoveryEmail.title': 'ایمیل بازیابی',
     'recoveryEmail.settingsHint':
         'نشانی‌ای خارج از این سرور برای گذرواژه فراموش‌شده',
