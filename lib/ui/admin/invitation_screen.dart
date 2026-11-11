@@ -41,8 +41,9 @@ class _InvitationScreenState extends State<InvitationScreen>
 
   Future<void> _clearClipboard(String token) async {
     final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
-    if (clipboard?.text == token)
+    if (clipboard?.text == token) {
       await Clipboard.setData(const ClipboardData(text: ''));
+    }
   }
 
   void _forget() {
@@ -149,8 +150,9 @@ class _InvitationScreenState extends State<InvitationScreen>
                         await Clipboard.setData(
                           ClipboardData(text: invitation.token),
                         );
-                        if (context.mounted)
+                        if (context.mounted) {
                           showToast(context, tr(context, 'invitation.copied'));
+                        }
                       },
                       child: Text(tr(context, 'invitation.copy')),
                     ),
